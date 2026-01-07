@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M0,0h320v180h-320z"/>
+
+    <!-- Gradient overlay -->
+    <path
+        android:fillColor="#1E3A5F"
+        android:fillAlpha="0.5"
+        android:pathData="M0,0h320v180h-320z"/>
+
+    <!-- MF Text - M -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="
+            M100,110 L100,70
+            L115,70 L130,95 L145,70
+            L160,70 L160,110
+            L150,110 L150,85 L135,110 L125,110 L110,85 L110,110
+            Z"/>
+
+    <!-- MF Text - F -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="
+            M175,70 L220,70 L220,80
+            L185,80 L185,87
+            L215,87 L215,97
+            L185,97 L185,110
+            L175,110
+            Z"/>
+
+    <!-- Subtle glow under text -->
+    <path
+        android:fillColor="#2563EB"
+        android:fillAlpha="0.3"
+        android:pathData="M100,115 Q160,125 220,115 L220,120 Q160,130 100,120 Z"/>
+
+</vector>

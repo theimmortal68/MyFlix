@@ -1,0 +1,37 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.apk
+*.aab
+/app-tv/build/
+/app-mobile/build/
+/core/*/build/
+/ui/*/build/
+
+# Kotlin
+.kotlin/
+
+# Generated files
+*.class
+*.dex
+*.ap_
+*.aar
+
+# Logs
+*.log
+
+# Secrets
+secrets.properties
+google-services.json
+
+# OS
+Thumbs.db
+*~
+*.swp
