@@ -1,15 +1,24 @@
 package dev.jausc.myflix.core.player
 
 import android.content.Context
+import android.os.Handler
 import android.util.Log
 import android.view.Surface
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioCapabilities
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,11 +26,88 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * ExoPlayer wrapper implementing UnifiedPlayer interface
+ * Supports DTS/DTS-HD/DTS:X/TrueHD via Jellyfin's FFmpeg extension
+ * 
+ * TODO: Add Audio Passthrough option in settings for users with AVR/soundbar
+ *       that can decode DTS natively. When enabled, skip FFmpeg decoding and
+ *       pass raw bitstream to audio output.
  */
 class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
     
     companion object {
         private const val TAG = "ExoPlayerWrapper"
+        
+        /**
+         * Check if FFmpeg audio decoder is available
+         */
+        fun isFfmpegAvailable(): Boolean {
+            return try {
+                val ffmpegLib = Class.forName("androidx.media3.decoder.ffmpeg.FfmpegLibrary")
+                val isAvailable = ffmpegLib.getMethod("isAvailable").invoke(null) as Boolean
+                Log.d(TAG, "FFmpeg library available: $isAvailable")
+                isAvailable
+            } catch (e: Exception) {
+                Log.w(TAG, "FFmpeg library not found: ${e.message}")
+                false
+            }
+        }
+        
+        /**
+         * Get supported audio passthrough formats on this device
+         * TODO: Use this for passthrough settings option
+         */
+        fun getPassthroughCapabilities(context: Context): String {
+            val capabilities = AudioCapabilities.getCapabilities(context)
+            val formats = mutableListOf<String>()
+            
+            if (capabilities.supportsEncoding(C.ENCODING_AC3)) formats.add("AC3")
+            if (capabilities.supportsEncoding(C.ENCODING_E_AC3)) formats.add("E-AC3")
+            if (capabilities.supportsEncoding(C.ENCODING_E_AC3_JOC)) formats.add("Atmos")
+            if (capabilities.supportsEncoding(C.ENCODING_DTS)) formats.add("DTS")
+            if (capabilities.supportsEncoding(C.ENCODING_DTS_HD)) formats.add("DTS-HD")
+            if (capabilities.supportsEncoding(C.ENCODING_DOLBY_TRUEHD)) formats.add("TrueHD")
+            
+            return if (formats.isEmpty()) "None" else formats.joinToString(", ")
+        }
+    }
+    
+    /**
+     * Custom RenderersFactory that uses FFmpeg for audio decoding
+     * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, etc.
+     */
+    private class FfmpegRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+        
+        override fun buildAudioRenderers(
+            context: Context,
+            extensionRendererMode: Int,
+            mediaCodecSelector: MediaCodecSelector,
+            enableDecoderFallback: Boolean,
+            audioSink: AudioSink,
+            eventHandler: Handler,
+            eventListener: AudioRendererEventListener,
+            out: ArrayList<Renderer>
+        ) {
+            // Add FFmpeg audio renderer FIRST for DTS/TrueHD support
+            // This decodes to PCM which any device can play
+            try {
+                out.add(FfmpegAudioRenderer(eventHandler, eventListener, audioSink))
+                Log.d(TAG, "FFmpeg audio renderer added (DTS/TrueHD decode enabled)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to add FFmpeg renderer", e)
+            }
+            
+            // Then add platform decoders as fallback
+            super.buildAudioRenderers(
+                context,
+                extensionRendererMode,
+                mediaCodecSelector,
+                enableDecoderFallback,
+                audioSink,
+                eventHandler,
+                eventListener,
+                out
+            )
+        }
     }
     
     private val _state = MutableStateFlow(PlaybackState(playerType = "ExoPlayer"))
@@ -42,7 +128,42 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
         if (initialized) return true
         
         return try {
-            player = ExoPlayer.Builder(context).build().apply {
+            // Log capabilities
+            val ffmpegAvailable = isFfmpegAvailable()
+            val passthroughFormats = getPassthroughCapabilities(context)
+            Log.d(TAG, "FFmpeg available: $ffmpegAvailable")
+            Log.d(TAG, "Passthrough capabilities: $passthroughFormats")
+            
+            // Configure track selector
+            val trackSelector = DefaultTrackSelector(context).apply {
+                parameters = buildUponParameters()
+                    .setAllowAudioMixedChannelCountAdaptiveness(true)
+                    .setAllowAudioMixedMimeTypeAdaptiveness(true)
+                    .build()
+            }
+            
+            // Use FFmpeg renderers factory for DTS/TrueHD software decode
+            // TODO: Add option to use DefaultRenderersFactory with passthrough
+            //       for users with AVR that can decode DTS natively
+            val renderersFactory = if (ffmpegAvailable) {
+                FfmpegRenderersFactory(context)
+                    .setEnableDecoderFallback(true)
+            } else {
+                Log.w(TAG, "FFmpeg not available, using default renderers")
+                DefaultRenderersFactory(context)
+                    .setEnableDecoderFallback(true)
+            }
+            
+            player = ExoPlayer.Builder(context, renderersFactory)
+                .setTrackSelector(trackSelector)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .build(),
+                    /* handleAudioFocus= */ true
+                )
+                .build().apply {
                 playWhenReady = true
                 
                 addListener(object : Player.Listener {

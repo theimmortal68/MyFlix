@@ -5,6 +5,5 @@ import android.app.Application
 class MyFlixApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // App initialization if needed
     }
 }
