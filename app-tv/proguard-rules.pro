@@ -33,6 +33,10 @@
     static <methods>;
 }
 
+# ZXing QR Code
+-keep class com.google.zxing.** { *; }
+-dontwarn com.google.zxing.**
+
 # Keep Application class
 -keep class dev.jausc.myflix.tv.MyFlixApp { *; }
 

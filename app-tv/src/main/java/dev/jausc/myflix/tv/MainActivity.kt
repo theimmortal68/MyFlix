@@ -41,23 +41,14 @@ fun MyFlixTvApp() {
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
     
+    // Initialize app state in background
     LaunchedEffect(Unit) {
         appState.initialize()
         isLoggedIn = appState.isLoggedIn
         isInitialized = true
     }
-    
-    if (!isInitialized) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(TvColors.Background)
-        )
-        return
-    }
 
     val navController = rememberNavController()
-    val startDestination = if (isLoggedIn) "home" else "login"
 
     Box(
         modifier = Modifier
@@ -66,8 +57,22 @@ fun MyFlixTvApp() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = startDestination
+            startDestination = "splash"
         ) {
+            // Splash screen - always shown first
+            composable("splash") {
+                SplashScreen(
+                    onFinished = {
+                        // Navigate based on login state after splash
+                        val destination = if (isInitialized && isLoggedIn) "home" else "login"
+                        navController.navigate(destination) {
+                            popUpTo("splash") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+            
             composable("login") {
                 LoginScreen(
                     appState = appState,

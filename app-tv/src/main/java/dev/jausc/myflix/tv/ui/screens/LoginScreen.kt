@@ -1,48 +1,57 @@
 package dev.jausc.myflix.tv.ui.screens
 
-import android.content.Context
+import android.graphics.Bitmap
 import android.text.method.PasswordTransformationMethod
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
 import androidx.tv.material3.*
+import coil3.compose.AsyncImage
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import dev.jausc.myflix.core.common.ui.MyFlixFonts
+import dev.jausc.myflix.core.common.ui.MyFlixLogo
 import dev.jausc.myflix.core.data.AppState
-import dev.jausc.myflix.core.network.DiscoveredServer
-import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.core.network.QuickConnectFlowState
-import dev.jausc.myflix.core.network.ValidatedServer
+import dev.jausc.myflix.core.network.*
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Login flow matching official Jellyfin app:
- * 1. SERVER_DISCOVERY - Auto-discover or enter server address
- * 2. CONNECTING - Connecting to server...
- * 3. AUTH_CHOICE - Choose Quick Connect or Password login
- * 4. QUICK_CONNECT - Show code, wait for approval
- * 5. MANUAL_LOGIN - Username/password entry
+ * Login flow:
+ * 1. SERVER_SELECT - Auto-discover servers, manual entry option
+ * 2. USER_SELECT - Show public users (if available) or skip to auth
+ * 3. AUTH_METHOD - Quick Connect (with QR) or Password
+ * 4. PASSWORD_ENTRY - Username/password form
  */
-enum class LoginStep {
-    SERVER_DISCOVERY,
-    CONNECTING,
-    AUTH_CHOICE,
-    QUICK_CONNECT,
-    MANUAL_LOGIN
+private enum class LoginStep {
+    SERVER_SELECT,
+    USER_SELECT,
+    AUTH_METHOD,
+    PASSWORD_ENTRY
 }
 
 @Composable
@@ -51,266 +60,261 @@ fun LoginScreen(
     jellyfinClient: JellyfinClient,
     onLoginSuccess: () -> Unit
 ) {
-    var currentStep by remember { mutableStateOf(LoginStep.SERVER_DISCOVERY) }
+    var currentStep by remember { mutableStateOf(LoginStep.SERVER_SELECT) }
     var connectedServer by remember { mutableStateOf<ValidatedServer?>(null) }
-    var connectionError by remember { mutableStateOf<String?>(null) }
-    var discoveredServers by remember { mutableStateOf<List<DiscoveredServer>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(true) }
+    var publicUsers by remember { mutableStateOf<List<PublicUser>>(emptyList()) }
+    var selectedUser by remember { mutableStateOf<PublicUser?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // Use scope at this level so it survives screen transitions
     val scope = rememberCoroutineScope()
     
-    // Auto-discover on launch
-    LaunchedEffect(Unit) {
-        isSearching = true
-        discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
-        isSearching = false
-    }
-    
-    // Connection function that survives screen transitions
-    fun connectToServer(address: String) {
-        scope.launch {
-            currentStep = LoginStep.CONNECTING
-            connectionError = null
-            
-            jellyfinClient.connectToServer(address)
-                .onSuccess { server ->
-                    connectedServer = server
-                    currentStep = LoginStep.AUTH_CHOICE
-                }
-                .onFailure { e ->
-                    connectionError = e.message ?: "Connection failed"
-                    currentStep = LoginStep.SERVER_DISCOVERY
-                }
+    // Auto-dismiss errors
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            delay(5000)
+            errorMessage = null
         }
     }
     
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background),
-        contentAlignment = Alignment.Center
+            .background(TvColors.Background)
     ) {
         when (currentStep) {
-            LoginStep.SERVER_DISCOVERY -> {
-                ServerDiscoveryScreen(
-                    discoveredServers = discoveredServers,
-                    isSearching = isSearching,
-                    onRefresh = {
-                        scope.launch {
-                            isSearching = true
-                            discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
-                            isSearching = false
-                        }
-                    },
-                    onConnect = { address -> connectToServer(address) }
-                )
-            }
+            LoginStep.SERVER_SELECT -> ServerSelectScreen(
+                jellyfinClient = jellyfinClient,
+                onServerConnected = { server, users ->
+                    connectedServer = server
+                    publicUsers = users
+                    currentStep = if (users.isNotEmpty()) LoginStep.USER_SELECT else LoginStep.AUTH_METHOD
+                },
+                onError = { errorMessage = it }
+            )
             
-            LoginStep.CONNECTING -> {
-                ConnectingScreen()
-            }
+            LoginStep.USER_SELECT -> UserSelectScreen(
+                server = connectedServer!!,
+                users = publicUsers,
+                onUserSelected = { user ->
+                    selectedUser = user
+                    currentStep = LoginStep.AUTH_METHOD
+                },
+                onManualLogin = {
+                    selectedUser = null
+                    currentStep = LoginStep.AUTH_METHOD
+                },
+                onBack = {
+                    connectedServer = null
+                    currentStep = LoginStep.SERVER_SELECT
+                }
+            )
             
-            LoginStep.AUTH_CHOICE -> {
-                AuthChoiceScreen(
-                    server = connectedServer!!,
-                    onQuickConnect = {
-                        currentStep = LoginStep.QUICK_CONNECT
-                    },
-                    onManualLogin = {
-                        currentStep = LoginStep.MANUAL_LOGIN
-                    },
-                    onChangeServer = {
-                        connectedServer = null
-                        currentStep = LoginStep.SERVER_DISCOVERY
-                    }
-                )
-            }
+            LoginStep.AUTH_METHOD -> AuthMethodScreen(
+                server = connectedServer!!,
+                selectedUser = selectedUser,
+                jellyfinClient = jellyfinClient,
+                appState = appState,
+                onLoginSuccess = onLoginSuccess,
+                onPasswordLogin = { currentStep = LoginStep.PASSWORD_ENTRY },
+                onBack = {
+                    currentStep = if (publicUsers.isNotEmpty()) LoginStep.USER_SELECT else LoginStep.SERVER_SELECT
+                    if (publicUsers.isEmpty()) connectedServer = null
+                },
+                onError = { errorMessage = it }
+            )
             
-            LoginStep.QUICK_CONNECT -> {
-                QuickConnectScreen(
-                    server = connectedServer!!,
-                    jellyfinClient = jellyfinClient,
-                    appState = appState,
-                    onLoginSuccess = onLoginSuccess,
-                    onUsePassword = {
-                        currentStep = LoginStep.MANUAL_LOGIN
-                    },
-                    onBack = {
-                        currentStep = LoginStep.AUTH_CHOICE
-                    }
-                )
-            }
-            
-            LoginStep.MANUAL_LOGIN -> {
-                ManualLoginScreen(
-                    server = connectedServer!!,
-                    jellyfinClient = jellyfinClient,
-                    appState = appState,
-                    onLoginSuccess = onLoginSuccess,
-                    onBack = {
-                        currentStep = LoginStep.AUTH_CHOICE
-                    }
-                )
-            }
+            LoginStep.PASSWORD_ENTRY -> PasswordEntryScreen(
+                server = connectedServer!!,
+                prefilledUsername = selectedUser?.name,
+                jellyfinClient = jellyfinClient,
+                appState = appState,
+                onLoginSuccess = onLoginSuccess,
+                onBack = { currentStep = LoginStep.AUTH_METHOD },
+                onError = { errorMessage = it }
+            )
         }
         
-        // Show connection error as overlay
-        connectionError?.let { error ->
+        // Error snackbar
+        errorMessage?.let { error ->
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.7f)),
-                contentAlignment = Alignment.Center
+                    .align(Alignment.BottomCenter)
+                    .padding(32.dp)
+                    .background(TvColors.Error.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .background(TvColors.Surface, RoundedCornerShape(12.dp))
-                        .padding(32.dp)
-                ) {
-                    Text(
-                        text = "Connection Failed",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TvColors.Error
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TvColors.TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = { connectionError = null }
-                    ) {
-                        Text("OK")
-                    }
-                }
+                Text(error, color = Color.White, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
 }
 
+// ==================== Server Select ====================
+
 @Composable
-private fun ServerDiscoveryScreen(
-    discoveredServers: List<DiscoveredServer>,
-    isSearching: Boolean,
-    onRefresh: () -> Unit,
-    onConnect: (String) -> Unit
+private fun ServerSelectScreen(
+    jellyfinClient: JellyfinClient,
+    onServerConnected: (ValidatedServer, List<PublicUser>) -> Unit,
+    onError: (String) -> Unit
 ) {
-    var serverAddress by remember { mutableStateOf("") }
+    var discoveredServers by remember { mutableStateOf<List<DiscoveredServer>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(true) }
+    var isConnecting by remember { mutableStateOf(false) }
+    var showManualEntry by remember { mutableStateOf(false) }
+    var manualAddress by remember { mutableStateOf("") }
     
-    Column(
-        modifier = Modifier
-            .width(500.dp)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    val scope = rememberCoroutineScope()
+    
+    LaunchedEffect(Unit) {
+        isSearching = true
+        discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
+        isSearching = false
+    }
+    
+    fun connectTo(address: String) {
+        if (isConnecting) return
+        scope.launch {
+            isConnecting = true
+            jellyfinClient.connectToServer(address)
+                .onSuccess { server ->
+                    val users = jellyfinClient.getPublicUsers(server.url).getOrDefault(emptyList())
+                    onServerConnected(server, users)
+                }
+                .onFailure { onError(it.message ?: "Connection failed") }
+            isConnecting = false
+        }
+    }
+    
+    Row(
+        modifier = Modifier.fillMaxSize().padding(48.dp),
+        horizontalArrangement = Arrangement.spacedBy(48.dp)
     ) {
-        // Logo/Title
-        Text(
-            text = "MyFlix",
-            style = MaterialTheme.typography.displayMedium,
-            color = TvColors.BluePrimary
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "Connect to Server",
-            style = MaterialTheme.typography.headlineSmall,
-            color = TvColors.TextPrimary
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Server address input
-        TvEditText(
-            label = "Host",
-            hint = "192.168.1.100",
-            value = serverAddress,
-            onValueChange = { serverAddress = it },
-            inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_URI
-        )
-        
-        // Connect button
-        Button(
-            onClick = { if (serverAddress.isNotBlank()) onConnect(serverAddress) },
-            enabled = serverAddress.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.Surface,
-                focusedContainerColor = TvColors.BluePrimary,
-                disabledContainerColor = TvColors.Surface.copy(alpha = 0.5f)
-            )
+        // Left - Branding
+        Column(
+            modifier = Modifier.weight(0.4f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
         ) {
-            Text("Connect", fontSize = 16.sp)
-        }
-        
-        // Choose server button (refresh discovery)
-        Button(
-            onClick = onRefresh,
-            enabled = !isSearching,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.BluePrimary,
-                focusedContainerColor = TvColors.BlueLight
+            MyFlixLogo(
+                modifier = Modifier.fillMaxWidth(),
+                height = null  // Scale to fill width
             )
-        ) {
-            Text("Choose server", fontSize = 16.sp)
-        }
-        
-        // Discovered servers
-        if (isSearching) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TvLoadingIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
-                )
-                Text(
-                    text = "Searching for servers...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TvColors.TextSecondary
-                )
-            }
-        } else if (discoveredServers.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
-                text = "Found ${discoveredServers.size} server(s):",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Connect to your Jellyfin server",
+                style = MaterialTheme.typography.headlineSmall,
                 color = TvColors.TextSecondary
             )
-            
-            discoveredServers.forEach { server ->
-                Button(
-                    onClick = { onConnect(server.address) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.Surface,
-                        focusedContainerColor = TvColors.FocusedSurface
-                    )
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(server.name, fontSize = 16.sp)
-                        Text(
-                            server.address,
-                            fontSize = 12.sp,
-                            color = TvColors.TextSecondary
+        }
+        
+        // Right - Server selection
+        Column(
+            modifier = Modifier.weight(0.6f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (showManualEntry) {
+                Text("Enter Server Address", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
+                Spacer(Modifier.height(24.dp))
+                
+                TvEditText(
+                    label = "Server Address",
+                    hint = "192.168.1.100 or jellyfin.example.com",
+                    value = manualAddress,
+                    onValueChange = { manualAddress = it },
+                    inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_URI,
+                    enabled = !isConnecting,
+                    modifier = Modifier.width(400.dp)
+                )
+                Spacer(Modifier.height(24.dp))
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = { connectTo(manualAddress) },
+                        enabled = manualAddress.isNotBlank() && !isConnecting,
+                        modifier = Modifier.height(40.dp),
+                        colors = ButtonDefaults.colors(
+                            containerColor = TvColors.BluePrimary,
+                            focusedContainerColor = TvColors.BlueLight
                         )
+                    ) {
+                        if (isConnecting) {
+                            TvLoadingIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                        } else {
+                            Text("Connect", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    
+                    Button(
+                        onClick = { showManualEntry = false },
+                        enabled = !isConnecting,
+                        modifier = Modifier.height(40.dp),
+                        colors = ButtonDefaults.colors(
+                            containerColor = TvColors.Surface,
+                            focusedContainerColor = TvColors.FocusedSurface
+                        )
+                    ) {
+                        Text("Back", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            } else {
+                Text("Select Server", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
+                Spacer(Modifier.height(24.dp))
+                
+                if (isSearching) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TvLoadingIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        Text("Searching for servers...", color = TvColors.TextSecondary)
+                    }
+                } else if (discoveredServers.isEmpty()) {
+                    Text("No servers found on your network", color = TvColors.TextSecondary)
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        discoveredServers.take(4).forEach { server ->
+                            ServerCard(server, isConnecting) { connectTo(server.address) }
+                        }
+                    }
+                }
+                
+                Spacer(Modifier.height(32.dp))
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = { showManualEntry = true },
+                        enabled = !isConnecting,
+                        modifier = Modifier.height(40.dp),
+                        colors = ButtonDefaults.colors(
+                            containerColor = TvColors.Surface,
+                            focusedContainerColor = TvColors.FocusedSurface
+                        )
+                    ) {
+                        Text("Enter Manually", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    
+                    if (!isSearching) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    isSearching = true
+                                    discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
+                                    isSearching = false
+                                }
+                            },
+                            enabled = !isConnecting,
+                            modifier = Modifier.height(40.dp),
+                            colors = ButtonDefaults.colors(
+                                containerColor = TvColors.Surface,
+                                focusedContainerColor = TvColors.FocusedSurface
+                            )
+                        ) {
+                            Text("Refresh", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                
+                if (isConnecting) {
+                    Spacer(Modifier.height(24.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TvLoadingIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text("Connecting...", color = TvColors.TextSecondary)
                     }
                 }
             }
@@ -319,417 +323,433 @@ private fun ServerDiscoveryScreen(
 }
 
 @Composable
-private fun ConnectingScreen() {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        TvLoadingIndicator(
-            modifier = Modifier.size(64.dp),
-            strokeWidth = 4.dp
-        )
-        Text(
-            text = "Connecting...",
-            style = MaterialTheme.typography.titleLarge,
-            color = TvColors.TextPrimary
-        )
-    }
-}
-
-@Composable
-private fun AuthChoiceScreen(
-    server: ValidatedServer,
-    onQuickConnect: () -> Unit,
-    onManualLogin: () -> Unit,
-    onChangeServer: () -> Unit
+private fun ServerCard(
+    server: DiscoveredServer,
+    isConnecting: Boolean,
+    onClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .width(500.dp)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Button(
+        onClick = onClick,
+        enabled = !isConnecting,
+        modifier = Modifier.width(140.dp).height(72.dp),
+        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        colors = ButtonDefaults.colors(
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.FocusedSurface
+        )
     ) {
-        // Logo
-        Text(
-            text = "MyFlix",
-            style = MaterialTheme.typography.displayMedium,
-            color = TvColors.BluePrimary
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "Please sign in",
-            style = MaterialTheme.typography.headlineSmall,
-            color = TvColors.TextPrimary
-        )
-        
-        Text(
-            text = server.serverInfo.serverName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TvColors.TextSecondary
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Sign In (manual) - Primary action
-        Button(
-            onClick = onManualLogin,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.BluePrimary,
-                focusedContainerColor = TvColors.BlueLight
-            )
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Sign In", fontSize = 16.sp)
-        }
-        
-        // Quick Connect - if available
-        if (server.quickConnectEnabled) {
-            Button(
-                onClick = onQuickConnect,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.Surface,
-                    focusedContainerColor = TvColors.FocusedSurface
-                )
-            ) {
-                Text("Use Quick Connect", fontSize = 16.sp)
-            }
-        }
-        
-        // Change Server
-        Button(
-            onClick = onChangeServer,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.Surface,
-                focusedContainerColor = TvColors.FocusedSurface
-            )
-        ) {
-            Text("Change Server", fontSize = 16.sp)
-        }
-    }
-}
-
-@Composable
-private fun QuickConnectScreen(
-    server: ValidatedServer,
-    jellyfinClient: JellyfinClient,
-    appState: AppState,
-    onLoginSuccess: () -> Unit,
-    onUsePassword: () -> Unit,
-    onBack: () -> Unit
-) {
-    var quickConnectState by remember { mutableStateOf<QuickConnectFlowState>(QuickConnectFlowState.Initializing) }
-    var quickConnectJob by remember { mutableStateOf<Job?>(null) }
-    
-    val scope = rememberCoroutineScope()
-    
-    LaunchedEffect(server.url) {
-        quickConnectJob?.cancel()
-        quickConnectJob = scope.launch {
-            jellyfinClient.quickConnectFlow(server.url).collect { state ->
-                quickConnectState = state
-                
-                if (state is QuickConnectFlowState.Authenticated) {
-                    val response = state.authResponse
-                    jellyfinClient.configure(
-                        serverUrl = server.url,
-                        accessToken = response.accessToken,
-                        userId = response.user.id,
-                        deviceId = jellyfinClient.deviceId
-                    )
-                    appState.login(server.url, response.accessToken, response.user.id)
-                    onLoginSuccess()
-                }
-            }
-        }
-    }
-    
-    DisposableEffect(Unit) {
-        onDispose { quickConnectJob?.cancel() }
-    }
-    
-    Column(
-        modifier = Modifier
-            .width(500.dp)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Quick Connect",
-            style = MaterialTheme.typography.displaySmall,
-            color = TvColors.BluePrimary
-        )
-        
-        Text(
-            text = server.serverInfo.serverName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TvColors.TextSecondary
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        when (val state = quickConnectState) {
-            is QuickConnectFlowState.Initializing -> {
-                TvLoadingIndicator(modifier = Modifier.size(48.dp))
-                Text("Initializing...", color = TvColors.TextSecondary)
-            }
-            
-            is QuickConnectFlowState.NotAvailable -> {
-                Text(
-                    text = "Quick Connect is not available",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TvColors.Error,
-                    textAlign = TextAlign.Center
-                )
-            }
-            
-            is QuickConnectFlowState.WaitingForApproval -> {
-                Text(
-                    text = "Enter this code in Jellyfin:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TvColors.TextSecondary
-                )
-                
-                Box(
-                    modifier = Modifier
-                        .background(TvColors.Surface, RoundedCornerShape(12.dp))
-                        .border(2.dp, TvColors.BluePrimary, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 48.dp, vertical = 24.dp)
-                ) {
-                    Text(
-                        text = state.code,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = TvColors.BluePrimary,
-                        letterSpacing = 8.sp
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TvLoadingIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Text(
-                        text = "Waiting for approval...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TvColors.TextSecondary
-                    )
-                }
-            }
-            
-            is QuickConnectFlowState.Authenticating -> {
-                TvLoadingIndicator(modifier = Modifier.size(48.dp))
-                Text("Authenticating...", color = TvColors.TextSecondary)
-            }
-            
-            is QuickConnectFlowState.Authenticated -> {
-                TvLoadingIndicator(modifier = Modifier.size(48.dp))
-                Text("Success!", color = TvColors.Success)
-            }
-            
-            is QuickConnectFlowState.Error -> {
-                Text(
-                    text = state.message,
-                    color = TvColors.Error,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Button(
-            onClick = {
-                quickConnectJob?.cancel()
-                onUsePassword()
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.Surface,
-                focusedContainerColor = TvColors.FocusedSurface
-            )
-        ) {
-            Text("Sign in with Password")
-        }
-        
-        Button(
-            onClick = {
-                quickConnectJob?.cancel()
-                onBack()
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.Surface,
-                focusedContainerColor = TvColors.FocusedSurface
-            )
-        ) {
-            Text("Back")
-        }
-    }
-}
-
-@Composable
-private fun ManualLoginScreen(
-    server: ValidatedServer,
-    jellyfinClient: JellyfinClient,
-    appState: AppState,
-    onLoginSuccess: () -> Unit,
-    onBack: () -> Unit
-) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    
-    val scope = rememberCoroutineScope()
-    
-    Column(
-        modifier = Modifier
-            .width(500.dp)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Sign In",
-            style = MaterialTheme.typography.displaySmall,
-            color = TvColors.BluePrimary
-        )
-        
-        Text(
-            text = server.serverInfo.serverName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TvColors.TextSecondary
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        TvEditText(
-            label = "User",
-            hint = "",
-            value = username,
-            onValueChange = { 
-                username = it
-                errorMessage = null
-            },
-            inputType = EditorInfo.TYPE_CLASS_TEXT,
-            enabled = !isLoading
-        )
-        
-        TvEditText(
-            label = "Password",
-            hint = "",
-            value = password,
-            onValueChange = { 
-                password = it
-                errorMessage = null
-            },
-            inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_PASSWORD,
-            isPassword = true,
-            enabled = !isLoading
-        )
-        
-        errorMessage?.let { error ->
             Text(
-                text = error,
-                color = TvColors.Error,
-                style = MaterialTheme.typography.bodyMedium
+                text = server.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = TvColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = server.address.removePrefix("http://").removePrefix("https://"),
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+// ==================== User Select ====================
+
+@Composable
+private fun UserSelectScreen(
+    server: ValidatedServer,
+    users: List<PublicUser>,
+    onUserSelected: (PublicUser) -> Unit,
+    onManualLogin: () -> Unit,
+    onBack: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxSize().padding(48.dp),
+        horizontalArrangement = Arrangement.spacedBy(48.dp)
+    ) {
+        // Left - Server info
+        Column(
+            modifier = Modifier.weight(0.35f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            MyFlixLogo(modifier = Modifier.fillMaxWidth(), height = null)
+            Spacer(Modifier.height(16.dp))
+            Text(server.serverInfo.serverName, style = MaterialTheme.typography.headlineSmall, color = TvColors.TextPrimary)
+            Text("v${server.serverInfo.version}", style = MaterialTheme.typography.bodyMedium, color = TvColors.TextSecondary)
+            Spacer(Modifier.height(32.dp))
+            
+            Button(
+                onClick = onBack,
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.colors(containerColor = TvColors.Surface, focusedContainerColor = TvColors.FocusedSurface)
+            ) {
+                Text("Change Server", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Sign In button
-        Button(
-            onClick = {
-                scope.launch {
-                    isLoading = true
-                    errorMessage = null
-                    
-                    jellyfinClient.login(server.url, username, password)
-                        .onSuccess { response ->
-                            jellyfinClient.configure(
-                                serverUrl = server.url,
-                                accessToken = response.accessToken,
-                                userId = response.user.id,
-                                deviceId = jellyfinClient.deviceId
-                            )
+        // Right - Users
+        Column(
+            modifier = Modifier.weight(0.65f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Who's watching?", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
+            Spacer(Modifier.height(32.dp))
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                users.take(5).forEach { user ->
+                    UserCard(user, server.url) { onUserSelected(user) }
+                }
+                OtherUserCard(onManualLogin)
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserCard(user: PublicUser, serverUrl: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.size(100.dp),
+        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        colors = ButtonDefaults.colors(containerColor = TvColors.Surface, focusedContainerColor = TvColors.FocusedSurface)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (user.primaryImageTag != null) {
+                AsyncImage(
+                    model = "$serverUrl/Users/${user.id}/Images/Primary?quality=90",
+                    contentDescription = user.name,
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier.size(48.dp).background(TvColors.BluePrimary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(user.name.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(user.name, style = MaterialTheme.typography.bodySmall, color = TvColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun OtherUserCard(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.size(100.dp),
+        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        colors = ButtonDefaults.colors(containerColor = TvColors.Surface, focusedContainerColor = TvColors.FocusedSurface)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.size(48.dp).background(TvColors.SurfaceLight, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+", style = MaterialTheme.typography.titleLarge, color = TvColors.TextSecondary)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Other", style = MaterialTheme.typography.bodySmall, color = TvColors.TextSecondary)
+        }
+    }
+}
+
+// ==================== Auth Method ====================
+
+@Composable
+private fun AuthMethodScreen(
+    server: ValidatedServer,
+    selectedUser: PublicUser?,
+    jellyfinClient: JellyfinClient,
+    appState: AppState,
+    onLoginSuccess: () -> Unit,
+    onPasswordLogin: () -> Unit,
+    onBack: () -> Unit,
+    onError: (String) -> Unit
+) {
+    var quickConnectState by remember { mutableStateOf<QuickConnectFlowState?>(null) }
+    var quickConnectJob by remember { mutableStateOf<Job?>(null) }
+    var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    
+    val scope = rememberCoroutineScope()
+    
+    LaunchedEffect(server) {
+        if (server.quickConnectEnabled) {
+            quickConnectJob = scope.launch {
+                jellyfinClient.quickConnectFlow(server.url).collect { state ->
+                    quickConnectState = state
+                    when (state) {
+                        is QuickConnectFlowState.WaitingForApproval -> {
+                            qrBitmap = generateQrCode("${server.url}/web/#/quickconnect", 120)
+                        }
+                        is QuickConnectFlowState.Authenticated -> {
+                            val response = state.authResponse
+                            jellyfinClient.configure(server.url, response.accessToken, response.user.id, jellyfinClient.deviceId)
                             appState.login(server.url, response.accessToken, response.user.id)
                             onLoginSuccess()
                         }
-                        .onFailure { e ->
-                            errorMessage = when {
-                                e.message?.contains("401") == true -> "Invalid username or password"
-                                else -> e.message ?: "Login failed"
+                        is QuickConnectFlowState.Error -> onError(state.message)
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+    
+    DisposableEffect(Unit) { onDispose { quickConnectJob?.cancel() } }
+    
+    Row(
+        modifier = Modifier.fillMaxSize().padding(48.dp),
+        horizontalArrangement = Arrangement.spacedBy(64.dp)
+    ) {
+        // Left - Quick Connect
+        Column(
+            modifier = Modifier.weight(0.5f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (server.quickConnectEnabled) {
+                Text("Quick Connect", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
+                Spacer(Modifier.height(24.dp))
+                
+                when (val state = quickConnectState) {
+                    is QuickConnectFlowState.WaitingForApproval -> {
+                        // Code display
+                        Box(
+                            modifier = Modifier
+                                .background(TvColors.Surface, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 48.dp, vertical = 24.dp)
+                        ) {
+                            Text(
+                                text = state.code,
+                                style = MaterialTheme.typography.displayMedium,
+                                color = TvColors.BluePrimary,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 12.sp
+                            )
+                        }
+                        
+                        Spacer(Modifier.height(24.dp))
+                        Text(
+                            "1. Scan the QR code below\n2. Log in if prompted\n3. Enter the code above",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TvColors.TextSecondary,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 24.sp
+                        )
+                        
+                        Spacer(Modifier.height(24.dp))
+                        qrBitmap?.let { bitmap ->
+                            Text("Scan to open Quick Connect:", style = MaterialTheme.typography.bodySmall, color = TvColors.TextSecondary)
+                            Spacer(Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier.size(100.dp).background(Color.White, RoundedCornerShape(8.dp)).padding(4.dp)
+                            ) {
+                                Image(bitmap.asImageBitmap(), "Server QR Code", Modifier.fillMaxSize())
                             }
                         }
-                    
-                    isLoading = false
+                    }
+                    is QuickConnectFlowState.Authenticating -> {
+                        TvLoadingIndicator(modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(16.dp))
+                        Text("Authenticating...", color = TvColors.TextSecondary)
+                    }
+                    is QuickConnectFlowState.Initializing -> {
+                        TvLoadingIndicator(modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(16.dp))
+                        Text("Initializing Quick Connect...", color = TvColors.TextSecondary)
+                    }
+                    else -> Text("Quick Connect unavailable", color = TvColors.TextSecondary)
                 }
-            },
-            enabled = !isLoading && username.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.BluePrimary,
-                focusedContainerColor = TvColors.BlueLight
-            )
-        ) {
-            if (isLoading) {
-                TvLoadingIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
             } else {
-                Text("Sign In", fontSize = 16.sp)
+                Text("Quick Connect", style = MaterialTheme.typography.titleLarge, color = TvColors.TextSecondary)
+                Spacer(Modifier.height(24.dp))
+                Text("Not enabled on this server", style = MaterialTheme.typography.bodyMedium, color = TvColors.TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                Text("Enable in Dashboard → General", style = MaterialTheme.typography.bodySmall, color = TvColors.TextSecondary)
             }
         }
         
-        // Use Quick Connect (if available)
-        if (server.quickConnectEnabled) {
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.Surface,
-                    focusedContainerColor = TvColors.FocusedSurface
-                )
-            ) {
-                Text("Use Quick Connect")
-            }
-        }
+        // Divider
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .fillMaxHeight(0.6f)
+                .align(Alignment.CenterVertically)
+                .background(TvColors.SurfaceLight)
+        )
         
-        // Back
-        Button(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.Surface,
-                focusedContainerColor = TvColors.FocusedSurface
-            )
+        // Right - Password option
+        Column(
+            modifier = Modifier.weight(0.5f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Back")
+            Text("Sign In", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
+            Spacer(Modifier.height(16.dp))
+            
+            selectedUser?.let {
+                Text("as ${it.name}", style = MaterialTheme.typography.bodyLarge, color = TvColors.TextSecondary)
+                Spacer(Modifier.height(32.dp))
+            }
+            
+            Button(
+                onClick = onPasswordLogin,
+                modifier = Modifier.width(200.dp).height(40.dp),
+                colors = ButtonDefaults.colors(containerColor = TvColors.BluePrimary, focusedContainerColor = TvColors.BlueLight)
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Sign in with Password", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            
+            Spacer(Modifier.height(12.dp))
+            
+            Button(
+                onClick = { quickConnectJob?.cancel(); onBack() },
+                modifier = Modifier.width(200.dp).height(40.dp),
+                colors = ButtonDefaults.colors(containerColor = TvColors.Surface, focusedContainerColor = TvColors.FocusedSurface)
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Back", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
     }
 }
+
+// ==================== Password Entry ====================
+
+@Composable
+private fun PasswordEntryScreen(
+    server: ValidatedServer,
+    prefilledUsername: String?,
+    jellyfinClient: JellyfinClient,
+    appState: AppState,
+    onLoginSuccess: () -> Unit,
+    onBack: () -> Unit,
+    onError: (String) -> Unit
+) {
+    var username by remember { mutableStateOf(prefilledUsername ?: "") }
+    var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    
+    val scope = rememberCoroutineScope()
+    
+    fun doLogin() {
+        if (username.isBlank()) { onError("Please enter a username"); return }
+        scope.launch {
+            isLoading = true
+            jellyfinClient.login(server.url, username, password)
+                .onSuccess { response ->
+                    jellyfinClient.configure(server.url, response.accessToken, response.user.id, jellyfinClient.deviceId)
+                    appState.login(server.url, response.accessToken, response.user.id)
+                    onLoginSuccess()
+                }
+                .onFailure { e ->
+                    onError(when {
+                        e.message?.contains("401") == true -> "Invalid username or password"
+                        e.message?.contains("timeout", true) == true -> "Connection timed out"
+                        else -> e.message ?: "Login failed"
+                    })
+                }
+            isLoading = false
+        }
+    }
+    
+    Row(
+        modifier = Modifier.fillMaxSize().padding(48.dp),
+        horizontalArrangement = Arrangement.spacedBy(48.dp)
+    ) {
+        // Left - Branding
+        Column(
+            modifier = Modifier.weight(0.4f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            MyFlixLogo(modifier = Modifier.fillMaxWidth(), height = null)
+            Spacer(Modifier.height(16.dp))
+            Text(server.serverInfo.serverName, style = MaterialTheme.typography.headlineSmall, color = TvColors.TextPrimary)
+        }
+        
+        // Right - Form
+        Column(
+            modifier = Modifier.weight(0.6f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Sign In", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
+            Spacer(Modifier.height(32.dp))
+            
+            TvEditText(
+                label = "Username",
+                hint = "",
+                value = username,
+                onValueChange = { username = it },
+                inputType = EditorInfo.TYPE_CLASS_TEXT,
+                enabled = !isLoading && prefilledUsername == null,
+                modifier = Modifier.width(400.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            
+            TvEditText(
+                label = "Password",
+                hint = "",
+                value = password,
+                onValueChange = { password = it },
+                inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_PASSWORD,
+                isPassword = true,
+                enabled = !isLoading,
+                modifier = Modifier.width(400.dp)
+            )
+            Spacer(Modifier.height(32.dp))
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Button(
+                    onClick = { doLogin() },
+                    enabled = !isLoading && username.isNotBlank(),
+                    modifier = Modifier.height(40.dp),
+                    colors = ButtonDefaults.colors(containerColor = TvColors.BluePrimary, focusedContainerColor = TvColors.BlueLight)
+                ) {
+                    if (isLoading) {
+                        TvLoadingIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text("Sign In", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                
+                Button(
+                    onClick = onBack,
+                    enabled = !isLoading,
+                    modifier = Modifier.height(40.dp),
+                    colors = ButtonDefaults.colors(containerColor = TvColors.Surface, focusedContainerColor = TvColors.FocusedSurface)
+                ) {
+                    Text("Back", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
+}
+
+// ==================== Utilities ====================
 
 @Composable
 private fun TvEditText(
@@ -742,57 +762,54 @@ private fun TvEditText(
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = TvColors.TextSecondary,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
+    Column(modifier = modifier) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = TvColors.TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
         
         AndroidView(
             factory = { ctx ->
-                createStyledEditText(ctx, hint, inputType, isPassword).apply {
+                EditText(ctx).apply {
+                    this.hint = hint
+                    this.inputType = inputType
+                    isSingleLine = true
+                    setTextColor(TvColors.TextPrimary.toArgb())
+                    setHintTextColor(TvColors.TextSecondary.toArgb())
+                    setBackgroundColor(TvColors.Surface.toArgb())
+                    setPadding(32, 16, 32, 16)
+                    textSize = 18f
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    if (isPassword) transformationMethod = PasswordTransformationMethod.getInstance()
                     setText(value)
-                    doAfterTextChanged { text ->
-                        onValueChange(text?.toString() ?: "")
-                    }
+                    doAfterTextChanged { onValueChange(it?.toString() ?: "") }
                 }
             },
             update = { editText ->
                 editText.isEnabled = enabled
+                editText.alpha = if (enabled) 1f else 0.5f
                 if (editText.text.toString() != value) {
                     editText.setText(value)
                     editText.setSelection(value.length)
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
+            modifier = Modifier.fillMaxWidth().height(56.dp)
         )
     }
 }
 
-private fun createStyledEditText(
-    context: Context,
-    hint: String,
-    inputType: Int,
-    isPassword: Boolean
-): EditText {
-    return EditText(context).apply {
-        this.hint = hint
-        this.inputType = inputType
-        this.isSingleLine = true
-        this.setTextColor(TvColors.TextPrimary.toArgb())
-        this.setHintTextColor(TvColors.TextSecondary.toArgb())
-        this.setBackgroundColor(TvColors.Surface.toArgb())
-        this.setPadding(32, 24, 32, 24)
-        this.textSize = 16f
-        this.isFocusable = true
-        this.isFocusableInTouchMode = true
-        
-        if (isPassword) {
-            this.transformationMethod = PasswordTransformationMethod.getInstance()
+private fun generateQrCode(content: String, size: Int): Bitmap? = try {
+    val hints = mapOf(
+        EncodeHintType.MARGIN to 1,
+        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
+    )
+    val bitMatrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
+    Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565).apply {
+        for (x in 0 until size) {
+            for (y in 0 until size) {
+                setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
         }
     }
+} catch (e: Exception) {
+    android.util.Log.e("LoginScreen", "QR code generation failed", e)
+    null
 }

@@ -1,6 +1,5 @@
 package dev.jausc.myflix.core.network
 
-import android.content.Context
 import dev.jausc.myflix.core.common.model.*
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -12,7 +11,6 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,7 +39,36 @@ data class QuickConnectState(
     @SerialName("DateAdded") val dateAdded: String? = null
 )
 
-class JellyfinClient(private val context: Context? = null) {
+@Serializable
+data class ValidatedServer(
+    val url: String,
+    val serverInfo: ServerInfo,
+    val quickConnectEnabled: Boolean
+)
+
+@Serializable
+data class PublicUser(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String,
+    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
+    @SerialName("HasPassword") val hasPassword: Boolean = true,
+    @SerialName("HasConfiguredPassword") val hasConfiguredPassword: Boolean = true
+)
+
+sealed class QuickConnectFlowState {
+    data object Initializing : QuickConnectFlowState()
+    data object NotAvailable : QuickConnectFlowState()
+    data class WaitingForApproval(val code: String, val secret: String) : QuickConnectFlowState()
+    data object Authenticating : QuickConnectFlowState()
+    data class Authenticated(val authResponse: AuthResponse) : QuickConnectFlowState()
+    data class Error(val message: String) : QuickConnectFlowState()
+}
+
+/**
+ * Pure Ktor-based Jellyfin API client.
+ * No SDK dependencies - all API calls are direct HTTP requests.
+ */
+class JellyfinClient {
     private val json = Json { 
         ignoreUnknownKeys = true
         isLenient = true
@@ -64,6 +91,8 @@ class JellyfinClient(private val context: Context? = null) {
 
     val isAuthenticated: Boolean get() = serverUrl != null && accessToken != null && userId != null
 
+    // ==================== Caching ====================
+    
     private data class CacheEntry<T>(val data: T, val timestamp: Long)
     private val cache = ConcurrentHashMap<String, CacheEntry<Any>>()
     private val cacheTtlMs = 60_000L
@@ -71,13 +100,21 @@ class JellyfinClient(private val context: Context? = null) {
     @Suppress("UNCHECKED_CAST")
     private fun <T> getCached(key: String): T? {
         val entry = cache[key] ?: return null
-        if (System.currentTimeMillis() - entry.timestamp > cacheTtlMs) { cache.remove(key); return null }
+        if (System.currentTimeMillis() - entry.timestamp > cacheTtlMs) { 
+            cache.remove(key)
+            return null 
+        }
         return entry.data as? T
     }
 
-    private fun <T : Any> putCache(key: String, data: T) { cache[key] = CacheEntry(data, System.currentTimeMillis()) }
+    private fun <T : Any> putCache(key: String, data: T) { 
+        cache[key] = CacheEntry(data, System.currentTimeMillis()) 
+    }
+    
     fun clearCache() { cache.clear() }
 
+    // ==================== Configuration ====================
+    
     fun configure(serverUrl: String, accessToken: String, userId: String, deviceId: String) {
         this.serverUrl = serverUrl
         this.accessToken = accessToken
@@ -103,7 +140,6 @@ class JellyfinClient(private val context: Context? = null) {
     
     /**
      * Discover Jellyfin servers using UDP broadcast to port 7359.
-     * Returns a Flow that emits servers as they're discovered.
      */
     fun discoverServersFlow(timeoutMs: Long = 5000): Flow<DiscoveredServer> = channelFlow {
         val seen = mutableSetOf<String>()
@@ -117,11 +153,9 @@ class JellyfinClient(private val context: Context? = null) {
                     reuseAddress = true
                 }
                 
-                // Jellyfin discovery message
                 val message = "who is JellyfinServer?"
                 val sendData = message.toByteArray(Charsets.UTF_8)
                 
-                // Send broadcast
                 try {
                     val address = InetAddress.getByName("255.255.255.255")
                     val packet = DatagramPacket(sendData, sendData.size, address, 7359)
@@ -131,7 +165,6 @@ class JellyfinClient(private val context: Context? = null) {
                     android.util.Log.e("JellyfinClient", "Failed to send discovery: ${e.message}")
                 }
                 
-                // Receive responses
                 val receiveBuffer = ByteArray(4096)
                 val endTime = System.currentTimeMillis() + timeoutMs
                 
@@ -151,7 +184,7 @@ class JellyfinClient(private val context: Context? = null) {
                             }
                         }
                     } catch (e: java.net.SocketTimeoutException) {
-                        // Normal - continue listening
+                        // Normal timeout, continue
                     } catch (e: Exception) {
                         if (!isClosedForSend) {
                             android.util.Log.w("JellyfinClient", "Receive error: ${e.message}")
@@ -166,24 +199,17 @@ class JellyfinClient(private val context: Context? = null) {
         }
     }
     
-    /**
-     * Simple blocking discovery that returns all found servers
-     */
     suspend fun discoverServers(timeoutMs: Long = 5000): List<DiscoveredServer> {
         val servers = mutableListOf<DiscoveredServer>()
-        
         try {
             withTimeout(timeoutMs + 1000) {
-                discoverServersFlow(timeoutMs).collect { server ->
-                    servers.add(server)
-                }
+                discoverServersFlow(timeoutMs).collect { servers.add(it) }
             }
         } catch (e: TimeoutCancellationException) {
-            // Expected - discovery timeout
+            // Expected
         } catch (e: Exception) {
             android.util.Log.e("JellyfinClient", "Discovery error", e)
         }
-        
         android.util.Log.i("JellyfinClient", "Discovery complete: found ${servers.size} servers")
         return servers
     }
@@ -195,12 +221,7 @@ class JellyfinClient(private val context: Context? = null) {
             try {
                 val parts = response.split("|")
                 if (parts.size >= 3) {
-                    DiscoveredServer(
-                        id = parts[0],
-                        name = parts[1],
-                        address = parts[2],
-                        endpointAddress = senderIp
-                    )
+                    DiscoveredServer(id = parts[0], name = parts[1], address = parts[2], endpointAddress = senderIp)
                 } else null
             } catch (e: Exception) {
                 android.util.Log.w("JellyfinClient", "Failed to parse: $response")
@@ -209,7 +230,7 @@ class JellyfinClient(private val context: Context? = null) {
         }
     }
     
-    // ==================== Server Validation ====================
+    // ==================== Server Connection ====================
     
     suspend fun getServerInfo(serverUrl: String): Result<ServerInfo> = runCatching {
         httpClient.get("${serverUrl.trimEnd('/')}/System/Info/Public") {
@@ -218,12 +239,8 @@ class JellyfinClient(private val context: Context? = null) {
     }
     
     /**
-     * Try to connect to a server using just the host.
-     * Automatically tries common URL combinations:
-     * - http://host:8096
-     * - https://host:8920
-     * - http://host (if includes port)
-     * - https://host (if includes port)
+     * Connect to a server. Automatically tries common URL combinations:
+     * - http://host:8096, https://host:8920, http://host, https://host
      */
     suspend fun connectToServer(host: String): Result<ValidatedServer> {
         val cleanHost = host.trim()
@@ -231,18 +248,13 @@ class JellyfinClient(private val context: Context? = null) {
             .removePrefix("https://")
             .trimEnd('/')
         
-        // Build list of URLs to try
         val urlsToTry = mutableListOf<String>()
-        
-        // Check if user provided a port
         val hasPort = cleanHost.contains(":")
         
         if (hasPort) {
-            // User specified port - try both protocols
             urlsToTry.add("http://$cleanHost")
             urlsToTry.add("https://$cleanHost")
         } else {
-            // No port - try defaults
             urlsToTry.add("http://$cleanHost:8096")
             urlsToTry.add("https://$cleanHost:8920")
             urlsToTry.add("http://$cleanHost")
@@ -261,34 +273,23 @@ class JellyfinClient(private val context: Context? = null) {
                     }
                 }.body<ServerInfo>()
                 
-                // Success! Check Quick Connect availability
                 val quickConnectEnabled = try {
                     val response = httpClient.get("$url/QuickConnect/Enabled") {
                         timeout { requestTimeoutMillis = 3_000 }
                     }
                     response.bodyAsText().trim().lowercase() == "true"
-                } catch (e: Exception) {
-                    false
-                }
+                } catch (e: Exception) { false }
                 
                 android.util.Log.i("JellyfinClient", "Connected to $url (Quick Connect: $quickConnectEnabled)")
                 
-                return Result.success(ValidatedServer(
-                    url = url,
-                    serverInfo = serverInfo,
-                    quickConnectEnabled = quickConnectEnabled
-                ))
+                return Result.success(ValidatedServer(url, serverInfo, quickConnectEnabled))
             } catch (e: Exception) {
                 android.util.Log.d("JellyfinClient", "Failed $url: ${e.message}")
-                continue
             }
         }
         
         return Result.failure(Exception("Could not connect to server. Tried:\n${urlsToTry.joinToString("\n")}"))
     }
-    
-    @Deprecated("Use connectToServer instead", ReplaceWith("connectToServer(inputUrl)"))
-    suspend fun validateServer(inputUrl: String): Result<ValidatedServer> = connectToServer(inputUrl)
     
     // ==================== Quick Connect ====================
     
@@ -305,22 +306,19 @@ class JellyfinClient(private val context: Context? = null) {
     }
     
     suspend fun initiateQuickConnect(serverUrl: String): Result<QuickConnectState> = runCatching {
-        val url = serverUrl.trimEnd('/')
-        httpClient.post("$url/QuickConnect/Initiate") {
+        httpClient.post("${serverUrl.trimEnd('/')}/QuickConnect/Initiate") {
             header("Authorization", authHeader(null))
         }.body()
     }
     
     suspend fun checkQuickConnectStatus(serverUrl: String, secret: String): Result<QuickConnectState> = runCatching {
-        val url = serverUrl.trimEnd('/')
-        httpClient.get("$url/QuickConnect/Connect") {
+        httpClient.get("${serverUrl.trimEnd('/')}/QuickConnect/Connect") {
             parameter("secret", secret)
         }.body()
     }
     
     suspend fun authenticateWithQuickConnect(serverUrl: String, secret: String): Result<AuthResponse> = runCatching {
-        val url = serverUrl.trimEnd('/')
-        httpClient.post("$url/Users/AuthenticateWithQuickConnect") {
+        httpClient.post("${serverUrl.trimEnd('/')}/Users/AuthenticateWithQuickConnect") {
             header("Authorization", authHeader(null))
             setBody(mapOf("Secret" to secret))
         }.body()
@@ -353,7 +351,6 @@ class JellyfinClient(private val context: Context? = null) {
             }
             
             state = statusResult.getOrThrow()
-            
             if (!state.authenticated) {
                 emit(QuickConnectFlowState.WaitingForApproval(state.code, state.secret))
             }
@@ -370,22 +367,20 @@ class JellyfinClient(private val context: Context? = null) {
         emit(QuickConnectFlowState.Authenticated(authResult.getOrThrow()))
     }
 
-    // ==================== Standard Login ====================
+    // ==================== Authentication ====================
 
     suspend fun login(serverUrl: String, username: String, password: String): Result<AuthResponse> = runCatching {
-        val url = serverUrl.trimEnd('/')
-        httpClient.post("$url/Users/AuthenticateByName") {
+        httpClient.post("${serverUrl.trimEnd('/')}/Users/AuthenticateByName") {
             header("Authorization", authHeader(null))
             setBody(mapOf("Username" to username, "Pw" to password))
         }.body()
     }
     
     suspend fun getPublicUsers(serverUrl: String): Result<List<PublicUser>> = runCatching {
-        val url = serverUrl.trimEnd('/')
-        httpClient.get("$url/Users/Public").body()
+        httpClient.get("${serverUrl.trimEnd('/')}/Users/Public").body()
     }
 
-    // ==================== Library & Content APIs ====================
+    // ==================== Library APIs ====================
 
     suspend fun getLibraries(): Result<List<JellyfinItem>> {
         getCached<List<JellyfinItem>>("libraries")?.let { return Result.success(it) }
@@ -455,18 +450,16 @@ class JellyfinClient(private val context: Context? = null) {
         }
     }
 
-    suspend fun search(query: String, limit: Int = 50): Result<List<JellyfinItem>> {
-        return runCatching {
-            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
-                header("Authorization", authHeader())
-                parameter("SearchTerm", query)
-                parameter("Limit", limit)
-                parameter("Recursive", true)
-                parameter("IncludeItemTypes", "Movie,Series,Episode")
-                parameter("Fields", "Overview,ImageTags,BackdropImageTags,UserData")
-            }.body()
-            r.items
-        }
+    suspend fun search(query: String, limit: Int = 50): Result<List<JellyfinItem>> = runCatching {
+        val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+            header("Authorization", authHeader())
+            parameter("SearchTerm", query)
+            parameter("Limit", limit)
+            parameter("Recursive", true)
+            parameter("IncludeItemTypes", "Movie,Series,Episode")
+            parameter("Fields", "Overview,ImageTags,BackdropImageTags,UserData")
+        }.body()
+        r.items
     }
 
     suspend fun getSeasons(seriesId: String): Result<List<JellyfinItem>> {
@@ -556,31 +549,4 @@ class JellyfinClient(private val context: Context? = null) {
         cache.remove("continue:20")
         cache.remove("item:$itemId")
     }
-}
-
-// ==================== Supporting Types ====================
-
-@Serializable
-data class ValidatedServer(
-    val url: String,
-    val serverInfo: ServerInfo,
-    val quickConnectEnabled: Boolean
-)
-
-@Serializable
-data class PublicUser(
-    @SerialName("Id") val id: String,
-    @SerialName("Name") val name: String,
-    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
-    @SerialName("HasPassword") val hasPassword: Boolean = true,
-    @SerialName("HasConfiguredPassword") val hasConfiguredPassword: Boolean = true
-)
-
-sealed class QuickConnectFlowState {
-    data object Initializing : QuickConnectFlowState()
-    data object NotAvailable : QuickConnectFlowState()
-    data class WaitingForApproval(val code: String, val secret: String) : QuickConnectFlowState()
-    data object Authenticating : QuickConnectFlowState()
-    data class Authenticated(val authResponse: AuthResponse) : QuickConnectFlowState()
-    data class Error(val message: String) : QuickConnectFlowState()
 }
