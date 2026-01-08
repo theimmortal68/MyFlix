@@ -4,19 +4,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.HeroSection
+import dev.jausc.myflix.tv.ui.components.HeroSectionShimmer
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
@@ -58,6 +64,7 @@ fun HomeScreen(
     var recentShows by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var recentEpisodes by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var featuredItems by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
     // Refresh trigger - increment to force reload
@@ -129,6 +136,43 @@ fun HomeScreen(
             continueWatching = items
         }
         
+        // Build featured items for hero section
+        // Priority: Continue Watching > Next Up > Recent Movies > Recent Shows
+        val featured = mutableListOf<JellyfinItem>()
+        
+        // Add items with backdrops from continue watching
+        featured.addAll(
+            continueWatching.filter { item ->
+                !item.backdropImageTags.isNullOrEmpty() || 
+                (item.isEpisode && item.seriesId != null)
+            }.take(3)
+        )
+        
+        // Add next up items
+        featured.addAll(
+            nextUp.filter { item -> 
+                featured.none { it.id == item.id }
+            }.take(2)
+        )
+        
+        // Add recent movies with backdrops
+        featured.addAll(
+            recentMovies.filter { item ->
+                !item.backdropImageTags.isNullOrEmpty() &&
+                featured.none { it.id == item.id }
+            }.take(3)
+        )
+        
+        // Add recent shows with backdrops
+        featured.addAll(
+            recentShows.filter { item ->
+                !item.backdropImageTags.isNullOrEmpty() &&
+                featured.none { it.id == item.id }
+            }.take(2)
+        )
+        
+        featuredItems = featured.take(10)
+        
         isLoading = false
     }
     
@@ -173,6 +217,34 @@ fun HomeScreen(
         }
     }
     
+    // Focus requesters
+    val heroPlayFocusRequester = remember { FocusRequester() }
+    val firstRowFocusRequester = remember { FocusRequester() }
+    
+    // Track if we've focused the hero - reset when content changes
+    val contentId = featuredItems.firstOrNull()?.id
+    var heroFocused by remember(contentId) { mutableStateOf(false) }
+    
+    // Content is ready when we have featured items
+    val contentReady = !isLoading && featuredItems.isNotEmpty()
+    
+    // Request focus on hero when content becomes ready
+    LaunchedEffect(contentReady) {
+        if (contentReady && !heroFocused) {
+            delay(100)
+            try {
+                heroPlayFocusRequester.requestFocus()
+                heroFocused = true
+            } catch (_: Exception) {
+                delay(200)
+                try {
+                    heroPlayFocusRequester.requestFocus()
+                    heroFocused = true
+                } catch (_: Exception) { }
+            }
+        }
+    }
+    
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -190,21 +262,28 @@ fun HomeScreen(
                 .weight(1f)
                 .fillMaxHeight()
         ) {
-            if (isLoading) {
+            // Show loading until we have hero content
+            if (!contentReady) {
                 TvLoadingIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
-                HomeContent(
-                    nextUp = nextUp,
-                    continueWatching = continueWatching,
-                    recentEpisodes = recentEpisodes,
-                    recentShows = recentShows,
-                    recentMovies = recentMovies,
-                    jellyfinClient = jellyfinClient,
-                    onItemClick = onItemClick,
-                    hideWatchedFromRecent = hideWatchedFromRecent
-                )
+                // Key forces complete recomposition when content changes
+                key(featuredItems.firstOrNull()?.id) {
+                    HomeContent(
+                        featuredItems = featuredItems,
+                        nextUp = nextUp,
+                        continueWatching = continueWatching,
+                        recentEpisodes = recentEpisodes,
+                        recentShows = recentShows,
+                        recentMovies = recentMovies,
+                        jellyfinClient = jellyfinClient,
+                        onItemClick = onItemClick,
+                        hideWatchedFromRecent = hideWatchedFromRecent,
+                        heroPlayFocusRequester = heroPlayFocusRequester,
+                        firstRowFocusRequester = firstRowFocusRequester
+                    )
+                }
             }
         }
     }
@@ -212,6 +291,7 @@ fun HomeScreen(
 
 @Composable
 private fun HomeContent(
+    featuredItems: List<JellyfinItem>,
     nextUp: List<JellyfinItem>,
     continueWatching: List<JellyfinItem>,
     recentEpisodes: List<JellyfinItem>,
@@ -219,9 +299,17 @@ private fun HomeContent(
     recentMovies: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
-    hideWatchedFromRecent: Boolean = false
+    hideWatchedFromRecent: Boolean = false,
+    heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
+    firstRowFocusRequester: FocusRequester = remember { FocusRequester() }
 ) {
-    val listState = rememberLazyListState()
+    // Fresh list state - not saved/restored, always starts at top
+    val listState = remember { LazyListState() }
+    
+    // Ensure scroll starts at top
+    LaunchedEffect(Unit) {
+        listState.scrollToItem(0, 0)
+    }
     
     // Filter watched items from Recently Added rows if preference is enabled
     val filteredRecentEpisodes = if (hideWatchedFromRecent) {
@@ -236,11 +324,39 @@ private fun HomeContent(
         recentMovies.filter { it.userData?.played != true }
     } else recentMovies
     
+    // Filter featured items to exclude watched media if preference is enabled
+    val filteredFeaturedItems = if (hideWatchedFromRecent) {
+        featuredItems.filter { it.userData?.played != true }
+    } else featuredItems
+    
+    // Determine which row is first (to receive focus from hero)
+    val firstRowIsNextUp = nextUp.isNotEmpty()
+    val firstRowIsContinueWatching = !firstRowIsNextUp && continueWatching.isNotEmpty()
+    val firstRowIsRecentEpisodes = !firstRowIsNextUp && !firstRowIsContinueWatching && filteredRecentEpisodes.isNotEmpty()
+    val firstRowIsRecentShows = !firstRowIsNextUp && !firstRowIsContinueWatching && !firstRowIsRecentEpisodes && filteredRecentShows.isNotEmpty()
+    val firstRowIsRecentMovies = !firstRowIsNextUp && !firstRowIsContinueWatching && !firstRowIsRecentEpisodes && !firstRowIsRecentShows && filteredRecentMovies.isNotEmpty()
+
+    // Single LazyColumn with hero as first item
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 32.dp)
+        contentPadding = PaddingValues(bottom = 32.dp)
     ) {
+        // Hero Section - First item
+        if (filteredFeaturedItems.isNotEmpty()) {
+            item(key = "hero_section") {
+                HeroSection(
+                    featuredItems = filteredFeaturedItems,
+                    jellyfinClient = jellyfinClient,
+                    onItemClick = onItemClick,
+                    onPlayClick = onItemClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    playButtonFocusRequester = heroPlayFocusRequester,
+                    downFocusRequester = firstRowFocusRequester
+                )
+            }
+        }
+        
         // Next Up row (wide cards with episode thumbnails)
         if (nextUp.isNotEmpty()) {
             item(key = "next_up") {
@@ -250,12 +366,13 @@ private fun HomeContent(
                     items = nextUp,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
-                    accentColor = TvColors.BlueAccent
+                    accentColor = TvColors.BlueAccent,
+                    firstCardFocusRequester = if (firstRowIsNextUp) firstRowFocusRequester else null
                 )
             }
         }
         
-        // Continue Watching row (wide cards with thumbnails)
+        // Continue Watching row
         if (continueWatching.isNotEmpty()) {
             item(key = "continue_watching") {
                 WideMediaRow(
@@ -264,12 +381,13 @@ private fun HomeContent(
                     items = continueWatching,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
-                    accentColor = TvColors.BluePrimary
+                    accentColor = TvColors.BluePrimary,
+                    firstCardFocusRequester = if (firstRowIsContinueWatching) firstRowFocusRequester else null
                 )
             }
         }
         
-        // Recently Added Episodes (wide cards with thumbnails)
+        // Recently Added Episodes row
         if (filteredRecentEpisodes.isNotEmpty()) {
             item(key = "recent_episodes") {
                 WideMediaRow(
@@ -278,66 +396,43 @@ private fun HomeContent(
                     items = filteredRecentEpisodes,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
-                    accentColor = Color(0xFF34D399) // Green
+                    accentColor = TvColors.Success,
+                    firstCardFocusRequester = if (firstRowIsRecentEpisodes) firstRowFocusRequester else null
                 )
             }
         }
         
-        // Recently Added Shows (portrait posters - new series only)
+        // Recently Added Shows row (poster cards)
         if (filteredRecentShows.isNotEmpty()) {
             item(key = "recent_shows") {
                 MediaRow(
                     title = "Recently Added Shows",
-                    subtitle = null,
                     items = filteredRecentShows,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
-                    accentColor = Color(0xFF34D399) // Green
+                    accentColor = Color(0xFFFBBF24), // Yellow/Gold
+                    firstCardFocusRequester = if (firstRowIsRecentShows) firstRowFocusRequester else null
                 )
             }
         }
         
-        // Recently Added Movies (portrait posters)
+        // Recently Added Movies row (poster cards)
         if (filteredRecentMovies.isNotEmpty()) {
             item(key = "recent_movies") {
                 MediaRow(
                     title = "Recently Added Movies",
-                    subtitle = null,
                     items = filteredRecentMovies,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
-                    accentColor = Color(0xFFFBBF24) // Gold/Yellow
+                    accentColor = TvColors.BluePrimary,
+                    firstCardFocusRequester = if (firstRowIsRecentMovies) firstRowFocusRequester else null
                 )
             }
         }
         
-        // Empty state
-        if (nextUp.isEmpty() && continueWatching.isEmpty() && 
-            filteredRecentEpisodes.isEmpty() && filteredRecentShows.isEmpty() && filteredRecentMovies.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Welcome to MyFlix",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = TvColors.TextPrimary
-                        )
-                        Text(
-                            text = "Your library appears to be empty",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TvColors.TextSecondary
-                        )
-                    }
-                }
-            }
+        // Bottom padding
+        item(key = "bottom_spacer") {
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -345,14 +440,15 @@ private fun HomeContent(
 @Composable
 private fun MediaRow(
     title: String,
-    subtitle: String?,
     items: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
-    accentColor: Color = TvColors.BluePrimary
+    subtitle: String? = null,
+    accentColor: Color = TvColors.BluePrimary,
+    firstCardFocusRequester: FocusRequester? = null
 ) {
     Column(
-        modifier = Modifier.padding(vertical = 12.dp)
+        modifier = Modifier.padding(vertical = 8.dp)
     ) {
         // Row header
         Column(
@@ -396,12 +492,15 @@ private fun MediaRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             flingBehavior = rememberSnapFlingBehavior(lazyListState = lazyListState)
         ) {
-            items(items, key = { it.id }) { item ->
+            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 MediaCard(
                     item = item,
                     imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
                     onClick = { onItemClick(item.id) },
-                    showLabel = false
+                    showLabel = false,
+                    modifier = if (index == 0 && firstCardFocusRequester != null) {
+                        Modifier.focusRequester(firstCardFocusRequester)
+                    } else Modifier
                 )
             }
         }
@@ -422,10 +521,12 @@ private fun WideMediaRow(
     items: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
-    accentColor: Color = TvColors.BluePrimary
+    accentColor: Color = TvColors.BluePrimary,
+    modifier: Modifier = Modifier,
+    firstCardFocusRequester: FocusRequester? = null
 ) {
     Column(
-        modifier = Modifier.padding(vertical = 12.dp)
+        modifier = Modifier.padding(vertical = 8.dp)
     ) {
         // Row header
         Column(
@@ -466,7 +567,7 @@ private fun WideMediaRow(
             contentPadding = PaddingValues(start = 4.dp, end = 32.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(items, key = { it.id }) { item ->
+            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 val imageUrl = when {
                     item.type == "Episode" -> {
                         jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
@@ -483,7 +584,11 @@ private fun WideMediaRow(
                     item = item,
                     imageUrl = imageUrl,
                     onClick = { onItemClick(item.id) },
-                    showLabel = false
+                    showLabel = false,
+                    // Apply focus requester to first card only
+                    modifier = if (index == 0 && firstCardFocusRequester != null) {
+                        Modifier.focusRequester(firstCardFocusRequester)
+                    } else Modifier
                 )
             }
         }

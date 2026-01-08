@@ -10,6 +10,7 @@ object TvColors {
     val Background = Color(0xFF0F172A)
     val Surface = Color(0xFF1E293B)
     val SurfaceLight = Color(0xFF334155)
+    val SurfaceElevated = Color(0xFF2D3B4F)  // Slightly lighter for elevated surfaces
     val CardBackground = Color(0xFF1E293B)  // Same as Surface for card backgrounds
     val TextPrimary = Color(0xFFF8FAFC)
     val TextSecondary = Color(0xFF94A3B8)
