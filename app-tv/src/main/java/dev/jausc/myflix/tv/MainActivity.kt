@@ -37,18 +37,31 @@ fun MyFlixTvApp() {
     
     val jellyfinClient = remember { JellyfinClient() }
     val appState = remember { AppState(context, jellyfinClient) }
+    val tvPreferences = remember { TvPreferences.getInstance(context) }
     
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
     
-    // Initialize app state in background
+    // Collect preferences
+    val hideWatchedFromRecent by tvPreferences.hideWatchedFromRecent.collectAsState()
+    
     LaunchedEffect(Unit) {
         appState.initialize()
         isLoggedIn = appState.isLoggedIn
         isInitialized = true
     }
+    
+    if (!isInitialized) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TvColors.Background)
+        )
+        return
+    }
 
     val navController = rememberNavController()
+    val startDestination = if (isLoggedIn) "home" else "login"
 
     Box(
         modifier = Modifier
@@ -57,22 +70,8 @@ fun MyFlixTvApp() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = "splash"
+            startDestination = startDestination
         ) {
-            // Splash screen - always shown first
-            composable("splash") {
-                SplashScreen(
-                    onFinished = {
-                        // Navigate based on login state after splash
-                        val destination = if (isInitialized && isLoggedIn) "home" else "login"
-                        navController.navigate(destination) {
-                            popUpTo("splash") { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                )
-            }
-            
             composable("login") {
                 LoginScreen(
                     appState = appState,
@@ -89,11 +88,34 @@ fun MyFlixTvApp() {
             composable("home") {
                 HomeScreen(
                     jellyfinClient = jellyfinClient,
+                    hideWatchedFromRecent = hideWatchedFromRecent,
                     onLibraryClick = { libraryId, libraryName ->
                         navController.navigate("library/$libraryId/$libraryName")
                     },
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
+                    },
+                    onSettingsClick = {
+                        navController.navigate("settings")
+                    }
+                )
+            }
+            
+            composable("settings") {
+                PreferencesScreen(
+                    preferences = tvPreferences,
+                    onNavigateHome = {
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    },
+                    onNavigateSearch = { /* TODO */ },
+                    onNavigateMovies = {
+                        // Navigate back to home and let home handle it
+                        navController.navigate("home")
+                    },
+                    onNavigateShows = {
+                        navController.navigate("home")
                     }
                 )
             }

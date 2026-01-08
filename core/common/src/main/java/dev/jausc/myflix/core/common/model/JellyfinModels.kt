@@ -46,7 +46,9 @@ data class JellyfinItem(
     @SerialName("CommunityRating") val communityRating: Float? = null,
     @SerialName("ProductionYear") val productionYear: Int? = null,
     @SerialName("UserData") val userData: UserData? = null,
-    @SerialName("MediaSources") val mediaSources: List<MediaSource>? = null
+    @SerialName("MediaSources") val mediaSources: List<MediaSource>? = null,
+    // CollectionType is returned for library views (e.g., "movies", "tvshows")
+    @SerialName("CollectionType") val collectionType: String? = null
 )
 
 @Serializable

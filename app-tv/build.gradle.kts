@@ -89,12 +89,15 @@ dependencies {
     // Coil 3 for image loading
     implementation("io.coil-kt.coil3:coil-compose:${rootProject.extra["coilVersion"]}")
     implementation("io.coil-kt.coil3:coil-network-okhttp:${rootProject.extra["coilVersion"]}")
+    
+    // Material Icons Extended for outlined icons
+    implementation("androidx.compose.material:material-icons-extended")
+    
+    // ZXing for QR code generation
+    implementation("com.google.zxing:core:3.5.2")
 
     // Media3 ExoPlayer for video
     val media3Version = rootProject.extra["media3Version"] as String
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
-    
-    // ZXing for QR code generation (Quick Connect)
-    implementation("com.google.zxing:core:3.5.3")
 }

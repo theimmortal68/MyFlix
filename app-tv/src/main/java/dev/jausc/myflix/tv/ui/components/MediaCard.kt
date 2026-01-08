@@ -2,12 +2,15 @@ package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
@@ -16,16 +19,41 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
+/**
+ * Standard card sizes used throughout the app.
+ * These should be used consistently unless specifically overridden.
+ * 
+ * Sizing is calculated to fit exact number of cards on screen:
+ * - Portrait cards (113dp): 7 cards fit across with 16dp spacing
+ * - Landscape cards (210dp): 4 cards fit across with 16dp spacing
+ */
+object CardSizes {
+    /** Portrait card width (2:3 aspect ratio) - for movie/series posters */
+    val MediaCardWidth = 113.dp
+    
+    /** Landscape card width (16:9 aspect ratio) - for episode thumbnails */
+    val WideMediaCardWidth = 210.dp
+}
+
+/**
+ * Portrait media card for movies and series posters (2:3 aspect ratio)
+ * Title scrolls when focused if it doesn't fit
+ */
 @Composable
 fun MediaCard(
     item: JellyfinItem,
     imageUrl: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showLabel: Boolean = true
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+    
     Surface(
         onClick = onClick,
-        modifier = modifier.width(180.dp),
+        modifier = modifier
+            .width(CardSizes.MediaCardWidth)
+            .onFocusChanged { isFocused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium
         ),
@@ -38,6 +66,9 @@ fun MediaCard(
                 border = BorderStroke(2.dp, TvColors.BluePrimary),
                 shape = MaterialTheme.shapes.medium
             )
+        ),
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1f
         )
     ) {
         Column {
@@ -77,23 +108,164 @@ fun MediaCard(
                 }
             }
 
-            Column(
+            if (showLabel) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TvColors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = if (isFocused) Modifier.basicMarquee() else Modifier
+                    )
+                    item.productionYear?.let { year ->
+                        Text(
+                            text = year.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TvColors.TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Wide/landscape media card for episodes and continue watching (16:9 aspect ratio)
+ * Shows episode thumbnail with series name and episode info
+ * Titles scroll when focused if they don't fit
+ */
+@Composable
+fun WideMediaCard(
+    item: JellyfinItem,
+    imageUrl: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showLabel: Boolean = true,
+    onFocusChanged: ((Boolean) -> Unit)? = null
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .width(CardSizes.WideMediaCardWidth)
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                onFocusChanged?.invoke(focusState.isFocused)
+            },
+        shape = ClickableSurfaceDefaults.shape(
+            shape = MaterialTheme.shapes.medium
+        ),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.FocusedSurface
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = MaterialTheme.shapes.medium
+            )
+        ),
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1f
+        )
+    ) {
+        Column {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .aspectRatio(16f / 9f)
             ) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TvColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = item.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(MaterialTheme.shapes.medium),
+                    contentScale = ContentScale.Crop
                 )
-                item.productionYear?.let { year ->
+
+                // Progress bar at bottom
+                if (item.progressPercent > 0f && item.progressPercent < 1f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .align(Alignment.BottomCenter)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(TvColors.Surface.copy(alpha = 0.7f))
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(item.progressPercent)
+                                .background(TvColors.BluePrimary)
+                        )
+                    }
+                }
+                
+                // Episode badge (S01E05) in top-right corner
+                if (item.indexNumber != null) {
+                    val episodeLabel = buildString {
+                        item.parentIndexNumber?.let { append("S${it.toString().padStart(2, '0')}") }
+                        append("E${item.indexNumber.toString().padStart(2, '0')}")
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .background(
+                                TvColors.Background.copy(alpha = 0.8f),
+                                MaterialTheme.shapes.small
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = episodeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = TvColors.TextPrimary
+                        )
+                    }
+                }
+            }
+
+            if (showLabel) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    // Series name (if episode) - scrolls when focused
+                    item.seriesName?.let { seriesName ->
+                        Text(
+                            text = seriesName,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = TvColors.BlueAccent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (isFocused) Modifier.basicMarquee() else Modifier
+                        )
+                    }
+                    
+                    // Episode/Item name - scrolls when focused
                     Text(
-                        text = year.toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TvColors.TextSecondary
+                        text = item.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TvColors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = if (isFocused) Modifier.basicMarquee() else Modifier
                     )
                 }
             }
