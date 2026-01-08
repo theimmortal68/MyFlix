@@ -79,6 +79,7 @@ private val HERO_HEIGHT = 220.dp
  * @param autoRotateIntervalMs Time between automatic item rotations (default 8 seconds)
  * @param playButtonFocusRequester Focus requester for the play button (for initial focus)
  * @param downFocusRequester Focus target when navigating down from buttons
+ * @param onCurrentItemChanged Callback when the displayed item changes (for dynamic background)
  */
 @Composable
 fun HeroSection(
@@ -89,12 +90,23 @@ fun HeroSection(
     modifier: Modifier = Modifier,
     autoRotateIntervalMs: Long = 8000L,
     playButtonFocusRequester: FocusRequester = remember { FocusRequester() },
-    downFocusRequester: FocusRequester? = null
+    downFocusRequester: FocusRequester? = null,
+    onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null
 ) {
     if (featuredItems.isEmpty()) return
 
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentItem = featuredItems[currentIndex]
+    
+    // Build backdrop URL for current item and notify parent
+    val backdropUrl = remember(currentItem.id) {
+        buildBackdropUrl(currentItem, jellyfinClient)
+    }
+    
+    // Notify parent when current item changes (for dynamic background colors)
+    LaunchedEffect(currentItem.id) {
+        onCurrentItemChanged?.invoke(currentItem, backdropUrl)
+    }
 
     // Auto-rotate through featured items
     LaunchedEffect(featuredItems.size) {
@@ -111,11 +123,11 @@ fun HeroSection(
             .fillMaxWidth()
             .height(HERO_HEIGHT)
     ) {
-        // Background color base
+        // Background is now transparent - DynamicBackground at HomeScreen level provides the color
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TvColors.Background)
+                .background(Color.Transparent)
         )
 
         // Backdrop image - positioned at top-end, fades into background
@@ -166,6 +178,7 @@ fun HeroSection(
 
 /**
  * Backdrop image with edge fading using BlendMode.DstIn.
+ * Only fades on left and bottom edges.
  */
 @Composable
 private fun HeroBackdrop(
@@ -204,18 +217,6 @@ private fun HeroBackdrop(
                             0.6f to Color.Black.copy(alpha = 0.9f),
                             0.85f to Color.Black.copy(alpha = 0.5f),
                             1.0f to Color.Transparent,
-                        ),
-                    ),
-                    blendMode = BlendMode.DstIn,
-                )
-                // Top edge fade
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.15f to Color.Black.copy(alpha = 0.5f),
-                            0.3f to Color.Black,
-                            1.0f to Color.Black,
                         ),
                     ),
                     blendMode = BlendMode.DstIn,

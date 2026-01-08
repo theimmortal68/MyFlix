@@ -95,6 +95,9 @@ dependencies {
     
     // ZXing for QR code generation
     implementation("com.google.zxing:core:3.5.2")
+    
+    // Palette for extracting colors from images
+    implementation("androidx.palette:palette-ktx:1.0.0")
 
     // Media3 ExoPlayer for video
     val media3Version = rootProject.extra["media3Version"] as String

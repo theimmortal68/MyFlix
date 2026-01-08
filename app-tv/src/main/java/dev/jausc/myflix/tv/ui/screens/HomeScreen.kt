@@ -22,13 +22,14 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.HeroSection
-import dev.jausc.myflix.tv.ui.components.HeroSectionShimmer
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 
 /** Background polling interval in milliseconds */
@@ -221,6 +222,12 @@ fun HomeScreen(
     val heroPlayFocusRequester = remember { FocusRequester() }
     val firstRowFocusRequester = remember { FocusRequester() }
     
+    // Track current backdrop URL for dynamic background colors
+    var currentBackdropUrl by remember { mutableStateOf<String?>(null) }
+    
+    // Extract gradient colors from current backdrop image
+    val gradientColors = rememberGradientColors(currentBackdropUrl)
+    
     // Track if we've focused the hero - reset when content changes
     val contentId = featuredItems.firstOrNull()?.id
     var heroFocused by remember(contentId) { mutableStateOf(false) }
@@ -245,44 +252,53 @@ fun HomeScreen(
         }
     }
     
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TvColors.Background)
-    ) {
-        // Left Navigation Rail
-        NavigationRail(
-            selectedItem = selectedNavItem,
-            onItemSelected = handleNavSelection
+    // Use Box to layer DynamicBackground behind everything
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Dynamic gradient background (behind everything)
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize()
         )
         
-        // Main Content Area
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
+        // Content Row (on top of gradient)
+        Row(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Show loading until we have hero content
-            if (!contentReady) {
-                TvLoadingIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else {
-                // Key forces complete recomposition when content changes
-                key(featuredItems.firstOrNull()?.id) {
-                    HomeContent(
-                        featuredItems = featuredItems,
-                        nextUp = nextUp,
-                        continueWatching = continueWatching,
-                        recentEpisodes = recentEpisodes,
-                        recentShows = recentShows,
-                        recentMovies = recentMovies,
-                        jellyfinClient = jellyfinClient,
-                        onItemClick = onItemClick,
-                        hideWatchedFromRecent = hideWatchedFromRecent,
-                        heroPlayFocusRequester = heroPlayFocusRequester,
-                        firstRowFocusRequester = firstRowFocusRequester
+            // Left Navigation Rail
+            NavigationRail(
+                selectedItem = selectedNavItem,
+                onItemSelected = handleNavSelection
+            )
+            
+            // Main Content Area
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                // Show loading until we have hero content
+                if (!contentReady) {
+                    TvLoadingIndicator(
+                        modifier = Modifier.align(Alignment.Center)
                     )
+                } else {
+                    // Key forces complete recomposition when content changes
+                    key(featuredItems.firstOrNull()?.id) {
+                        HomeContent(
+                            featuredItems = featuredItems,
+                            nextUp = nextUp,
+                            continueWatching = continueWatching,
+                            recentEpisodes = recentEpisodes,
+                            recentShows = recentShows,
+                            recentMovies = recentMovies,
+                            jellyfinClient = jellyfinClient,
+                            onItemClick = onItemClick,
+                            hideWatchedFromRecent = hideWatchedFromRecent,
+                            heroPlayFocusRequester = heroPlayFocusRequester,
+                            firstRowFocusRequester = firstRowFocusRequester,
+                            onBackdropUrlChanged = { url -> currentBackdropUrl = url }
+                        )
+                    }
                 }
             }
         }
@@ -301,7 +317,8 @@ private fun HomeContent(
     onItemClick: (String) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
-    firstRowFocusRequester: FocusRequester = remember { FocusRequester() }
+    firstRowFocusRequester: FocusRequester = remember { FocusRequester() },
+    onBackdropUrlChanged: (String?) -> Unit = {}
 ) {
     // Fresh list state - not saved/restored, always starts at top
     val listState = remember { LazyListState() }
@@ -352,7 +369,10 @@ private fun HomeContent(
                     onPlayClick = onItemClick,
                     modifier = Modifier.fillMaxWidth(),
                     playButtonFocusRequester = heroPlayFocusRequester,
-                    downFocusRequester = firstRowFocusRequester
+                    downFocusRequester = firstRowFocusRequester,
+                    onCurrentItemChanged = { _, backdropUrl ->
+                        onBackdropUrlChanged(backdropUrl)
+                    }
                 )
             }
         }
