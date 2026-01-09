@@ -38,6 +38,8 @@ enum class NavItem(
     SEARCH(Icons.Outlined.Search, "Search", "search", Color(0xFFA78BFA)),    // Purple
     SHOWS(Icons.Outlined.Tv, "Shows", "shows", Color(0xFF34D399)),           // Green
     MOVIES(Icons.Outlined.Movie, "Movies", "movies", Color(0xFFFBBF24)),     // Yellow/Gold
+    COLLECTIONS(Icons.Outlined.VideoLibrary, "Collections", "collections", Color(0xFFFF7043)), // Orange
+    UNIVERSES(Icons.Outlined.Hub, "Universes", "universes", Color(0xFF9575CD)), // Deep Purple
     SETTINGS(Icons.Outlined.Settings, "Settings", "settings", Color(0xFFF472B6)) // Pink
 }
 
@@ -51,13 +53,13 @@ private val HaloColor = Color.White
 fun NavigationRail(
     selectedItem: NavItem,
     onItemSelected: (NavItem) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onFocusExitRight: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
             .fillMaxHeight()
             .width(56.dp)
-            .background(TvColors.Background)
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Top)
@@ -69,7 +71,8 @@ fun NavigationRail(
             NavRailItem(
                 item = item,
                 isSelected = item == selectedItem,
-                onClick = { onItemSelected(item) }
+                onClick = { onItemSelected(item) },
+                onFocusExitRight = onFocusExitRight
             )
         }
     }
@@ -79,7 +82,8 @@ fun NavigationRail(
 private fun NavRailItem(
     item: NavItem,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFocusExitRight: () -> Unit = {}
 ) {
     var isFocused by remember { mutableStateOf(false) }
     
@@ -109,6 +113,13 @@ private fun NavRailItem(
                 isFocused = focusState.isFocused
             }
             .focusable()
+            .onPreviewKeyEvent { event ->
+                // Call callback BEFORE focus moves right
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                    onFocusExitRight()
+                }
+                false // Don't consume - let focus move normally
+            }
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown && 
                     (event.key == Key.Enter || event.key == Key.DirectionCenter)) {

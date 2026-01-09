@@ -24,12 +24,12 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * These should be used consistently unless specifically overridden.
  * 
  * Sizing is calculated to fit exact number of cards on screen:
- * - Portrait cards (113dp): 7 cards fit across with 16dp spacing
+ * - Portrait cards (140dp): 7 cards fit across with 8dp padding
  * - Landscape cards (210dp): 4 cards fit across with 16dp spacing
  */
 object CardSizes {
-    /** Portrait card width (2:3 aspect ratio) - for movie/series posters */
-    val MediaCardWidth = 113.dp
+    /** Portrait card width (2:3 aspect ratio) - sized for 7 cards across screen */
+    val MediaCardWidth = 120.dp
     
     /** Landscape card width (16:9 aspect ratio) - for episode thumbnails */
     val WideMediaCardWidth = 210.dp
@@ -45,7 +45,8 @@ fun MediaCard(
     imageUrl: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showLabel: Boolean = true
+    showLabel: Boolean = true,
+    onItemFocused: ((JellyfinItem) -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
     
@@ -53,7 +54,12 @@ fun MediaCard(
         onClick = onClick,
         modifier = modifier
             .width(CardSizes.MediaCardWidth)
-            .onFocusChanged { isFocused = it.isFocused },
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                if (focusState.isFocused) {
+                    onItemFocused?.invoke(item)
+                }
+            },
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium
         ),
@@ -147,7 +153,7 @@ fun WideMediaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showLabel: Boolean = true,
-    onFocusChanged: ((Boolean) -> Unit)? = null
+    onItemFocused: ((JellyfinItem) -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
     
@@ -157,7 +163,9 @@ fun WideMediaCard(
             .width(CardSizes.WideMediaCardWidth)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
-                onFocusChanged?.invoke(focusState.isFocused)
+                if (focusState.isFocused) {
+                    onItemFocused?.invoke(item)
+                }
             },
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium
@@ -209,31 +217,6 @@ fun WideMediaCard(
                                 .fillMaxHeight()
                                 .fillMaxWidth(item.progressPercent)
                                 .background(TvColors.BluePrimary)
-                        )
-                    }
-                }
-                
-                // Episode badge (S01E05) in top-right corner
-                if (item.indexNumber != null) {
-                    val episodeLabel = buildString {
-                        item.parentIndexNumber?.let { append("S${it.toString().padStart(2, '0')}") }
-                        append("E${item.indexNumber.toString().padStart(2, '0')}")
-                    }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .background(
-                                TvColors.Background.copy(alpha = 0.8f),
-                                MaterialTheme.shapes.small
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = episodeLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = TvColors.TextPrimary
                         )
                     }
                 }

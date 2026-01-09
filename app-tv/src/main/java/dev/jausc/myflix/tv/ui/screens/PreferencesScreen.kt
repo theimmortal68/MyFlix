@@ -51,6 +51,8 @@ fun PreferencesScreen(
             NavItem.SEARCH -> onNavigateSearch()
             NavItem.MOVIES -> onNavigateMovies()
             NavItem.SHOWS -> onNavigateShows()
+            NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
+            NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }
             NavItem.SETTINGS -> { /* Already here */ }
         }
     }

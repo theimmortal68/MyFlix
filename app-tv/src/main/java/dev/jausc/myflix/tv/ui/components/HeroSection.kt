@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,11 +38,10 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,23 +63,100 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
- * Fixed height for hero section - approximately 30% of a 720p TV screen.
+ * Fixed height for hero shimmer placeholder.
  */
 private val HERO_HEIGHT = 220.dp
 
 /**
- * Hero section displaying featured media at the top of the home page.
- * Backdrop image fades into the background with gradient edges.
+ * Standalone hero backdrop layer for use behind content.
+ * Placed at the HomeScreen level to extend behind content rows.
+ * 
+ * Features edge fading on left and bottom to blend with the UI.
+ * The image fills 90% of the screen (matching 16:9 aspect ratio)
+ * and fades to transparent at the edges.
+ *
+ * @param item The media item to display backdrop for
+ * @param jellyfinClient Client for building image URLs
+ * @param modifier Modifier for positioning and sizing
+ */
+@Composable
+fun HeroBackdropLayer(
+    item: JellyfinItem?,
+    jellyfinClient: JellyfinClient,
+    modifier: Modifier = Modifier
+) {
+    if (item == null) return
+    
+    Box(modifier = modifier) {
+        AnimatedContent(
+            targetState = item,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(800)) togetherWith
+                    fadeOut(animationSpec = tween(800))
+            },
+            label = "hero_backdrop_layer",
+            modifier = Modifier.fillMaxSize()
+        ) { currentItem ->
+            val backdropUrl = buildBackdropUrl(currentItem, jellyfinClient)
+            
+            AsyncImage(
+                model = backdropUrl,
+                contentDescription = currentItem.name,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.9f)
+                    .drawWithContent {
+                        drawContent()
+                        // Left edge fade - subtle fade for text readability
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent,
+                                    0.08f to Color.Black.copy(alpha = 0.5f),
+                                    0.2f to Color.Black.copy(alpha = 0.85f),
+                                    0.35f to Color.Black,
+                                ),
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                        // Bottom edge fade - stronger fade for content row blending
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Black,
+                                    0.5f to Color.Black.copy(alpha = 0.85f),
+                                    0.7f to Color.Black.copy(alpha = 0.4f),
+                                    0.85f to Color.Black.copy(alpha = 0.15f),
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    }
+            )
+        }
+    }
+}
+
+/**
+ * Hero section displaying featured media info (no backdrop - backdrop is separate layer).
+ * 
+ * When previewItem is set, displays that item instead of auto-rotating (preview mode).
+ * Preview mode hides action buttons but keeps them focusable for navigation.
  *
  * @param featuredItems List of items to cycle through in the hero
  * @param jellyfinClient Client for building image URLs
  * @param onItemClick Callback when user selects an item for details
  * @param onPlayClick Callback when user clicks the play button
  * @param modifier Modifier for the hero section
+ * @param previewItem Optional item to display instead of auto-rotation (buttons hidden)
  * @param autoRotateIntervalMs Time between automatic item rotations (default 8 seconds)
  * @param playButtonFocusRequester Focus requester for the play button (for initial focus)
  * @param downFocusRequester Focus target when navigating down from buttons
  * @param onCurrentItemChanged Callback when the displayed item changes (for dynamic background)
+ * @param onPreviewClear Callback when focus returns to hero buttons (to clear preview)
  */
 @Composable
 fun HeroSection(
@@ -88,29 +165,37 @@ fun HeroSection(
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    previewItem: JellyfinItem? = null,
     autoRotateIntervalMs: Long = 8000L,
     playButtonFocusRequester: FocusRequester = remember { FocusRequester() },
     downFocusRequester: FocusRequester? = null,
-    onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null
+    upFocusRequester: FocusRequester? = null,
+    onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null,
+    onPreviewClear: (() -> Unit)? = null
 ) {
-    if (featuredItems.isEmpty()) return
+    if (featuredItems.isEmpty() && previewItem == null) return
 
     var currentIndex by remember { mutableIntStateOf(0) }
-    val currentItem = featuredItems[currentIndex]
+    // Track if play button should have focus (to restore after rotation)
+    var playButtonShouldHaveFocus by remember { mutableStateOf(false) }
+    
+    // Use previewItem if set, otherwise use the rotating featured item
+    val displayItem = previewItem ?: featuredItems.getOrNull(currentIndex) ?: return
+    val isPreviewMode = previewItem != null
     
     // Build backdrop URL for current item and notify parent
-    val backdropUrl = remember(currentItem.id) {
-        buildBackdropUrl(currentItem, jellyfinClient)
+    val backdropUrl = remember(displayItem.id) {
+        buildBackdropUrl(displayItem, jellyfinClient)
     }
     
     // Notify parent when current item changes (for dynamic background colors)
-    LaunchedEffect(currentItem.id) {
-        onCurrentItemChanged?.invoke(currentItem, backdropUrl)
+    LaunchedEffect(displayItem.id) {
+        onCurrentItemChanged?.invoke(displayItem, backdropUrl)
     }
 
-    // Auto-rotate through featured items
-    LaunchedEffect(featuredItems.size) {
-        if (featuredItems.size > 1) {
+    // Auto-rotate through featured items (only when not in preview mode)
+    LaunchedEffect(featuredItems.size, isPreviewMode) {
+        if (!isPreviewMode && featuredItems.size > 1) {
             while (true) {
                 delay(autoRotateIntervalMs)
                 currentIndex = (currentIndex + 1) % featuredItems.size
@@ -121,108 +206,35 @@ fun HeroSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(HERO_HEIGHT)
     ) {
-        // Background is now transparent - DynamicBackground at HomeScreen level provides the color
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent)
-        )
-
-        // Backdrop image - positioned at top-end, fades into background
-        // Scaled 20% larger without affecting other elements
+        // Content overlay (left side) - backdrop is in HeroBackdropLayer
         AnimatedContent(
-            targetState = currentItem,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(800)) togetherWith
-                    fadeOut(animationSpec = tween(800))
-            },
-            label = "hero_backdrop",
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .fillMaxHeight()
-                .fillMaxWidth(0.7f)
-                .graphicsLayer {
-                    scaleX = 1.25f
-                    scaleY = 1.25f
-                    // Anchor scale to top-end corner
-                    transformOrigin = TransformOrigin(1f, 0f)
-                }
-        ) { item ->
-            HeroBackdrop(
-                item = item,
-                jellyfinClient = jellyfinClient
-            )
-        }
-
-        // Content overlay (left side)
-        AnimatedContent(
-            targetState = currentItem,
+            targetState = displayItem,
             transitionSpec = {
                 fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
                     fadeOut(animationSpec = tween(300))
             },
             label = "hero_content"
         ) { item ->
+            // Always render content overlay with buttons - buttons are invisible in preview mode
+            // but still focusable so up navigation works
             HeroContentOverlay(
                 item = item,
                 onPlayClick = { onPlayClick(item.id) },
                 onDetailsClick = { onItemClick(item.id) },
                 playButtonFocusRequester = playButtonFocusRequester,
-                downFocusRequester = downFocusRequester
+                downFocusRequester = downFocusRequester,
+                upFocusRequester = upFocusRequester,
+                isPreviewMode = isPreviewMode,
+                onButtonFocused = {
+                    // Track that hero buttons have focus (for restoration after rotation)
+                    playButtonShouldHaveFocus = true
+                    onPreviewClear?.invoke()
+                },
+                shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode
             )
         }
     }
-}
-
-/**
- * Backdrop image with edge fading using BlendMode.DstIn.
- * Only fades on left and bottom edges.
- */
-@Composable
-private fun HeroBackdrop(
-    item: JellyfinItem,
-    jellyfinClient: JellyfinClient
-) {
-    val backdropUrl = buildBackdropUrl(item, jellyfinClient)
-
-    AsyncImage(
-        model = backdropUrl,
-        contentDescription = item.name,
-        contentScale = ContentScale.Crop,
-        alignment = Alignment.TopEnd,
-        modifier = Modifier
-            .fillMaxSize()
-            .alpha(0.9f)
-            .drawWithContent {
-                drawContent()
-                // Left edge fade - image fades to transparent on left
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.15f to Color.Black.copy(alpha = 0.3f),
-                            0.4f to Color.Black.copy(alpha = 0.7f),
-                            1.0f to Color.Black,
-                        ),
-                    ),
-                    blendMode = BlendMode.DstIn,
-                )
-                // Bottom edge fade - image fades to transparent at bottom
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black,
-                            0.6f to Color.Black.copy(alpha = 0.9f),
-                            0.85f to Color.Black.copy(alpha = 0.5f),
-                            1.0f to Color.Transparent,
-                        ),
-                    ),
-                    blendMode = BlendMode.DstIn,
-                )
-            }
-    )
 }
 
 /**
@@ -253,18 +265,19 @@ private fun HeroContentOverlay(
     onPlayClick: () -> Unit,
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
-    downFocusRequester: FocusRequester? = null
+    downFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
+    isPreviewMode: Boolean = false,
+    onButtonFocused: (() -> Unit)? = null,
+    shouldRestoreFocus: Boolean = false
 ) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
             .fillMaxWidth(0.5f)
-            .padding(start = 48.dp, top = 16.dp, bottom = 0.dp),
+            .padding(start = 48.dp, top = 36.dp, bottom = 0.dp), // Adjusted for nav bar
         verticalArrangement = Arrangement.Top
     ) {
-        // Top padding (16dp as requested)
-        Spacer(modifier = Modifier.height(16.dp))
-        
         // Title and subtitle
         HeroTitleSection(item)
 
@@ -275,17 +288,21 @@ private fun HeroContentOverlay(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Description (3 lines max)
-        HeroDescription(item)
+        // Description (3 lines normal, 4 lines in preview mode)
+        HeroDescription(item, isPreviewMode)
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Action buttons (24dp height)
+        // Action buttons (20dp height) - hidden in preview mode but still focusable
         HeroActionButtons(
             onPlayClick = onPlayClick,
             onDetailsClick = onDetailsClick,
             playButtonFocusRequester = playButtonFocusRequester,
-            downFocusRequester = downFocusRequester
+            downFocusRequester = downFocusRequester,
+            upFocusRequester = upFocusRequester,
+            isPreviewMode = isPreviewMode,
+            onButtonFocused = onButtonFocused,
+            shouldRestoreFocus = shouldRestoreFocus
         )
     }
 }
@@ -355,7 +372,7 @@ private fun HeroRatingRow(item: JellyfinItem) {
             Text(
                 text = year.toString(),
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary
+                color = TvColors.TextPrimary.copy(alpha = 0.9f) // Bright white
             )
         }
 
@@ -380,16 +397,16 @@ private fun HeroRatingRow(item: JellyfinItem) {
 }
 
 /**
- * Description text limited to 3 lines.
+ * Description text - 3 lines normally, 4 lines in preview mode.
  */
 @Composable
-private fun HeroDescription(item: JellyfinItem) {
+private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) {
     item.overview?.let { overview ->
         Text(
             text = overview,
             style = MaterialTheme.typography.bodySmall,
-            color = TvColors.TextSecondary.copy(alpha = 0.9f),
-            maxLines = 3,
+            color = TvColors.TextPrimary.copy(alpha = 0.9f), // Bright white, slightly softened
+            maxLines = if (isPreviewMode) 4 else 3,
             overflow = TextOverflow.Ellipsis,
             lineHeight = 18.sp,
             modifier = Modifier.fillMaxWidth(0.8f)
@@ -398,70 +415,113 @@ private fun HeroDescription(item: JellyfinItem) {
 }
 
 /**
- * Action buttons: Play and More Info (24dp height).
+ * Action buttons: Play and More Info (20dp height).
+ * In preview mode, buttons are invisible but still focusable for navigation.
  */
 @Composable
 private fun HeroActionButtons(
     onPlayClick: () -> Unit,
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
-    downFocusRequester: FocusRequester? = null
+    downFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
+    isPreviewMode: Boolean = false,
+    onButtonFocused: (() -> Unit)? = null,
+    shouldRestoreFocus: Boolean = false
 ) {
+    // Alpha is 0 in preview mode (invisible but focusable)
+    val buttonsAlpha = if (isPreviewMode) 0f else 1f
+    
+    // Restore focus immediately when button is composed (if needed)
+    LaunchedEffect(shouldRestoreFocus) {
+        if (shouldRestoreFocus) {
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: Exception) { }
+        }
+    }
+    
     Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.alpha(buttonsAlpha)
     ) {
         // Play button - receives initial focus
+        // Same colors as nav buttons: SurfaceElevated unfocused, BluePrimary focused
         Button(
             onClick = onPlayClick,
             modifier = Modifier
-                .height(24.dp)
+                .height(20.dp)
                 .focusRequester(playButtonFocusRequester)
-                .then(
+                .onFocusChanged { state ->
+                    if (state.isFocused) {
+                        onButtonFocused?.invoke()
+                    }
+                }
+                .focusProperties {
                     if (downFocusRequester != null) {
-                        Modifier.focusProperties { down = downFocusRequester }
-                    } else Modifier
-                ),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        down = downFocusRequester
+                    }
+                    if (upFocusRequester != null) {
+                        up = upFocusRequester
+                    }
+                },
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+            scale = ButtonDefaults.scale(
+                scale = 1f,
+                focusedScale = 1f // No scale change on focus
+            ),
             colors = ButtonDefaults.colors(
-                containerColor = TvColors.BluePrimary,
-                contentColor = Color.White,
-                focusedContainerColor = TvColors.BlueAccent,
+                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                contentColor = TvColors.TextPrimary,
+                focusedContainerColor = TvColors.BluePrimary,
                 focusedContentColor = Color.White
             )
         ) {
             Icon(
                 imageVector = Icons.Outlined.PlayArrow,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(14.dp)
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "Play",
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelSmall
             )
         }
 
-        // More Info button
+        // More Info button - same colors as Play
         Button(
             onClick = onDetailsClick,
             modifier = Modifier
-                .height(24.dp)
-                .then(
+                .height(20.dp)
+                .onFocusChanged { state ->
+                    if (state.isFocused) {
+                        onButtonFocused?.invoke()
+                    }
+                }
+                .focusProperties {
                     if (downFocusRequester != null) {
-                        Modifier.focusProperties { down = downFocusRequester }
-                    } else Modifier
-                ),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        down = downFocusRequester
+                    }
+                    if (upFocusRequester != null) {
+                        up = upFocusRequester
+                    }
+                },
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+            scale = ButtonDefaults.scale(
+                scale = 1f,
+                focusedScale = 1f // No scale change on focus
+            ),
             colors = ButtonDefaults.colors(
                 containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
                 contentColor = TvColors.TextPrimary,
-                focusedContainerColor = TvColors.SurfaceElevated,
-                focusedContentColor = TvColors.TextPrimary
+                focusedContainerColor = TvColors.BluePrimary,
+                focusedContentColor = Color.White
             )
         ) {
             Text(
                 text = "More Info",
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelSmall
             )
         }
     }
@@ -564,7 +624,7 @@ private fun RuntimeDisplay(minutes: Int) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall,
-        color = TvColors.TextSecondary
+        color = TvColors.TextPrimary.copy(alpha = 0.9f) // Bright white
     )
 }
 
