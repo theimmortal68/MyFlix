@@ -26,9 +26,15 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
-    
+
     // Compose UI for fonts and logo
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
+
+    // Testing
+    testImplementation("junit:junit:${rootProject.extra["junitVersion"]}")
+    testImplementation("io.mockk:mockk:${rootProject.extra["mockkVersion"]}")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${rootProject.extra["coroutinesTestVersion"]}")
+    testImplementation("com.google.truth:truth:${rootProject.extra["truthVersion"]}")
 }

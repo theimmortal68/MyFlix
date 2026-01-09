@@ -18,5 +18,11 @@ buildscript {
         set("ktorVersion", "3.3.0")
         set("coilVersion", "3.3.0")
         set("media3Version", "1.8.0")
+        // Testing
+        set("junitVersion", "4.13.2")
+        set("mockkVersion", "1.13.13")
+        set("coroutinesTestVersion", "1.10.1")
+        set("truthVersion", "1.4.4")
+        set("turbineVersion", "1.2.0")
     }
 }

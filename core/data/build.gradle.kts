@@ -22,4 +22,11 @@ dependencies {
     implementation(project(":core:network"))
     implementation("androidx.datastore:datastore-preferences:1.1.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+
+    // Testing
+    testImplementation("junit:junit:${rootProject.extra["junitVersion"]}")
+    testImplementation("io.mockk:mockk:${rootProject.extra["mockkVersion"]}")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${rootProject.extra["coroutinesTestVersion"]}")
+    testImplementation("com.google.truth:truth:${rootProject.extra["truthVersion"]}")
+    testImplementation("app.cash.turbine:turbine:${rootProject.extra["turbineVersion"]}")
 }

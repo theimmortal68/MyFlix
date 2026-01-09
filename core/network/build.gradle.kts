@@ -27,4 +27,11 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-logging:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
+    // Testing
+    testImplementation("junit:junit:${rootProject.extra["junitVersion"]}")
+    testImplementation("io.mockk:mockk:${rootProject.extra["mockkVersion"]}")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${rootProject.extra["coroutinesTestVersion"]}")
+    testImplementation("com.google.truth:truth:${rootProject.extra["truthVersion"]}")
+    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
 }
