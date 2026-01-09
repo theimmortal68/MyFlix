@@ -51,22 +51,25 @@ data class QuickConnectState(
  * - Variable cache TTL based on data volatility
  * - Proper parameter casing per API spec
  */
-class JellyfinClient(private val context: Context? = null) {
-    private val json = Json { 
+class JellyfinClient(
+    private val context: Context? = null,
+    httpClient: HttpClient? = null  // Allow injection for testing
+) {
+    private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
-        coerceInputValues = true 
+        coerceInputValues = true
     }
-    
-    private val httpClient = HttpClient(OkHttp) {
+
+    private val httpClient = httpClient ?: HttpClient(OkHttp) {
         engine {
             config {
                 followRedirects(true)
                 followSslRedirects(true)
             }
         }
-        install(ContentNegotiation) { json(json) }
-        install(HttpTimeout) { 
+        install(ContentNegotiation) { json(this@JellyfinClient.json) }
+        install(HttpTimeout) {
             requestTimeoutMillis = 15_000
             connectTimeoutMillis = 10_000
         }
