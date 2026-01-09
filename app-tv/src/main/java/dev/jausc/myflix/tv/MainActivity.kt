@@ -41,6 +41,7 @@ fun MyFlixTvApp() {
     
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
+    var splashFinished by remember { mutableStateOf(false) }
     
     // Collect preferences
     val hideWatchedFromRecent by tvPreferences.hideWatchedFromRecent.collectAsState()
@@ -50,18 +51,18 @@ fun MyFlixTvApp() {
         isLoggedIn = appState.isLoggedIn
         isInitialized = true
     }
-    
-    if (!isInitialized) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(TvColors.Background)
-        )
-        return
-    }
 
     val navController = rememberNavController()
-    val startDestination = if (isLoggedIn) "home" else "login"
+    
+    // Navigate when BOTH splash animation completes AND initialization is done
+    LaunchedEffect(splashFinished, isInitialized) {
+        if (splashFinished && isInitialized) {
+            val destination = if (isLoggedIn) "home" else "login"
+            navController.navigate(destination) {
+                popUpTo("splash") { inclusive = true }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -70,8 +71,14 @@ fun MyFlixTvApp() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = startDestination
+            startDestination = "splash"
         ) {
+            composable("splash") {
+                SplashScreen(
+                    onFinished = { splashFinished = true }
+                )
+            }
+            
             composable("login") {
                 LoginScreen(
                     appState = appState,

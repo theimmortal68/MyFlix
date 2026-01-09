@@ -59,10 +59,20 @@ class JellyfinClient(private val context: Context? = null) {
     }
     
     private val httpClient = HttpClient(OkHttp) {
+        engine {
+            config {
+                followRedirects(true)
+                followSslRedirects(true)
+            }
+        }
         install(ContentNegotiation) { json(json) }
         install(HttpTimeout) { 
             requestTimeoutMillis = 15_000
             connectTimeoutMillis = 10_000
+        }
+        install(HttpRedirect) {
+            checkHttpMethod = false  // Follow redirects for POST requests too
+            allowHttpsDowngrade = false
         }
         defaultRequest { contentType(ContentType.Application.Json) }
     }
@@ -274,10 +284,10 @@ class JellyfinClient(private val context: Context? = null) {
     /**
      * Try to connect to a server using just the host.
      * Automatically tries common URL combinations:
-     * - http://host:8096
+     * - https://host (preferred)
      * - https://host:8920
-     * - http://host (if includes port)
-     * - https://host (if includes port)
+     * - http://host (with HTTPS upgrade check)
+     * - http://host:8096
      */
     suspend fun connectToServer(host: String): Result<ValidatedServer> {
         val cleanHost = host.trim()
@@ -285,22 +295,22 @@ class JellyfinClient(private val context: Context? = null) {
             .removePrefix("https://")
             .trimEnd('/')
         
-        // Build list of URLs to try
+        // Build list of URLs to try - prefer HTTPS first for security
         val urlsToTry = mutableListOf<String>()
         
         // Check if user provided a port
         val hasPort = cleanHost.contains(":")
         
         if (hasPort) {
-            // User specified port - try both protocols
-            urlsToTry.add("http://$cleanHost")
+            // User specified port - try HTTPS first
             urlsToTry.add("https://$cleanHost")
+            urlsToTry.add("http://$cleanHost")
         } else {
-            // No port - try defaults
-            urlsToTry.add("http://$cleanHost:8096")
+            // No port - try HTTPS first, then defaults
+            urlsToTry.add("https://$cleanHost")
             urlsToTry.add("https://$cleanHost:8920")
             urlsToTry.add("http://$cleanHost")
-            urlsToTry.add("https://$cleanHost")
+            urlsToTry.add("http://$cleanHost:8096")
         }
         
         android.util.Log.d("JellyfinClient", "Trying to connect to: $urlsToTry")
@@ -308,27 +318,50 @@ class JellyfinClient(private val context: Context? = null) {
         for (url in urlsToTry) {
             try {
                 android.util.Log.d("JellyfinClient", "Trying $url...")
-                val serverInfo = httpClient.get("$url/System/Info/Public") {
+                val response = httpClient.get("$url/System/Info/Public") {
                     timeout { 
                         requestTimeoutMillis = 5_000
                         connectTimeoutMillis = 3_000
                     }
-                }.body<ServerInfo>()
+                }
+                val serverInfo = response.body<ServerInfo>()
                 
-                // Success! Check Quick Connect availability
+                // Determine the canonical URL to use
+                var finalUrl = url
+                
+                // If we connected via HTTP, check if HTTPS works (server may redirect HTTP->HTTPS)
+                if (url.startsWith("http://")) {
+                    val httpsUrl = url.replace("http://", "https://")
+                    try {
+                        httpClient.get("$httpsUrl/System/Info/Public") {
+                            timeout { 
+                                requestTimeoutMillis = 3_000
+                                connectTimeoutMillis = 2_000 
+                            }
+                        }
+                        // HTTPS works - use it as the canonical URL
+                        finalUrl = httpsUrl
+                        android.util.Log.d("JellyfinClient", "HTTP worked but HTTPS also works - using $finalUrl")
+                    } catch (e: Exception) {
+                        // HTTPS doesn't work, stick with HTTP
+                        android.util.Log.d("JellyfinClient", "HTTPS not available, using HTTP: $url")
+                    }
+                }
+                
+                // Check Quick Connect availability using final URL
                 val quickConnectEnabled = try {
-                    val response = httpClient.get("$url/QuickConnect/Enabled") {
+                    val qcResponse = httpClient.get("$finalUrl/QuickConnect/Enabled") {
                         timeout { requestTimeoutMillis = 3_000 }
                     }
-                    response.bodyAsText().trim().lowercase() == "true"
+                    qcResponse.bodyAsText().trim().lowercase() == "true"
                 } catch (e: Exception) {
                     false
                 }
                 
-                android.util.Log.i("JellyfinClient", "Connected to $url (Quick Connect: $quickConnectEnabled)")
+                android.util.Log.i("JellyfinClient", "Connected to $finalUrl (Quick Connect: $quickConnectEnabled)")
                 
                 return Result.success(ValidatedServer(
-                    url = url,
+                    url = finalUrl,
                     serverInfo = serverInfo,
                     quickConnectEnabled = quickConnectEnabled
                 ))
