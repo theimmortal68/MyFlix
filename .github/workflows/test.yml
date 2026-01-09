@@ -1,4 +1,4 @@
-name: Tests
+name: Build and Test
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,10 +29,25 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test --no-daemon
 
+      - name: Build app-mobile
+        run: ./gradlew :app-mobile:assembleDebug --no-daemon
+
+      - name: Build app-tv
+        run: ./gradlew :app-tv:assembleDebug --no-daemon
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
           path: '**/build/reports/tests/'
+          retention-days: 7
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: |
+            app-mobile/build/outputs/apk/debug/*.apk
+            app-tv/build/outputs/apk/debug/*.apk
           retention-days: 7
