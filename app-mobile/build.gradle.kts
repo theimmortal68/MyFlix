@@ -68,6 +68,7 @@ dependencies {
     // Media3 ExoPlayer
     val media3Version = rootProject.extra["media3Version"] as String
     implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-session:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
