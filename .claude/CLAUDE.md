@@ -226,6 +226,10 @@ MyFlix/
 - [ ] Dream Service (screensaver)
 - [ ] Dolby Vision support
 
+## API Reference
+
+See docs/jellyfin-openapi.json for full Jellyfin API spec.
+
 ## Jellyfin API Patterns
 
 The client uses Ktor with custom endpoints (not jellyfin-sdk-kotlin):
