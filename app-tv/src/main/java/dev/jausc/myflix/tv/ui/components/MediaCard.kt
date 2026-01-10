@@ -46,12 +46,14 @@ fun MediaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showLabel: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     onItemFocused: ((JellyfinItem) -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    
+
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier
             .width(CardSizes.MediaCardWidth)
             .onFocusChanged { focusState ->
@@ -153,12 +155,14 @@ fun WideMediaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showLabel: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     onItemFocused: ((JellyfinItem) -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    
+
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier
             .width(CardSizes.WideMediaCardWidth)
             .onFocusChanged { focusState ->
