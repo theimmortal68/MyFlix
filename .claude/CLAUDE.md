@@ -6,11 +6,11 @@ A modular Jellyfin client for Android with separate TV and Mobile apps, built fr
 
 ## Project Overview
 
-**Package:** `dev.jausc.myflix`  
-**Min SDK:** 31 (Android 12)  
-**Target SDK:** 35  
-**Compile SDK:** 35  
-**Language:** Kotlin  
+**Package:** `dev.jausc.myflix`
+**Min SDK:** 25 (Android 7.1)
+**Target SDK:** 36
+**Compile SDK:** 36
+**Language:** Kotlin 2.3
 **Java:** 21
 
 ## Multi-Module Architecture
@@ -424,7 +424,7 @@ companion object {
 
 ## Testing Strategy
 
-> **Current state:** No tests implemented yet. This section documents the recommended approach.
+> **Current state:** Unit tests implemented for JellyfinClient (28 tests). CI/CD runs tests on every push/PR via GitHub Actions.
 
 ### Recommended Frameworks
 
