@@ -69,8 +69,13 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             // Hardware decoding - direct rendering
             MPVLib.setOptionString("hwdec", "mediacodec")
             MPVLib.setOptionString("hwdec-codecs", "all")
-            
-            // Audio output  
+
+            // Aspect ratio - maintain original, fit within surface
+            MPVLib.setOptionString("keepaspect", "yes")
+            MPVLib.setOptionString("video-aspect-override", "-1") // Use container/stream aspect
+            MPVLib.setOptionString("panscan", "0.0") // No cropping
+
+            // Audio output
             MPVLib.setOptionString("ao", "audiotrack,opensles")
             
             // Network/streaming - larger buffers for 4K

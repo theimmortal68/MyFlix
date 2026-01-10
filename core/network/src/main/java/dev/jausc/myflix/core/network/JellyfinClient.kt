@@ -859,19 +859,26 @@ class JellyfinClient(
         positionTicks: Long = 0
     ): Result<Unit> = runCatching {
         currentPlaySessionId = "${itemId}_${System.currentTimeMillis()}"
+        val body = mapOf(
+            "ItemId" to itemId,
+            "MediaSourceId" to (mediaSourceId ?: itemId),
+            "PositionTicks" to positionTicks,
+            "PlayMethod" to "DirectPlay",
+            "PlaySessionId" to currentPlaySessionId,
+            "CanSeek" to true,
+            "IsPaused" to false,
+            "IsMuted" to false
+        )
+        android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing body=$body")
         val response = httpClient.post("$baseUrl/Sessions/Playing") {
             header("Authorization", authHeader())
-            setBody(mapOf(
-                "ItemId" to itemId,
-                "MediaSourceId" to (mediaSourceId ?: itemId),
-                "PositionTicks" to positionTicks,
-                "PlayMethod" to "DirectStream",
-                "PlaySessionId" to currentPlaySessionId,
-                "CanSeek" to true,
-                "IsPaused" to false
-            ))
+            setBody(body)
         }
-        android.util.Log.d("JellyfinClient", "reportPlaybackStart: ${response.status}")
+        android.util.Log.d("JellyfinClient", "reportPlaybackStart: status=${response.status}")
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            android.util.Log.e("JellyfinClient", "reportPlaybackStart failed: $errorBody")
+        }
         // Invalidate resume cache since playback state changed
         invalidateCache("resume")
     }
@@ -882,20 +889,25 @@ class JellyfinClient(
         isPaused: Boolean = false,
         mediaSourceId: String? = null
     ): Result<Unit> = runCatching {
+        val body = mapOf(
+            "ItemId" to itemId,
+            "MediaSourceId" to (mediaSourceId ?: itemId),
+            "PositionTicks" to positionTicks,
+            "IsPaused" to isPaused,
+            "IsMuted" to false,
+            "PlayMethod" to "DirectPlay",
+            "PlaySessionId" to currentPlaySessionId,
+            "CanSeek" to true
+        )
         val response = httpClient.post("$baseUrl/Sessions/Playing/Progress") {
             header("Authorization", authHeader())
-            setBody(mapOf(
-                "ItemId" to itemId,
-                "MediaSourceId" to (mediaSourceId ?: itemId),
-                "PositionTicks" to positionTicks,
-                "IsPaused" to isPaused,
-                "PlayMethod" to "DirectStream",
-                "PlaySessionId" to currentPlaySessionId,
-                "CanSeek" to true,
-                "EventName" to if (isPaused) "Pause" else "TimeUpdate"
-            ))
+            setBody(body)
         }
         android.util.Log.d("JellyfinClient", "reportPlaybackProgress: pos=${positionTicks/10_000}ms paused=$isPaused status=${response.status}")
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            android.util.Log.e("JellyfinClient", "reportPlaybackProgress failed: $errorBody")
+        }
     }
     
     suspend fun reportPlaybackStopped(
@@ -903,16 +915,22 @@ class JellyfinClient(
         positionTicks: Long,
         mediaSourceId: String? = null
     ): Result<Unit> = runCatching {
+        val body = mapOf(
+            "ItemId" to itemId,
+            "MediaSourceId" to (mediaSourceId ?: itemId),
+            "PositionTicks" to positionTicks,
+            "PlaySessionId" to currentPlaySessionId
+        )
+        android.util.Log.d("JellyfinClient", "reportPlaybackStopped: POST $baseUrl/Sessions/Playing/Stopped body=$body")
         val response = httpClient.post("$baseUrl/Sessions/Playing/Stopped") {
             header("Authorization", authHeader())
-            setBody(mapOf(
-                "ItemId" to itemId,
-                "MediaSourceId" to (mediaSourceId ?: itemId),
-                "PositionTicks" to positionTicks,
-                "PlaySessionId" to currentPlaySessionId
-            ))
+            setBody(body)
         }
         android.util.Log.d("JellyfinClient", "reportPlaybackStopped: pos=${positionTicks/10_000}ms status=${response.status}")
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            android.util.Log.e("JellyfinClient", "reportPlaybackStopped failed: $errorBody")
+        }
         currentPlaySessionId = null
         // Invalidate caches that depend on playback state
         invalidateCache("resume", "nextup", "item:$itemId")
