@@ -31,6 +31,27 @@ import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.progressPercent
 
 /**
+ * Progress bar overlay for continue watching items.
+ * Shows at the bottom of the card when item has partial progress.
+ */
+@Composable
+private fun ProgressOverlay(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    if (progress > 0f && progress < 1f) {
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = modifier
+                .fillMaxWidth()
+                .height(3.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = Color.Black.copy(alpha = 0.5f)
+        )
+    }
+}
+
+/**
  * Responsive card sizes based on screen width.
  */
 object MobileCardSizes {
@@ -105,21 +126,13 @@ fun MobileMediaCard(
                 )
                 
                 // Progress bar for continue watching
-                val progress = item.progressPercent
-                if (progress > 0f && progress < 1f) {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(3.dp)
-                            .align(Alignment.BottomCenter),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Black.copy(alpha = 0.5f)
-                    )
-                }
+                ProgressOverlay(
+                    progress = item.progressPercent,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
-        
+
         if (showLabel) {
             Column(
                 modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp)
@@ -136,7 +149,7 @@ fun MobileMediaCard(
                     Text(
                         text = year.toString(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
                     )
                 }
             }
@@ -207,21 +220,13 @@ fun MobileWideMediaCard(
                 }
                 
                 // Progress bar for continue watching
-                val progress = item.progressPercent
-                if (progress > 0f && progress < 1f) {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(3.dp)
-                            .align(Alignment.BottomCenter),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Black.copy(alpha = 0.5f)
-                    )
-                }
+                ProgressOverlay(
+                    progress = item.progressPercent,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
-        
+
         if (showLabel) {
             Column(
                 modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp)
@@ -231,7 +236,7 @@ fun MobileWideMediaCard(
                     Text(
                         text = item.seriesName ?: item.name,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -66,6 +67,17 @@ fun getScreenSizeClass(screenWidthDp: Int): ScreenSizeClass {
         screenWidthDp < 600 -> ScreenSizeClass.COMPACT
         screenWidthDp < 840 -> ScreenSizeClass.MEDIUM
         else -> ScreenSizeClass.EXPANDED
+    }
+}
+
+/**
+ * Remember the current screen size class, recomputing only when configuration changes.
+ */
+@Composable
+fun rememberScreenSizeClass(): ScreenSizeClass {
+    val configuration = LocalConfiguration.current
+    return remember(configuration.screenWidthDp) {
+        getScreenSizeClass(configuration.screenWidthDp)
     }
 }
 
@@ -328,7 +340,7 @@ private fun HeroCard(
                     Text(
                         text = year.toString(),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        color = Color.White.copy(alpha = 0.9f)
                     )
                 }
 
@@ -353,7 +365,7 @@ private fun HeroCard(
                 Text(
                     text = overview,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.9f),
                     maxLines = descriptionMaxLines,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp)
