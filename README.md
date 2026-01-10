@@ -1,50 +1,98 @@
-# MyFlix - Multi-Platform Jellyfin Client
+# MyFlix
 
-A modular Android app for Jellyfin with separate TV and Mobile builds.
+[![Build and Test](https://github.com/theimmortal68/MyFlix/actions/workflows/test.yml/badge.svg)](https://github.com/theimmortal68/MyFlix/actions/workflows/test.yml)
 
-## Project Structure
+A modular Jellyfin client for Android with separate TV and Mobile apps.
+
+## Features
+
+### TV App
+- Netflix-style home screen with hero section and content rows
+- D-pad navigation with focus management
+- Dynamic backdrop with color extraction
+- Continue Watching, Next Up, and Latest content rows
+- Detail screen with season/episode browsing
+- Video player with ExoPlayer and MPV support
+- Quick Connect and QR code authentication
+- Server discovery via UDP broadcast
+
+### Mobile App
+- Responsive home screen with swipeable hero carousel
+- Dropdown navigation menu
+- Adaptive layout for phones, foldables, and tablets
+- Progress indicators on continue watching cards
+- Touch-optimized media cards
+- PlaybackService for background playback
+
+## Requirements
+
+- Android Studio Ladybug (2024.2.1) or newer
+- JDK 21
+- Android SDK 35
+- Min SDK: 31 (Android 12)
+
+## Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/theimmortal68/MyFlix.git
+cd MyFlix
+
+# Build TV app
+./gradlew :app-tv:assembleDebug
+
+# Build Mobile app
+./gradlew :app-mobile:assembleDebug
+
+# Install to device
+adb install app-tv/build/outputs/apk/debug/app-tv-debug.apk
+adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
+
+# Run tests
+./gradlew test
+```
+
+## Architecture
 
 ```
 MyFlix/
-├── app-tv/                    # Android TV app (Compose TV, D-pad navigation)
-├── app-mobile/                # Phone/tablet app (Material3)
+├── app-tv/          # Android TV app (Compose TV Material)
+├── app-mobile/      # Phone/tablet app (Material3)
 ├── core/
-│   ├── common/                # Shared models, utilities
-│   ├── network/               # Ktor-based Jellyfin API client
-│   ├── data/                  # DataStore preferences, AppState
-│   └── player/                # Player interface (MPV/ExoPlayer)
+│   ├── common/      # Shared models, utilities
+│   ├── network/     # Ktor-based Jellyfin API client
+│   ├── data/        # DataStore preferences
+│   └── player/      # ExoPlayer + MPV abstraction
 └── ui/
-    ├── common/                # Shared theme, colors
-    ├── tv/                    # TV-specific components
-    └── mobile/                # Mobile-specific components
+    ├── common/      # Shared theme, colors
+    ├── tv/          # TV-specific components
+    └── mobile/      # Mobile-specific components
 ```
 
-## Building
+## Tech Stack
 
-### TV App
-```bash
-./gradlew :app-tv:assembleDebug
-adb install app-tv/build/outputs/apk/debug/app-tv-debug.apk
-```
+| Component | Technology |
+|-----------|------------|
+| UI (TV) | Jetpack Compose TV Material 3 |
+| UI (Mobile) | Jetpack Compose Material 3 |
+| Networking | Ktor (OkHttp engine) |
+| Serialization | kotlinx.serialization |
+| Image Loading | Coil 3 |
+| Video Player | Media3 ExoPlayer + MPV |
+| Navigation | Jetpack Navigation Compose |
 
-### Mobile App
-```bash
-./gradlew :app-mobile:assembleDebug
-adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
-```
+## Documentation
 
-## Key Features
+For detailed development documentation, architecture decisions, and API patterns, see [CLAUDE.md](.claude/CLAUDE.md).
 
-- **Shared Core**: Business logic and API client shared between platforms
-- **Platform-Optimized UI**: TV uses Compose TV Material, Mobile uses Material3
-- **MPV Player**: Ready for libmpv integration (DV support on Homatics Box R 4K)
-- **ExoPlayer**: Mobile fallback with broader device compatibility
-- **In-Memory Cache**: Fast response times with smart cache invalidation
+## Contributing
 
-## Next Steps
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `./gradlew test`
+5. Submit a pull request
 
-1. Add libmpv native library to core:player for TV
-2. Implement remaining screens (Detail, Library, Player)
-3. Add search functionality
-4. Implement playback progress reporting
-5. Add settings screen
+## License
+
+TBD

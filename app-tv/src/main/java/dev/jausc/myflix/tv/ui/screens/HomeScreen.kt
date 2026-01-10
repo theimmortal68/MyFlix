@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.HeroContentBuilder
+import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
@@ -93,21 +94,10 @@ fun HomeScreen(
         // Get libraries first to identify Movies and TV Shows libraries
         jellyfinClient.getLibraries().onSuccess { libs ->
             libraries = libs
-            
-            // Find libraries - prefer collectionType, fall back to name matching
-            val moviesLibrary = libs.find { 
-                it.collectionType == "movies" 
-            } ?: libs.find { 
-                it.name.contains("movie", ignoreCase = true) ||
-                it.name.contains("film", ignoreCase = true)
-            }
-            val showsLibrary = libs.find { 
-                it.collectionType == "tvshows" 
-            } ?: libs.find { 
-                it.name.contains("show", ignoreCase = true) ||
-                it.name.contains("series", ignoreCase = true) ||
-                it.name.equals("tv", ignoreCase = true)
-            }
+
+            // Find libraries using shared finder
+            val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
+            val showsLibrary = LibraryFinder.findShowsLibrary(libs)
             
             // Get latest movies (excludes collections)
             moviesLibrary?.let { lib ->
@@ -177,17 +167,10 @@ fun HomeScreen(
             NavItem.HOME -> { /* Already on home */ }
             NavItem.SEARCH -> onSearchClick()
             NavItem.MOVIES -> {
-                libraries.find { 
-                    it.name.contains("movie", ignoreCase = true) ||
-                    it.name.contains("film", ignoreCase = true)
-                }?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findMoviesLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
             }
             NavItem.SHOWS -> {
-                libraries.find { 
-                    it.name.contains("show", ignoreCase = true) ||
-                    it.name.contains("series", ignoreCase = true) ||
-                    it.name.equals("tv", ignoreCase = true)
-                }?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
             }
             NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
             NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }

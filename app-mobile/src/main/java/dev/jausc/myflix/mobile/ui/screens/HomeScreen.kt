@@ -22,7 +22,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.jausc.myflix.core.common.HeroContentBuilder
+import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import kotlinx.coroutines.isActive
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.MobileContentRow
 import dev.jausc.myflix.mobile.ui.components.MobileHeroSection
@@ -92,21 +94,10 @@ fun HomeScreen(
         // Get libraries first
         jellyfinClient.getLibraries().onSuccess { libs ->
             libraries = libs
-            
-            // Find libraries by collection type
-            val moviesLibrary = libs.find { 
-                it.collectionType == "movies" 
-            } ?: libs.find { 
-                it.name.contains("movie", ignoreCase = true) ||
-                it.name.contains("film", ignoreCase = true)
-            }
-            val showsLibrary = libs.find { 
-                it.collectionType == "tvshows" 
-            } ?: libs.find { 
-                it.name.contains("show", ignoreCase = true) ||
-                it.name.contains("series", ignoreCase = true) ||
-                it.name.equals("tv", ignoreCase = true)
-            }
+
+            // Find libraries using shared finder
+            val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
+            val showsLibrary = LibraryFinder.findShowsLibrary(libs)
             
             // Get latest movies
             moviesLibrary?.let { lib ->
@@ -161,7 +152,7 @@ fun HomeScreen(
     
     // Background polling for updates
     LaunchedEffect(Unit) {
-        while (true) {
+        while (isActive) {
             delay(POLL_INTERVAL_MS)
             loadContent(showLoading = false)
         }
@@ -174,19 +165,10 @@ fun HomeScreen(
             MobileNavItem.HOME -> { /* Already on home */ }
             MobileNavItem.SEARCH -> onSearchClick()
             MobileNavItem.MOVIES -> {
-                libraries.find { 
-                    it.collectionType == "movies" ||
-                    it.name.contains("movie", ignoreCase = true) ||
-                    it.name.contains("film", ignoreCase = true)
-                }?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findMoviesLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
             }
             MobileNavItem.SHOWS -> {
-                libraries.find { 
-                    it.collectionType == "tvshows" ||
-                    it.name.contains("show", ignoreCase = true) ||
-                    it.name.contains("series", ignoreCase = true) ||
-                    it.name.equals("tv", ignoreCase = true)
-                }?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
             }
             MobileNavItem.SETTINGS -> onSettingsClick()
         }

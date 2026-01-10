@@ -102,7 +102,12 @@ MyFlix/
 - [x] Background polling for content updates
 
 ### Mobile App (app-mobile)
-- [x] Home screen
+- [x] Home screen with responsive hero section
+- [x] Dropdown navigation menu
+- [x] Auto-rotating hero carousel (8s interval)
+- [x] Responsive layout (phones, foldables, tablets)
+- [x] Progress bars on continue watching cards
+- [x] Episode badges on wide cards
 - [x] Detail screen
 - [x] Player screen with PlaybackService
 - [x] Library screen
@@ -119,6 +124,11 @@ MyFlix/
 - [x] Player abstraction layer
 - [x] ExoPlayer wrapper
 - [x] MPV player stub (ready for libmpv)
+- [x] HeroContentBuilder (shared hero content logic)
+- [x] LibraryFinder (shared library detection)
+- [x] ScreenSizeClass responsive utility
+- [x] Unit tests for JellyfinClient (28 tests)
+- [x] GitHub Actions CI/CD
 
 ## Feature Parity Checklist (from MyFlix-Wholphin)
 
@@ -192,6 +202,29 @@ MyFlix/
 - [ ] OTA updates from GitHub releases
 - [ ] Dream Service (screensaver)
 - [ ] Photo player/slideshow
+
+## Roadmap
+
+### Near-term (Active Development)
+- [ ] Video zoom/aspect ratio controls
+- [ ] Audio track selection and memory
+- [ ] Subtitle styling customization
+- [ ] Loading states and skeleton screens
+- [ ] Retry buttons for failed API calls
+
+### Mid-term
+- [ ] Media Segments integration (skip intro/credits)
+- [ ] Voice search (TV)
+- [ ] Search filters (type/genre/year)
+- [ ] Multiple server support
+- [ ] HDR detection and handling
+
+### Long-term
+- [ ] Jellyseerr integration
+- [ ] OTA updates from GitHub releases
+- [ ] Universe Collections integration
+- [ ] Dream Service (screensaver)
+- [ ] Dolby Vision support
 
 ## Jellyfin API Patterns
 

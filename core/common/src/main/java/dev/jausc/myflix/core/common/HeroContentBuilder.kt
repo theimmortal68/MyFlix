@@ -18,7 +18,15 @@ object HeroContentBuilder {
         val maxRecentMovies: Int = 3,
         val maxRecentShows: Int = 2,
         val maxTotalItems: Int = 10
-    )
+    ) {
+        init {
+            require(maxContinueWatching >= 0) { "maxContinueWatching must be >= 0" }
+            require(maxNextUp >= 0) { "maxNextUp must be >= 0" }
+            require(maxRecentMovies >= 0) { "maxRecentMovies must be >= 0" }
+            require(maxRecentShows >= 0) { "maxRecentShows must be >= 0" }
+            require(maxTotalItems >= 1) { "maxTotalItems must be >= 1" }
+        }
+    }
     
     /**
      * Default configuration for hero content.

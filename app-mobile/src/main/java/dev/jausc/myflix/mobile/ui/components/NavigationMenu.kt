@@ -159,10 +159,10 @@ fun MobileTopBar(
                         ) {
                             Icon(
                                 imageVector = item.icon,
-                                contentDescription = null,
-                                tint = if (isSelected) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
+                                contentDescription = item.label,
+                                tint = if (isSelected)
+                                    MaterialTheme.colorScheme.primary
+                                else
                                     MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )

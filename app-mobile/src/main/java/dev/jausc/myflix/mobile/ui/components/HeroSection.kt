@@ -32,6 +32,8 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -188,6 +190,9 @@ fun MobileHeroSection(
                                 if (isSelected) Color.White
                                 else Color.White.copy(alpha = 0.5f)
                             )
+                            .semantics {
+                                contentDescription = "Page ${index + 1} of ${featuredItems.size}"
+                            }
                     )
                 }
             }
@@ -372,7 +377,7 @@ private fun HeroCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
+                        contentDescription = "Play",
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -449,7 +454,7 @@ private fun StarRating(rating: Float) {
     ) {
         Icon(
             imageVector = Icons.Outlined.Star,
-            contentDescription = null,
+            contentDescription = "Rating",
             modifier = Modifier.size(16.dp),
             tint = Color(0xFFFFD700)
         )
