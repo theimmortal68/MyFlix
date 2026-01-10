@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
@@ -41,8 +42,9 @@ fun PreferencesScreen(
     onNavigateShows: () -> Unit
 ) {
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
-    
+
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
+    val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     
     val handleNavSelection: (NavItem) -> Unit = { item ->
         selectedNavItem = item
@@ -77,7 +79,9 @@ fun PreferencesScreen(
         ) {
             PreferencesContent(
                 hideWatched = hideWatched,
-                onHideWatchedChanged = { preferences.setHideWatchedFromRecent(it) }
+                onHideWatchedChanged = { preferences.setHideWatchedFromRecent(it) },
+                useMpvPlayer = useMpvPlayer,
+                onUseMpvPlayerChanged = { preferences.setUseMpvPlayer(it) }
             )
         }
     }
@@ -86,7 +90,9 @@ fun PreferencesScreen(
 @Composable
 private fun PreferencesContent(
     hideWatched: Boolean,
-    onHideWatchedChanged: (Boolean) -> Unit
+    onHideWatchedChanged: (Boolean) -> Unit,
+    useMpvPlayer: Boolean,
+    onUseMpvPlayerChanged: (Boolean) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -111,7 +117,7 @@ private fun PreferencesContent(
                                 shape = RoundedCornerShape(2.dp)
                             )
                     )
-                    
+
                     Text(
                         text = "Settings",
                         style = MaterialTheme.typography.headlineMedium,
@@ -121,7 +127,7 @@ private fun PreferencesContent(
                 }
             }
         }
-        
+
         // Display Section
         item {
             PreferencesSection(title = "Display") {
@@ -135,7 +141,21 @@ private fun PreferencesContent(
                 )
             }
         }
-        
+
+        // Playback Section
+        item {
+            PreferencesSection(title = "Playback") {
+                TogglePreferenceItem(
+                    title = "Use MPV Player",
+                    description = "Enable MPV for better codec support. ExoPlayer is used by default and recommended for most users.",
+                    icon = Icons.Outlined.PlayCircle,
+                    iconTint = if (useMpvPlayer) Color(0xFF9C27B0) else TvColors.TextSecondary,
+                    checked = useMpvPlayer,
+                    onCheckedChange = onUseMpvPlayerChanged
+                )
+            }
+        }
+
         // Info section
         item {
             Spacer(modifier = Modifier.height(32.dp))

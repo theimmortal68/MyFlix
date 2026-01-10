@@ -12,16 +12,15 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * PlayerController - manages player backend selection and provides unified interface
- * 
+ *
  * Backend selection strategy:
- * - Dolby Vision content + DV-capable device → ExoPlayer (for proper DV playback)
- * - DV content on non-DV device → MPV (plays HDR10 base layer fine)
- * - All other content → MPV if available (superior features)
- * - Fallback → ExoPlayer
+ * - Default: ExoPlayer (best compatibility)
+ * - If useMpv=true: MPV for non-DV content (better codec support)
+ * - Dolby Vision content + DV-capable device → Always ExoPlayer
  */
 class PlayerController(
     private val context: Context,
-    private val preferredBackend: PlayerBackend? = null
+    private val useMpv: Boolean = false
 ) {
     companion object {
         private const val TAG = "PlayerController"
@@ -95,14 +94,9 @@ class PlayerController(
      */
     fun initialize(): Boolean {
         if (currentPlayer != null) return true // Already initialized
-        
-        val useMpv = when (preferredBackend) {
-            PlayerBackend.MPV -> MpvPlayer.isAvailable()
-            PlayerBackend.EXOPLAYER -> false
-            null -> MpvPlayer.isAvailable() // Auto-select: prefer MPV if available
-        }
-        
-        return if (useMpv) {
+
+        // Default to ExoPlayer, use MPV only if enabled and available
+        return if (useMpv && MpvPlayer.isAvailable()) {
             initializeMpv()
         } else {
             initializeExoPlayer()
@@ -111,45 +105,45 @@ class PlayerController(
     
     /**
      * Initialize with content-aware backend selection.
-     * 
+     *
      * Logic:
      * - DV content + DV-capable device → ExoPlayer (proper DV playback)
-     * - DV content + non-DV device → MPV (plays HDR10 base layer)
-     * - Non-DV content → MPV (if available)
+     * - useMpv enabled + MPV available → MPV
+     * - Otherwise → ExoPlayer (default)
      */
     fun initializeForMedia(mediaInfo: MediaInfo): Boolean {
         currentMediaInfo = mediaInfo
-        
-        // Only use ExoPlayer for DV if device actually supports DV
-        val shouldUseExoPlayer = mediaInfo.isDolbyVision && isDvCapable
-        
+
+        // Always use ExoPlayer for DV content on DV-capable device
+        val forceDvExoPlayer = mediaInfo.isDolbyVision && isDvCapable
+        // Use MPV only if enabled, available, and not forced to ExoPlayer for DV
+        val shouldUseMpv = useMpv && MpvPlayer.isAvailable() && !forceDvExoPlayer
+
         Log.d(TAG, "Media: ${mediaInfo.title}, isDV: ${mediaInfo.isDolbyVision}, " +
-                   "deviceDV: $isDvCapable, useExo: $shouldUseExoPlayer")
-        
+                   "deviceDV: $isDvCapable, useMpvPref: $useMpv, shouldUseMpv: $shouldUseMpv")
+
         // Release existing player if switching backends
         val currentIsMpv = currentPlayer is MpvPlayer
-        
+
         if (currentPlayer != null) {
-            if (shouldUseExoPlayer && currentIsMpv) {
-                Log.d(TAG, "Switching from MPV to ExoPlayer for DV content on DV-capable device")
+            if (!shouldUseMpv && currentIsMpv) {
+                Log.d(TAG, "Switching from MPV to ExoPlayer")
                 release()
-            } else if (!shouldUseExoPlayer && !currentIsMpv && MpvPlayer.isAvailable()) {
+            } else if (shouldUseMpv && !currentIsMpv) {
                 Log.d(TAG, "Switching from ExoPlayer to MPV")
                 release()
             } else {
                 return true // Already using correct backend
             }
         }
-        
-        return if (shouldUseExoPlayer) {
-            Log.d(TAG, "Using ExoPlayer for Dolby Vision: ${mediaInfo.title}")
-            initializeExoPlayer()
-        } else if (MpvPlayer.isAvailable() && preferredBackend != PlayerBackend.EXOPLAYER) {
-            Log.d(TAG, "Using MPV for: ${mediaInfo.title}" + 
+
+        return if (shouldUseMpv) {
+            Log.d(TAG, "Using MPV for: ${mediaInfo.title}" +
                        if (mediaInfo.isDolbyVision) " (DV content, but device not DV-capable - using HDR10 layer)" else "")
             initializeMpv()
         } else {
-            Log.d(TAG, "Using ExoPlayer (MPV not available) for: ${mediaInfo.title}")
+            Log.d(TAG, "Using ExoPlayer for: ${mediaInfo.title}" +
+                       if (forceDvExoPlayer) " (Dolby Vision)" else "")
             initializeExoPlayer()
         }
     }

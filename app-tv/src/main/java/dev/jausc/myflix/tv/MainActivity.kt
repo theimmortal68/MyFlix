@@ -45,6 +45,7 @@ fun MyFlixTvApp() {
     
     // Collect preferences
     val hideWatchedFromRecent by tvPreferences.hideWatchedFromRecent.collectAsState()
+    val useMpvPlayer by tvPreferences.useMpvPlayer.collectAsState()
     
     LaunchedEffect(Unit) {
         appState.initialize()
@@ -171,6 +172,7 @@ fun MyFlixTvApp() {
                 PlayerScreen(
                     itemId = itemId,
                     jellyfinClient = jellyfinClient,
+                    useMpvPlayer = useMpvPlayer,
                     onBack = { navController.popBackStack() }
                 )
             }

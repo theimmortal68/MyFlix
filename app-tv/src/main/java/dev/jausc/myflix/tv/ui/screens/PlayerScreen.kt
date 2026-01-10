@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 fun PlayerScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
+    useMpvPlayer: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -50,11 +51,11 @@ fun PlayerScreen(
     var streamUrl by remember { mutableStateOf<String?>(null) }
     var startPosition by remember { mutableLongStateOf(0L) }
     var playbackStarted by remember { mutableStateOf(false) }
-    
+
     val focusRequester = remember { FocusRequester() }
-    
-    // Player controller from core module - initialize later with media info
-    val playerController = remember { PlayerController(context) }
+
+    // Player controller from core module - pass MPV preference
+    val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
     var playerReady by remember { mutableStateOf(false) }
     
     // Collect player state

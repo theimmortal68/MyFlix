@@ -55,6 +55,7 @@ private object PlayerConstants {
 fun PlayerScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
+    useMpvPlayer: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -66,9 +67,9 @@ fun PlayerScreen(
     var streamUrl by remember { mutableStateOf<String?>(null) }
     var startPosition by remember { mutableLongStateOf(0L) }
     var playbackStarted by remember { mutableStateOf(false) }
-    
-    // Player controller from core module
-    val playerController = remember { PlayerController(context) }
+
+    // Player controller from core module - pass MPV preference
+    val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
     var playerReady by remember { mutableStateOf(false) }
     
     // Collect player state
