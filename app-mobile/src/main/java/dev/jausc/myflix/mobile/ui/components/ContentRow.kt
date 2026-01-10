@@ -49,17 +49,18 @@ fun MobileContentRow(
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onItemLongClick: ((JellyfinItem) -> Unit)? = null,
     accentColor: Color = MobileRowColors.Default,
     isWideCard: Boolean = false,
     showLabels: Boolean = true
 ) {
     if (items.isEmpty()) return
-    
+
     val configuration = LocalConfiguration.current
     val screenSizeClass = getScreenSizeClass(configuration.screenWidthDp)
     val horizontalPadding = getHorizontalPadding(screenSizeClass)
     val cardSpacing = getCardSpacing(screenSizeClass)
-    
+
     Column(
         modifier = modifier.padding(vertical = 8.dp)
     ) {
@@ -82,7 +83,7 @@ fun MobileContentRow(
                 color = MaterialTheme.colorScheme.onBackground
             )
         }
-        
+
         // Horizontal scrolling cards
         LazyRow(
             contentPadding = PaddingValues(horizontal = horizontalPadding),
@@ -105,6 +106,7 @@ fun MobileContentRow(
                         item = item,
                         imageUrl = imageUrl,
                         onClick = { onItemClick(item.id) },
+                        onLongClick = onItemLongClick?.let { { it(item) } },
                         showLabel = showLabels,
                         screenSizeClass = screenSizeClass
                     )
@@ -119,6 +121,7 @@ fun MobileContentRow(
                         item = item,
                         imageUrl = imageUrl,
                         onClick = { onItemClick(item.id) },
+                        onLongClick = onItemLongClick?.let { { it(item) } },
                         showLabel = showLabels,
                         screenSizeClass = screenSizeClass
                     )

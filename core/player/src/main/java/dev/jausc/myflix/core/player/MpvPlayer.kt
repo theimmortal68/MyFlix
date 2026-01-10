@@ -101,6 +101,9 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             MPVLib.observeProperty("seeking", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             MPVLib.observeProperty("eof-reached", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
             MPVLib.observeProperty("speed", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
+            MPVLib.observeProperty("video-params/w", MPVLib.MpvFormat.MPV_FORMAT_INT64)
+            MPVLib.observeProperty("video-params/h", MPVLib.MpvFormat.MPV_FORMAT_INT64)
+            MPVLib.observeProperty("video-params/aspect", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
             
             // Attach surface after init
             MPVLib.attachSurface(surface)
@@ -264,6 +267,14 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             "duration" -> {
                 _state.value = _state.value.copy(duration = value * 1000)
             }
+            "video-params/w" -> {
+                Log.d(TAG, "Video width: $value")
+                _state.value = _state.value.copy(videoWidth = value.toInt())
+            }
+            "video-params/h" -> {
+                Log.d(TAG, "Video height: $value")
+                _state.value = _state.value.copy(videoHeight = value.toInt())
+            }
         }
     }
     
@@ -307,6 +318,10 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
             "duration" -> {
                 _state.value = _state.value.copy(duration = (value * 1000).toLong())
+            }
+            "video-params/aspect" -> {
+                Log.d(TAG, "Video aspect ratio: $value")
+                _state.value = _state.value.copy(videoAspectRatio = value.toFloat())
             }
         }
     }

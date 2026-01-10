@@ -14,11 +14,14 @@ data class PlaybackState(
     val duration: Long = 0L,        // milliseconds
     val speed: Float = 1.0f,
     val error: String? = null,
-    val playerType: String = "Unknown"
+    val playerType: String = "Unknown",
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0,
+    val videoAspectRatio: Float = 0f
 ) {
     val progress: Float
         get() = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-    
+
     val remainingTime: Long
         get() = (duration - position).coerceAtLeast(0L)
 }

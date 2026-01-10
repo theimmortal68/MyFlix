@@ -33,12 +33,16 @@ import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import kotlinx.coroutines.isActive
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
+import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
+import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.MobileContentRow
 import dev.jausc.myflix.mobile.ui.components.MobileHeroSection
 import dev.jausc.myflix.mobile.ui.components.MobileNavItem
 import dev.jausc.myflix.mobile.ui.components.MobileRowColors
 import dev.jausc.myflix.mobile.ui.components.MobileRowData
 import dev.jausc.myflix.mobile.ui.components.MobileTopBar
+import dev.jausc.myflix.mobile.ui.components.buildHomeMenuItems
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -47,13 +51,14 @@ private const val POLL_INTERVAL_MS = 30_000L
 
 /**
  * Mobile home screen with Netflix-style hero section and dropdown navigation.
- * 
+ *
  * Features:
  * - Full-width hero section with featured content (responsive sizing)
  * - Dropdown navigation menu in top-left
  * - Horizontal scrolling content rows (responsive card sizes)
  * - Touch-friendly card interactions
  * - Automatic layout adjustment for phones and foldables
+ * - Long-press context menu for quick actions
  */
 @Composable
 fun HomeScreen(
@@ -65,6 +70,43 @@ fun HomeScreen(
     onSettingsClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+
+    // Popup menu state for long-press
+    var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
+
+    // Menu actions for long-press
+    val menuActions = remember(scope) {
+        HomeMenuActions(
+            onGoTo = { itemId -> onItemClick(itemId) },
+            onPlay = { itemId -> onPlayClick(itemId) },
+            onMarkWatched = { itemId, watched ->
+                scope.launch {
+                    jellyfinClient.setPlayed(itemId, watched)
+                }
+            },
+            onToggleFavorite = { itemId, favorite ->
+                scope.launch {
+                    jellyfinClient.setFavorite(itemId, favorite)
+                }
+            },
+            onGoToSeries = { seriesId -> onItemClick(seriesId) }
+        )
+    }
+
+    // Handle long-press on items
+    val handleItemLongClick: (JellyfinItem) -> Unit = { item ->
+        val subtitle = when {
+            item.type == "Episode" && item.seriesName != null ->
+                "${item.seriesName} - S${item.parentIndexNumber ?: "?"}E${item.indexNumber ?: "?"}"
+            item.productionYear != null -> item.productionYear.toString()
+            else -> item.type
+        }
+        popupMenuParams = BottomSheetParams(
+            title = item.name,
+            subtitle = subtitle,
+            items = buildHomeMenuItems(item, menuActions)
+        )
+    }
     
     // Track configuration changes for responsive layout
     val configuration = LocalConfiguration.current
@@ -303,10 +345,19 @@ fun HomeScreen(
                             items = rowData.items,
                             jellyfinClient = jellyfinClient,
                             onItemClick = onItemClick,
+                            onItemLongClick = handleItemLongClick,
                             accentColor = rowData.accentColor,
                             isWideCard = rowData.isWideCard
                         )
                     }
+                }
+
+                // Popup menu for long-press
+                popupMenuParams?.let { params ->
+                    PopupMenu(
+                        params = params,
+                        onDismiss = { popupMenuParams = null }
+                    )
                 }
             }
             

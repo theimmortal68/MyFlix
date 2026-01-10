@@ -92,7 +92,9 @@ data class MediaStream(
     @SerialName("Width") val width: Int? = null,
     @SerialName("Height") val height: Int? = null,
     @SerialName("BitRate") val bitRate: Long? = null,
-    @SerialName("DisplayTitle") val displayTitle: String? = null
+    @SerialName("DisplayTitle") val displayTitle: String? = null,
+    // Audio-specific fields
+    @SerialName("Channels") val channels: Int? = null
 )
 
 @Serializable

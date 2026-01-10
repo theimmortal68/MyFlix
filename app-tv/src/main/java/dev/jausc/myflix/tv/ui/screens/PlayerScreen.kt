@@ -15,6 +15,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
@@ -270,36 +271,66 @@ private fun MpvSurfaceView(
     modifier: Modifier = Modifier
 ) {
     var surfaceReady by remember { mutableStateOf(false) }
-    
+    val playbackState by playerController.state.collectAsState()
+
     // Start playback when surface is ready
     LaunchedEffect(surfaceReady, url) {
         if (surfaceReady) {
             playerController.play(url, startPositionMs)
         }
     }
-    
-    AndroidView(
-        factory = { ctx ->
-            SurfaceView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+
+    // Use BoxWithConstraints to get container size and calculate proper aspect ratio
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        val containerWidth = constraints.maxWidth.toFloat()
+        val containerHeight = constraints.maxHeight.toFloat()
+        val videoAspect = if (playbackState.videoAspectRatio > 0) {
+            playbackState.videoAspectRatio
+        } else if (playbackState.videoWidth > 0 && playbackState.videoHeight > 0) {
+            playbackState.videoWidth.toFloat() / playbackState.videoHeight.toFloat()
+        } else {
+            16f / 9f // Default to 16:9
+        }
+
+        // Calculate size maintaining aspect ratio (letterbox/pillarbox)
+        val containerAspect = containerWidth / containerHeight
+        val (surfaceWidth, surfaceHeight) = if (videoAspect > containerAspect) {
+            // Video is wider than container - fit width, letterbox top/bottom
+            containerWidth to (containerWidth / videoAspect)
+        } else {
+            // Video is taller than container - fit height, pillarbox left/right
+            (containerHeight * videoAspect) to containerHeight
+        }
+
+        AndroidView(
+            factory = { ctx ->
+                SurfaceView(ctx).apply {
+                    holder.addCallback(object : SurfaceHolder.Callback {
+                        override fun surfaceCreated(holder: SurfaceHolder) {
+                            playerController.attachSurface(holder.surface)
+                            surfaceReady = true
+                        }
+                        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                            surfaceReady = false
+                            playerController.detachSurface()
+                        }
+                    })
+                }
+            },
+            modifier = with(density) {
+                Modifier.size(
+                    width = surfaceWidth.toDp(),
+                    height = surfaceHeight.toDp()
                 )
-                holder.addCallback(object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(holder: SurfaceHolder) {
-                        playerController.attachSurface(holder.surface)
-                        surfaceReady = true
-                    }
-                    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
-                    override fun surfaceDestroyed(holder: SurfaceHolder) {
-                        surfaceReady = false
-                        playerController.detachSurface()
-                    }
-                })
             }
-        },
-        modifier = modifier
-    )
+        )
+    }
 }
 
 @Composable

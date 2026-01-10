@@ -1,6 +1,8 @@
 package dev.jausc.myflix.mobile.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -91,28 +93,33 @@ object MobileCardSizes {
  * Shows title and year below the image.
  * Responsive sizing based on screen width.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MobileMediaCard(
     item: JellyfinItem,
     imageUrl: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     screenSizeClass: ScreenSizeClass = getScreenSizeClass(LocalConfiguration.current.screenWidthDp),
     showLabel: Boolean = true
 ) {
     val width = MobileCardSizes.getPosterWidth(screenSizeClass)
-    
+
     Column(
         modifier = modifier.width(width)
     ) {
         Card(
-            onClick = onClick,
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 4.dp
+            ),
+            modifier = Modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
             )
         ) {
             Box {
@@ -124,7 +131,7 @@ fun MobileMediaCard(
                         .fillMaxWidth()
                         .aspectRatio(2f / 3f)
                 )
-                
+
                 // Progress bar for continue watching
                 ProgressOverlay(
                     progress = item.progressPercent,
@@ -162,28 +169,33 @@ fun MobileMediaCard(
  * Shows episode info overlay on the image.
  * Responsive sizing based on screen width.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MobileWideMediaCard(
     item: JellyfinItem,
     imageUrl: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     screenSizeClass: ScreenSizeClass = getScreenSizeClass(LocalConfiguration.current.screenWidthDp),
     showLabel: Boolean = true
 ) {
     val width = MobileCardSizes.getWideCardWidth(screenSizeClass)
-    
+
     Column(
         modifier = modifier.width(width)
     ) {
         Card(
-            onClick = onClick,
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 4.dp
+            ),
+            modifier = Modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
             )
         ) {
             Box {
@@ -195,7 +207,7 @@ fun MobileWideMediaCard(
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
                 )
-                
+
                 // Episode number badge (for episodes)
                 if (item.isEpisode) {
                     val episodeNumber = item.indexNumber
@@ -218,7 +230,7 @@ fun MobileWideMediaCard(
                         }
                     }
                 }
-                
+
                 // Progress bar for continue watching
                 ProgressOverlay(
                     progress = item.progressPercent,

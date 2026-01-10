@@ -147,7 +147,7 @@ private fun PreferencesContent(
             PreferencesSection(title = "Playback") {
                 TogglePreferenceItem(
                     title = "Use MPV Player",
-                    description = "Enable MPV for better codec support. ExoPlayer is used by default and recommended for most users.",
+                    description = "Experimental. Enable MPV for better codec support. Falls back to ExoPlayer for Dolby Vision content.",
                     icon = Icons.Outlined.PlayCircle,
                     iconTint = if (useMpvPlayer) Color(0xFF9C27B0) else TvColors.TextSecondary,
                     checked = useMpvPlayer,

@@ -106,7 +106,34 @@ fun MyFlixTvApp() {
                     onPlayClick = { itemId ->
                         navController.navigate("player/$itemId")
                     },
+                    onSearchClick = {
+                        navController.navigate("search")
+                    },
                     onSettingsClick = {
+                        navController.navigate("settings")
+                    }
+                )
+            }
+
+            composable("search") {
+                SearchScreen(
+                    jellyfinClient = jellyfinClient,
+                    onItemClick = { itemId ->
+                        navController.navigate("detail/$itemId")
+                    },
+                    onBack = { navController.popBackStack() },
+                    onNavigateHome = {
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    },
+                    onNavigateMovies = {
+                        navController.navigate("home")
+                    },
+                    onNavigateShows = {
+                        navController.navigate("home")
+                    },
+                    onNavigateSettings = {
                         navController.navigate("settings")
                     }
                 )
@@ -120,9 +147,10 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = true }
                         }
                     },
-                    onNavigateSearch = { /* TODO */ },
+                    onNavigateSearch = {
+                        navController.navigate("search")
+                    },
                     onNavigateMovies = {
-                        // Navigate back to home and let home handle it
                         navController.navigate("home")
                     },
                     onNavigateShows = {
