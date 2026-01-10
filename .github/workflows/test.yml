@@ -29,6 +29,9 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test --no-daemon
 
+      - name: Run lint checks
+        run: ./gradlew :app-mobile:lint :app-tv:lint --no-daemon
+
       - name: Build app-mobile
         run: ./gradlew :app-mobile:assembleDebug --no-daemon
 
@@ -41,6 +44,16 @@ jobs:
         with:
           name: test-results
           path: '**/build/reports/tests/'
+          retention-days: 7
+
+      - name: Upload lint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-results
+          path: |
+            app-mobile/build/reports/lint-results*.html
+            app-tv/build/reports/lint-results*.html
           retention-days: 7
 
       - name: Upload APKs
