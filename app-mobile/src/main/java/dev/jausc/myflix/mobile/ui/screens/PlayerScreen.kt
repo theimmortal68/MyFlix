@@ -84,9 +84,6 @@ fun PlayerScreen(
             // Initialize player with content-aware backend selection
             // DV content + DV device → ExoPlayer, everything else → MPV
             playerReady = playerController.initializeForMedia(mediaInfo)
-            
-            android.util.Log.d("PlayerScreen", 
-                "Item: ${loadedItem.name}, DV: ${loadedItem.isDolbyVision}, Backend: ${playerController.backend}")
         }
         isLoading = false
     }
@@ -97,7 +94,6 @@ fun PlayerScreen(
             playbackStarted = true
             val positionTicks = playbackState.position * 10_000 // ms to ticks
             jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
-            android.util.Log.d("PlayerScreen", "Reported playback start at ${playbackState.position}ms")
         }
     }
     
@@ -113,7 +109,6 @@ fun PlayerScreen(
                         positionTicks = positionTicks,
                         isPaused = false
                     )
-                    android.util.Log.d("PlayerScreen", "Reported progress at ${playbackState.position}ms")
                 }
             }
         }
@@ -146,7 +141,6 @@ fun PlayerScreen(
             scope.launch {
                 val positionTicks = playerController.state.value.position * 10_000
                 jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
-                android.util.Log.d("PlayerScreen", "Reported playback stopped at ${playerController.state.value.position}ms")
             }
             playerController.stop()
             playerController.release()

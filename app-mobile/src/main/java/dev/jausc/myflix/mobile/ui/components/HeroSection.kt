@@ -51,37 +51,6 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.delay
 
 /**
- * Screen size categories for responsive layout.
- */
-enum class ScreenSizeClass {
-    COMPACT,    // Standard phones (< 600dp)
-    MEDIUM,     // Large phones, small tablets, foldables (600-840dp)
-    EXPANDED    // Tablets, foldables unfolded (> 840dp)
-}
-
-/**
- * Determine screen size class from screen width.
- */
-fun getScreenSizeClass(screenWidthDp: Int): ScreenSizeClass {
-    return when {
-        screenWidthDp < 600 -> ScreenSizeClass.COMPACT
-        screenWidthDp < 840 -> ScreenSizeClass.MEDIUM
-        else -> ScreenSizeClass.EXPANDED
-    }
-}
-
-/**
- * Remember the current screen size class, recomputing only when configuration changes.
- */
-@Composable
-fun rememberScreenSizeClass(): ScreenSizeClass {
-    val configuration = LocalConfiguration.current
-    return remember(configuration.screenWidthDp) {
-        getScreenSizeClass(configuration.screenWidthDp)
-    }
-}
-
-/**
  * Get hero height based on screen size and orientation.
  */
 fun getHeroHeight(screenWidthDp: Int, screenHeightDp: Int): Dp {

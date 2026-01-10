@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
 
 /**
@@ -35,24 +36,6 @@ object MobileRowColors {
     val Movies = Color(0xFF8B5CF6) // Purple
     val Shows = Color(0xFF10B981) // Emerald
     val Default = Color(0xFF6B7280) // Gray
-}
-
-/**
- * Get horizontal padding based on screen size.
- */
-fun getHorizontalPadding(screenSizeClass: ScreenSizeClass): Dp = when (screenSizeClass) {
-    ScreenSizeClass.COMPACT -> 16.dp
-    ScreenSizeClass.MEDIUM -> 24.dp
-    ScreenSizeClass.EXPANDED -> 32.dp
-}
-
-/**
- * Get card spacing based on screen size.
- */
-fun getCardSpacing(screenSizeClass: ScreenSizeClass): Dp = when (screenSizeClass) {
-    ScreenSizeClass.COMPACT -> 12.dp
-    ScreenSizeClass.MEDIUM -> 16.dp
-    ScreenSizeClass.EXPANDED -> 20.dp
 }
 
 /**
@@ -108,7 +91,7 @@ fun MobileContentRow(
             items(items, key = { it.id }) { item ->
                 if (isWideCard) {
                     val imageUrl = when {
-                        item.type == "Episode" -> {
+                        item.isEpisode -> {
                             jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 500)
                         }
                         !item.backdropImageTags.isNullOrEmpty() -> {
@@ -127,7 +110,7 @@ fun MobileContentRow(
                     )
                 } else {
                     // For portrait cards: use series poster for episodes
-                    val imageUrl = if (item.type == "Episode" && item.seriesId != null) {
+                    val imageUrl = if (item.isEpisode && item.seriesId != null) {
                         jellyfinClient.getPrimaryImageUrl(item.seriesId!!, null)
                     } else {
                         jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
