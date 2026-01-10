@@ -767,17 +767,21 @@ class JellyfinClient(
     
     /**
      * Mark item as played/unplayed.
+     * Uses /UserPlayedItems/{itemId} endpoint per API spec.
      */
     suspend fun setPlayed(itemId: String, played: Boolean): Result<Unit> = runCatching {
-        if (played) {
-            httpClient.post("$baseUrl/Users/$userId/PlayedItems/$itemId") {
+        val response = if (played) {
+            httpClient.post("$baseUrl/UserPlayedItems/$itemId") {
                 header("Authorization", authHeader())
+                parameter("userId", userId)
             }
         } else {
-            httpClient.delete("$baseUrl/Users/$userId/PlayedItems/$itemId") {
+            httpClient.delete("$baseUrl/UserPlayedItems/$itemId") {
                 header("Authorization", authHeader())
+                parameter("userId", userId)
             }
         }
+        android.util.Log.d("JellyfinClient", "setPlayed: itemId=$itemId played=$played status=${response.status}")
         // Invalidate relevant caches
         invalidateCache("item:$itemId", "resume", "nextup")
     }
@@ -855,16 +859,19 @@ class JellyfinClient(
         positionTicks: Long = 0
     ): Result<Unit> = runCatching {
         currentPlaySessionId = "${itemId}_${System.currentTimeMillis()}"
-        httpClient.post("$baseUrl/Sessions/Playing") {
+        val response = httpClient.post("$baseUrl/Sessions/Playing") {
             header("Authorization", authHeader())
             setBody(mapOf(
                 "ItemId" to itemId,
                 "MediaSourceId" to (mediaSourceId ?: itemId),
                 "PositionTicks" to positionTicks,
                 "PlayMethod" to "DirectStream",
-                "PlaySessionId" to currentPlaySessionId
+                "PlaySessionId" to currentPlaySessionId,
+                "CanSeek" to true,
+                "IsPaused" to false
             ))
         }
+        android.util.Log.d("JellyfinClient", "reportPlaybackStart: ${response.status}")
         // Invalidate resume cache since playback state changed
         invalidateCache("resume")
     }
@@ -875,7 +882,7 @@ class JellyfinClient(
         isPaused: Boolean = false,
         mediaSourceId: String? = null
     ): Result<Unit> = runCatching {
-        httpClient.post("$baseUrl/Sessions/Playing/Progress") {
+        val response = httpClient.post("$baseUrl/Sessions/Playing/Progress") {
             header("Authorization", authHeader())
             setBody(mapOf(
                 "ItemId" to itemId,
@@ -884,9 +891,11 @@ class JellyfinClient(
                 "IsPaused" to isPaused,
                 "PlayMethod" to "DirectStream",
                 "PlaySessionId" to currentPlaySessionId,
+                "CanSeek" to true,
                 "EventName" to if (isPaused) "Pause" else "TimeUpdate"
             ))
         }
+        android.util.Log.d("JellyfinClient", "reportPlaybackProgress: pos=${positionTicks/10_000}ms paused=$isPaused status=${response.status}")
     }
     
     suspend fun reportPlaybackStopped(
@@ -894,7 +903,7 @@ class JellyfinClient(
         positionTicks: Long,
         mediaSourceId: String? = null
     ): Result<Unit> = runCatching {
-        httpClient.post("$baseUrl/Sessions/Playing/Stopped") {
+        val response = httpClient.post("$baseUrl/Sessions/Playing/Stopped") {
             header("Authorization", authHeader())
             setBody(mapOf(
                 "ItemId" to itemId,
@@ -903,6 +912,7 @@ class JellyfinClient(
                 "PlaySessionId" to currentPlaySessionId
             ))
         }
+        android.util.Log.d("JellyfinClient", "reportPlaybackStopped: pos=${positionTicks/10_000}ms status=${response.status}")
         currentPlaySessionId = null
         // Invalidate caches that depend on playback state
         invalidateCache("resume", "nextup", "item:$itemId")

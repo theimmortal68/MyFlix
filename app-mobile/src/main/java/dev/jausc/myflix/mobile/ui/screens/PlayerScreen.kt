@@ -33,9 +33,11 @@ import dev.jausc.myflix.core.player.PlaybackState
 import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Player timing and conversion constants */
 private object PlayerConstants {
@@ -145,14 +147,27 @@ fun PlayerScreen(
             showControls = false
         }
     }
-    
-    // Cleanup - report playback stopped
+
+    // Detect video completion (95% watched = mark as played)
+    LaunchedEffect(playbackState.position, playbackState.duration) {
+        if (playbackState.duration > 0 && playbackStarted) {
+            val watchedPercent = playbackState.position.toFloat() / playbackState.duration.toFloat()
+            if (watchedPercent >= 0.95f) {
+                // Mark as played when 95% watched
+                jellyfinClient.setPlayed(itemId, true)
+            }
+        }
+    }
+
+    // Cleanup - report playback stopped (use NonCancellable to ensure it completes)
     DisposableEffect(Unit) {
         onDispose {
-            // Report stopped with final position
+            // Report stopped with final position - must complete even if scope is cancelled
             scope.launch {
-                val positionTicks = playerController.state.value.position * PlayerConstants.TICKS_PER_MS
-                jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
+                withContext(NonCancellable) {
+                    val positionTicks = playerController.state.value.position * PlayerConstants.TICKS_PER_MS
+                    jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
+                }
             }
             playerController.stop()
             playerController.release()
