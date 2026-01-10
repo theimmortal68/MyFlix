@@ -10,26 +10,35 @@ A modular Jellyfin client for Android with separate TV and Mobile apps.
 - Netflix-style home screen with hero section and content rows
 - D-pad navigation with focus management
 - Dynamic backdrop with color extraction
-- Continue Watching, Next Up, and Latest content rows
+- Continue Watching, Next Up, and Recently Added rows
 - Detail screen with season/episode browsing
-- Video player with ExoPlayer and MPV support
+- Video player with ExoPlayer (Dolby Vision) and MPV (HDR10/SDR)
 - Quick Connect and QR code authentication
 - Server discovery via UDP broadcast
+- Playback progress reporting to Jellyfin
 
 ### Mobile App
-- Responsive home screen with swipeable hero carousel
+- Responsive home screen with auto-rotating hero carousel
 - Dropdown navigation menu
 - Adaptive layout for phones, foldables, and tablets
 - Progress indicators on continue watching cards
+- Episode badges on wide cards
 - Touch-optimized media cards
-- PlaybackService for background playback
+- PlaybackService for background/foreground playback
+- Playback progress reporting to Jellyfin
+
+### Shared Features
+- Jellyfin API client with caching
+- Automatic server discovery
+- Resume playback from last position
+- Real-time playback state sync
 
 ## Requirements
 
 - Android Studio Ladybug (2024.2.1) or newer
 - JDK 21
-- Android SDK 35
-- Min SDK: 31 (Android 12)
+- Android SDK 36 (compile/target)
+- Min SDK: 25 (Android 7.1)
 
 ## Getting Started
 
@@ -73,13 +82,15 @@ MyFlix/
 
 | Component | Technology |
 |-----------|------------|
+| Language | Kotlin 2.3 |
 | UI (TV) | Jetpack Compose TV Material 3 |
 | UI (Mobile) | Jetpack Compose Material 3 |
-| Networking | Ktor (OkHttp engine) |
+| Networking | Ktor 3.3 (OkHttp engine) |
 | Serialization | kotlinx.serialization |
-| Image Loading | Coil 3 |
-| Video Player | Media3 ExoPlayer + MPV |
+| Image Loading | Coil 3.3 |
+| Video Player | Media3 ExoPlayer 1.9 + libmpv |
 | Navigation | Jetpack Navigation Compose |
+| Build | Gradle 8.13, AGP 8.13 |
 
 ## Documentation
 
