@@ -17,6 +17,6 @@ buildscript {
         set("tvComposeVersion", "1.1.0-alpha01")
         set("ktorVersion", "3.3.0")
         set("coilVersion", "3.3.0")
-        set("media3Version", "1.8.0")
+        set("media3Version", "1.9.0")
     }
 }
