@@ -119,46 +119,62 @@ fun LoginScreen(
         }
 
         LoginStep.AUTH_CHOICE -> {
-            AuthChoiceScreen(
-                server = connectedServer!!,
-                onQuickConnect = {
-                    currentStep = LoginStep.QUICK_CONNECT
-                },
-                onManualLogin = {
-                    currentStep = LoginStep.MANUAL_LOGIN
-                },
-                onChangeServer = {
-                    connectedServer = null
-                    currentStep = LoginStep.SERVER_DISCOVERY
-                }
-            )
+            val server = connectedServer
+            if (server == null) {
+                // Guard against invalid state - return to discovery
+                LaunchedEffect(Unit) { currentStep = LoginStep.SERVER_DISCOVERY }
+            } else {
+                AuthChoiceScreen(
+                    server = server,
+                    onQuickConnect = {
+                        currentStep = LoginStep.QUICK_CONNECT
+                    },
+                    onManualLogin = {
+                        currentStep = LoginStep.MANUAL_LOGIN
+                    },
+                    onChangeServer = {
+                        connectedServer = null
+                        currentStep = LoginStep.SERVER_DISCOVERY
+                    }
+                )
+            }
         }
 
         LoginStep.QUICK_CONNECT -> {
-            QuickConnectScreen(
-                server = connectedServer!!,
-                jellyfinClient = jellyfinClient,
-                appState = appState,
-                onLoginSuccess = onLoginSuccess,
-                onUsePassword = {
-                    currentStep = LoginStep.MANUAL_LOGIN
-                },
-                onBack = {
-                    currentStep = LoginStep.AUTH_CHOICE
-                }
-            )
+            val server = connectedServer
+            if (server == null) {
+                LaunchedEffect(Unit) { currentStep = LoginStep.SERVER_DISCOVERY }
+            } else {
+                QuickConnectScreen(
+                    server = server,
+                    jellyfinClient = jellyfinClient,
+                    appState = appState,
+                    onLoginSuccess = onLoginSuccess,
+                    onUsePassword = {
+                        currentStep = LoginStep.MANUAL_LOGIN
+                    },
+                    onBack = {
+                        currentStep = LoginStep.AUTH_CHOICE
+                    }
+                )
+            }
         }
 
         LoginStep.MANUAL_LOGIN -> {
-            ManualLoginScreen(
-                server = connectedServer!!,
-                jellyfinClient = jellyfinClient,
-                appState = appState,
-                onLoginSuccess = onLoginSuccess,
-                onBack = {
-                    currentStep = LoginStep.AUTH_CHOICE
-                }
-            )
+            val server = connectedServer
+            if (server == null) {
+                LaunchedEffect(Unit) { currentStep = LoginStep.SERVER_DISCOVERY }
+            } else {
+                ManualLoginScreen(
+                    server = server,
+                    jellyfinClient = jellyfinClient,
+                    appState = appState,
+                    onLoginSuccess = onLoginSuccess,
+                    onBack = {
+                        currentStep = LoginStep.AUTH_CHOICE
+                    }
+                )
+            }
         }
     }
 }

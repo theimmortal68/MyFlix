@@ -81,7 +81,8 @@ fun DetailScreen(
             )
         }
     ) { padding ->
-        if (isLoading || item == null) {
+        val currentItem = item
+        if (isLoading || currentItem == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -91,7 +92,6 @@ fun DetailScreen(
                 CircularProgressIndicator()
             }
         } else {
-            val currentItem = item!!
 
             LazyColumn(
                 modifier = Modifier
