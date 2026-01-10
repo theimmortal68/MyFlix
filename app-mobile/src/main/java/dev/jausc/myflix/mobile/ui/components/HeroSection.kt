@@ -51,24 +51,51 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.delay
 
 /**
+ * Default values for hero section layout and behavior.
+ */
+object HeroSectionDefaults {
+    /** Auto-rotate interval between hero items in milliseconds */
+    const val AUTO_ROTATE_INTERVAL_MS = 8000L
+
+    /** Portrait height ratios by screen size class */
+    const val PORTRAIT_HEIGHT_RATIO_COMPACT = 0.33f
+    const val PORTRAIT_HEIGHT_RATIO_MEDIUM = 0.45f
+    const val PORTRAIT_HEIGHT_RATIO_EXPANDED = 0.40f
+
+    /** Landscape heights by screen size class */
+    val LANDSCAPE_HEIGHT_COMPACT = 280.dp
+    val LANDSCAPE_HEIGHT_MEDIUM = 320.dp
+    val LANDSCAPE_HEIGHT_EXPANDED = 360.dp
+
+    /** Gradient overlay height for text readability */
+    val GRADIENT_HEIGHT = 200.dp
+
+    /** Horizontal image bias for compact screens (shifts image left) */
+    const val IMAGE_HORIZONTAL_BIAS_COMPACT = -0.30f
+
+    /** Vertical image bias (shows more of top) */
+    const val IMAGE_VERTICAL_BIAS = -0.7f
+}
+
+/**
  * Get hero height based on screen size and orientation.
  */
 fun getHeroHeight(screenWidthDp: Int, screenHeightDp: Int): Dp {
     val sizeClass = getScreenSizeClass(screenWidthDp)
     val isLandscape = screenWidthDp > screenHeightDp
-    
+
     return when (sizeClass) {
         ScreenSizeClass.COMPACT -> {
-            // Standard phones: ~33% of screen height in portrait (was 50%)
-            if (isLandscape) 280.dp else (screenHeightDp * 0.33).dp
+            if (isLandscape) HeroSectionDefaults.LANDSCAPE_HEIGHT_COMPACT
+            else (screenHeightDp * HeroSectionDefaults.PORTRAIT_HEIGHT_RATIO_COMPACT).dp
         }
         ScreenSizeClass.MEDIUM -> {
-            // Foldables/large phones: ~45% of screen height (unchanged)
-            if (isLandscape) 320.dp else (screenHeightDp * 0.45).dp
+            if (isLandscape) HeroSectionDefaults.LANDSCAPE_HEIGHT_MEDIUM
+            else (screenHeightDp * HeroSectionDefaults.PORTRAIT_HEIGHT_RATIO_MEDIUM).dp
         }
         ScreenSizeClass.EXPANDED -> {
-            // Tablets: ~40% of screen height
-            if (isLandscape) 360.dp else (screenHeightDp * 0.40).dp
+            if (isLandscape) HeroSectionDefaults.LANDSCAPE_HEIGHT_EXPANDED
+            else (screenHeightDp * HeroSectionDefaults.PORTRAIT_HEIGHT_RATIO_EXPANDED).dp
         }
     }
 }
@@ -79,8 +106,8 @@ fun getHeroHeight(screenWidthDp: Int, screenHeightDp: Int): Dp {
  */
 fun getHeroImageHorizontalBias(screenSizeClass: ScreenSizeClass): Float {
     return when (screenSizeClass) {
-        ScreenSizeClass.COMPACT -> -0.30f  // Shift left ~60dp equivalent
-        else -> 0f  // Centered for foldables/tablets
+        ScreenSizeClass.COMPACT -> HeroSectionDefaults.IMAGE_HORIZONTAL_BIAS_COMPACT
+        else -> 0f
     }
 }
 
@@ -102,7 +129,7 @@ fun MobileHeroSection(
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    autoRotateIntervalMs: Long = 8000L
+    autoRotateIntervalMs: Long = HeroSectionDefaults.AUTO_ROTATE_INTERVAL_MS
 ) {
     if (featuredItems.isEmpty()) return
 
@@ -245,8 +272,8 @@ private fun HeroCard(
             contentScale = ContentScale.Crop,
             // Align towards top of image and shift left on phones
             alignment = BiasAlignment(
-                horizontalBias = horizontalBias,  // Shift left on compact phones
-                verticalBias = -0.7f              // Show more of top
+                horizontalBias = horizontalBias,
+                verticalBias = HeroSectionDefaults.IMAGE_VERTICAL_BIAS
             ),
             modifier = Modifier.fillMaxSize()
         )
@@ -255,7 +282,7 @@ private fun HeroCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(HeroSectionDefaults.GRADIENT_HEIGHT)
                 .align(Alignment.BottomCenter)
                 .background(
                     brush = Brush.verticalGradient(
