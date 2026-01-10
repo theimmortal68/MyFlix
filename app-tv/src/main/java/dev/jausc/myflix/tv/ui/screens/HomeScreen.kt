@@ -44,14 +44,18 @@ import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
+import dev.jausc.myflix.tv.ui.components.HomeDialogActions
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBar
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
-import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.WideMediaCard
+import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
@@ -98,7 +102,32 @@ fun HomeScreen(
     
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
-    
+
+    // Long-press dialog state
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+
+    // Dialog actions
+    val dialogActions = remember(scope) {
+        HomeDialogActions(
+            onGoTo = onItemClick,
+            onPlay = onPlayClick,
+            onMarkWatched = { itemId, watched ->
+                scope.launch {
+                    jellyfinClient.setPlayed(itemId, watched)
+                    // Refresh content to update UI
+                    refreshTrigger++
+                }
+            },
+            onToggleFavorite = { itemId, favorite ->
+                scope.launch {
+                    jellyfinClient.setFavorite(itemId, favorite)
+                    refreshTrigger++
+                }
+            },
+            onGoToSeries = { seriesId -> onItemClick(seriesId) }
+        )
+    }
+
     /**
      * Load or refresh all home screen content.
      */
@@ -289,6 +318,13 @@ fun HomeScreen(
                         jellyfinClient = jellyfinClient,
                         onItemClick = onItemClick,
                         onPlayClick = onPlayClick,
+                        onItemLongClick = { item ->
+                            dialogParams = DialogParams(
+                                title = item.name,
+                                items = buildHomeDialogItems(item, dialogActions),
+                                fromLongClick = true
+                            )
+                        },
                         hideWatchedFromRecent = hideWatchedFromRecent,
                         heroPlayFocusRequester = heroPlayFocusRequester,
                         firstRowFocusRequester = firstRowFocusRequester,
@@ -303,6 +339,14 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    // Long-press context menu dialog
+    dialogParams?.let { params ->
+        DialogPopup(
+            params = params,
+            onDismissRequest = { dialogParams = null }
+        )
     }
 }
 
@@ -333,6 +377,7 @@ private fun HomeContent(
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
+    onItemLongClick: (JellyfinItem) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     firstRowFocusRequester: FocusRequester = remember { FocusRequester() },
@@ -523,6 +568,7 @@ private fun HomeContent(
                     accentColor = rowData.accentColor,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
+                    onItemLongClick = onItemLongClick,
                     onCardFocused = { cardIndex, item ->
                         previewItem = item
                         position = RowColumn(rowIndex, cardIndex)
@@ -565,6 +611,7 @@ private fun ItemRow(
     accentColor: Color,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
+    onItemLongClick: (JellyfinItem) -> Unit,
     onCardFocused: (Int, JellyfinItem) -> Unit,
     firstCardFocusRequester: FocusRequester?,
     upFocusRequester: FocusRequester? = null, // For first row: UP goes to hero
@@ -655,6 +702,7 @@ private fun ItemRow(
                         imageUrl = imageUrl,
                         onClick = { onItemClick(item.id) },
                         showLabel = false,
+                        onLongClick = { onItemLongClick(item) },
                         modifier = focusModifier
                     )
                 } else {
@@ -670,6 +718,7 @@ private fun ItemRow(
                         imageUrl = imageUrl,
                         onClick = { onItemClick(item.id) },
                         showLabel = false,
+                        onLongClick = { onItemLongClick(item) },
                         modifier = focusModifier
                     )
                 }
