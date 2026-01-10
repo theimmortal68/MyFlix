@@ -1,13 +1,20 @@
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,7 +85,8 @@ fun HomeScreen(
     var recentEpisodes by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var featuredItems by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(MobileNavItem.HOME) }
 
@@ -87,50 +95,55 @@ fun HomeScreen(
      */
     suspend fun loadContent(showLoading: Boolean = false) {
         if (showLoading) isLoading = true
-        
+        errorMessage = null
+
         // Clear cache to get fresh data
         jellyfinClient.clearCache()
-        
-        // Get libraries first
-        jellyfinClient.getLibraries().onSuccess { libs ->
-            libraries = libs
 
-            // Find libraries using shared finder
-            val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
-            val showsLibrary = LibraryFinder.findShowsLibrary(libs)
-            
-            // Get latest movies
-            moviesLibrary?.let { lib ->
-                jellyfinClient.getLatestMovies(lib.id, limit = 12).onSuccess { items ->
-                    recentMovies = items
+        // Get libraries first
+        jellyfinClient.getLibraries()
+            .onSuccess { libs ->
+                libraries = libs
+
+                // Find libraries using shared finder
+                val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
+                val showsLibrary = LibraryFinder.findShowsLibrary(libs)
+
+                // Get latest movies
+                moviesLibrary?.let { lib ->
+                    jellyfinClient.getLatestMovies(lib.id, limit = 12).onSuccess { items ->
+                        recentMovies = items
+                    }
+                }
+
+                // Get latest series
+                showsLibrary?.let { lib ->
+                    jellyfinClient.getLatestSeries(lib.id, limit = 12).onSuccess { items ->
+                        recentShows = items
+                    }
+                }
+
+                // Get latest episodes
+                showsLibrary?.let { lib ->
+                    jellyfinClient.getLatestEpisodes(lib.id, limit = 12).onSuccess { items ->
+                        recentEpisodes = items
+                    }
                 }
             }
-            
-            // Get latest series
-            showsLibrary?.let { lib ->
-                jellyfinClient.getLatestSeries(lib.id, limit = 12).onSuccess { items ->
-                    recentShows = items
-                }
+            .onFailure { e ->
+                errorMessage = "Failed to load libraries: ${e.message ?: "Unknown error"}"
             }
-            
-            // Get latest episodes
-            showsLibrary?.let { lib ->
-                jellyfinClient.getLatestEpisodes(lib.id, limit = 12).onSuccess { items ->
-                    recentEpisodes = items
-                }
-            }
-        }
-        
+
         // Get Next Up
-        jellyfinClient.getNextUp(limit = 12).onSuccess { items ->
-            nextUp = items
-        }
-        
+        jellyfinClient.getNextUp(limit = 12)
+            .onSuccess { items -> nextUp = items }
+            .onFailure { /* Non-critical, continue */ }
+
         // Get Continue Watching
-        jellyfinClient.getContinueWatching(limit = 12).onSuccess { items ->
-            continueWatching = items
-        }
-        
+        jellyfinClient.getContinueWatching(limit = 12)
+            .onSuccess { items -> continueWatching = items }
+            .onFailure { /* Non-critical, continue */ }
+
         // Build featured items for hero section using shared logic
         featuredItems = HeroContentBuilder.buildFeaturedItems(
             continueWatching = continueWatching,
@@ -139,7 +152,7 @@ fun HomeScreen(
             recentShows = recentShows,
             config = HeroContentBuilder.mobileConfig
         )
-        
+
         isLoading = false
     }
 
@@ -240,6 +253,32 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
+                }
+            } else if (errorMessage != null && featuredItems.isEmpty() && rows.isEmpty()) {
+                // Error state with retry
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Text(
+                            text = errorMessage ?: "Something went wrong",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                scope.launch { loadContent(showLoading = true) }
+                            }
+                        ) {
+                            Text("Retry")
+                        }
+                    }
                 }
             } else {
                 // Main content - keyed to configuration for responsive updates

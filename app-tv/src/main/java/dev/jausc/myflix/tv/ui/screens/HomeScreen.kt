@@ -3,7 +3,18 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -26,6 +37,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.HeroContentBuilder
@@ -43,6 +55,7 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Background polling interval in milliseconds */
@@ -66,6 +79,8 @@ fun HomeScreen(
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
+    val scope = rememberCoroutineScope()
+
     // Content state
     var nextUp by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var continueWatching by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
@@ -75,7 +90,8 @@ fun HomeScreen(
     var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var featuredItems by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     // Refresh trigger - increment to force reload
     var refreshTrigger by remember { mutableStateOf(0) }
     
@@ -87,50 +103,55 @@ fun HomeScreen(
      */
     suspend fun loadContent(showLoading: Boolean = false) {
         if (showLoading) isLoading = true
-        
+        errorMessage = null
+
         // Clear cache to get fresh data
         jellyfinClient.clearCache()
-        
-        // Get libraries first to identify Movies and TV Shows libraries
-        jellyfinClient.getLibraries().onSuccess { libs ->
-            libraries = libs
 
-            // Find libraries using shared finder
-            val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
-            val showsLibrary = LibraryFinder.findShowsLibrary(libs)
-            
-            // Get latest movies (excludes collections)
-            moviesLibrary?.let { lib ->
-                jellyfinClient.getLatestMovies(lib.id, limit = 12).onSuccess { items ->
-                    recentMovies = items
+        // Get libraries first to identify Movies and TV Shows libraries
+        jellyfinClient.getLibraries()
+            .onSuccess { libs ->
+                libraries = libs
+
+                // Find libraries using shared finder
+                val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
+                val showsLibrary = LibraryFinder.findShowsLibrary(libs)
+
+                // Get latest movies (excludes collections)
+                moviesLibrary?.let { lib ->
+                    jellyfinClient.getLatestMovies(lib.id, limit = 12).onSuccess { items ->
+                        recentMovies = items
+                    }
+                }
+
+                // Get latest series (new shows added, not episodes)
+                showsLibrary?.let { lib ->
+                    jellyfinClient.getLatestSeries(lib.id, limit = 12).onSuccess { items ->
+                        recentShows = items
+                    }
+                }
+
+                // Get latest episodes
+                showsLibrary?.let { lib ->
+                    jellyfinClient.getLatestEpisodes(lib.id, limit = 12).onSuccess { items ->
+                        recentEpisodes = items
+                    }
                 }
             }
-            
-            // Get latest series (new shows added, not episodes)
-            showsLibrary?.let { lib ->
-                jellyfinClient.getLatestSeries(lib.id, limit = 12).onSuccess { items ->
-                    recentShows = items
-                }
+            .onFailure { e ->
+                errorMessage = "Failed to load libraries: ${e.message ?: "Unknown error"}"
             }
-            
-            // Get latest episodes
-            showsLibrary?.let { lib ->
-                jellyfinClient.getLatestEpisodes(lib.id, limit = 12).onSuccess { items ->
-                    recentEpisodes = items
-                }
-            }
-        }
-        
+
         // Get Next Up (episodes in series user is watching)
-        jellyfinClient.getNextUp(limit = 12).onSuccess { items ->
-            nextUp = items
-        }
-        
+        jellyfinClient.getNextUp(limit = 12)
+            .onSuccess { items -> nextUp = items }
+            .onFailure { /* Non-critical, continue */ }
+
         // Get Continue Watching (in-progress items)
-        jellyfinClient.getContinueWatching(limit = 12).onSuccess { items ->
-            continueWatching = items
-        }
-        
+        jellyfinClient.getContinueWatching(limit = 12)
+            .onSuccess { items -> continueWatching = items }
+            .onFailure { /* Non-critical, continue */ }
+
         // Build featured items for hero section using shared logic
         featuredItems = HeroContentBuilder.buildFeaturedItems(
             continueWatching = continueWatching,
@@ -154,7 +175,7 @@ fun HomeScreen(
     
     // Background polling for updates
     LaunchedEffect(Unit) {
-        while (true) {
+        while (isActive) {
             delay(POLL_INTERVAL_MS)
             loadContent(showLoading = false)
         }
@@ -227,10 +248,33 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // Show loading until we have hero content
-            if (!contentReady) {
+            if (!contentReady && errorMessage == null) {
                 TvLoadingIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
+            } else if (errorMessage != null && featuredItems.isEmpty()) {
+                // Error state with retry
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp)
+                ) {
+                    Text(
+                        text = errorMessage ?: "Something went wrong",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TvColors.Error
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            scope.launch { loadContent(showLoading = true) }
+                        }
+                    ) {
+                        Text("Retry")
+                    }
+                }
             } else {
                 // Key forces complete recomposition when content changes
                 key(featuredItems.firstOrNull()?.id) {
