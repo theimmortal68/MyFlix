@@ -44,10 +44,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MyFlixMobileApp() {
     val context = LocalContext.current
-    
+
     val jellyfinClient = remember { JellyfinClient() }
     val appState = remember { AppState(context, jellyfinClient) }
-    
+    val mobilePreferences = remember { MobilePreferences.getInstance(context) }
+
+    // Collect preferences
+    val useMpvPlayer by mobilePreferences.useMpvPlayer.collectAsState()
+
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var splashFinished by remember { mutableStateOf(false) }
@@ -109,7 +113,7 @@ fun MyFlixMobileApp() {
                     navController.navigate("search")
                 },
                 onSettingsClick = {
-                    // TODO: Navigate to settings when implemented
+                    navController.navigate("settings")
                 }
             )
         }
@@ -120,6 +124,13 @@ fun MyFlixMobileApp() {
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                preferences = mobilePreferences,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -168,6 +179,7 @@ fun MyFlixMobileApp() {
             PlayerScreen(
                 itemId = itemId,
                 jellyfinClient = jellyfinClient,
+                useMpvPlayer = useMpvPlayer,
                 onBack = { navController.popBackStack() }
             )
         }
