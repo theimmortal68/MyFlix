@@ -156,7 +156,7 @@ fun DetailScreen(
                                 onClick = onPlayClick,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Play")
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Play")
                             }

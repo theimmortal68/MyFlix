@@ -34,6 +34,7 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -103,7 +104,7 @@ fun PlayerScreen(
     // Report progress periodically (every 10 seconds while playing)
     LaunchedEffect(playbackStarted) {
         if (playbackStarted) {
-            while (true) {
+            while (isActive) {
                 delay(10_000) // Report every 10 seconds
                 if (playbackState.isPlaying && !playbackState.isPaused) {
                     val positionTicks = playbackState.position * 10_000

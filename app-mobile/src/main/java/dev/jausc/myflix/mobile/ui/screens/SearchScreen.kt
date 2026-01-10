@@ -46,7 +46,7 @@ fun SearchScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null)
+                            Icon(Icons.Default.Search, contentDescription = "Search")
                         },
                         trailingIcon = {
                             if (query.isNotEmpty()) {
