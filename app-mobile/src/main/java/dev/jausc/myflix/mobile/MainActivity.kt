@@ -3,6 +3,7 @@ package dev.jausc.myflix.mobile
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,6 +23,11 @@ import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Enable edge-to-edge display so content can draw behind system bars
+        // This allows us to handle status bar insets manually for the overlay effect
+        enableEdgeToEdge()
+        
         setContent {
             MyFlixMobileTheme {
                 Surface(
@@ -96,8 +102,14 @@ fun MyFlixMobileApp() {
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
+                onPlayClick = { itemId ->
+                    navController.navigate("player/$itemId")
+                },
                 onSearchClick = {
                     navController.navigate("search")
+                },
+                onSettingsClick = {
+                    // TODO: Navigate to settings when implemented
                 }
             )
         }

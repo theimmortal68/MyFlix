@@ -28,8 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
@@ -141,41 +141,14 @@ fun HomeScreen(
             continueWatching = items
         }
         
-        // Build featured items for hero section
-        val featured = mutableListOf<JellyfinItem>()
-        
-        // Add items with backdrops from continue watching
-        featured.addAll(
-            continueWatching.filter { item ->
-                !item.backdropImageTags.isNullOrEmpty() || 
-                (item.isEpisode && item.seriesId != null)
-            }.take(3)
+        // Build featured items for hero section using shared logic
+        featuredItems = HeroContentBuilder.buildFeaturedItems(
+            continueWatching = continueWatching,
+            nextUp = nextUp,
+            recentMovies = recentMovies,
+            recentShows = recentShows,
+            config = HeroContentBuilder.defaultConfig
         )
-        
-        // Add next up items
-        featured.addAll(
-            nextUp.filter { item -> 
-                featured.none { it.id == item.id }
-            }.take(2)
-        )
-        
-        // Add recent movies with backdrops
-        featured.addAll(
-            recentMovies.filter { item ->
-                !item.backdropImageTags.isNullOrEmpty() &&
-                featured.none { it.id == item.id }
-            }.take(3)
-        )
-        
-        // Add recent shows with backdrops
-        featured.addAll(
-            recentShows.filter { item ->
-                !item.backdropImageTags.isNullOrEmpty() &&
-                featured.none { it.id == item.id }
-            }.take(2)
-        )
-        
-        featuredItems = featured.take(10)
         isLoading = false
     }
     
