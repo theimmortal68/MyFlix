@@ -30,6 +30,7 @@ import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,9 +82,6 @@ fun PlayerScreen(
             // Initialize player with content-aware backend selection
             // DV content → ExoPlayer, everything else → MPV
             playerReady = playerController.initializeForMedia(mediaInfo)
-            
-            android.util.Log.d("PlayerScreen", 
-                "Item: ${loadedItem.name}, DV: ${loadedItem.isDolbyVision}, Backend: ${playerController.backend}")
         }
         isLoading = false
         focusRequester.requestFocus()
@@ -95,14 +93,13 @@ fun PlayerScreen(
             playbackStarted = true
             val positionTicks = playbackState.position * 10_000 // ms to ticks
             jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
-            android.util.Log.d("PlayerScreen", "Reported playback start at ${playbackState.position}ms")
         }
     }
     
     // Report progress periodically (every 10 seconds while playing)
     LaunchedEffect(playbackStarted) {
         if (playbackStarted) {
-            while (true) {
+            while (isActive) {
                 delay(10_000) // Report every 10 seconds
                 if (playbackState.isPlaying && !playbackState.isPaused) {
                     val positionTicks = playbackState.position * 10_000
@@ -111,7 +108,6 @@ fun PlayerScreen(
                         positionTicks = positionTicks,
                         isPaused = false
                     )
-                    android.util.Log.d("PlayerScreen", "Reported progress at ${playbackState.position}ms")
                 }
             }
         }
@@ -144,7 +140,6 @@ fun PlayerScreen(
             scope.launch {
                 val positionTicks = playerController.state.value.position * 10_000
                 jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
-                android.util.Log.d("PlayerScreen", "Reported playback stopped at ${playerController.state.value.position}ms")
             }
             playerController.stop()
             playerController.release()
