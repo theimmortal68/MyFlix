@@ -72,11 +72,18 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
     }
     
     /**
-     * Custom RenderersFactory that uses FFmpeg for audio decoding
-     * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, etc.
+     * Custom RenderersFactory that uses FFmpeg for audio and video decoding
+     * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, HEVC, etc.
      */
     private class FfmpegRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
-        
+
+        init {
+            // Enable decoder fallback for when hardware decoders fail
+            setEnableDecoderFallback(true)
+            // Use FFmpeg extension as fallback when MediaCodec fails
+            setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
+        }
+
         override fun buildAudioRenderers(
             context: Context,
             extensionRendererMode: Int,
@@ -95,7 +102,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to add FFmpeg renderer", e)
             }
-            
+
             // Then add platform decoders as fallback
             super.buildAudioRenderers(
                 context,
@@ -134,24 +141,28 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
             Log.d(TAG, "FFmpeg available: $ffmpegAvailable")
             Log.d(TAG, "Passthrough capabilities: $passthroughFormats")
             
-            // Configure track selector
+            // Configure track selector with fallback options
             val trackSelector = DefaultTrackSelector(context).apply {
                 parameters = buildUponParameters()
                     .setAllowAudioMixedChannelCountAdaptiveness(true)
                     .setAllowAudioMixedMimeTypeAdaptiveness(true)
+                    // Allow trying decoders even when they report format as unsupported
+                    // This helps with emulators and devices with limited hardware decoders
+                    .setExceedVideoConstraintsIfNecessary(true)
+                    .setExceedRendererCapabilitiesIfNecessary(true)
                     .build()
             }
             
-            // Use FFmpeg renderers factory for DTS/TrueHD software decode
+            // Use FFmpeg renderers factory for DTS/TrueHD/HEVC software decode
             // TODO: Add option to use DefaultRenderersFactory with passthrough
             //       for users with AVR that can decode DTS natively
             val renderersFactory = if (ffmpegAvailable) {
                 FfmpegRenderersFactory(context)
-                    .setEnableDecoderFallback(true)
             } else {
                 Log.w(TAG, "FFmpeg not available, using default renderers")
                 DefaultRenderersFactory(context)
                     .setEnableDecoderFallback(true)
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             }
             
             player = ExoPlayer.Builder(context, renderersFactory)

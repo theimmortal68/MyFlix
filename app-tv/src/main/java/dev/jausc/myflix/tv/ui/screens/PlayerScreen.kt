@@ -29,11 +29,8 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun PlayerScreen(
@@ -43,7 +40,6 @@ fun PlayerScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var item by remember { mutableStateOf<JellyfinItem?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -147,15 +143,13 @@ fun PlayerScreen(
         }
     }
 
-    // Cleanup - report playback stopped (use NonCancellable to ensure it completes)
+    // Cleanup - report playback stopped (use runBlocking to ensure it completes)
     DisposableEffect(Unit) {
         onDispose {
-            // Report stopped with final position - must complete even if scope is cancelled
-            scope.launch {
-                withContext(NonCancellable) {
-                    val positionTicks = playerController.state.value.position * 10_000
-                    jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
-                }
+            // Report stopped with final position - MUST complete before returning
+            val positionTicks = playerController.state.value.position * 10_000
+            kotlinx.coroutines.runBlocking {
+                jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
             }
             playerController.stop()
             playerController.release()

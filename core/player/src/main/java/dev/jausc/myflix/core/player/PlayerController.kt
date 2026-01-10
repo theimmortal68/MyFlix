@@ -6,9 +6,14 @@ import android.util.Log
 import android.view.Display
 import android.view.Surface
 import android.view.WindowManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * PlayerController - manages player backend selection and provides unified interface
@@ -62,15 +67,26 @@ class PlayerController(
     private var _backend: PlayerBackend = PlayerBackend.EXOPLAYER
     private var currentMediaInfo: MediaInfo? = null
     private val isDvCapable: Boolean by lazy { isDeviceDolbyVisionCapable(context) }
-    
-    // Default state flow for when player isn't initialized yet
-    private val _defaultState = MutableStateFlow(PlaybackState(playerType = "Initializing..."))
-    
+
+    // Single state flow that forwards from current player
+    private val _state = MutableStateFlow(PlaybackState(playerType = "Initializing..."))
+    private var stateForwardingJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     val backend: PlayerBackend
         get() = _backend
-    
+
     val state: StateFlow<PlaybackState>
-        get() = currentPlayer?.state ?: _defaultState.asStateFlow()
+        get() = _state.asStateFlow()
+
+    private fun startForwardingState(player: UnifiedPlayer) {
+        stateForwardingJob?.cancel()
+        stateForwardingJob = scope.launch {
+            player.state.collect { playerState ->
+                _state.value = playerState
+            }
+        }
+    }
     
     val isInitialized: Boolean
         get() = currentPlayer != null
@@ -154,6 +170,7 @@ class PlayerController(
         return if (mpvPlayer.initialize()) {
             currentPlayer = mpvPlayer
             _backend = PlayerBackend.MPV
+            startForwardingState(mpvPlayer)
             Log.d(TAG, "MPV backend initialized successfully")
             true
         } else {
@@ -168,6 +185,7 @@ class PlayerController(
         return if (exoPlayerWrapper.initialize()) {
             currentPlayer = exoPlayerWrapper
             _backend = PlayerBackend.EXOPLAYER
+            startForwardingState(exoPlayerWrapper)
             Log.d(TAG, "ExoPlayer backend initialized successfully")
             true
         } else {
@@ -245,9 +263,12 @@ class PlayerController(
     }
     
     fun release() {
+        stateForwardingJob?.cancel()
+        stateForwardingJob = null
         currentPlayer?.release()
         currentPlayer = null
         currentMediaInfo = null
+        _state.value = PlaybackState(playerType = "Released")
     }
 }
 

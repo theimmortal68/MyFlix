@@ -850,26 +850,26 @@ class JellyfinClient(
     fun getUserImageUrl(userId: String) = "$baseUrl/Users/$userId/Images/Primary?quality=90&format=Webp"
 
     // ==================== Playback Reporting ====================
-    
+
     private var currentPlaySessionId: String? = null
-    
+
     suspend fun reportPlaybackStart(
         itemId: String,
         mediaSourceId: String? = null,
         positionTicks: Long = 0
     ): Result<Unit> = runCatching {
         currentPlaySessionId = "${itemId}_${System.currentTimeMillis()}"
-        val body = mapOf(
-            "ItemId" to itemId,
-            "MediaSourceId" to (mediaSourceId ?: itemId),
-            "PositionTicks" to positionTicks,
-            "PlayMethod" to "DirectPlay",
-            "PlaySessionId" to currentPlaySessionId,
-            "CanSeek" to true,
-            "IsPaused" to false,
-            "IsMuted" to false
+        val body = PlaybackStartInfo(
+            itemId = itemId,
+            mediaSourceId = mediaSourceId ?: itemId,
+            positionTicks = positionTicks,
+            playMethod = "DirectPlay",
+            playSessionId = currentPlaySessionId!!,
+            canSeek = true,
+            isPaused = false,
+            isMuted = false
         )
-        android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing body=$body")
+        android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing itemId=$itemId")
         val response = httpClient.post("$baseUrl/Sessions/Playing") {
             header("Authorization", authHeader())
             setBody(body)
@@ -882,22 +882,22 @@ class JellyfinClient(
         // Invalidate resume cache since playback state changed
         invalidateCache("resume")
     }
-    
+
     suspend fun reportPlaybackProgress(
         itemId: String,
         positionTicks: Long,
         isPaused: Boolean = false,
         mediaSourceId: String? = null
     ): Result<Unit> = runCatching {
-        val body = mapOf(
-            "ItemId" to itemId,
-            "MediaSourceId" to (mediaSourceId ?: itemId),
-            "PositionTicks" to positionTicks,
-            "IsPaused" to isPaused,
-            "IsMuted" to false,
-            "PlayMethod" to "DirectPlay",
-            "PlaySessionId" to currentPlaySessionId,
-            "CanSeek" to true
+        val body = PlaybackProgressInfo(
+            itemId = itemId,
+            mediaSourceId = mediaSourceId ?: itemId,
+            positionTicks = positionTicks,
+            isPaused = isPaused,
+            isMuted = false,
+            playMethod = "DirectPlay",
+            playSessionId = currentPlaySessionId,
+            canSeek = true
         )
         val response = httpClient.post("$baseUrl/Sessions/Playing/Progress") {
             header("Authorization", authHeader())
@@ -909,19 +909,19 @@ class JellyfinClient(
             android.util.Log.e("JellyfinClient", "reportPlaybackProgress failed: $errorBody")
         }
     }
-    
+
     suspend fun reportPlaybackStopped(
         itemId: String,
         positionTicks: Long,
         mediaSourceId: String? = null
     ): Result<Unit> = runCatching {
-        val body = mapOf(
-            "ItemId" to itemId,
-            "MediaSourceId" to (mediaSourceId ?: itemId),
-            "PositionTicks" to positionTicks,
-            "PlaySessionId" to currentPlaySessionId
+        val body = PlaybackStopInfo(
+            itemId = itemId,
+            mediaSourceId = mediaSourceId ?: itemId,
+            positionTicks = positionTicks,
+            playSessionId = currentPlaySessionId
         )
-        android.util.Log.d("JellyfinClient", "reportPlaybackStopped: POST $baseUrl/Sessions/Playing/Stopped body=$body")
+        android.util.Log.d("JellyfinClient", "reportPlaybackStopped: POST $baseUrl/Sessions/Playing/Stopped itemId=$itemId")
         val response = httpClient.post("$baseUrl/Sessions/Playing/Stopped") {
             header("Authorization", authHeader())
             setBody(body)
@@ -936,6 +936,40 @@ class JellyfinClient(
         invalidateCache("resume", "nextup", "item:$itemId")
     }
 }
+
+// ==================== Playback Report Data Classes ====================
+
+@Serializable
+private data class PlaybackStartInfo(
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("MediaSourceId") val mediaSourceId: String,
+    @SerialName("PositionTicks") val positionTicks: Long,
+    @SerialName("PlayMethod") val playMethod: String,
+    @SerialName("PlaySessionId") val playSessionId: String,
+    @SerialName("CanSeek") val canSeek: Boolean,
+    @SerialName("IsPaused") val isPaused: Boolean,
+    @SerialName("IsMuted") val isMuted: Boolean
+)
+
+@Serializable
+private data class PlaybackProgressInfo(
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("MediaSourceId") val mediaSourceId: String,
+    @SerialName("PositionTicks") val positionTicks: Long,
+    @SerialName("IsPaused") val isPaused: Boolean,
+    @SerialName("IsMuted") val isMuted: Boolean,
+    @SerialName("PlayMethod") val playMethod: String,
+    @SerialName("PlaySessionId") val playSessionId: String?,
+    @SerialName("CanSeek") val canSeek: Boolean
+)
+
+@Serializable
+private data class PlaybackStopInfo(
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("MediaSourceId") val mediaSourceId: String,
+    @SerialName("PositionTicks") val positionTicks: Long,
+    @SerialName("PlaySessionId") val playSessionId: String?
+)
 
 // ==================== Supporting Types ====================
 

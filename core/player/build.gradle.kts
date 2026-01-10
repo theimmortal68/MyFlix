@@ -12,8 +12,8 @@ android {
         
         ndk {
             // TV devices are arm64, some older ones are armv7
-            // x86/x86_64 only needed for emulators - skip to reduce APK size
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // Include x86/x86_64 for emulator testing
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         }
     }
     
