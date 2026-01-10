@@ -76,6 +76,7 @@ fun HomeScreen(
     hideWatchedFromRecent: Boolean = false,
     onLibraryClick: (String, String) -> Unit,
     onItemClick: (String) -> Unit,
+    onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
@@ -287,6 +288,7 @@ fun HomeScreen(
                         recentMovies = recentMovies,
                         jellyfinClient = jellyfinClient,
                         onItemClick = onItemClick,
+                        onPlayClick = onPlayClick,
                         hideWatchedFromRecent = hideWatchedFromRecent,
                         heroPlayFocusRequester = heroPlayFocusRequester,
                         firstRowFocusRequester = firstRowFocusRequester,
@@ -330,6 +332,7 @@ private fun HomeContent(
     recentMovies: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
+    onPlayClick: (String) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     firstRowFocusRequester: FocusRequester = remember { FocusRequester() },
@@ -466,7 +469,7 @@ private fun HomeContent(
                     featuredItems = filteredFeaturedItems,
                     jellyfinClient = jellyfinClient,
                     onItemClick = onItemClick,
-                    onPlayClick = onItemClick,
+                    onPlayClick = onPlayClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.37f),

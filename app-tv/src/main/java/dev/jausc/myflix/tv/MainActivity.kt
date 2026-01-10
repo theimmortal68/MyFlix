@@ -103,6 +103,9 @@ fun MyFlixTvApp() {
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
                     },
+                    onPlayClick = { itemId ->
+                        navController.navigate("player/$itemId")
+                    },
                     onSettingsClick = {
                         navController.navigate("settings")
                     }
