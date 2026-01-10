@@ -1,4 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MyFlix</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_movies">Movies</string>
+    <string name="nav_shows">TV Shows</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Player controls -->
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_back">Back</string>
+    <string name="player_rewind">Rewind 10s</string>
+    <string name="player_forward">Forward 10s</string>
+    <string name="player_error">Error: %1$s</string>
+
+    <!-- Content rows -->
+    <string name="row_continue_watching">Continue Watching</string>
+    <string name="row_next_up">Next Up</string>
+    <string name="row_recent_episodes">Recently Added Episodes</string>
+    <string name="row_recent_shows">Recently Added Shows</string>
+    <string name="row_recent_movies">Recently Added Movies</string>
+
+    <!-- Login -->
+    <string name="login_connect_to_server">Connect to Server</string>
+    <string name="login_host">Host</string>
+    <string name="login_host_placeholder">192.168.1.100</string>
+    <string name="login_connect">Connect</string>
+    <string name="login_choose_server">Choose server</string>
+    <string name="login_searching">Searching for servers…</string>
+    <string name="login_found_servers">Found %1$d server(s):</string>
+    <string name="login_connecting">Connecting…</string>
+    <string name="login_sign_in">Sign In</string>
+    <string name="login_please_sign_in">Please sign in</string>
+    <string name="login_user">User</string>
+    <string name="login_password">Password</string>
+    <string name="login_use_quick_connect">Use Quick Connect</string>
+    <string name="login_change_server">Change Server</string>
+    <string name="login_connection_failed">Connection Failed</string>
+    <string name="login_invalid_credentials">Invalid username or password</string>
+
+    <!-- Quick Connect -->
+    <string name="quick_connect_title">Quick Connect</string>
+    <string name="quick_connect_enter_code">Enter this code in Jellyfin:</string>
+    <string name="quick_connect_waiting">Waiting for approval…</string>
+    <string name="quick_connect_initializing">Initializing…</string>
+    <string name="quick_connect_authenticating">Authenticating…</string>
+    <string name="quick_connect_success">Success!</string>
+    <string name="quick_connect_not_available">Quick Connect is not available on this server</string>
+    <string name="quick_connect_sign_in_password">Sign in with Password</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search…</string>
+    <string name="search_button">Search</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_no_results">No results found</string>
+    <string name="search_enter_term">Enter a search term</string>
+
+    <!-- Detail screen -->
+    <string name="detail_loading">Loading…</string>
+    <string name="detail_seasons">Seasons</string>
+    <string name="detail_episodes">Episodes</string>
+    <string name="detail_episode_number">Episode %1$d</string>
+    <string name="detail_runtime">%1$d min</string>
+    <string name="detail_more_info">More Info</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="retry">Retry</string>
+    <string name="refresh">Refresh</string>
+    <string name="loading">Loading…</string>
+    <string name="error_generic">Something went wrong</string>
+    <string name="error_load_libraries">Failed to load libraries: %1$s</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_page_indicator">Page %1$d of %2$d</string>
+    <string name="a11y_rating">Rating</string>
+    <string name="a11y_open_menu">Open menu</string>
+    <string name="a11y_close_menu">Close menu</string>
 </resources>

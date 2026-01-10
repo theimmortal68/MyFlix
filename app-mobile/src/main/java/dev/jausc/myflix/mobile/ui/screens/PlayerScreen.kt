@@ -37,6 +37,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/** Player timing and conversion constants */
+private object PlayerConstants {
+    /** Jellyfin uses ticks (100 nanoseconds), 10,000 ticks = 1 millisecond */
+    const val TICKS_PER_MS = 10_000L
+    /** Auto-hide controls after this duration when playing */
+    const val CONTROLS_AUTO_HIDE_MS = 4_000L
+    /** Seek forward/backward step duration */
+    const val SEEK_STEP_MS = 10_000L
+    /** Interval for reporting playback progress to server */
+    const val PROGRESS_REPORT_INTERVAL_MS = 10_000L
+}
+
 @Composable
 fun PlayerScreen(
     itemId: String,
@@ -65,8 +77,8 @@ fun PlayerScreen(
         jellyfinClient.getItem(itemId).onSuccess { loadedItem ->
             item = loadedItem
             streamUrl = jellyfinClient.getStreamUrl(itemId)
-            startPosition = loadedItem.userData?.playbackPositionTicks?.let { 
-                it / 10_000  // Convert ticks to milliseconds
+            startPosition = loadedItem.userData?.playbackPositionTicks?.let {
+                it / PlayerConstants.TICKS_PER_MS
             } ?: 0L
             
             // Create MediaInfo for DV-aware player selection
@@ -92,18 +104,18 @@ fun PlayerScreen(
     LaunchedEffect(playbackState.isPlaying) {
         if (playbackState.isPlaying && !playbackStarted) {
             playbackStarted = true
-            val positionTicks = playbackState.position * 10_000 // ms to ticks
+            val positionTicks = playbackState.position * PlayerConstants.TICKS_PER_MS
             jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
         }
     }
     
-    // Report progress periodically (every 10 seconds while playing)
+    // Report progress periodically while playing
     LaunchedEffect(playbackStarted) {
         if (playbackStarted) {
             while (isActive) {
-                delay(10_000) // Report every 10 seconds
+                delay(PlayerConstants.PROGRESS_REPORT_INTERVAL_MS)
                 if (playbackState.isPlaying && !playbackState.isPaused) {
-                    val positionTicks = playbackState.position * 10_000
+                    val positionTicks = playbackState.position * PlayerConstants.TICKS_PER_MS
                     jellyfinClient.reportPlaybackProgress(
                         itemId = itemId,
                         positionTicks = positionTicks,
@@ -117,7 +129,7 @@ fun PlayerScreen(
     // Report pause/unpause
     LaunchedEffect(playbackState.isPaused) {
         if (playbackStarted) {
-            val positionTicks = playbackState.position * 10_000
+            val positionTicks = playbackState.position * PlayerConstants.TICKS_PER_MS
             jellyfinClient.reportPlaybackProgress(
                 itemId = itemId,
                 positionTicks = positionTicks,
@@ -129,7 +141,7 @@ fun PlayerScreen(
     // Auto-hide controls
     LaunchedEffect(showControls, playbackState.isPlaying) {
         if (showControls && playbackState.isPlaying) {
-            delay(4000)
+            delay(PlayerConstants.CONTROLS_AUTO_HIDE_MS)
             showControls = false
         }
     }
@@ -139,7 +151,7 @@ fun PlayerScreen(
         onDispose {
             // Report stopped with final position
             scope.launch {
-                val positionTicks = playerController.state.value.position * 10_000
+                val positionTicks = playerController.state.value.position * PlayerConstants.TICKS_PER_MS
                 jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
             }
             playerController.stop()
@@ -380,9 +392,9 @@ private fun MobilePlayerControls(
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Rewind 10s
+            // Rewind
             IconButton(
-                onClick = { playerController.seekRelative(-10_000) },
+                onClick = { playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS) },
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -409,9 +421,9 @@ private fun MobilePlayerControls(
                 )
             }
             
-            // Forward 10s
+            // Forward
             IconButton(
-                onClick = { playerController.seekRelative(10_000) },
+                onClick = { playerController.seekRelative(PlayerConstants.SEEK_STEP_MS) },
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
