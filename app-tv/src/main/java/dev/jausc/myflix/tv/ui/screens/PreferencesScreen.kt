@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -50,16 +51,20 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Preferences/Settings screen with toggle options.
- * Layout matches HomeScreen with NavigationRail on left.
+ * Uses unified TopNavigationBar for consistent navigation across all screens.
  */
 @Composable
 fun PreferencesScreen(
@@ -70,8 +75,8 @@ fun PreferencesScreen(
     onNavigateMovies: () -> Unit,
     onNavigateShows: () -> Unit,
     onNavigateDiscover: () -> Unit = {},
+    onNavigateLibrary: (String, String) -> Unit = { _, _ -> },
 ) {
-    @Suppress("UnusedPrivateProperty")
     val scope = rememberCoroutineScope()
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
 
@@ -87,16 +92,36 @@ fun PreferencesScreen(
     // Available genres and collections for selection dialogs
     var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
     var availableCollections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var showGenreDialog by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
 
-    // Load available genres and collections
+    // Focus requesters for navigation
+    val homeButtonFocusRequester = remember { FocusRequester() }
+    val contentFocusRequester = remember { FocusRequester() }
+    
+    // Popup nav bar state - visible on load, auto-hides after 5 seconds
+    val navBarState = rememberNavBarPopupState()
+
+    // Load available genres, collections, and libraries
     LaunchedEffect(Unit) {
         jellyfinClient.getGenres().onSuccess { genres ->
             availableGenres = genres.map { it.name }
         }
         jellyfinClient.getCollections(limit = 50).onSuccess { collections ->
             availableCollections = collections
+        }
+        jellyfinClient.getLibraries().onSuccess { libs ->
+            libraries = libs
+        }
+    }
+
+    // Request initial focus on content
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(100)
+        try {
+            contentFocusRequester.requestFocus()
+        } catch (_: Exception) {
         }
     }
 
@@ -105,8 +130,16 @@ fun PreferencesScreen(
         when (item) {
             NavItem.HOME -> onNavigateHome()
             NavItem.SEARCH -> onNavigateSearch()
-            NavItem.MOVIES -> onNavigateMovies()
-            NavItem.SHOWS -> onNavigateShows()
+            NavItem.MOVIES -> {
+                LibraryFinder.findMoviesLibrary(libraries)?.let { 
+                    onNavigateLibrary(it.id, it.name) 
+                } ?: onNavigateMovies()
+            }
+            NavItem.SHOWS -> {
+                LibraryFinder.findShowsLibrary(libraries)?.let { 
+                    onNavigateLibrary(it.id, it.name) 
+                } ?: onNavigateShows()
+            }
             NavItem.DISCOVER -> onNavigateDiscover()
             NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
             NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }
@@ -114,23 +147,18 @@ fun PreferencesScreen(
         }
     }
 
-    Row(
+    // Use Box to layer TopNavigationBar on top of content
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        // Left Navigation Rail
-        NavigationRail(
-            selectedItem = selectedNavItem,
-            onItemSelected = handleNavSelection,
-        )
-
-        // Main Content Area
+        // Main Content Area (with top padding for nav bar)
         Box(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(horizontal = 32.dp, vertical = 24.dp),
+                .fillMaxSize()
+                .padding(top = 48.dp) // Space for TopNavigationBar
+                .padding(horizontal = 48.dp, vertical = 24.dp),
         ) {
             PreferencesContent(
                 hideWatched = hideWatched,
@@ -150,8 +178,35 @@ fun PreferencesScreen(
                 onEditCollections = { showCollectionDialog = true },
                 showSuggestions = showSuggestions,
                 onShowSuggestionsChanged = { preferences.setShowSuggestions(it) },
+                contentFocusRequester = contentFocusRequester,
+                onShowNavBar = {
+                    navBarState.show()
+                    scope.launch {
+                        delay(150) // Wait for animation
+                        try {
+                            homeButtonFocusRequester.requestFocus()
+                        } catch (_: Exception) {
+                        }
+                    }
+                },
             )
         }
+
+        // Top Navigation Bar (popup overlay)
+        TopNavigationBarPopup(
+            visible = navBarState.isVisible,
+            selectedItem = selectedNavItem,
+            onItemSelected = handleNavSelection,
+            onDismiss = {
+                navBarState.hide()
+                try {
+                    contentFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            },
+            homeButtonFocusRequester = homeButtonFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 
     // Genre Selection Dialog
@@ -203,9 +258,16 @@ private fun PreferencesContent(
     onEditCollections: () -> Unit,
     showSuggestions: Boolean,
     onShowSuggestionsChanged: (Boolean) -> Unit,
+    contentFocusRequester: FocusRequester,
+    onShowNavBar: () -> Unit,
 ) {
+    val lazyListState = rememberLazyListState()
+    
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        state = lazyListState,
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(contentFocusRequester),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Header
@@ -249,6 +311,7 @@ private fun PreferencesContent(
                         iconTint = if (showSeasonPremieres) Color(0xFF60A5FA) else TvColors.TextSecondary,
                         checked = showSeasonPremieres,
                         onCheckedChange = onShowSeasonPremieresChanged,
+                        onUpPressed = onShowNavBar,
                     )
                     PreferenceDivider()
                     ToggleWithEditItem(
@@ -372,6 +435,7 @@ private fun TogglePreferenceItem(
     iconTint: Color,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    onUpPressed: (() -> Unit)? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -383,6 +447,18 @@ private fun TogglePreferenceItem(
             )
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
+            .onPreviewKeyEvent { event ->
+                // Intercept UP key to show nav bar (for first preference item)
+                if (onUpPressed != null &&
+                    event.type == KeyEventType.KeyDown &&
+                    event.key == Key.DirectionUp
+                ) {
+                    onUpPressed()
+                    true
+                } else {
+                    false
+                }
+            }
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown &&
                     (event.key == Key.Enter || event.key == Key.DirectionCenter)

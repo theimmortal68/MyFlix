@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,6 +38,8 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 /**
  * Netflix-style top navigation bar.
  * Search icon on left, main nav centered, Settings icon on right.
+ * 
+ * Focus behavior: When navigating UP from content, focus always lands on Home first.
  */
 @Composable
 fun TopNavigationBar(
@@ -69,6 +72,7 @@ fun TopNavigationBar(
             onClick = { onItemSelected(NavItem.SETTINGS) },
             focusRequester = firstItemFocusRequester,
             downFocusRequester = downFocusRequester,
+            homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.CenterStart),
         )
 
@@ -92,6 +96,7 @@ fun TopNavigationBar(
                     onClick = { onItemSelected(item) },
                     focusRequester = if (item == NavItem.HOME) homeButtonFocusRequester else null,
                     downFocusRequester = downFocusRequester,
+                    homeButtonFocusRequester = homeButtonFocusRequester,
                 )
             }
         }
@@ -103,6 +108,7 @@ fun TopNavigationBar(
             isSelected = selectedItem == NavItem.SEARCH,
             onClick = { onItemSelected(NavItem.SEARCH) },
             downFocusRequester = downFocusRequester,
+            homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.CenterEnd),
         )
     }
@@ -118,7 +124,22 @@ private fun NavIconButton(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
+    homeButtonFocusRequester: FocusRequester? = null,
 ) {
+    // Track if we just got focus to redirect to Home
+    var justGotFocus by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(justGotFocus) {
+        if (justGotFocus && homeButtonFocusRequester != null) {
+            kotlinx.coroutines.delay(10)
+            try {
+                homeButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+            justGotFocus = false
+        }
+    }
+    
     // Circular icon button - 20dp size, no scale on focus
     Button(
         onClick = onClick,
@@ -131,6 +152,12 @@ private fun NavIconButton(
                     Modifier
                 },
             )
+            .onFocusChanged { state ->
+                // Only redirect for non-Home buttons
+                if (state.isFocused && homeButtonFocusRequester != null && focusRequester != homeButtonFocusRequester) {
+                    justGotFocus = true
+                }
+            }
             .focusProperties {
                 if (downFocusRequester != null) {
                     down = downFocusRequester
@@ -164,7 +191,25 @@ private fun NavTabButton(
     onClick: () -> Unit,
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
+    homeButtonFocusRequester: FocusRequester? = null,
 ) {
+    // Track if this is the Home button
+    val isHomeButton = item == NavItem.HOME
+    
+    // Track if we just got focus to redirect to Home (for non-Home buttons)
+    var justGotFocus by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(justGotFocus) {
+        if (justGotFocus && homeButtonFocusRequester != null && !isHomeButton) {
+            kotlinx.coroutines.delay(10)
+            try {
+                homeButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+            justGotFocus = false
+        }
+    }
+    
     // 20dp height, no scale on focus
     Button(
         onClick = onClick,
@@ -177,6 +222,12 @@ private fun NavTabButton(
                     Modifier
                 },
             )
+            .onFocusChanged { state ->
+                // Only redirect for non-Home buttons
+                if (state.isFocused && !isHomeButton && homeButtonFocusRequester != null) {
+                    justGotFocus = true
+                }
+            }
             .focusProperties {
                 if (downFocusRequester != null) {
                     down = downFocusRequester

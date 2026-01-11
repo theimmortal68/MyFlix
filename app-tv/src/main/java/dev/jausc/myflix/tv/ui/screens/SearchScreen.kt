@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -52,9 +54,12 @@ import dev.jausc.myflix.core.common.ui.rememberSearchScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBar
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -73,32 +78,27 @@ fun SearchScreen(
     var isTextFieldFocused by remember { mutableStateOf(false) }
     val searchFieldFocusRequester = remember { FocusRequester() }
     val resultsFocusRequester = remember { FocusRequester() }
+    val homeButtonFocusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Popup nav bar state - visible on load, auto-hides after 5 seconds
+    val navBarState = rememberNavBarPopupState()
 
     // Focus search field on entry
     LaunchedEffect(Unit) {
         searchFieldFocusRequester.requestFocus()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 48.dp),
+    Box(
+        modifier = Modifier.fillMaxSize(),
     ) {
-        TopNavigationBar(
-            selectedItem = NavItem.SEARCH,
-            onItemSelected = { navItem ->
-                when (navItem) {
-                    NavItem.HOME -> onNavigateHome()
-                    NavItem.MOVIES -> onNavigateMovies()
-                    NavItem.SHOWS -> onNavigateShows()
-                    NavItem.SEARCH -> { /* Already here */ }
-                    NavItem.SETTINGS -> onNavigateSettings()
-                    else -> { /* Collections/Universes not implemented */ }
-                }
-            },
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 48.dp)
+                .padding(top = 80.dp), // Space for nav bar
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
 
         // Search input
         Row(
@@ -142,6 +142,22 @@ fun SearchScreen(
                         .fillMaxWidth()
                         .focusRequester(searchFieldFocusRequester)
                         .onFocusChanged { isTextFieldFocused = it.isFocused }
+                        .onPreviewKeyEvent { event ->
+                            // Intercept UP to show nav bar popup
+                            if (event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown) {
+                                navBarState.show()
+                                coroutineScope.launch {
+                                    delay(150) // Wait for animation
+                                    try {
+                                        homeButtonFocusRequester.requestFocus()
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                        }
                         .onKeyEvent { event ->
                             when {
                                 event.key == Key.DirectionDown &&
@@ -236,5 +252,31 @@ fun SearchScreen(
                 }
             }
         }
-    }
+        } // End Column
+        
+        // Top Navigation Bar (popup overlay)
+        TopNavigationBarPopup(
+            visible = navBarState.isVisible,
+            selectedItem = NavItem.SEARCH,
+            onItemSelected = { navItem ->
+                when (navItem) {
+                    NavItem.HOME -> onNavigateHome()
+                    NavItem.MOVIES -> onNavigateMovies()
+                    NavItem.SHOWS -> onNavigateShows()
+                    NavItem.SEARCH -> { /* Already here */ }
+                    NavItem.SETTINGS -> onNavigateSettings()
+                    else -> { /* Collections/Universes not implemented */ }
+                }
+            },
+            onDismiss = {
+                navBarState.hide()
+                try {
+                    searchFieldFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            },
+            homeButtonFocusRequester = homeButtonFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    } // End Box
 }

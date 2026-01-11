@@ -75,7 +75,8 @@ import dev.jausc.myflix.tv.ui.components.HeroSection
 import dev.jausc.myflix.tv.ui.components.HomeDialogActions
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBar
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
@@ -173,7 +174,6 @@ fun HomeScreen(
     // Focus requesters
     val heroPlayFocusRequester = remember { FocusRequester() }
     val firstRowFocusRequester = remember { FocusRequester() }
-    val topNavFocusRequester = remember { FocusRequester() }
     val homeButtonFocusRequester = remember { FocusRequester() }
 
     // Track current backdrop URL for dynamic background colors
@@ -273,7 +273,6 @@ fun HomeScreen(
                         hideWatchedFromRecent = hideWatchedFromRecent,
                         heroPlayFocusRequester = heroPlayFocusRequester,
                         firstRowFocusRequester = firstRowFocusRequester,
-                        topNavFocusRequester = topNavFocusRequester,
                         homeButtonFocusRequester = homeButtonFocusRequester,
                         onBackdropUrlChanged = { url -> currentBackdropUrl = url },
                         onItemFocused = { },
@@ -334,7 +333,6 @@ private fun HomeContent(
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     firstRowFocusRequester: FocusRequester = remember { FocusRequester() },
-    topNavFocusRequester: FocusRequester = remember { FocusRequester() },
     homeButtonFocusRequester: FocusRequester = remember { FocusRequester() },
     onBackdropUrlChanged: (String?) -> Unit = {},
     onItemFocused: (JellyfinItem?) -> Unit = {},
@@ -343,6 +341,9 @@ private fun HomeContent(
     onNavItemSelected: (NavItem) -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
+    
+    // Popup nav bar state - visible on load, auto-hides after 5 seconds
+    val navBarState = rememberNavBarPopupState()
 
     // Filter watched items from Recently Added rows
     val filteredRecentEpisodes = if (hideWatchedFromRecent) {
@@ -560,12 +561,22 @@ private fun HomeContent(
                     previewItem = previewItem,
                     playButtonFocusRequester = heroPlayFocusRequester,
                     downFocusRequester = firstRowFocusRequester,
-                    upFocusRequester = homeButtonFocusRequester,
                     onCurrentItemChanged = { item, backdropUrl ->
                         heroDisplayItem = item
                         onBackdropUrlChanged(backdropUrl)
                     },
                     onPreviewClear = clearPreviewAndScrollToTop,
+                    onUpPressed = {
+                        // Show nav bar and focus home button when UP is pressed on hero
+                        navBarState.show()
+                        coroutineScope.launch {
+                            delay(150) // Wait for animation
+                            try {
+                                homeButtonFocusRequester.requestFocus()
+                            } catch (_: Exception) {
+                            }
+                        }
+                    },
                 )
             }
 
@@ -627,13 +638,19 @@ private fun HomeContent(
             }
         } // End Column
 
-        // Layer 3: Top Navigation Bar (with gradient overlay)
-        TopNavigationBar(
+        // Layer 3: Top Navigation Bar (popup overlay)
+        TopNavigationBarPopup(
+            visible = navBarState.isVisible,
             selectedItem = selectedNavItem,
             onItemSelected = onNavItemSelected,
-            firstItemFocusRequester = topNavFocusRequester,
+            onDismiss = {
+                navBarState.hide()
+                try {
+                    heroPlayFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            },
             homeButtonFocusRequester = homeButtonFocusRequester,
-            downFocusRequester = heroPlayFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }

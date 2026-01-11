@@ -49,6 +49,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -165,6 +170,7 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
  * @param downFocusRequester Focus target when navigating down from buttons
  * @param onCurrentItemChanged Callback when the displayed item changes (for dynamic background)
  * @param onPreviewClear Callback when focus returns to hero buttons (to clear preview)
+ * @param onUpPressed Callback when UP is pressed on hero buttons (to show nav bar)
  */
 @Composable
 fun HeroSection(
@@ -180,6 +186,7 @@ fun HeroSection(
     upFocusRequester: FocusRequester? = null,
     onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null,
     onPreviewClear: (() -> Unit)? = null,
+    onUpPressed: (() -> Unit)? = null,
 ) {
     if (featuredItems.isEmpty() && previewItem == null) return
 
@@ -240,6 +247,7 @@ fun HeroSection(
                     onPreviewClear?.invoke()
                 },
                 shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode,
+                onUpPressed = onUpPressed,
             )
         }
     }
@@ -281,6 +289,7 @@ private fun HeroContentOverlay(
     isPreviewMode: Boolean = false,
     onButtonFocused: (() -> Unit)? = null,
     shouldRestoreFocus: Boolean = false,
+    onUpPressed: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -314,6 +323,7 @@ private fun HeroContentOverlay(
             isPreviewMode = isPreviewMode,
             onButtonFocused = onButtonFocused,
             shouldRestoreFocus = shouldRestoreFocus,
+            onUpPressed = onUpPressed,
         )
     }
 }
@@ -457,6 +467,7 @@ private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) 
 /**
  * Action buttons: Play and More Info (20dp height).
  * In preview mode, buttons are invisible but still focusable for navigation.
+ * Uses onPreviewKeyEvent to intercept UP key for showing nav bar.
  */
 @Composable
 private fun HeroActionButtons(
@@ -468,6 +479,7 @@ private fun HeroActionButtons(
     isPreviewMode: Boolean = false,
     onButtonFocused: (() -> Unit)? = null,
     shouldRestoreFocus: Boolean = false,
+    onUpPressed: (() -> Unit)? = null,
 ) {
     // Alpha is 0 in preview mode (invisible but focusable)
     val buttonsAlpha = if (isPreviewMode) 0f else 1f
@@ -484,7 +496,17 @@ private fun HeroActionButtons(
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.alpha(buttonsAlpha),
+        modifier = Modifier
+            .alpha(buttonsAlpha)
+            .onPreviewKeyEvent { keyEvent ->
+                // Intercept UP key to show nav bar popup
+                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionUp) {
+                    onUpPressed?.invoke()
+                    onUpPressed != null // Consume event if callback exists
+                } else {
+                    false
+                }
+            },
     ) {
         // Play button - receives initial focus
         // Same colors as nav buttons: SurfaceElevated unfocused, BluePrimary focused

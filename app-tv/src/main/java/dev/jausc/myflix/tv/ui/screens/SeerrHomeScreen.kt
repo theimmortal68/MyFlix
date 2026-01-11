@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -50,6 +51,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,16 +63,23 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.LibraryFinder
+import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Seerr home/discover screen for TV.
+ * Uses unified TopNavigationBar for consistent navigation across all screens.
  *
  * Features:
  * - Trending movies and TV shows
@@ -83,12 +96,19 @@ fun SeerrHomeScreen(
     onNavigateMovies: () -> Unit = {},
     onNavigateShows: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
+    jellyfinClient: JellyfinClient? = null,
+    onNavigateLibrary: (String, String) -> Unit = { _, _ -> },
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrSearch: () -> Unit = {},
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrRequests: () -> Unit = {},
 ) {
-    @Suppress("UnusedPrivateProperty")
     val scope = rememberCoroutineScope()
+
+    // Focus requesters for navigation
+    val homeButtonFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
+    
+    // Popup nav bar state - visible on load, auto-hides after 5 seconds
+    val navBarState = rememberNavBarPopupState()
 
     // Content state
     var isLoading by remember { mutableStateOf(true) }
@@ -98,14 +118,20 @@ fun SeerrHomeScreen(
     var popularTV by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
     var upcomingMovies by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
     var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
+    var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
 
     // Filter out items already in library, partially available, or already requested
     fun List<SeerrMedia>.filterDiscoverable() = filter {
         !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
     }
 
-    // Load content
+    // Load content and libraries
     LaunchedEffect(Unit) {
+        // Load libraries for navigation
+        jellyfinClient?.getLibraries()?.onSuccess { libs ->
+            libraries = libs
+        }
+
         if (!seerrClient.isAuthenticated) {
             errorMessage = "Not connected to Seerr"
             isLoading = false
@@ -145,157 +171,208 @@ fun SeerrHomeScreen(
         isLoading = false
     }
 
+    // Request initial focus on content
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(100)
+        try {
+            contentFocusRequester.requestFocus()
+        } catch (_: Exception) {
+        }
+    }
+
     // Handle navigation
     val handleNavSelection: (NavItem) -> Unit = { item ->
         when (item) {
             NavItem.HOME -> onNavigateHome()
             NavItem.SEARCH -> onNavigateSearch()
-            NavItem.MOVIES -> onNavigateMovies()
-            NavItem.SHOWS -> onNavigateShows()
+            NavItem.MOVIES -> {
+                LibraryFinder.findMoviesLibrary(libraries)?.let { 
+                    onNavigateLibrary(it.id, it.name) 
+                } ?: onNavigateMovies()
+            }
+            NavItem.SHOWS -> {
+                LibraryFinder.findShowsLibrary(libraries)?.let { 
+                    onNavigateLibrary(it.id, it.name) 
+                } ?: onNavigateShows()
+            }
             NavItem.DISCOVER -> { /* Already here */ }
             NavItem.SETTINGS -> onNavigateSettings()
             else -> {}
         }
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Navigation rail
-        NavigationRail(
-            selectedItem = NavItem.DISCOVER,
-            onItemSelected = handleNavSelection,
-            onFocusExitRight = {
-                try {
-                    contentFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                }
-            },
-        )
-
+    // Use Box to layer TopNavigationBar on top of content
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(TvColors.Background),
+    ) {
         // Main content
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(TvColors.Background),
-        ) {
-            when {
-                isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        TvLoadingIndicator(modifier = Modifier.size(48.dp))
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    TvLoadingIndicator(modifier = Modifier.size(48.dp))
+                }
+            }
+
+            errorMessage != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Outlined.Explore,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = TvColors.TextSecondary,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = errorMessage ?: "Failed to load content",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TvColors.TextSecondary,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Check Seerr settings in Settings",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TvColors.TextSecondary.copy(alpha = 0.7f),
+                        )
                     }
                 }
+            }
 
-                errorMessage != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Outlined.Explore,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = TvColors.TextSecondary,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = errorMessage ?: "Failed to load content",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = TvColors.TextSecondary,
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Check Seerr settings in Settings",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary.copy(alpha = 0.7f),
+            else -> {
+                val lazyListState = rememberLazyListState()
+                
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .focusRequester(contentFocusRequester),
+                    contentPadding = PaddingValues(top = 48.dp, bottom = 32.dp),
+                ) {
+                    // Hero section
+                    item {
+                        featuredItem?.let { media ->
+                            SeerrHeroSection(
+                                media = media,
+                                seerrClient = seerrClient,
+                                onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
                             )
                         }
                     }
-                }
 
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .focusRequester(contentFocusRequester),
-                        contentPadding = PaddingValues(bottom = 32.dp),
-                    ) {
-                        // Hero section
+                    // Callback for showing nav bar when UP is pressed on first content row
+                    val showNavBarOnUp: () -> Unit = {
+                        navBarState.show()
+                        scope.launch {
+                            delay(150)
+                            try {
+                                homeButtonFocusRequester.requestFocus()
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
+
+                    // Track which row is first (to pass onUpPressed callback)
+                    var isFirstContentRow = true
+
+                    // Trending row
+                    if (trending.isNotEmpty()) {
+                        val isFirst = isFirstContentRow
+                        isFirstContentRow = false
                         item {
-                            featuredItem?.let { media ->
-                                SeerrHeroSection(
-                                    media = media,
-                                    seerrClient = seerrClient,
-                                    onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
-                                )
-                            }
+                            SeerrContentRow(
+                                title = "Trending",
+                                items = trending,
+                                seerrClient = seerrClient,
+                                accentColor = Color(0xFF8B5CF6),
+                                onItemClick = { media ->
+                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                },
+                                onUpPressed = if (isFirst) showNavBarOnUp else null,
+                            )
                         }
+                    }
 
-                        // Trending row
-                        if (trending.isNotEmpty()) {
-                            item {
-                                SeerrContentRow(
-                                    title = "Trending",
-                                    items = trending,
-                                    seerrClient = seerrClient,
-                                    accentColor = Color(0xFF8B5CF6),
-                                    onItemClick = { media ->
-                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                    },
-                                )
-                            }
+                    // Popular Movies row
+                    if (popularMovies.isNotEmpty()) {
+                        val isFirst = isFirstContentRow
+                        isFirstContentRow = false
+                        item {
+                            SeerrContentRow(
+                                title = "Popular Movies",
+                                items = popularMovies,
+                                seerrClient = seerrClient,
+                                accentColor = Color(0xFFFBBF24),
+                                onItemClick = { media ->
+                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                },
+                                onUpPressed = if (isFirst) showNavBarOnUp else null,
+                            )
                         }
+                    }
 
-                        // Popular Movies row
-                        if (popularMovies.isNotEmpty()) {
-                            item {
-                                SeerrContentRow(
-                                    title = "Popular Movies",
-                                    items = popularMovies,
-                                    seerrClient = seerrClient,
-                                    accentColor = Color(0xFFFBBF24),
-                                    onItemClick = { media ->
-                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                    },
-                                )
-                            }
+                    // Popular TV row
+                    if (popularTV.isNotEmpty()) {
+                        val isFirst = isFirstContentRow
+                        isFirstContentRow = false
+                        item {
+                            SeerrContentRow(
+                                title = "Popular TV Shows",
+                                items = popularTV,
+                                seerrClient = seerrClient,
+                                accentColor = Color(0xFF34D399),
+                                onItemClick = { media ->
+                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                },
+                                onUpPressed = if (isFirst) showNavBarOnUp else null,
+                            )
                         }
+                    }
 
-                        // Popular TV row
-                        if (popularTV.isNotEmpty()) {
-                            item {
-                                SeerrContentRow(
-                                    title = "Popular TV Shows",
-                                    items = popularTV,
-                                    seerrClient = seerrClient,
-                                    accentColor = Color(0xFF34D399),
-                                    onItemClick = { media ->
-                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                    },
-                                )
-                            }
-                        }
-
-                        // Upcoming row
-                        if (upcomingMovies.isNotEmpty()) {
-                            item {
-                                SeerrContentRow(
-                                    title = "Coming Soon",
-                                    items = upcomingMovies,
-                                    seerrClient = seerrClient,
-                                    accentColor = Color(0xFF60A5FA),
-                                    onItemClick = { media ->
-                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                    },
-                                )
-                            }
+                    // Upcoming row
+                    if (upcomingMovies.isNotEmpty()) {
+                        val isFirst = isFirstContentRow
+                        @Suppress("UNUSED_VALUE")
+                        isFirstContentRow = false
+                        item {
+                            SeerrContentRow(
+                                title = "Coming Soon",
+                                items = upcomingMovies,
+                                seerrClient = seerrClient,
+                                accentColor = Color(0xFF60A5FA),
+                                onItemClick = { media ->
+                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                },
+                                onUpPressed = if (isFirst) showNavBarOnUp else null,
+                            )
                         }
                     }
                 }
             }
         }
+
+        // Top Navigation Bar (popup overlay)
+        TopNavigationBarPopup(
+            visible = navBarState.isVisible,
+            selectedItem = NavItem.DISCOVER,
+            onItemSelected = handleNavSelection,
+            onDismiss = {
+                navBarState.hide()
+                try {
+                    contentFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            },
+            homeButtonFocusRequester = homeButtonFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 
@@ -429,9 +506,23 @@ private fun SeerrContentRow(
     seerrClient: SeerrClient,
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
+    onUpPressed: (() -> Unit)? = null,
 ) {
     Column(
-        modifier = Modifier.padding(vertical = 8.dp),
+        modifier = Modifier
+            .padding(vertical = 8.dp)
+            .onPreviewKeyEvent { event ->
+                // Intercept UP key to show nav bar (only for first row)
+                if (onUpPressed != null &&
+                    event.type == KeyEventType.KeyDown &&
+                    event.key == Key.DirectionUp
+                ) {
+                    onUpPressed()
+                    true
+                } else {
+                    false
+                }
+            },
     ) {
         // Row header
         Row(
