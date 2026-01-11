@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.screens.*
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -38,19 +39,93 @@ fun MyFlixTvApp() {
     val jellyfinClient = remember { JellyfinClient() }
     val appState = remember { AppState(context, jellyfinClient) }
     val tvPreferences = remember { TvPreferences.getInstance(context) }
+    val seerrClient = remember { SeerrClient() }
     
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var splashFinished by remember { mutableStateOf(false) }
-    
+    var isSeerrAuthenticated by remember { mutableStateOf(false) }
+
     // Collect preferences
     val hideWatchedFromRecent by tvPreferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by tvPreferences.useMpvPlayer.collectAsState()
-    
+    val showSeasonPremieres by tvPreferences.showSeasonPremieres.collectAsState()
+    val showGenreRows by tvPreferences.showGenreRows.collectAsState()
+    val enabledGenres by tvPreferences.enabledGenres.collectAsState()
+    val showCollections by tvPreferences.showCollections.collectAsState()
+    val pinnedCollections by tvPreferences.pinnedCollections.collectAsState()
+    val showSuggestions by tvPreferences.showSuggestions.collectAsState()
+    val seerrEnabled by tvPreferences.seerrEnabled.collectAsState()
+    val seerrUrl by tvPreferences.seerrUrl.collectAsState()
+    val seerrApiKey by tvPreferences.seerrApiKey.collectAsState()
+    val seerrSessionCookie by tvPreferences.seerrSessionCookie.collectAsState()
+
     LaunchedEffect(Unit) {
         appState.initialize()
         isLoggedIn = appState.isLoggedIn
         isInitialized = true
+    }
+
+    // Initialize SeerrClient with stored session cookie, API key, or Jellyfin credentials
+    LaunchedEffect(seerrUrl, seerrEnabled, seerrApiKey, seerrSessionCookie, isInitialized, isLoggedIn) {
+        // Skip if already authenticated in this session (e.g., from setup screen)
+        if (isSeerrAuthenticated) {
+            android.util.Log.d("MyFlixSeerr", "Already authenticated, skipping")
+            return@LaunchedEffect
+        }
+
+        android.util.Log.d("MyFlixSeerr", "LaunchedEffect: init=$isInitialized, logged=$isLoggedIn, enabled=$seerrEnabled, url=$seerrUrl, hasCookie=${!seerrSessionCookie.isNullOrBlank()}, hasKey=${!seerrApiKey.isNullOrBlank()}")
+        if (isInitialized && isLoggedIn && seerrEnabled && !seerrUrl.isNullOrBlank()) {
+            android.util.Log.d("MyFlixSeerr", "Connecting to Seerr at $seerrUrl")
+            seerrClient.connectToServer(seerrUrl!!)
+                .onSuccess {
+                    android.util.Log.d("MyFlixSeerr", "Connected, trying auth...")
+
+                    // Helper to try credentials as last resort
+                    suspend fun tryCredentials() {
+                        val username = appState.username
+                        val password = appState.password
+                        if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+                            seerrClient.loginWithJellyfin(username, password)
+                                .onSuccess { user ->
+                                    android.util.Log.d("MyFlixSeerr", "Credentials auth SUCCESS")
+                                    isSeerrAuthenticated = true
+                                    user.apiKey?.let { tvPreferences.setSeerrApiKey(it) }
+                                    seerrClient.sessionCookie?.let { tvPreferences.setSeerrSessionCookie(it) }
+                                }
+                                .onFailure { e ->
+                                    android.util.Log.e("MyFlixSeerr", "Credentials auth FAILED: ${e.message}")
+                                    isSeerrAuthenticated = false
+                                }
+                        } else {
+                            android.util.Log.w("MyFlixSeerr", "No credentials for Seerr auth")
+                        }
+                    }
+
+                    // Try session cookie first (most reliable for persistence)
+                    if (!seerrSessionCookie.isNullOrBlank()) {
+                        android.util.Log.d("MyFlixSeerr", "Trying session cookie auth")
+                        seerrClient.loginWithSessionCookie(seerrSessionCookie!!)
+                            .onSuccess {
+                                android.util.Log.d("MyFlixSeerr", "Session cookie auth SUCCESS")
+                                isSeerrAuthenticated = true
+                            }
+                            .onFailure { e ->
+                                android.util.Log.w("MyFlixSeerr", "Session cookie auth FAILED: ${e.message}, trying credentials")
+                                tryCredentials()
+                            }
+                    } else {
+                        android.util.Log.d("MyFlixSeerr", "No session cookie, trying credentials")
+                        tryCredentials()
+                    }
+                }
+                .onFailure { e ->
+                    android.util.Log.e("MyFlixSeerr", "Connect FAILED: ${e.message}")
+                }
+        } else if (!seerrEnabled) {
+            android.util.Log.d("MyFlixSeerr", "Seerr disabled")
+            isSeerrAuthenticated = false
+        }
     }
 
     val navController = rememberNavController()
@@ -97,6 +172,12 @@ fun MyFlixTvApp() {
                 HomeScreen(
                     jellyfinClient = jellyfinClient,
                     hideWatchedFromRecent = hideWatchedFromRecent,
+                    showSeasonPremieres = showSeasonPremieres,
+                    showGenreRows = showGenreRows,
+                    enabledGenres = enabledGenres,
+                    showCollections = showCollections,
+                    pinnedCollections = pinnedCollections,
+                    showSuggestions = showSuggestions,
                     onLibraryClick = { libraryId, libraryName ->
                         navController.navigate("library/$libraryId/$libraryName")
                     },
@@ -108,6 +189,9 @@ fun MyFlixTvApp() {
                     },
                     onSearchClick = {
                         navController.navigate("search")
+                    },
+                    onDiscoverClick = {
+                        navController.navigate("seerr")
                     },
                     onSettingsClick = {
                         navController.navigate("settings")
@@ -142,6 +226,7 @@ fun MyFlixTvApp() {
             composable("settings") {
                 PreferencesScreen(
                     preferences = tvPreferences,
+                    jellyfinClient = jellyfinClient,
                     onNavigateHome = {
                         navController.navigate("home") {
                             popUpTo("home") { inclusive = true }
@@ -155,7 +240,86 @@ fun MyFlixTvApp() {
                     },
                     onNavigateShows = {
                         navController.navigate("home")
+                    },
+                    onNavigateDiscover = {
+                        navController.navigate("seerr")
                     }
+                )
+            }
+
+            // Seerr routes
+            composable("seerr") {
+                // Require actual authentication - isSeerrAuthenticated is set after successful login
+                if (!isSeerrAuthenticated) {
+                    SeerrSetupScreen(
+                        seerrClient = seerrClient,
+                        preferences = tvPreferences,
+                        jellyfinUsername = appState.username,
+                        jellyfinPassword = appState.password,
+                        jellyfinServerUrl = jellyfinClient.serverUrl,
+                        onSetupComplete = {
+                            // Just set authenticated - recomposition will show SeerrHomeScreen
+                            isSeerrAuthenticated = true
+                        },
+                        onBack = { navController.popBackStack() }
+                    )
+                } else {
+                    SeerrHomeScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onNavigateHome = {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        },
+                        onNavigateSearch = {
+                            navController.navigate("search")
+                        },
+                        onNavigateMovies = {
+                            navController.navigate("home")
+                        },
+                        onNavigateShows = {
+                            navController.navigate("home")
+                        },
+                        onNavigateSettings = {
+                            navController.navigate("settings")
+                        }
+                    )
+                }
+            }
+
+            composable("seerr/setup") {
+                SeerrSetupScreen(
+                    seerrClient = seerrClient,
+                    preferences = tvPreferences,
+                    jellyfinUsername = appState.username,
+                    jellyfinPassword = appState.password,
+                    jellyfinServerUrl = jellyfinClient.serverUrl,
+                    onSetupComplete = {
+                        navController.navigate("seerr") {
+                            popUpTo("seerr/setup") { inclusive = true }
+                        }
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = "seerr/{mediaType}/{tmdbId}",
+                arguments = listOf(
+                    navArgument("mediaType") { type = NavType.StringType },
+                    navArgument("tmdbId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
+                val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: return@composable
+                SeerrDetailScreen(
+                    mediaType = mediaType,
+                    tmdbId = tmdbId,
+                    seerrClient = seerrClient,
+                    onBack = { navController.popBackStack() }
                 )
             }
 

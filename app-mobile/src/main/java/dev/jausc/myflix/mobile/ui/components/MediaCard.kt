@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.formattedPremiereDate
 import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.progressPercent
 
@@ -102,7 +103,8 @@ fun MobileMediaCard(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     screenSizeClass: ScreenSizeClass = getScreenSizeClass(LocalConfiguration.current.screenWidthDp),
-    showLabel: Boolean = true
+    showLabel: Boolean = true,
+    isUpcomingEpisode: Boolean = false
 ) {
     val width = MobileCardSizes.getPosterWidth(screenSizeClass)
 
@@ -132,6 +134,29 @@ fun MobileMediaCard(
                         .aspectRatio(2f / 3f)
                 )
 
+                // Episode number badge in top right corner (for upcoming episodes)
+                if (isUpcomingEpisode && item.isEpisode) {
+                    val episodeNumber = item.indexNumber
+                    val seasonNumber = item.parentIndexNumber
+                    if (episodeNumber != null) {
+                        Box(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .align(Alignment.TopEnd)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.Black.copy(alpha = 0.7f))
+                        ) {
+                            Text(
+                                text = if (seasonNumber != null) "S$seasonNumber E$episodeNumber" else "E$episodeNumber",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
                 // Progress bar for continue watching
                 ProgressOverlay(
                     progress = item.progressPercent,
@@ -144,20 +169,48 @@ fun MobileMediaCard(
             Column(
                 modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp)
             ) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                item.productionYear?.let { year ->
+                if (isUpcomingEpisode && item.isEpisode) {
+                    // For upcoming episodes: show series name, episode title, and air date
                     Text(
-                        text = year.toString(),
+                        text = item.seriesName ?: item.name,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    item.formattedPremiereDate?.let { date ->
+                        Text(
+                            text = date,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    // Default: show item name and year
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    item.productionYear?.let { year ->
+                        Text(
+                            text = year.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
+                        )
+                    }
                 }
             }
         }

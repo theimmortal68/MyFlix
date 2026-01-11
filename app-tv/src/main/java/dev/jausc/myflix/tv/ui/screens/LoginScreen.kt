@@ -663,7 +663,8 @@ private fun PasswordEntryScreen(
             jellyfinClient.login(server.url, username, password)
                 .onSuccess { response ->
                     jellyfinClient.configure(server.url, response.accessToken, response.user.id, jellyfinClient.deviceId)
-                    appState.login(server.url, response.accessToken, response.user.id)
+                    // Store username/password for Seerr integration
+                    appState.login(server.url, response.accessToken, response.user.id, username, password)
                     onLoginSuccess()
                 }
                 .onFailure { e ->

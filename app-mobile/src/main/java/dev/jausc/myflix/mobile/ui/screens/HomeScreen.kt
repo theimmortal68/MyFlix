@@ -63,10 +63,17 @@ private const val POLL_INTERVAL_MS = 30_000L
 @Composable
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
+    showSeasonPremieres: Boolean = true,
+    showGenreRows: Boolean = false,
+    enabledGenres: List<String> = emptyList(),
+    showCollections: Boolean = true,
+    pinnedCollections: List<String> = emptyList(),
+    showSuggestions: Boolean = true,
     onLibraryClick: (String, String) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit,
+    onDiscoverClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -129,6 +136,15 @@ fun HomeScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // New content rows
+    var seasonPremieres by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var suggestions by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var genreRowsData by remember { mutableStateOf<Map<String, List<JellyfinItem>>>(emptyMap()) }
+    var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
+    // Pinned collection rows: collectionId -> (collectionName, items)
+    var pinnedCollectionsData by remember { mutableStateOf<Map<String, Pair<String, List<JellyfinItem>>>>(emptyMap()) }
+
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(MobileNavItem.HOME) }
 
@@ -186,6 +202,77 @@ fun HomeScreen(
             .onSuccess { items -> continueWatching = items }
             .onFailure { /* Non-critical, continue */ }
 
+        // Get Season Premieres (upcoming episodes)
+        if (showSeasonPremieres) {
+            jellyfinClient.getUpcomingEpisodes(limit = 12)
+                .onSuccess { items -> seasonPremieres = items }
+                .onFailure { /* Non-critical, continue */ }
+        }
+
+        // Get Collections
+        if (showCollections) {
+            jellyfinClient.getCollections(limit = 50)
+                .onSuccess { items ->
+                    collections = items
+
+                    // Load items for pinned collections (preserving user-defined order)
+                    if (pinnedCollections.isNotEmpty()) {
+                        val pinnedData = linkedMapOf<String, Pair<String, List<JellyfinItem>>>()
+                        // Iterate in user-defined order
+                        pinnedCollections.forEach { collectionId ->
+                            val collection = items.find { it.id == collectionId }
+                            if (collection != null) {
+                                jellyfinClient.getCollectionItems(collection.id, limit = 20)
+                                    .onSuccess { collectionItems ->
+                                        if (collectionItems.isNotEmpty()) {
+                                            pinnedData[collection.id] = Pair(collection.name, collectionItems)
+                                        }
+                                    }
+                            }
+                        }
+                        pinnedCollectionsData = pinnedData
+                    }
+                }
+                .onFailure { /* Non-critical, continue */ }
+        }
+
+        // Get Suggestions
+        if (showSuggestions) {
+            jellyfinClient.getSuggestions(limit = 12)
+                .onSuccess { items -> suggestions = items }
+                .onFailure { /* Non-critical, continue */ }
+        }
+
+        // Get Genre Rows
+        if (showGenreRows) {
+            // First get available genres if not already loaded
+            if (availableGenres.isEmpty()) {
+                jellyfinClient.getGenres()
+                    .onSuccess { genres ->
+                        availableGenres = genres.map { it.name }
+                    }
+            }
+
+            // Load items for each enabled genre (preserving user-defined order)
+            val genresToLoad = if (enabledGenres.isNotEmpty()) {
+                enabledGenres
+            } else {
+                // Default to first 3 genres if none selected
+                availableGenres.take(3)
+            }
+
+            val newGenreData = mutableMapOf<String, List<JellyfinItem>>()
+            genresToLoad.forEach { genreName ->
+                jellyfinClient.getItemsByGenre(genreName, limit = 12)
+                    .onSuccess { items ->
+                        if (items.isNotEmpty()) {
+                            newGenreData[genreName] = items
+                        }
+                    }
+            }
+            genreRowsData = newGenreData
+        }
+
         // Build featured items for hero section using shared logic
         featuredItems = HeroContentBuilder.buildFeaturedItems(
             continueWatching = continueWatching,
@@ -225,13 +312,17 @@ fun HomeScreen(
             MobileNavItem.SHOWS -> {
                 LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
             }
+            MobileNavItem.DISCOVER -> onDiscoverClick()
             MobileNavItem.SETTINGS -> onSettingsClick()
         }
     }
 
-    // Build content rows in specified order:
-    // Continue Watching, Next Up, Recently Added Episodes, Recently Added Shows, Recently Added Movies
-    val rows = remember(continueWatching, nextUp, recentEpisodes, recentShows, recentMovies) {
+    // Build content rows in specified order
+    val rows = remember(
+        continueWatching, nextUp, recentEpisodes, recentShows, recentMovies,
+        seasonPremieres, collections, suggestions, genreRowsData, pinnedCollectionsData,
+        showSeasonPremieres, showGenreRows, showCollections, showSuggestions, pinnedCollections
+    ) {
         buildList {
             if (continueWatching.isNotEmpty()) {
                 add(MobileRowData(
@@ -251,6 +342,7 @@ fun HomeScreen(
                     accentColor = MobileRowColors.NextUp
                 ))
             }
+
             if (recentEpisodes.isNotEmpty()) {
                 add(MobileRowData(
                     key = "episodes",
@@ -269,6 +361,19 @@ fun HomeScreen(
                     accentColor = MobileRowColors.Shows
                 ))
             }
+
+            // Upcoming Episodes (season premieres) - show series poster with episode badge and air date
+            if (showSeasonPremieres && seasonPremieres.isNotEmpty()) {
+                add(MobileRowData(
+                    key = "premieres",
+                    title = "Upcoming Episodes",
+                    items = seasonPremieres,
+                    isWideCard = false,  // Use series poster instead of episode thumb
+                    accentColor = MobileRowColors.Premieres,
+                    isUpcomingEpisodes = true
+                ))
+            }
+
             if (recentMovies.isNotEmpty()) {
                 add(MobileRowData(
                     key = "movies",
@@ -277,6 +382,50 @@ fun HomeScreen(
                     isWideCard = false,
                     accentColor = MobileRowColors.Movies
                 ))
+            }
+
+            // Suggestions (before collections and genres)
+            if (showSuggestions && suggestions.isNotEmpty()) {
+                add(MobileRowData(
+                    key = "suggestions",
+                    title = "You Might Like",
+                    items = suggestions,
+                    isWideCard = false,
+                    accentColor = MobileRowColors.Suggestions
+                ))
+            }
+
+            // Pinned collection rows (each pinned collection shows its items)
+            if (showCollections && pinnedCollectionsData.isNotEmpty()) {
+                pinnedCollectionsData.entries.forEachIndexed { index, (collectionId, pair) ->
+                    val (collectionName, items) = pair
+                    if (items.isNotEmpty()) {
+                        val color = MobileRowColors.pinnedCollectionColors[index % MobileRowColors.pinnedCollectionColors.size]
+                        add(MobileRowData(
+                            key = "pinned_$collectionId",
+                            title = collectionName,
+                            items = items,
+                            isWideCard = false,
+                            accentColor = color
+                        ))
+                    }
+                }
+            }
+
+            // Genre Rows
+            if (showGenreRows) {
+                genreRowsData.entries.forEachIndexed { index, (genreName, items) ->
+                    if (items.isNotEmpty()) {
+                        val color = MobileRowColors.genreColors[index % MobileRowColors.genreColors.size]
+                        add(MobileRowData(
+                            key = "genre_$genreName",
+                            title = genreName,
+                            items = items,
+                            isWideCard = false,
+                            accentColor = color
+                        ))
+                    }
+                }
             }
         }
     }
@@ -347,7 +496,8 @@ fun HomeScreen(
                             onItemClick = onItemClick,
                             onItemLongClick = handleItemLongClick,
                             accentColor = rowData.accentColor,
-                            isWideCard = rowData.isWideCard
+                            isWideCard = rowData.isWideCard,
+                            isUpcomingEpisodes = rowData.isUpcomingEpisodes
                         )
                     }
                 }

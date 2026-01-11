@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +56,7 @@ enum class MobileNavItem(
     SEARCH("Search", Icons.Default.Search),
     MOVIES("Movies", Icons.Default.Movie),
     SHOWS("TV Shows", Icons.Default.Tv),
+    DISCOVER("Discover", Icons.Outlined.Explore),
     SETTINGS("Settings", Icons.Default.Settings)
 }
 
@@ -183,7 +185,7 @@ fun MobileTopBar(
                         }
                         
                         // Divider before Settings
-                        if (item == MobileNavItem.SHOWS) {
+                        if (item == MobileNavItem.DISCOVER) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)

@@ -38,6 +38,7 @@ enum class NavItem(
     SEARCH(Icons.Outlined.Search, "Search", "search", Color(0xFFA78BFA)),    // Purple
     SHOWS(Icons.Outlined.Tv, "Shows", "shows", Color(0xFF34D399)),           // Green
     MOVIES(Icons.Outlined.Movie, "Movies", "movies", Color(0xFFFBBF24)),     // Yellow/Gold
+    DISCOVER(Icons.Outlined.Explore, "Discover", "seerr", Color(0xFF8B5CF6)), // Violet (Seerr)
     COLLECTIONS(Icons.Outlined.VideoLibrary, "Collections", "collections", Color(0xFFFF7043)), // Orange
     UNIVERSES(Icons.Outlined.Hub, "Universes", "universes", Color(0xFF9575CD)), // Deep Purple
     SETTINGS(Icons.Outlined.Settings, "Settings", "settings", Color(0xFFF472B6)) // Pink

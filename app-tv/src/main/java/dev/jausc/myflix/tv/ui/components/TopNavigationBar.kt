@@ -50,18 +50,18 @@ fun TopNavigationBar(
             )
             .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 8.dp)
     ) {
-        // Left: Search icon button
+        // Left: Settings icon button
         NavIconButton(
-            icon = Icons.Default.Search,
-            contentDescription = "Search",
-            isSelected = selectedItem == NavItem.SEARCH,
-            onClick = { onItemSelected(NavItem.SEARCH) },
+            icon = Icons.Default.Settings,
+            contentDescription = "Settings",
+            isSelected = selectedItem == NavItem.SETTINGS,
+            onClick = { onItemSelected(NavItem.SETTINGS) },
             focusRequester = firstItemFocusRequester,
             downFocusRequester = downFocusRequester,
             modifier = Modifier.align(Alignment.CenterStart)
         )
-        
-        // Center: Home, TV Shows, Movies, Collections, Universes
+
+        // Center: Home, TV Shows, Movies, Collections, Universes, Discover
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -72,7 +72,8 @@ fun TopNavigationBar(
                 NavItem.SHOWS,
                 NavItem.MOVIES,
                 NavItem.COLLECTIONS,
-                NavItem.UNIVERSES
+                NavItem.UNIVERSES,
+                NavItem.DISCOVER
             ).forEach { item ->
                 NavTabButton(
                     item = item,
@@ -83,13 +84,13 @@ fun TopNavigationBar(
                 )
             }
         }
-        
-        // Right: Settings icon button
+
+        // Right: Search icon button
         NavIconButton(
-            icon = Icons.Default.Settings,
-            contentDescription = "Settings",
-            isSelected = selectedItem == NavItem.SETTINGS,
-            onClick = { onItemSelected(NavItem.SETTINGS) },
+            icon = Icons.Default.Search,
+            contentDescription = "Search",
+            isSelected = selectedItem == NavItem.SEARCH,
+            onClick = { onItemSelected(NavItem.SEARCH) },
             downFocusRequester = downFocusRequester,
             modifier = Modifier.align(Alignment.CenterEnd)
         )
@@ -184,6 +185,7 @@ private fun NavTabButton(
                 NavItem.MOVIES -> "Movies"
                 NavItem.SHOWS -> "TV Shows"
                 NavItem.SEARCH -> "Search"
+                NavItem.DISCOVER -> "Discover"
                 NavItem.SETTINGS -> "Settings"
                 NavItem.COLLECTIONS -> "Collections"
                 NavItem.UNIVERSES -> "Universes"

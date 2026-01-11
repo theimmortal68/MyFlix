@@ -55,7 +55,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.formattedPremiereDate
 import dev.jausc.myflix.core.common.model.isEpisode
+import dev.jausc.myflix.core.common.model.isUpcomingEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -393,6 +395,35 @@ private fun HeroRatingRow(item: JellyfinItem) {
                 RuntimeDisplay(minutes)
             }
         }
+
+        // Premiere date (only for upcoming episodes)
+        if (item.isUpcomingEpisode) {
+            item.formattedPremiereDate?.let { date ->
+                PremiereDateBadge(date)
+            }
+        }
+    }
+}
+
+/**
+ * Premiere date badge for upcoming episodes.
+ * Styled to match RatingBadge (TV-14 style).
+ */
+@Composable
+private fun PremiereDateBadge(date: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f))
+    ) {
+        Text(
+            text = date,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = TvColors.TextPrimary,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
 

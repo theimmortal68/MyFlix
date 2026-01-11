@@ -654,7 +654,8 @@ private fun ManualLoginScreen(
                                     userId = response.user.id,
                                     deviceId = jellyfinClient.deviceId
                                 )
-                                appState.login(server.url, response.accessToken, response.user.id)
+                                // Store username/password for Seerr integration
+                                appState.login(server.url, response.accessToken, response.user.id, username, password)
                                 onLoginSuccess()
                             }
                             .onFailure { e ->

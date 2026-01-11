@@ -78,10 +78,17 @@ private data class RowColumn(val row: Int, val column: Int)
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
     hideWatchedFromRecent: Boolean = false,
+    showSeasonPremieres: Boolean = true,
+    showGenreRows: Boolean = false,
+    enabledGenres: List<String> = emptyList(),
+    showCollections: Boolean = true,
+    pinnedCollections: List<String> = emptyList(),
+    showSuggestions: Boolean = true,
     onLibraryClick: (String, String) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit = {},
+    onDiscoverClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -96,6 +103,14 @@ fun HomeScreen(
     var featuredItems by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // New content rows
+    var seasonPremieres by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var pinnedCollectionData by remember { mutableStateOf<Map<String, Pair<String, List<JellyfinItem>>>>(emptyMap()) }
+    var suggestions by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+    var genreRowsData by remember { mutableStateOf<Map<String, List<JellyfinItem>>>(emptyMap()) }
+    var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // Refresh trigger - increment to force reload
     var refreshTrigger by remember { mutableStateOf(0) }
@@ -182,6 +197,73 @@ fun HomeScreen(
             .onSuccess { items -> continueWatching = items }
             .onFailure { /* Non-critical, continue */ }
 
+        // Get Season Premieres (upcoming episodes)
+        if (showSeasonPremieres) {
+            jellyfinClient.getUpcomingEpisodes(limit = 12)
+                .onSuccess { items -> seasonPremieres = items }
+                .onFailure { /* Non-critical, continue */ }
+        }
+
+        // Get Collections (for selection dialog)
+        if (showCollections) {
+            jellyfinClient.getCollections(limit = 50)
+                .onSuccess { items -> collections = items }
+                .onFailure { /* Non-critical, continue */ }
+
+            // Load pinned collection items
+            if (pinnedCollections.isNotEmpty()) {
+                val newPinnedData = linkedMapOf<String, Pair<String, List<JellyfinItem>>>()
+                pinnedCollections.forEach { collectionId ->
+                    // Get collection details for the name
+                    jellyfinClient.getItem(collectionId).onSuccess { collection ->
+                        jellyfinClient.getCollectionItems(collectionId, limit = 12).onSuccess { items ->
+                            if (items.isNotEmpty()) {
+                                newPinnedData[collectionId] = Pair(collection.name, items)
+                            }
+                        }
+                    }
+                }
+                pinnedCollectionData = newPinnedData
+            }
+        }
+
+        // Get Suggestions
+        if (showSuggestions) {
+            jellyfinClient.getSuggestions(limit = 12)
+                .onSuccess { items -> suggestions = items }
+                .onFailure { /* Non-critical, continue */ }
+        }
+
+        // Get Genre Rows
+        if (showGenreRows) {
+            // First get available genres if not already loaded
+            if (availableGenres.isEmpty()) {
+                jellyfinClient.getGenres()
+                    .onSuccess { genres ->
+                        availableGenres = genres.map { it.name }
+                    }
+            }
+
+            // Load items for each enabled genre (or top genres if none selected)
+            val genresToLoad = if (enabledGenres.isNotEmpty()) {
+                enabledGenres.toList()
+            } else {
+                // Default to first 3 genres if none selected
+                availableGenres.take(3)
+            }
+
+            val newGenreData = mutableMapOf<String, List<JellyfinItem>>()
+            genresToLoad.forEach { genreName ->
+                jellyfinClient.getItemsByGenre(genreName, limit = 12)
+                    .onSuccess { items ->
+                        if (items.isNotEmpty()) {
+                            newGenreData[genreName] = items
+                        }
+                    }
+            }
+            genreRowsData = newGenreData
+        }
+
         // Build featured items for hero section using shared logic
         featuredItems = HeroContentBuilder.buildFeaturedItems(
             continueWatching = continueWatching,
@@ -223,6 +305,7 @@ fun HomeScreen(
             NavItem.SHOWS -> {
                 LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
             }
+            NavItem.DISCOVER -> onDiscoverClick()
             NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
             NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }
             NavItem.SETTINGS -> onSettingsClick()
@@ -315,6 +398,14 @@ fun HomeScreen(
                         recentEpisodes = recentEpisodes,
                         recentShows = recentShows,
                         recentMovies = recentMovies,
+                        seasonPremieres = seasonPremieres,
+                        pinnedCollectionData = pinnedCollectionData,
+                        suggestions = suggestions,
+                        genreRowsData = genreRowsData,
+                        showSeasonPremieres = showSeasonPremieres,
+                        showGenreRows = showGenreRows,
+                        showCollections = showCollections,
+                        showSuggestions = showSuggestions,
                         jellyfinClient = jellyfinClient,
                         onItemClick = onItemClick,
                         onPlayClick = onPlayClick,
@@ -374,6 +465,14 @@ private fun HomeContent(
     recentEpisodes: List<JellyfinItem>,
     recentShows: List<JellyfinItem>,
     recentMovies: List<JellyfinItem>,
+    seasonPremieres: List<JellyfinItem>,
+    pinnedCollectionData: Map<String, Pair<String, List<JellyfinItem>>>,
+    suggestions: List<JellyfinItem>,
+    genreRowsData: Map<String, List<JellyfinItem>>,
+    showSeasonPremieres: Boolean,
+    showGenreRows: Boolean,
+    showCollections: Boolean,
+    showSuggestions: Boolean,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
@@ -418,14 +517,70 @@ private fun HomeContent(
         nextUp.filter { it.id !in continueWatchingIds }
     }
     
+    // Genre row colors for variety
+    val genreColors = listOf(
+        Color(0xFF9C27B0), // Purple
+        Color(0xFFE91E63), // Pink
+        Color(0xFF00BCD4), // Cyan
+        Color(0xFFFF9800), // Orange
+        Color(0xFF4CAF50), // Green
+        Color(0xFF673AB7), // Deep Purple
+    )
+
+    // Pinned collection colors
+    val pinnedCollectionColors = listOf(
+        Color(0xFF34D399), // Emerald
+        Color(0xFF60A5FA), // Blue
+        Color(0xFFFBBF24), // Amber
+        Color(0xFFF472B6), // Pink
+        Color(0xFFA78BFA), // Purple
+    )
+
     // Build list of row data - Continue Watching first, then Next Up
-    val rows = remember(filteredNextUp, continueWatching, filteredRecentEpisodes, filteredRecentShows, filteredRecentMovies) {
+    val rows = remember(
+        filteredNextUp, continueWatching, filteredRecentEpisodes, filteredRecentShows, filteredRecentMovies,
+        seasonPremieres, pinnedCollectionData, suggestions, genreRowsData,
+        showSeasonPremieres, showGenreRows, showCollections, showSuggestions
+    ) {
         buildList {
             if (continueWatching.isNotEmpty()) add(RowData("continue", "Continue Watching", continueWatching, false, TvColors.BluePrimary))
             if (filteredNextUp.isNotEmpty()) add(RowData("next_up", "Next Up", filteredNextUp, false, TvColors.BlueAccent))
+
             if (filteredRecentEpisodes.isNotEmpty()) add(RowData("recent_ep", "Recently Added Episodes", filteredRecentEpisodes, false, TvColors.Success))
             if (filteredRecentShows.isNotEmpty()) add(RowData("recent_shows", "Recently Added Shows", filteredRecentShows, false, Color(0xFFFBBF24)))
+
+            // Upcoming Episodes (after Recently Added Shows)
+            if (showSeasonPremieres && seasonPremieres.isNotEmpty()) {
+                add(RowData("premieres", "Upcoming Episodes", seasonPremieres, false, Color(0xFF60A5FA)))
+            }
+
             if (filteredRecentMovies.isNotEmpty()) add(RowData("recent_movies", "Recently Added Movies", filteredRecentMovies, false, TvColors.BluePrimary))
+
+            // Suggestions (above pinned collections and genres)
+            if (showSuggestions && suggestions.isNotEmpty()) {
+                add(RowData("suggestions", "You Might Like", suggestions, false, Color(0xFFF472B6)))
+            }
+
+            // Pinned Collections (individual rows, not a single "Collections" row)
+            if (showCollections) {
+                pinnedCollectionData.entries.forEachIndexed { index, (collectionId, data) ->
+                    val (name, items) = data
+                    if (items.isNotEmpty()) {
+                        val color = pinnedCollectionColors[index % pinnedCollectionColors.size]
+                        add(RowData("collection_$collectionId", name, items, false, color))
+                    }
+                }
+            }
+
+            // Genre Rows
+            if (showGenreRows) {
+                genreRowsData.entries.forEachIndexed { index, (genreName, items) ->
+                    if (items.isNotEmpty()) {
+                        val color = genreColors[index % genreColors.size]
+                        add(RowData("genre_$genreName", genreName, items, false, color))
+                    }
+                }
+            }
         }
     }
     

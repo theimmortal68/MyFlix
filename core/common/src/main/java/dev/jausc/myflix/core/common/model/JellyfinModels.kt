@@ -51,7 +51,9 @@ data class JellyfinItem(
     @SerialName("UserData") val userData: UserData? = null,
     @SerialName("MediaSources") val mediaSources: List<MediaSource>? = null,
     // CollectionType is returned for library views (e.g., "movies", "tvshows")
-    @SerialName("CollectionType") val collectionType: String? = null
+    @SerialName("CollectionType") val collectionType: String? = null,
+    // PremiereDate for upcoming episodes (ISO 8601 format)
+    @SerialName("PremiereDate") val premiereDate: String? = null
 )
 
 @Serializable
@@ -107,6 +109,38 @@ val JellyfinItem.isMovie: Boolean get() = type == "Movie"
 val JellyfinItem.isSeries: Boolean get() = type == "Series"
 val JellyfinItem.isEpisode: Boolean get() = type == "Episode"
 val JellyfinItem.isSeason: Boolean get() = type == "Season"
+
+/**
+ * Check if this is an upcoming episode (episode with future premiere date)
+ */
+val JellyfinItem.isUpcomingEpisode: Boolean
+    get() {
+        if (!isEpisode) return false
+        val dateStr = premiereDate ?: return false
+        return try {
+            val instant = java.time.Instant.parse(dateStr)
+            val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            localDate.isAfter(java.time.LocalDate.now()) || localDate.isEqual(java.time.LocalDate.now())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+/**
+ * Format premiere date as "Mon DD" (e.g., "Jan 15")
+ */
+val JellyfinItem.formattedPremiereDate: String?
+    get() {
+        val dateStr = premiereDate ?: return null
+        return try {
+            val instant = java.time.Instant.parse(dateStr)
+            val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d")
+            localDate.format(formatter)
+        } catch (e: Exception) {
+            null
+        }
+    }
 
 val JellyfinItem.runtimeMinutes: Int?
     get() = runTimeTicks?.let { (it / 600_000_000).toInt() }
@@ -201,7 +235,7 @@ val JellyfinItem.is4K: Boolean
 val JellyfinItem.videoQualityLabel: String
     get() {
         val parts = mutableListOf<String>()
-        
+
         if (is4K) parts.add("4K")
         else {
             val height = videoStream?.height
@@ -213,9 +247,18 @@ val JellyfinItem.videoQualityLabel: String
                 }
             }
         }
-        
+
         if (isDolbyVision) parts.add("Dolby Vision")
         else if (isHdr) parts.add("HDR")
-        
+
         return parts.joinToString(" · ")
     }
+
+/**
+ * Genre model for genre-based content rows
+ */
+@Serializable
+data class JellyfinGenre(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String
+)

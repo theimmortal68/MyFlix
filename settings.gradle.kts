@@ -27,6 +27,7 @@ include(":core:common")
 include(":core:network")
 include(":core:data")
 include(":core:player")
+include(":core:seerr")
 
 // UI modules
 include(":ui:common")

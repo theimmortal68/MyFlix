@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.mobile.ui.screens.*
 import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
 
@@ -48,18 +49,89 @@ fun MyFlixMobileApp() {
     val jellyfinClient = remember { JellyfinClient() }
     val appState = remember { AppState(context, jellyfinClient) }
     val mobilePreferences = remember { MobilePreferences.getInstance(context) }
+    val seerrClient = remember { SeerrClient() }
 
     // Collect preferences
     val useMpvPlayer by mobilePreferences.useMpvPlayer.collectAsState()
+    val showSeasonPremieres by mobilePreferences.showSeasonPremieres.collectAsState()
+    val showGenreRows by mobilePreferences.showGenreRows.collectAsState()
+    val enabledGenres by mobilePreferences.enabledGenres.collectAsState()
+    val showCollections by mobilePreferences.showCollections.collectAsState()
+    val pinnedCollections by mobilePreferences.pinnedCollections.collectAsState()
+    val showSuggestions by mobilePreferences.showSuggestions.collectAsState()
+    val seerrEnabled by mobilePreferences.seerrEnabled.collectAsState()
+    val seerrUrl by mobilePreferences.seerrUrl.collectAsState()
+    val seerrApiKey by mobilePreferences.seerrApiKey.collectAsState()
+    val seerrSessionCookie by mobilePreferences.seerrSessionCookie.collectAsState()
 
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var splashFinished by remember { mutableStateOf(false) }
-    
+    var isSeerrAuthenticated by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         appState.initialize()
         isLoggedIn = appState.isLoggedIn
         isInitialized = true
+    }
+
+    // Initialize SeerrClient with stored session cookie or Jellyfin credentials
+    LaunchedEffect(seerrUrl, seerrEnabled, seerrSessionCookie, isInitialized, isLoggedIn) {
+        // Skip if already authenticated in this session (e.g., from setup screen)
+        if (isSeerrAuthenticated) return@LaunchedEffect
+
+        android.util.Log.d("MyFlixSeerr", "LaunchedEffect: init=$isInitialized, logged=$isLoggedIn, enabled=$seerrEnabled, url=$seerrUrl, hasCookie=${!seerrSessionCookie.isNullOrBlank()}")
+        if (isInitialized && isLoggedIn && seerrEnabled && !seerrUrl.isNullOrBlank()) {
+            android.util.Log.d("MyFlixSeerr", "Connecting to Seerr at $seerrUrl")
+            seerrClient.connectToServer(seerrUrl!!)
+                .onSuccess {
+                    android.util.Log.d("MyFlixSeerr", "Connected, trying auth...")
+
+                    // Helper to try credentials as last resort
+                    suspend fun tryCredentials() {
+                        val username = appState.username
+                        val password = appState.password
+                        if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+                            seerrClient.loginWithJellyfin(username, password)
+                                .onSuccess { user ->
+                                    android.util.Log.d("MyFlixSeerr", "Credentials auth SUCCESS")
+                                    isSeerrAuthenticated = true
+                                    user.apiKey?.let { mobilePreferences.setSeerrApiKey(it) }
+                                    seerrClient.sessionCookie?.let { mobilePreferences.setSeerrSessionCookie(it) }
+                                }
+                                .onFailure { e ->
+                                    android.util.Log.e("MyFlixSeerr", "Credentials auth FAILED: ${e.message}")
+                                    isSeerrAuthenticated = false
+                                }
+                        } else {
+                            android.util.Log.w("MyFlixSeerr", "No credentials for Seerr auth")
+                        }
+                    }
+
+                    // Try session cookie first (most reliable for persistence)
+                    if (!seerrSessionCookie.isNullOrBlank()) {
+                        android.util.Log.d("MyFlixSeerr", "Trying session cookie auth")
+                        seerrClient.loginWithSessionCookie(seerrSessionCookie!!)
+                            .onSuccess {
+                                android.util.Log.d("MyFlixSeerr", "Session cookie auth SUCCESS")
+                                isSeerrAuthenticated = true
+                            }
+                            .onFailure { e ->
+                                android.util.Log.w("MyFlixSeerr", "Session cookie auth FAILED: ${e.message}, trying credentials")
+                                tryCredentials()
+                            }
+                    } else {
+                        android.util.Log.d("MyFlixSeerr", "No session cookie, trying credentials")
+                        tryCredentials()
+                    }
+                }
+                .onFailure { e ->
+                    android.util.Log.e("MyFlixSeerr", "Failed to connect to Seerr: ${e.message}")
+                }
+        } else if (!seerrEnabled) {
+            android.util.Log.d("MyFlixSeerr", "Seerr is disabled")
+            isSeerrAuthenticated = false
+        }
     }
 
     val navController = rememberNavController()
@@ -100,6 +172,12 @@ fun MyFlixMobileApp() {
         composable("home") {
             HomeScreen(
                 jellyfinClient = jellyfinClient,
+                showSeasonPremieres = showSeasonPremieres,
+                showGenreRows = showGenreRows,
+                enabledGenres = enabledGenres,
+                showCollections = showCollections,
+                pinnedCollections = pinnedCollections,
+                showSuggestions = showSuggestions,
                 onLibraryClick = { libraryId, libraryName ->
                     navController.navigate("library/$libraryId/$libraryName")
                 },
@@ -111,6 +189,9 @@ fun MyFlixMobileApp() {
                 },
                 onSearchClick = {
                     navController.navigate("search")
+                },
+                onDiscoverClick = {
+                    navController.navigate("seerr")
                 },
                 onSettingsClick = {
                     navController.navigate("settings")
@@ -131,6 +212,7 @@ fun MyFlixMobileApp() {
         composable("settings") {
             SettingsScreen(
                 preferences = mobilePreferences,
+                jellyfinClient = jellyfinClient,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -183,5 +265,76 @@ fun MyFlixMobileApp() {
                 onBack = { navController.popBackStack() }
             )
         }
+
+        // Seerr routes
+        composable("seerr") {
+            // Require actual authentication - isSeerrAuthenticated is set after successful login
+            if (!isSeerrAuthenticated) {
+                SeerrSetupScreen(
+                    seerrClient = seerrClient,
+                    preferences = mobilePreferences,
+                    jellyfinUsername = appState.username,
+                    jellyfinPassword = appState.password,
+                    jellyfinHost = jellyfinClient.serverUrl?.let { extractHost(it) },
+                    onSetupComplete = {
+                        // Just set authenticated - recomposition will show SeerrHomeScreen
+                        isSeerrAuthenticated = true
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            } else {
+                SeerrHomeScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+        }
+
+        composable("seerr/setup") {
+            SeerrSetupScreen(
+                seerrClient = seerrClient,
+                preferences = mobilePreferences,
+                jellyfinUsername = appState.username,
+                jellyfinPassword = appState.password,
+                jellyfinHost = jellyfinClient.serverUrl?.let { extractHost(it) },
+                onSetupComplete = {
+                    navController.navigate("seerr") {
+                        popUpTo("seerr/setup") { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "seerr/{mediaType}/{tmdbId}",
+            arguments = listOf(
+                navArgument("mediaType") { type = NavType.StringType },
+                navArgument("tmdbId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
+            val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: return@composable
+            SeerrDetailScreen(
+                mediaType = mediaType,
+                tmdbId = tmdbId,
+                seerrClient = seerrClient,
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
+}
+
+/**
+ * Extract host from URL (removes protocol and port).
+ */
+private fun extractHost(url: String): String {
+    return url
+        .removePrefix("http://")
+        .removePrefix("https://")
+        .substringBefore(":")
+        .substringBefore("/")
 }

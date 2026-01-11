@@ -2,6 +2,7 @@ package dev.jausc.myflix.core.network
 
 import android.content.Context
 import dev.jausc.myflix.core.common.model.*
+import dev.jausc.myflix.core.common.model.JellyfinGenre
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.Dns
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -61,9 +63,29 @@ class JellyfinClient(
         coerceInputValues = true
     }
 
+    // DNS cache to prevent intermittent resolution failures during Quick Connect polling
+    private val dnsCache = ConcurrentHashMap<String, Pair<List<InetAddress>, Long>>()
+    private val dnsCacheTtl = 300_000L // 5 minutes
+
+    private val cachingDns = object : Dns {
+        override fun lookup(hostname: String): List<InetAddress> {
+            val cached = dnsCache[hostname]
+            if (cached != null && System.currentTimeMillis() - cached.second < dnsCacheTtl) {
+                android.util.Log.d("JellyfinClient", "DNS cache hit for $hostname: ${cached.first}")
+                return cached.first
+            }
+
+            val addresses = Dns.SYSTEM.lookup(hostname)
+            dnsCache[hostname] = Pair(addresses, System.currentTimeMillis())
+            android.util.Log.d("JellyfinClient", "DNS resolved $hostname: $addresses")
+            return addresses
+        }
+    }
+
     private val httpClient = httpClient ?: HttpClient(OkHttp) {
         engine {
             config {
+                dns(cachingDns)
                 followRedirects(true)
                 followSslRedirects(true)
             }
@@ -291,19 +313,21 @@ class JellyfinClient(
      * - https://host:8920
      * - http://host (with HTTPS upgrade check)
      * - http://host:8096
+     *
+     * Includes retry logic for transient DNS/network errors.
      */
     suspend fun connectToServer(host: String): Result<ValidatedServer> {
         val cleanHost = host.trim()
             .removePrefix("http://")
             .removePrefix("https://")
             .trimEnd('/')
-        
+
         // Build list of URLs to try - prefer HTTPS first for security
         val urlsToTry = mutableListOf<String>()
-        
+
         // Check if user provided a port
         val hasPort = cleanHost.contains(":")
-        
+
         if (hasPort) {
             // User specified port - try HTTPS first
             urlsToTry.add("https://$cleanHost")
@@ -315,66 +339,92 @@ class JellyfinClient(
             urlsToTry.add("http://$cleanHost")
             urlsToTry.add("http://$cleanHost:8096")
         }
-        
+
         android.util.Log.d("JellyfinClient", "Trying to connect to: $urlsToTry")
-        
-        for (url in urlsToTry) {
-            try {
-                android.util.Log.d("JellyfinClient", "Trying $url...")
-                val response = httpClient.get("$url/System/Info/Public") {
-                    timeout { 
-                        requestTimeoutMillis = 5_000
-                        connectTimeoutMillis = 3_000
-                    }
-                }
-                val serverInfo = response.body<ServerInfo>()
-                
-                // Determine the canonical URL to use
-                var finalUrl = url
-                
-                // If we connected via HTTP, check if HTTPS works (server may redirect HTTP->HTTPS)
-                if (url.startsWith("http://")) {
-                    val httpsUrl = url.replace("http://", "https://")
-                    try {
-                        httpClient.get("$httpsUrl/System/Info/Public") {
-                            timeout { 
-                                requestTimeoutMillis = 3_000
-                                connectTimeoutMillis = 2_000 
-                            }
+
+        // Retry logic for transient DNS/network errors
+        val maxRetries = 3
+        var lastException: Exception? = null
+
+        for (attempt in 1..maxRetries) {
+            for (url in urlsToTry) {
+                try {
+                    android.util.Log.d("JellyfinClient", "Trying $url (attempt $attempt/$maxRetries)...")
+                    val response = httpClient.get("$url/System/Info/Public") {
+                        timeout {
+                            requestTimeoutMillis = 5_000
+                            connectTimeoutMillis = 3_000
                         }
-                        // HTTPS works - use it as the canonical URL
-                        finalUrl = httpsUrl
-                        android.util.Log.d("JellyfinClient", "HTTP worked but HTTPS also works - using $finalUrl")
+                    }
+                    val serverInfo = response.body<ServerInfo>()
+
+                    // Determine the canonical URL to use
+                    var finalUrl = url
+
+                    // If we connected via HTTP, check if HTTPS works (server may redirect HTTP->HTTPS)
+                    if (url.startsWith("http://")) {
+                        val httpsUrl = url.replace("http://", "https://")
+                        try {
+                            httpClient.get("$httpsUrl/System/Info/Public") {
+                                timeout {
+                                    requestTimeoutMillis = 3_000
+                                    connectTimeoutMillis = 2_000
+                                }
+                            }
+                            // HTTPS works - use it as the canonical URL
+                            finalUrl = httpsUrl
+                            android.util.Log.d("JellyfinClient", "HTTP worked but HTTPS also works - using $finalUrl")
+                        } catch (e: Exception) {
+                            // HTTPS doesn't work, stick with HTTP
+                            android.util.Log.d("JellyfinClient", "HTTPS not available, using HTTP: $url")
+                        }
+                    }
+
+                    // Check Quick Connect availability using final URL
+                    val quickConnectEnabled = try {
+                        val qcResponse = httpClient.get("$finalUrl/QuickConnect/Enabled") {
+                            timeout { requestTimeoutMillis = 3_000 }
+                        }
+                        qcResponse.bodyAsText().trim().lowercase() == "true"
                     } catch (e: Exception) {
-                        // HTTPS doesn't work, stick with HTTP
-                        android.util.Log.d("JellyfinClient", "HTTPS not available, using HTTP: $url")
+                        false
                     }
-                }
-                
-                // Check Quick Connect availability using final URL
-                val quickConnectEnabled = try {
-                    val qcResponse = httpClient.get("$finalUrl/QuickConnect/Enabled") {
-                        timeout { requestTimeoutMillis = 3_000 }
-                    }
-                    qcResponse.bodyAsText().trim().lowercase() == "true"
+
+                    android.util.Log.i("JellyfinClient", "Connected to $finalUrl (Quick Connect: $quickConnectEnabled)")
+
+                    return Result.success(ValidatedServer(
+                        url = finalUrl,
+                        serverInfo = serverInfo,
+                        quickConnectEnabled = quickConnectEnabled
+                    ))
                 } catch (e: Exception) {
-                    false
+                    android.util.Log.d("JellyfinClient", "Failed $url: ${e.message}")
+                    lastException = e
+
+                    // Check if this is a DNS resolution error - worth retrying
+                    val isDnsError = e.message?.contains("resolve", ignoreCase = true) == true ||
+                                     e.message?.contains("unknown host", ignoreCase = true) == true ||
+                                     e.message?.contains("no address", ignoreCase = true) == true
+
+                    if (isDnsError && attempt < maxRetries) {
+                        android.util.Log.w("JellyfinClient", "DNS error on attempt $attempt, will retry after delay")
+                        // Break inner loop to retry with delay
+                        break
+                    }
+                    continue
                 }
-                
-                android.util.Log.i("JellyfinClient", "Connected to $finalUrl (Quick Connect: $quickConnectEnabled)")
-                
-                return Result.success(ValidatedServer(
-                    url = finalUrl,
-                    serverInfo = serverInfo,
-                    quickConnectEnabled = quickConnectEnabled
-                ))
-            } catch (e: Exception) {
-                android.util.Log.d("JellyfinClient", "Failed $url: ${e.message}")
-                continue
+            }
+
+            // If we get here without returning, check if we should retry
+            if (attempt < maxRetries) {
+                val delayMs = 1000L * attempt // 1s, 2s, 3s exponential backoff
+                android.util.Log.d("JellyfinClient", "Retrying connection in ${delayMs}ms...")
+                delay(delayMs)
             }
         }
-        
-        return Result.failure(Exception("Could not connect to server. Tried:\n${urlsToTry.joinToString("\n")}"))
+
+        val errorMsg = lastException?.message ?: "Unknown error"
+        return Result.failure(Exception("Could not connect to server after $maxRetries attempts. Error: $errorMsg\nTried:\n${urlsToTry.joinToString("\n")}"))
     }
     
     @Deprecated("Use connectToServer instead", ReplaceWith("connectToServer(inputUrl)"))
@@ -383,13 +433,18 @@ class JellyfinClient(
     // ==================== Quick Connect ====================
     
     suspend fun isQuickConnectAvailable(serverUrl: String): Boolean {
+        val checkUrl = "${serverUrl.trimEnd('/')}/QuickConnect/Enabled"
+        android.util.Log.d("JellyfinClient", "isQuickConnectAvailable checking: $checkUrl")
         return try {
-            val response = httpClient.get("${serverUrl.trimEnd('/')}/QuickConnect/Enabled") {
+            val response = httpClient.get(checkUrl) {
                 timeout { requestTimeoutMillis = 5_000 }
             }
-            response.status.isSuccess() && response.bodyAsText().trim().lowercase() == "true"
+            val body = response.bodyAsText().trim().lowercase()
+            val isAvailable = response.status.isSuccess() && body == "true"
+            android.util.Log.d("JellyfinClient", "isQuickConnectAvailable result: status=${response.status}, body=$body, available=$isAvailable")
+            isAvailable
         } catch (e: Exception) {
-            android.util.Log.w("JellyfinClient", "Quick Connect check failed: ${e.message}")
+            android.util.Log.w("JellyfinClient", "Quick Connect check failed for $checkUrl: ${e.javaClass.simpleName}: ${e.message}")
             false
         }
     }
@@ -401,62 +456,134 @@ class JellyfinClient(
         }.body()
     }
     
-    suspend fun checkQuickConnectStatus(serverUrl: String, secret: String): Result<QuickConnectState> = runCatching {
+    suspend fun checkQuickConnectStatus(serverUrl: String, secret: String): Result<QuickConnectState> {
         val url = serverUrl.trimEnd('/')
-        httpClient.get("$url/QuickConnect/Connect") {
-            parameter("secret", secret)
-        }.body()
+        val maxRetries = 3
+
+        for (attempt in 1..maxRetries) {
+            try {
+                android.util.Log.d("JellyfinClient", "checkQuickConnectStatus attempt $attempt to $url")
+                val response = httpClient.get("$url/QuickConnect/Connect") {
+                    parameter("secret", secret)
+                    timeout {
+                        requestTimeoutMillis = 15_000
+                        connectTimeoutMillis = 10_000
+                        socketTimeoutMillis = 15_000
+                    }
+                }
+                return Result.success(response.body())
+            } catch (e: Exception) {
+                android.util.Log.w("JellyfinClient", "checkQuickConnectStatus attempt $attempt failed: ${e.message}")
+
+                // Check if retryable (timeout, network errors)
+                val isRetryable = e.message?.contains("timeout", ignoreCase = true) == true ||
+                                  e.message?.contains("resolve", ignoreCase = true) == true ||
+                                  e.message?.contains("unknown host", ignoreCase = true) == true ||
+                                  e.message?.contains("no address", ignoreCase = true) == true ||
+                                  e.message?.contains("connect", ignoreCase = true) == true
+
+                if (isRetryable && attempt < maxRetries) {
+                    android.util.Log.d("JellyfinClient", "Retrying status check in 1 second...")
+                    delay(1000)
+                    continue
+                }
+
+                return Result.failure(e)
+            }
+        }
+
+        return Result.failure(Exception("Failed to check status after $maxRetries attempts"))
     }
     
-    suspend fun authenticateWithQuickConnect(serverUrl: String, secret: String): Result<AuthResponse> = runCatching {
+    suspend fun authenticateWithQuickConnect(serverUrl: String, secret: String): Result<AuthResponse> {
         val url = serverUrl.trimEnd('/')
-        httpClient.post("$url/Users/AuthenticateWithQuickConnect") {
-            header("Authorization", authHeader(null))
-            setBody(mapOf("Secret" to secret))
-        }.body()
+        val maxRetries = 3
+
+        for (attempt in 1..maxRetries) {
+            try {
+                android.util.Log.d("JellyfinClient", "authenticateWithQuickConnect attempt $attempt/$maxRetries to $url")
+                val response = httpClient.post("$url/Users/AuthenticateWithQuickConnect") {
+                    header("Authorization", authHeader(null))
+                    setBody(mapOf("Secret" to secret))
+                    timeout {
+                        requestTimeoutMillis = 10_000
+                        connectTimeoutMillis = 5_000
+                    }
+                }
+                return Result.success(response.body())
+            } catch (e: Exception) {
+                android.util.Log.w("JellyfinClient", "authenticateWithQuickConnect failed: ${e.message}")
+
+                // Check if DNS/network error worth retrying
+                val isRetryable = e.message?.contains("resolve", ignoreCase = true) == true ||
+                                  e.message?.contains("unknown host", ignoreCase = true) == true ||
+                                  e.message?.contains("no address", ignoreCase = true) == true ||
+                                  e.message?.contains("timeout", ignoreCase = true) == true
+
+                if (isRetryable && attempt < maxRetries) {
+                    val delayMs = 1000L * attempt
+                    android.util.Log.d("JellyfinClient", "Retrying in ${delayMs}ms...")
+                    delay(delayMs)
+                    continue
+                }
+
+                return Result.failure(e)
+            }
+        }
+
+        return Result.failure(Exception("Failed after $maxRetries attempts"))
     }
     
     fun quickConnectFlow(serverUrl: String): Flow<QuickConnectFlowState> = flow {
+        android.util.Log.d("JellyfinClient", "quickConnectFlow started with serverUrl: $serverUrl")
         emit(QuickConnectFlowState.Initializing)
-        
+
         if (!isQuickConnectAvailable(serverUrl)) {
+            android.util.Log.w("JellyfinClient", "Quick Connect not available on $serverUrl")
             emit(QuickConnectFlowState.NotAvailable)
             return@flow
         }
-        
+
+        android.util.Log.d("JellyfinClient", "Initiating Quick Connect on $serverUrl...")
         val initResult = initiateQuickConnect(serverUrl)
         if (initResult.isFailure) {
+            android.util.Log.e("JellyfinClient", "Quick Connect initiate failed: ${initResult.exceptionOrNull()?.message}")
             emit(QuickConnectFlowState.Error(initResult.exceptionOrNull()?.message ?: "Failed to initiate"))
             return@flow
         }
-        
+
         var state = initResult.getOrThrow()
+        android.util.Log.d("JellyfinClient", "Quick Connect code: ${state.code}")
         emit(QuickConnectFlowState.WaitingForApproval(state.code, state.secret))
-        
+
         while (!state.authenticated) {
             delay(3000)
-            
+
             val statusResult = checkQuickConnectStatus(serverUrl, state.secret)
             if (statusResult.isFailure) {
+                android.util.Log.e("JellyfinClient", "Quick Connect status check failed: ${statusResult.exceptionOrNull()?.message}")
                 emit(QuickConnectFlowState.Error(statusResult.exceptionOrNull()?.message ?: "Status check failed"))
                 return@flow
             }
-            
+
             state = statusResult.getOrThrow()
-            
+
             if (!state.authenticated) {
                 emit(QuickConnectFlowState.WaitingForApproval(state.code, state.secret))
             }
         }
-        
+
+        android.util.Log.d("JellyfinClient", "Quick Connect approved! Authenticating with serverUrl: $serverUrl")
         emit(QuickConnectFlowState.Authenticating)
-        
+
         val authResult = authenticateWithQuickConnect(serverUrl, state.secret)
         if (authResult.isFailure) {
+            android.util.Log.e("JellyfinClient", "Quick Connect auth failed: ${authResult.exceptionOrNull()?.message}")
             emit(QuickConnectFlowState.Error(authResult.exceptionOrNull()?.message ?: "Authentication failed"))
             return@flow
         }
-        
+
+        android.util.Log.i("JellyfinClient", "Quick Connect authentication successful!")
         emit(QuickConnectFlowState.Authenticated(authResult.getOrThrow()))
     }
 
@@ -662,7 +789,7 @@ class JellyfinClient(
      * Search across all libraries.
      */
     suspend fun search(
-        query: String, 
+        query: String,
         limit: Int = 50,
         includeItemTypes: String = "Movie,Series,Episode"
     ): Result<List<JellyfinItem>> {
@@ -677,6 +804,145 @@ class JellyfinClient(
                 parameter("enableImageTypes", "Primary,Backdrop,Thumb")
             }.body()
             r.items
+        }
+    }
+
+    /**
+     * Get upcoming episodes within the next 30 days.
+     * Excludes specials (season 0).
+     */
+    suspend fun getUpcomingEpisodes(libraryId: String? = null, limit: Int = 20): Result<List<JellyfinItem>> {
+        val key = "upcoming:${libraryId ?: "all"}:$limit"
+        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        return runCatching {
+            val today = java.time.LocalDate.now()
+            val future = today.plusDays(30)
+
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                libraryId?.let { parameter("parentId", it) }
+                parameter("includeItemTypes", "Episode")
+                parameter("minPremiereDate", "${today}T00:00:00Z")
+                parameter("maxPremiereDate", "${future}T23:59:59Z")
+                parameter("sortBy", "PremiereDate")
+                parameter("sortOrder", "Ascending")
+                parameter("recursive", true)
+                parameter("limit", limit * 2)  // Fetch extra to account for filtering
+                parameter("fields", Fields.EPISODE_CARD)
+                parameter("enableImageTypes", "Primary,Thumb")
+            }.body()
+            // Filter out specials (season 0)
+            r.items.filter { episode ->
+                (episode.parentIndexNumber ?: 0) >= 1 // Season 1+ (exclude specials)
+            }.take(limit).also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get all genres from a library or across all libraries.
+     */
+    suspend fun getGenres(libraryId: String? = null): Result<List<JellyfinGenre>> {
+        val key = "genres:${libraryId ?: "all"}"
+        getCached<List<JellyfinGenre>>(key, CacheTtl.LIBRARIES)?.let { return Result.success(it) }
+        return runCatching {
+            val r: GenresResponse = httpClient.get("$baseUrl/Genres") {
+                header("Authorization", authHeader())
+                parameter("userId", userId)
+                libraryId?.let { parameter("parentId", it) }
+                parameter("sortBy", "SortName")
+                parameter("sortOrder", "Ascending")
+            }.body()
+            r.items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get items by genre name.
+     */
+    suspend fun getItemsByGenre(
+        genreName: String,
+        libraryId: String? = null,
+        limit: Int = 20,
+        includeItemTypes: String = "Movie,Series"
+    ): Result<List<JellyfinItem>> {
+        val key = "genre:$genreName:${libraryId ?: "all"}:$limit"
+        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                libraryId?.let { parameter("parentId", it) }
+                parameter("genres", genreName)
+                parameter("includeItemTypes", includeItemTypes)
+                parameter("sortBy", "Random")
+                parameter("recursive", true)
+                parameter("limit", limit)
+                parameter("fields", Fields.CARD)
+                parameter("enableImageTypes", "Primary,Backdrop")
+            }.body()
+            r.items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get all collections (BoxSets) from the server.
+     */
+    suspend fun getCollections(limit: Int = 50): Result<List<JellyfinItem>> {
+        val key = "collections:$limit"
+        getCached<List<JellyfinItem>>(key, CacheTtl.LIBRARIES)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("includeItemTypes", "BoxSet")
+                parameter("sortBy", "SortName")
+                parameter("sortOrder", "Ascending")
+                parameter("recursive", true)
+                parameter("limit", limit)
+                parameter("fields", Fields.CARD)
+                parameter("enableImageTypes", "Primary,Backdrop")
+            }.body()
+            r.items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get items in a specific collection (BoxSet).
+     */
+    suspend fun getCollectionItems(collectionId: String, limit: Int = 50): Result<List<JellyfinItem>> {
+        val key = "collection:$collectionId:$limit"
+        getCached<List<JellyfinItem>>(key, CacheTtl.ITEM_DETAILS)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("parentId", collectionId)
+                parameter("sortBy", "SortName")
+                parameter("sortOrder", "Ascending")
+                parameter("fields", Fields.CARD)
+                parameter("enableImageTypes", "Primary,Backdrop")
+            }.body()
+            r.items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get suggested items based on a specific item (recommendations).
+     * Uses the Similar endpoint for relevant suggestions.
+     */
+    suspend fun getSuggestions(limit: Int = 20): Result<List<JellyfinItem>> {
+        val key = "suggestions:$limit"
+        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("includeItemTypes", "Movie,Series")
+                parameter("sortBy", "Random")
+                parameter("recursive", true)
+                parameter("limit", limit)
+                parameter("fields", Fields.CARD)
+                parameter("enableImageTypes", "Primary,Backdrop")
+                // Get unwatched items the user might like
+                parameter("isPlayed", false)
+            }.body()
+            r.items.also { putCache(key, it) }
         }
     }
 
@@ -987,6 +1253,12 @@ data class PublicUser(
     @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
     @SerialName("HasPassword") val hasPassword: Boolean = true,
     @SerialName("HasConfiguredPassword") val hasConfiguredPassword: Boolean = true
+)
+
+@Serializable
+data class GenresResponse(
+    @SerialName("Items") val items: List<JellyfinGenre>,
+    @SerialName("TotalRecordCount") val totalRecordCount: Int
 )
 
 sealed class QuickConnectFlowState {

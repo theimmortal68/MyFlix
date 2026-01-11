@@ -15,7 +15,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.formattedPremiereDate
+import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
@@ -244,7 +248,7 @@ fun WideMediaCard(
                             modifier = if (isFocused) Modifier.basicMarquee() else Modifier
                         )
                     }
-                    
+
                     // Episode/Item name - scrolls when focused
                     Text(
                         text = item.name,

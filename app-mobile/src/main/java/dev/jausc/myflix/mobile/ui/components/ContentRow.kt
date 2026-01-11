@@ -36,6 +36,29 @@ object MobileRowColors {
     val Movies = Color(0xFF8B5CF6) // Purple
     val Shows = Color(0xFF10B981) // Emerald
     val Default = Color(0xFF6B7280) // Gray
+    val Premieres = Color(0xFF60A5FA) // Light Blue
+    val Collections = Color(0xFF34D399) // Teal
+    val Suggestions = Color(0xFFF472B6) // Pink
+
+    // Genre row colors for variety
+    val genreColors = listOf(
+        Color(0xFF9C27B0), // Purple
+        Color(0xFFE91E63), // Pink
+        Color(0xFF00BCD4), // Cyan
+        Color(0xFFFF9800), // Orange
+        Color(0xFF4CAF50), // Green
+        Color(0xFF673AB7), // Deep Purple
+    )
+
+    // Pinned collection row colors
+    val pinnedCollectionColors = listOf(
+        Color(0xFFEC4899), // Pink
+        Color(0xFF06B6D4), // Cyan
+        Color(0xFFF97316), // Orange
+        Color(0xFF84CC16), // Lime
+        Color(0xFFA855F7), // Purple
+        Color(0xFF14B8A6), // Teal
+    )
 }
 
 /**
@@ -52,7 +75,8 @@ fun MobileContentRow(
     onItemLongClick: ((JellyfinItem) -> Unit)? = null,
     accentColor: Color = MobileRowColors.Default,
     isWideCard: Boolean = false,
-    showLabels: Boolean = true
+    showLabels: Boolean = true,
+    isUpcomingEpisodes: Boolean = false
 ) {
     if (items.isEmpty()) return
 
@@ -123,7 +147,8 @@ fun MobileContentRow(
                         onClick = { onItemClick(item.id) },
                         onLongClick = onItemLongClick?.let { { it(item) } },
                         showLabel = showLabels,
-                        screenSizeClass = screenSizeClass
+                        screenSizeClass = screenSizeClass,
+                        isUpcomingEpisode = isUpcomingEpisodes
                     )
                 }
             }
@@ -139,5 +164,6 @@ data class MobileRowData(
     val title: String,
     val items: List<JellyfinItem>,
     val isWideCard: Boolean = false,
-    val accentColor: Color = MobileRowColors.Default
+    val accentColor: Color = MobileRowColors.Default,
+    val isUpcomingEpisodes: Boolean = false
 )
