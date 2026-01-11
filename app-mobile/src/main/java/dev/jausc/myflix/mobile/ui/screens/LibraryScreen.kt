@@ -1,23 +1,32 @@
 @file:Suppress(
-    "LongMethod",
-    "CognitiveComplexMethod",
-    "CyclomaticComplexMethod",
     "MagicNumber",
-    "WildcardImport",
-    "NoWildcardImports",
-    "LabeledExpression",
 )
 
 package dev.jausc.myflix.mobile.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,9 +34,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.rememberLibraryScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,19 +46,13 @@ fun LibraryScreen(
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
-    var items by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(libraryId) {
-        scope.launch {
-            jellyfinClient.getLibraryItems(libraryId).onSuccess { response ->
-                items = response.items
-            }
-            isLoading = false
-        }
-    }
+    val state = rememberLibraryScreenState(
+        libraryId = libraryId,
+        libraryName = libraryName,
+        loader = { id ->
+            jellyfinClient.getLibraryItems(id).map { it.items }
+        },
+    )
 
     Scaffold(
         topBar = {
@@ -64,52 +66,68 @@ fun LibraryScreen(
             )
         },
     ) { padding ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
+        when {
+            state.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 130.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(items, key = { it.id }) { item ->
-                    ElevatedCard(
-                        onClick = { onItemClick(item.id) },
-                    ) {
-                        Column {
-                            AsyncImage(
-                                model = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
-                                contentDescription = item.name,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(2f / 3f)
-                                    .clip(MaterialTheme.shapes.medium),
-                                contentScale = ContentScale.Crop,
-                            )
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text(
-                                    text = item.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+            state.error != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = state.error ?: "Error loading library",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            else -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 130.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.items, key = { it.id }) { item ->
+                        ElevatedCard(
+                            onClick = { onItemClick(item.id) },
+                        ) {
+                            Column {
+                                AsyncImage(
+                                    model = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
+                                    contentDescription = item.name,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(2f / 3f)
+                                        .clip(MaterialTheme.shapes.medium),
+                                    contentScale = ContentScale.Crop,
                                 )
-                                item.productionYear?.let { year ->
+                                Column(modifier = Modifier.padding(8.dp)) {
                                     Text(
-                                        text = year.toString(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        text = item.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
+                                    item.productionYear?.let { year ->
+                                        Text(
+                                            text = year.toString(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }

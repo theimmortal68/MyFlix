@@ -1,16 +1,18 @@
 @file:Suppress(
-    "LongMethod",
-    "CognitiveComplexMethod",
-    "CyclomaticComplexMethod",
     "MagicNumber",
-    "WildcardImport",
-    "NoWildcardImports",
-    "LabeledExpression",
 )
 
 package dev.jausc.myflix.mobile.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -18,8 +20,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,27 +39,27 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.rememberSearchScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, onBack: () -> Unit,) {
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
-    var hasSearched by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
+fun SearchScreen(
+    jellyfinClient: JellyfinClient,
+    onItemClick: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val state = rememberSearchScreenState(
+        searcher = { query -> jellyfinClient.search(query) },
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
+                        value = state.query,
+                        onValueChange = { state.updateQuery(it) },
                         placeholder = { Text("Search...") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -55,12 +67,8 @@ fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, 
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         },
                         trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    query = ""
-                                    results = emptyList()
-                                    hasSearched = false
-                                }) {
+                            if (state.query.isNotEmpty()) {
+                                IconButton(onClick = { state.clear() }) {
                                     Icon(Icons.Default.Clear, contentDescription = "Clear")
                                 }
                             }
@@ -81,24 +89,13 @@ fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, 
                 .padding(padding),
         ) {
             Button(
-                onClick = {
-                    if (query.isNotBlank()) {
-                        scope.launch {
-                            isSearching = true
-                            jellyfinClient.search(query).onSuccess { items ->
-                                results = items
-                            }
-                            hasSearched = true
-                            isSearching = false
-                        }
-                    }
-                },
-                enabled = query.isNotBlank() && !isSearching,
+                onClick = { state.performSearch() },
+                enabled = state.canSearch,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
             ) {
-                if (isSearching) {
+                if (state.isSearching) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -109,7 +106,7 @@ fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, 
             }
 
             when {
-                isSearching -> {
+                state.isSearching -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -117,7 +114,19 @@ fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, 
                         CircularProgressIndicator()
                     }
                 }
-                hasSearched && results.isEmpty() -> {
+                state.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = state.error ?: "Search failed",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                state.isEmpty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -129,7 +138,7 @@ fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, 
                         )
                     }
                 }
-                results.isNotEmpty() -> {
+                state.results.isNotEmpty() -> {
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 130.dp),
                         modifier = Modifier.fillMaxSize(),
@@ -137,13 +146,16 @@ fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, 
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(results, key = { it.id }) { item ->
+                        items(state.results, key = { it.id }) { item ->
                             ElevatedCard(
                                 onClick = { onItemClick(item.id) },
                             ) {
                                 Column {
                                     AsyncImage(
-                                        model = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
+                                        model = jellyfinClient.getPrimaryImageUrl(
+                                            item.id,
+                                            item.imageTags?.primary,
+                                        ),
                                         contentDescription = item.name,
                                         modifier = Modifier
                                             .fillMaxWidth()

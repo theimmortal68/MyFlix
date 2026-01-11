@@ -1,18 +1,22 @@
 @file:Suppress(
-    "LongMethod",
-    "CognitiveComplexMethod",
-    "CyclomaticComplexMethod",
     "MagicNumber",
-    "WildcardImport",
-    "NoWildcardImports",
-    "LabeledExpression",
 )
 
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -20,31 +24,38 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.rememberSearchScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBar
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SearchScreen(
     jellyfinClient: JellyfinClient,
@@ -55,28 +66,13 @@ fun SearchScreen(
     onNavigateShows: () -> Unit,
     onNavigateSettings: () -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
-    var hasSearched by remember { mutableStateOf(false) }
-    var isTextFieldFocused by remember { mutableStateOf(false) }
+    val state = rememberSearchScreenState(
+        searcher = { query -> jellyfinClient.search(query) },
+    )
 
-    val scope = rememberCoroutineScope()
+    var isTextFieldFocused by remember { mutableStateOf(false) }
     val searchFieldFocusRequester = remember { FocusRequester() }
     val resultsFocusRequester = remember { FocusRequester() }
-
-    fun performSearch() {
-        if (query.isNotBlank()) {
-            scope.launch {
-                isSearching = true
-                jellyfinClient.search(query).onSuccess { items ->
-                    results = items
-                }
-                hasSearched = true
-                isSearching = false
-            }
-        }
-    }
 
     // Focus search field on entry
     LaunchedEffect(Unit) {
@@ -124,7 +120,7 @@ fun SearchScreen(
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                if (query.isEmpty()) {
+                if (state.query.isEmpty()) {
                     Text(
                         text = "Search movies, shows...",
                         color = TvColors.TextSecondary,
@@ -132,8 +128,8 @@ fun SearchScreen(
                     )
                 }
                 BasicTextField(
-                    value = query,
-                    onValueChange = { newQuery -> query = newQuery },
+                    value = state.query,
+                    onValueChange = { state.updateQuery(it) },
                     singleLine = true,
                     textStyle = TextStyle(
                         color = TvColors.TextPrimary,
@@ -141,28 +137,32 @@ fun SearchScreen(
                     ),
                     cursorBrush = SolidColor(TvColors.BluePrimary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { performSearch() }),
+                    keyboardActions = KeyboardActions(onSearch = { state.performSearch() }),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(searchFieldFocusRequester)
                         .onFocusChanged { isTextFieldFocused = it.isFocused }
                         .onKeyEvent { event ->
-                            if (event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown && results.isNotEmpty()) {
-                                resultsFocusRequester.requestFocus()
-                                true
-                            } else if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
-                                onBack()
-                                true
-                            } else {
-                                false
+                            when {
+                                event.key == Key.DirectionDown &&
+                                    event.type == KeyEventType.KeyDown &&
+                                    state.results.isNotEmpty() -> {
+                                    resultsFocusRequester.requestFocus()
+                                    true
+                                }
+                                event.key == Key.Back && event.type == KeyEventType.KeyDown -> {
+                                    onBack()
+                                    true
+                                }
+                                else -> false
                             }
                         },
                 )
             }
 
-            androidx.tv.material3.Button(
-                onClick = { performSearch() },
-                enabled = query.isNotBlank() && !isSearching,
+            Button(
+                onClick = { state.performSearch() },
+                enabled = state.canSearch,
             ) {
                 Text("Search")
             }
@@ -176,17 +176,24 @@ fun SearchScreen(
             contentAlignment = Alignment.Center,
         ) {
             when {
-                isSearching -> {
+                state.isSearching -> {
                     TvLoadingIndicator(modifier = Modifier.size(48.dp))
                 }
-                hasSearched && results.isEmpty() -> {
+                state.error != null -> {
                     Text(
-                        text = "No results found for \"$query\"",
+                        text = state.error ?: "Search failed",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TvColors.Error,
+                    )
+                }
+                state.isEmpty -> {
+                    Text(
+                        text = "No results found for \"${state.query}\"",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TvColors.TextSecondary,
                     )
                 }
-                results.isNotEmpty() -> {
+                state.results.isNotEmpty() -> {
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 150.dp),
                         modifier = Modifier.fillMaxSize(),
@@ -194,8 +201,8 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        items(results, key = { it.id }) { item ->
-                            val focusModifier = if (results.indexOf(item) == 0) {
+                        items(state.results, key = { it.id }) { item ->
+                            val focusModifier = if (state.results.indexOf(item) == 0) {
                                 Modifier.focusRequester(resultsFocusRequester)
                             } else {
                                 Modifier

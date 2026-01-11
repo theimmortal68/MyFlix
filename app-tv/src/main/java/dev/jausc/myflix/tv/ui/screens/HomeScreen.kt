@@ -61,7 +61,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.LibraryFinder
+import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.HomeContentLoader
+import dev.jausc.myflix.core.common.ui.HomeScreenConfig
+import dev.jausc.myflix.core.common.ui.rememberHomeScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -80,9 +84,6 @@ import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-
-/** Background polling interval in milliseconds */
-private const val POLL_INTERVAL_MS = 30_000L
 
 /**
  * Position in the grid: row index + column index within that row.
@@ -112,27 +113,24 @@ fun HomeScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    // Content state
-    var nextUp by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var continueWatching by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var recentMovies by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var recentShows by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var recentEpisodes by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var featuredItems by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // New content rows
-    var seasonPremieres by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var pinnedCollectionData by remember { mutableStateOf<Map<String, Pair<String, List<JellyfinItem>>>>(emptyMap()) }
-    var suggestions by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var genreRowsData by remember { mutableStateOf<Map<String, List<JellyfinItem>>>(emptyMap()) }
-    var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
-
-    // Refresh trigger - increment to force reload
-    var refreshTrigger by remember { mutableStateOf(0) }
+    // Shared state for home screen
+    val loader = remember(jellyfinClient) { TvHomeContentLoader(jellyfinClient) }
+    val config = remember(
+        hideWatchedFromRecent, showSeasonPremieres, showGenreRows, enabledGenres,
+        showCollections, pinnedCollections, showSuggestions,
+    ) {
+        HomeScreenConfig(
+            showSeasonPremieres = showSeasonPremieres,
+            showGenreRows = showGenreRows,
+            enabledGenres = enabledGenres,
+            showCollections = showCollections,
+            pinnedCollections = pinnedCollections,
+            showSuggestions = showSuggestions,
+            hideWatchedFromRecent = hideWatchedFromRecent,
+            heroConfig = HeroContentBuilder.defaultConfig,
+        )
+    }
+    val state = rememberHomeScreenState(loader, config)
 
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
@@ -141,175 +139,18 @@ fun HomeScreen(
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
 
     // Dialog actions
-    val dialogActions = remember(scope) {
+    val dialogActions = remember(scope, state) {
         HomeDialogActions(
             onGoTo = onItemClick,
             onPlay = onPlayClick,
             onMarkWatched = { itemId, watched ->
-                scope.launch {
-                    jellyfinClient.setPlayed(itemId, watched)
-                    // Refresh content to update UI
-                    refreshTrigger++
-                }
+                state.setPlayed(itemId, watched)
             },
             onToggleFavorite = { itemId, favorite ->
-                scope.launch {
-                    jellyfinClient.setFavorite(itemId, favorite)
-                    refreshTrigger++
-                }
+                state.setFavorite(itemId, favorite)
             },
             onGoToSeries = { seriesId -> onItemClick(seriesId) },
         )
-    }
-
-    /**
-     * Load or refresh all home screen content.
-     */
-    suspend fun loadContent(showLoading: Boolean = false) {
-        if (showLoading) isLoading = true
-        errorMessage = null
-
-        // Clear cache to get fresh data
-        jellyfinClient.clearCache()
-
-        // Get libraries first to identify Movies and TV Shows libraries
-        jellyfinClient.getLibraries()
-            .onSuccess { libs ->
-                libraries = libs
-
-                // Find libraries using shared finder
-                val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
-                val showsLibrary = LibraryFinder.findShowsLibrary(libs)
-
-                // Get latest movies (excludes collections)
-                moviesLibrary?.let { lib ->
-                    jellyfinClient.getLatestMovies(lib.id, limit = 12).onSuccess { items ->
-                        recentMovies = items
-                    }
-                }
-
-                // Get latest series (new shows added, not episodes)
-                showsLibrary?.let { lib ->
-                    jellyfinClient.getLatestSeries(lib.id, limit = 12).onSuccess { items ->
-                        recentShows = items
-                    }
-                }
-
-                // Get latest episodes
-                showsLibrary?.let { lib ->
-                    jellyfinClient.getLatestEpisodes(lib.id, limit = 12).onSuccess { items ->
-                        recentEpisodes = items
-                    }
-                }
-            }
-            .onFailure { e ->
-                errorMessage = "Failed to load libraries: ${e.message ?: "Unknown error"}"
-            }
-
-        // Get Next Up (episodes in series user is watching)
-        jellyfinClient.getNextUp(limit = 12)
-            .onSuccess { items -> nextUp = items }
-            .onFailure { /* Non-critical, continue */ }
-
-        // Get Continue Watching (in-progress items)
-        jellyfinClient.getContinueWatching(limit = 12)
-            .onSuccess { items -> continueWatching = items }
-            .onFailure { /* Non-critical, continue */ }
-
-        // Get Season Premieres (upcoming episodes)
-        if (showSeasonPremieres) {
-            jellyfinClient.getUpcomingEpisodes(limit = 12)
-                .onSuccess { items -> seasonPremieres = items }
-                .onFailure { /* Non-critical, continue */ }
-        }
-
-        // Get Collections (for selection dialog)
-        if (showCollections) {
-            jellyfinClient.getCollections(limit = 50)
-                .onSuccess { items -> collections = items }
-                .onFailure { /* Non-critical, continue */ }
-
-            // Load pinned collection items
-            if (pinnedCollections.isNotEmpty()) {
-                val newPinnedData = linkedMapOf<String, Pair<String, List<JellyfinItem>>>()
-                pinnedCollections.forEach { collectionId ->
-                    // Get collection details for the name
-                    jellyfinClient.getItem(collectionId).onSuccess { collection ->
-                        jellyfinClient.getCollectionItems(collectionId, limit = 12).onSuccess { items ->
-                            if (items.isNotEmpty()) {
-                                newPinnedData[collectionId] = Pair(collection.name, items)
-                            }
-                        }
-                    }
-                }
-                pinnedCollectionData = newPinnedData
-            }
-        }
-
-        // Get Suggestions
-        if (showSuggestions) {
-            jellyfinClient.getSuggestions(limit = 12)
-                .onSuccess { items -> suggestions = items }
-                .onFailure { /* Non-critical, continue */ }
-        }
-
-        // Get Genre Rows
-        if (showGenreRows) {
-            // First get available genres if not already loaded
-            if (availableGenres.isEmpty()) {
-                jellyfinClient.getGenres()
-                    .onSuccess { genres ->
-                        availableGenres = genres.map { it.name }
-                    }
-            }
-
-            // Load items for each enabled genre (or top genres if none selected)
-            val genresToLoad = if (enabledGenres.isNotEmpty()) {
-                enabledGenres.toList()
-            } else {
-                // Default to first 3 genres if none selected
-                availableGenres.take(3)
-            }
-
-            val newGenreData = mutableMapOf<String, List<JellyfinItem>>()
-            genresToLoad.forEach { genreName ->
-                jellyfinClient.getItemsByGenre(genreName, limit = 12)
-                    .onSuccess { items ->
-                        if (items.isNotEmpty()) {
-                            newGenreData[genreName] = items
-                        }
-                    }
-            }
-            genreRowsData = newGenreData
-        }
-
-        // Build featured items for hero section using shared logic
-        featuredItems = HeroContentBuilder.buildFeaturedItems(
-            continueWatching = continueWatching,
-            nextUp = nextUp,
-            recentMovies = recentMovies,
-            recentShows = recentShows,
-            config = HeroContentBuilder.defaultConfig,
-        )
-        isLoading = false
-    }
-
-    // Initial load and refresh on screen revisit
-    LaunchedEffect(refreshTrigger) {
-        loadContent(showLoading = refreshTrigger == 0)
-    }
-
-    // Refresh when screen becomes active
-    LaunchedEffect(Unit) {
-        refreshTrigger++
-    }
-
-    // Background polling for updates
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            delay(POLL_INTERVAL_MS)
-            loadContent(showLoading = false)
-        }
     }
 
     // Handle nav item selection
@@ -319,9 +160,9 @@ fun HomeScreen(
             NavItem.HOME -> Unit // Already on home
             NavItem.SEARCH -> onSearchClick()
             NavItem.MOVIES ->
-                LibraryFinder.findMoviesLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findMoviesLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
             NavItem.SHOWS ->
-                LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findShowsLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
             NavItem.DISCOVER -> onDiscoverClick()
             NavItem.COLLECTIONS -> Unit // TODO: Navigate to collections
             NavItem.UNIVERSES -> Unit // TODO: Placeholder for future feature
@@ -342,15 +183,12 @@ fun HomeScreen(
     val gradientColors = rememberGradientColors(currentBackdropUrl)
 
     // Track if we've focused the hero
-    val contentId = featuredItems.firstOrNull()?.id
+    val contentId = state.featuredItems.firstOrNull()?.id
     var heroFocused by remember(contentId) { mutableStateOf(false) }
 
-    // Content is ready when we have featured items
-    val contentReady = !isLoading && featuredItems.isNotEmpty()
-
     // Request focus on hero when content becomes ready
-    LaunchedEffect(contentReady) {
-        if (contentReady && !heroFocused) {
+    LaunchedEffect(state.contentReady) {
+        if (state.contentReady && !heroFocused) {
             delay(100)
             try {
                 heroPlayFocusRequester.requestFocus()
@@ -379,11 +217,11 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             // Show loading until we have hero content
-            if (!contentReady && errorMessage == null) {
+            if (!state.contentReady && state.error == null) {
                 TvLoadingIndicator(
                     modifier = Modifier.align(Alignment.Center),
                 )
-            } else if (errorMessage != null && featuredItems.isEmpty()) {
+            } else if (state.error != null && state.featuredItems.isEmpty()) {
                 // Error state with retry
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -393,33 +231,31 @@ fun HomeScreen(
                         .padding(32.dp),
                 ) {
                     Text(
-                        text = errorMessage ?: "Something went wrong",
+                        text = state.error ?: "Something went wrong",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TvColors.Error,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = {
-                            scope.launch { loadContent(showLoading = true) }
-                        },
+                        onClick = { state.refresh() },
                     ) {
                         Text("Retry")
                     }
                 }
             } else {
                 // Key forces complete recomposition when content changes
-                key(featuredItems.firstOrNull()?.id) {
+                key(state.featuredItems.firstOrNull()?.id) {
                     HomeContent(
-                        featuredItems = featuredItems,
-                        nextUp = nextUp,
-                        continueWatching = continueWatching,
-                        recentEpisodes = recentEpisodes,
-                        recentShows = recentShows,
-                        recentMovies = recentMovies,
-                        seasonPremieres = seasonPremieres,
-                        pinnedCollectionData = pinnedCollectionData,
-                        suggestions = suggestions,
-                        genreRowsData = genreRowsData,
+                        featuredItems = state.featuredItems,
+                        nextUp = state.nextUp,
+                        continueWatching = state.continueWatching,
+                        recentEpisodes = state.recentEpisodes,
+                        recentShows = state.recentShows,
+                        recentMovies = state.recentMovies,
+                        seasonPremieres = state.seasonPremieres,
+                        pinnedCollectionData = state.pinnedCollectionsData,
+                        suggestions = state.suggestions,
+                        genreRowsData = state.genreRowsData,
                         showSeasonPremieres = showSeasonPremieres,
                         showGenreRows = showGenreRows,
                         showCollections = showCollections,
@@ -935,5 +771,84 @@ private fun ItemRow(
                 }
             }
         }
+    }
+}
+
+/**
+ * TV implementation of HomeContentLoader.
+ */
+private class TvHomeContentLoader(
+    private val jellyfinClient: JellyfinClient,
+) : HomeContentLoader {
+    override suspend fun clearCache() {
+        jellyfinClient.clearCache()
+    }
+
+    override suspend fun getLibraries(): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLibraries()
+    }
+
+    override fun findMoviesLibraryId(libraries: List<JellyfinItem>): String? {
+        return LibraryFinder.findMoviesLibrary(libraries)?.id
+    }
+
+    override fun findShowsLibraryId(libraries: List<JellyfinItem>): String? {
+        return LibraryFinder.findShowsLibrary(libraries)?.id
+    }
+
+    override suspend fun getLatestMovies(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLatestMovies(libraryId, limit)
+    }
+
+    override suspend fun getLatestSeries(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLatestSeries(libraryId, limit)
+    }
+
+    override suspend fun getLatestEpisodes(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLatestEpisodes(libraryId, limit)
+    }
+
+    override suspend fun getNextUp(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getNextUp(limit)
+    }
+
+    override suspend fun getContinueWatching(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getContinueWatching(limit)
+    }
+
+    override suspend fun getUpcomingEpisodes(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getUpcomingEpisodes(limit = limit)
+    }
+
+    override suspend fun getCollections(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getCollections(limit)
+    }
+
+    override suspend fun getItem(itemId: String): Result<JellyfinItem> {
+        return jellyfinClient.getItem(itemId)
+    }
+
+    override suspend fun getCollectionItems(collectionId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getCollectionItems(collectionId, limit)
+    }
+
+    override suspend fun getSuggestions(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getSuggestions(limit)
+    }
+
+    override suspend fun getGenres(): Result<List<JellyfinGenre>> {
+        return jellyfinClient.getGenres()
+    }
+
+    override suspend fun getItemsByGenre(genreName: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getItemsByGenre(genreName, limit = limit)
+    }
+
+    override suspend fun setPlayed(itemId: String, played: Boolean) {
+        jellyfinClient.setPlayed(itemId, played)
+    }
+
+    override suspend fun setFavorite(itemId: String, favorite: Boolean) {
+        jellyfinClient.setFavorite(itemId, favorite)
     }
 }

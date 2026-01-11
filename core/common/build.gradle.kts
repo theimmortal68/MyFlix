@@ -26,6 +26,9 @@ dependencies {
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
 
+    // Coroutines - exposed to consumers for StateFlow in preferences
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+
     // Serialization - exposed to consumers
     api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.0")
 
@@ -39,4 +42,8 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.foundation:foundation-layout")
     implementation("androidx.compose.ui:ui")
+
+    // Material Icons - for ActionMenuBuilder
+    api("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
 }

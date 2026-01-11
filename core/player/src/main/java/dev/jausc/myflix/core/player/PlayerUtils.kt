@@ -43,15 +43,16 @@ object PlayerUtils {
     }
 
     /**
-     * Convert Jellyfin ticks to milliseconds
-     * Jellyfin uses 10,000 ticks per millisecond
+     * Convert Jellyfin ticks to milliseconds.
+     * @see PlayerConstants.ticksToMs
      */
-    fun ticksToMs(ticks: Long): Long = ticks / 10_000
+    fun ticksToMs(ticks: Long): Long = PlayerConstants.ticksToMs(ticks)
 
     /**
-     * Convert milliseconds to Jellyfin ticks
+     * Convert milliseconds to Jellyfin ticks.
+     * @see PlayerConstants.msToTicks
      */
-    fun msToTicks(ms: Long): Long = ms * 10_000
+    fun msToTicks(ms: Long): Long = PlayerConstants.msToTicks(ms)
 
     /**
      * Calculate progress percentage (0.0 to 1.0)

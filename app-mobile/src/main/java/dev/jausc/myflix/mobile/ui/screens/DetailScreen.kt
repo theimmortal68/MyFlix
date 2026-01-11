@@ -26,8 +26,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.*
+import dev.jausc.myflix.core.common.ui.DetailLoader
+import dev.jausc.myflix.core.common.ui.rememberDetailScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,51 +39,20 @@ fun DetailScreen(
     onEpisodeClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
-    var item by remember { mutableStateOf<JellyfinItem?>(null) }
-    var seasons by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var selectedSeason by remember { mutableStateOf<JellyfinItem?>(null) }
-    var episodes by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(itemId) {
-        scope.launch {
-            jellyfinClient.getItem(itemId).onSuccess { loadedItem ->
-                item = loadedItem
-
-                if (loadedItem.isSeries) {
-                    jellyfinClient.getSeasons(itemId).onSuccess { seasonList ->
-                        seasons = seasonList
-                        selectedSeason = seasonList.firstOrNull()
-                        selectedSeason?.let { season ->
-                            jellyfinClient.getEpisodes(itemId, season.id).onSuccess { eps ->
-                                episodes = eps
-                            }
-                        }
-                    }
-                }
-            }
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(selectedSeason) {
-        selectedSeason?.let { season ->
-            item?.let { currentItem ->
-                if (currentItem.isSeries) {
-                    jellyfinClient.getEpisodes(currentItem.id, season.id).onSuccess { eps ->
-                        episodes = eps
-                    }
-                }
-            }
-        }
-    }
+    val state = rememberDetailScreenState(
+        itemId = itemId,
+        loader = object : DetailLoader {
+            override suspend fun loadItem(itemId: String) = jellyfinClient.getItem(itemId)
+            override suspend fun loadSeasons(seriesId: String) = jellyfinClient.getSeasons(seriesId)
+            override suspend fun loadEpisodes(seriesId: String, seasonId: String) =
+                jellyfinClient.getEpisodes(seriesId, seasonId)
+        },
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(item?.name ?: "Loading...") },
+                title = { Text(state.item?.name ?: "Loading...") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -91,8 +61,8 @@ fun DetailScreen(
             )
         },
     ) { padding ->
-        val currentItem = item
-        if (isLoading || currentItem == null) {
+        val currentItem = state.item
+        if (state.isLoading || currentItem == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -187,7 +157,7 @@ fun DetailScreen(
                     }
                 }
 
-                if (currentItem.isSeries && seasons.isNotEmpty()) {
+                if (state.hasSeasons) {
                     item {
                         Text(
                             text = "Seasons",
@@ -199,18 +169,18 @@ fun DetailScreen(
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            items(seasons, key = { it.id }) { season ->
-                                val isSelected = selectedSeason?.id == season.id
+                            items(state.seasons, key = { it.id }) { season ->
+                                val isSelected = state.selectedSeason?.id == season.id
                                 FilterChip(
                                     selected = isSelected,
-                                    onClick = { selectedSeason = season },
+                                    onClick = { state.selectSeason(season) },
                                     label = { Text(season.name) },
                                 )
                             }
                         }
                     }
 
-                    if (episodes.isNotEmpty()) {
+                    if (state.hasEpisodes) {
                         item {
                             Text(
                                 text = "Episodes",
@@ -218,7 +188,7 @@ fun DetailScreen(
                             )
                         }
 
-                        items(episodes, key = { it.id }) { episode ->
+                        items(state.episodes, key = { it.id }) { episode ->
                             EpisodeCard(
                                 episode = episode,
                                 imageUrl = jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary),

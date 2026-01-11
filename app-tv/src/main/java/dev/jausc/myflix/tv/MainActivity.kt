@@ -25,10 +25,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.jausc.myflix.core.common.ui.SplashScreen
+import dev.jausc.myflix.core.common.ui.SplashScreenTvConfig
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
-import dev.jausc.myflix.tv.ui.screens.*
+import dev.jausc.myflix.tv.ui.screens.DetailScreen
+import dev.jausc.myflix.tv.ui.screens.HomeScreen
+import dev.jausc.myflix.tv.ui.screens.LibraryScreen
+import dev.jausc.myflix.tv.ui.screens.LoginScreen
+import dev.jausc.myflix.tv.ui.screens.PlayerScreen
+import dev.jausc.myflix.tv.ui.screens.PreferencesScreen
+import dev.jausc.myflix.tv.ui.screens.SearchScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDetailScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
@@ -169,6 +180,7 @@ fun MyFlixTvApp() {
             composable("splash") {
                 SplashScreen(
                     onFinished = { splashFinished = true },
+                    config = SplashScreenTvConfig,
                 )
             }
 

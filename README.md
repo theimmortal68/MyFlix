@@ -1,121 +1,106 @@
-# MyFlix
+# Claude Code Setup for MyFlix
 
-[![Build and Test](https://github.com/theimmortal68/MyFlix/actions/workflows/test.yml/badge.svg)](https://github.com/theimmortal68/MyFlix/actions/workflows/test.yml)
+This package adds Claude Code CLI configuration to your existing MyFlix project.
 
-A modular Jellyfin client for Android with separate TV and Mobile apps.
+## Contents
 
-## Features
+```
+.claude/
+├── settings.json              # Permissions for Claude Code
+├── CODE_QUALITY_ADDENDUM.md   # Append to your existing CLAUDE.md
+├── skills/                    # Custom skills for MyFlix development
+│   ├── myflix-architecture/
+│   ├── kotlin-compose-patterns/
+│   ├── android-tv-development/
+│   └── jellyfin-api/
+└── commands/                  # Custom slash commands
+    ├── build-tv.md
+    ├── build-mobile.md
+    ├── cleanup.md
+    └── zip-update.md
+.mcp.json                      # MCP server configuration
+```
 
-### TV App
-- Netflix-style home screen with hero section and content rows
-- D-pad navigation with focus management
-- Dynamic backdrop with color extraction
-- Continue Watching, Next Up, and Recently Added rows
-- Season Premieres (upcoming episodes) row
-- Genre rows with randomization
-- Collection rows with pinning support
-- Long-press context menus on media cards
-- Search screen with text input
-- Detail screen with season/episode browsing
-- Video player with ExoPlayer (Dolby Vision) and MPV (HDR10/SDR)
-- Quick Connect and QR code authentication
-- Server discovery via UDP broadcast
-- Playback progress reporting to Jellyfin
-- Jellyseerr integration for media requests
+## Installation
 
-### Mobile App
-- Responsive home screen with auto-rotating hero carousel
-- Dropdown navigation menu
-- Adaptive layout for phones, foldables, and tablets
-- Progress indicators on continue watching cards
-- Episode badges on wide cards
-- Season Premieres, Genre, and Collection rows
-- Touch-optimized media cards
-- Search screen
-- Settings screen with home customization
-- PlaybackService for background/foreground playback
-- Playback progress reporting to Jellyfin
-- Jellyseerr integration for media requests
-
-### Shared Features
-- Jellyfin API client with caching and DNS resilience
-- Jellyseerr/Overseerr client with session persistence
-- Automatic server discovery
-- Resume playback from last position
-- Real-time playback state sync
-
-## Requirements
-
-- Android Studio Ladybug (2024.2.1) or newer
-- JDK 21
-- Android SDK 36 (compile/target)
-- Min SDK: 25 (Android 7.1)
-
-## Getting Started
+### 1. Extract to Your MyFlix Project Root
 
 ```bash
-# Clone the repository
-git clone https://github.com/theimmortal68/MyFlix.git
-cd MyFlix
-
-# Build TV app
-./gradlew :app-tv:assembleDebug
-
-# Build Mobile app
-./gradlew :app-mobile:assembleDebug
-
-# Install to device
-adb install app-tv/build/outputs/apk/debug/app-tv-debug.apk
-adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
-
-# Run tests
-./gradlew test
+cd ~/StudioProjects/MyFlix
+unzip claude-code-setup-myflix-final.zip
 ```
 
-## Architecture
+This will add/merge files into your existing `.claude/` directory.
 
-```
-MyFlix/
-├── app-tv/          # Android TV app (Compose TV Material)
-├── app-mobile/      # Phone/tablet app (Material3)
-├── core/
-│   ├── common/      # Shared models, utilities
-│   ├── network/     # Ktor-based Jellyfin API client
-│   ├── data/        # DataStore preferences
-│   ├── player/      # ExoPlayer + MPV abstraction
-│   └── seerr/       # Jellyseerr/Overseerr API client
-└── ui/
-    ├── common/      # Shared theme, colors
-    ├── tv/          # TV-specific components
-    └── mobile/      # Mobile-specific components
+### 2. Append Code Quality Rules to CLAUDE.md
+
+```bash
+cat .claude/CODE_QUALITY_ADDENDUM.md >> .claude/CLAUDE.md
 ```
 
-## Tech Stack
+Or manually copy the content from `CODE_QUALITY_ADDENDUM.md` to the end of your existing `.claude/CLAUDE.md`.
 
-| Component | Technology |
-|-----------|------------|
-| Language | Kotlin 2.3 |
-| UI (TV) | Jetpack Compose TV Material 3 |
-| UI (Mobile) | Jetpack Compose Material 3 |
-| Networking | Ktor 3.3 (OkHttp engine) |
-| Serialization | kotlinx.serialization |
-| Image Loading | Coil 3.3 |
-| Video Player | Media3 ExoPlayer 1.9 + libmpv |
-| Navigation | Jetpack Navigation Compose |
-| Build | Gradle 8.13, AGP 8.13 |
+### 3. (Optional) Set GitHub Token for MCP
 
-## Documentation
+```bash
+export GITHUB_TOKEN="your-github-personal-access-token"
+```
 
-For detailed development documentation, architecture decisions, and API patterns, see [CLAUDE.md](.claude/CLAUDE.md).
+Add to your shell profile (`~/.bashrc` or `~/.zshrc`) for persistence.
 
-## Contributing
+### 4. Install Recommended Plugins
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `./gradlew test`
-5. Submit a pull request
+Launch Claude Code in your project directory, then run:
 
-## License
+```
+/plugin install anthropics/claude-code/plugins/pr-review-toolkit
+```
 
-TBD
+### 5. Restart Claude Code
+
+Exit and relaunch to load the new configuration:
+
+```bash
+cd ~/StudioProjects/MyFlix
+claude
+```
+
+## Verification
+
+After restarting, verify the setup:
+
+1. **Check skills:** Ask "what skills do you have for MyFlix?"
+2. **Check commands:** Type `/` and look for `build-tv`, `cleanup`, etc.
+3. **Check code quality rules:** Ask "what are the code quality rules?"
+
+## Custom Skills
+
+| Skill | When Used |
+|-------|-----------|
+| `myflix-architecture` | Creating new features, understanding project structure |
+| `kotlin-compose-patterns` | Writing Compose UI, state management, focus handling |
+| `android-tv-development` | TV screens, D-pad navigation, hero sections |
+| `jellyfin-api` | API calls, caching, image URLs |
+
+## Custom Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/build-tv` | Build `app-tv` debug APK |
+| `/build-mobile` | Build `app-mobile` debug APK |
+| `/cleanup` | Review code, remove unused imports, generate commit message |
+| `/zip-update` | Create zip file with code changes |
+
+## MCP Servers
+
+| Server | Purpose |
+|--------|---------|
+| `github` | GitHub API integration (requires GITHUB_TOKEN) |
+| `filesystem` | File operations |
+| `memory` | Persistent context across sessions |
+
+## Notes
+
+- Skills are automatically referenced based on your task
+- The code quality rules enforce proper Detekt fixes (no suppressions except for SDK compatibility)
+- Settings.json pre-approves common development commands

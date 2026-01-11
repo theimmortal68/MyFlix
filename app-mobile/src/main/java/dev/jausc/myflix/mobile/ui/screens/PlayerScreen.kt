@@ -36,30 +36,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.videoQualityLabel
-import dev.jausc.myflix.core.common.model.videoStream
+import dev.jausc.myflix.core.common.ui.PlaybackReporter
+import dev.jausc.myflix.core.common.ui.rememberPlayerScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlaybackState
 import dev.jausc.myflix.core.player.PlayerBackend
+import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-
-/** Player timing and conversion constants */
-private object PlayerConstants {
-    /** Jellyfin uses ticks (100 nanoseconds), 10,000 ticks = 1 millisecond */
-    const val TICKS_PER_MS = 10_000L
-
-    /** Auto-hide controls after this duration when playing */
-    const val CONTROLS_AUTO_HIDE_MS = 4_000L
-
-    /** Seek forward/backward step duration */
-    const val SEEK_STEP_MS = 10_000L
-
-    /** Interval for reporting playback progress to server */
-    const val PROGRESS_REPORT_INTERVAL_MS = 10_000L
-}
 
 @Composable
 fun PlayerScreen(
@@ -70,113 +57,76 @@ fun PlayerScreen(
 ) {
     val context = LocalContext.current
 
-    var item by remember { mutableStateOf<JellyfinItem?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var showControls by remember { mutableStateOf(true) }
-    var streamUrl by remember { mutableStateOf<String?>(null) }
-    var startPosition by remember { mutableLongStateOf(0L) }
-    var playbackStarted by remember { mutableStateOf(false) }
+    // Shared state for player screen
+    val reporter = remember(jellyfinClient) { MobilePlaybackReporter(jellyfinClient) }
+    val state = rememberPlayerScreenState(itemId, reporter)
 
     // Player controller from core module - pass MPV preference
     val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
-    var playerReady by remember { mutableStateOf(false) }
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
 
-    // Load item info first, then initialize player with DV-aware selection
-    LaunchedEffect(itemId) {
-        jellyfinClient.getItem(itemId).onSuccess { loadedItem ->
-            item = loadedItem
-            streamUrl = jellyfinClient.getStreamUrl(itemId)
-            startPosition = loadedItem.userData?.playbackPositionTicks?.let {
-                it / PlayerConstants.TICKS_PER_MS
-            } ?: 0L
-
+    // Initialize player when item is loaded
+    LaunchedEffect(state.item, state.streamUrl) {
+        val mediaInfo = state.mediaInfo
+        if (mediaInfo != null && state.streamUrl != null) {
             // Create MediaInfo for DV-aware player selection
-            val videoStream = loadedItem.videoStream
-            val mediaInfo = MediaInfo(
-                title = loadedItem.name,
-                videoCodec = videoStream?.codec,
-                videoProfile = videoStream?.profile,
-                videoRangeType = videoStream?.videoRangeType,
-                width = videoStream?.width ?: 0,
-                height = videoStream?.height ?: 0,
-                bitrate = videoStream?.bitRate ?: 0,
+            val coreMediaInfo = MediaInfo(
+                title = mediaInfo.title,
+                videoCodec = mediaInfo.videoCodec,
+                videoProfile = mediaInfo.videoProfile,
+                videoRangeType = mediaInfo.videoRangeType,
+                width = mediaInfo.width,
+                height = mediaInfo.height,
+                bitrate = mediaInfo.bitrate,
             )
-
-            // Initialize player with content-aware backend selection
-            // DV content + DV device → ExoPlayer, everything else → MPV
-            playerReady = playerController.initializeForMedia(mediaInfo)
+            state.playerReady = playerController.initializeForMedia(coreMediaInfo)
         }
-        isLoading = false
     }
 
     // Report playback start when playback begins
     LaunchedEffect(playbackState.isPlaying) {
-        if (playbackState.isPlaying && !playbackStarted) {
-            playbackStarted = true
-            val positionTicks = playbackState.position * PlayerConstants.TICKS_PER_MS
-            jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
+        if (playbackState.isPlaying) {
+            state.onPlaybackStarted(playbackState.position)
         }
     }
 
     // Report progress periodically while playing
-    LaunchedEffect(playbackStarted) {
-        if (playbackStarted) {
+    LaunchedEffect(playbackState.isPlaying, playbackState.isPaused) {
+        if (playbackState.isPlaying && !playbackState.isPaused) {
             while (isActive) {
                 delay(PlayerConstants.PROGRESS_REPORT_INTERVAL_MS)
-                if (playbackState.isPlaying && !playbackState.isPaused) {
-                    val positionTicks = playbackState.position * PlayerConstants.TICKS_PER_MS
-                    jellyfinClient.reportPlaybackProgress(
-                        itemId = itemId,
-                        positionTicks = positionTicks,
-                        isPaused = false,
-                    )
-                }
+                state.reportProgress(playbackState.position, isPaused = false)
             }
         }
     }
 
     // Report pause/unpause
     LaunchedEffect(playbackState.isPaused) {
-        if (playbackStarted) {
-            val positionTicks = playbackState.position * PlayerConstants.TICKS_PER_MS
-            jellyfinClient.reportPlaybackProgress(
-                itemId = itemId,
-                positionTicks = positionTicks,
-                isPaused = playbackState.isPaused,
-            )
-        }
+        state.onPauseStateChanged(playbackState.position, playbackState.isPaused)
     }
 
     // Auto-hide controls
-    LaunchedEffect(showControls, playbackState.isPlaying) {
-        if (showControls && playbackState.isPlaying) {
-            delay(PlayerConstants.CONTROLS_AUTO_HIDE_MS)
-            showControls = false
+    LaunchedEffect(state.showControls, playbackState.isPlaying) {
+        if (state.showControls && playbackState.isPlaying) {
+            state.resetControlsHideTimer()
         }
     }
 
     // Detect video completion (95% watched = mark as played)
     LaunchedEffect(playbackState.position, playbackState.duration) {
-        if (playbackState.duration > 0 && playbackStarted) {
-            val watchedPercent = playbackState.position.toFloat() / playbackState.duration.toFloat()
-            if (watchedPercent >= 0.95f) {
-                // Mark as played when 95% watched
-                jellyfinClient.setPlayed(itemId, true)
-            }
-        }
+        state.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
     // Cleanup - report playback stopped (use runBlocking to ensure it completes)
     DisposableEffect(Unit) {
         onDispose {
             // Report stopped with final position - MUST complete before returning
-            val positionTicks = playerController.state.value.position * PlayerConstants.TICKS_PER_MS
             kotlinx.coroutines.runBlocking {
-                jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
+                state.reportPlaybackStopped(playerController.state.value.position)
             }
+            state.cleanup()
             playerController.stop()
             playerController.release()
         }
@@ -186,9 +136,9 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable { showControls = !showControls },
+            .clickable { state.toggleControls() },
     ) {
-        if (isLoading || !playerReady || streamUrl == null) {
+        if (state.isLoading || !state.playerReady || state.streamUrl == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -201,16 +151,16 @@ fun PlayerScreen(
                 PlayerBackend.MPV -> {
                     MpvSurfaceView(
                         playerController = playerController,
-                        url = streamUrl!!,
-                        startPositionMs = startPosition,
+                        url = state.streamUrl!!,
+                        startPositionMs = state.startPositionMs,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
                 PlayerBackend.EXOPLAYER -> {
                     ExoPlayerSurfaceView(
                         playerController = playerController,
-                        url = streamUrl!!,
-                        startPositionMs = startPosition,
+                        url = state.streamUrl!!,
+                        startPositionMs = state.startPositionMs,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -241,9 +191,9 @@ fun PlayerScreen(
             }
 
             // Controls overlay
-            if (showControls) {
+            if (state.showControls) {
                 MobilePlayerControls(
-                    item = item,
+                    item = state.item,
                     playbackState = playbackState,
                     playerController = playerController,
                     onBack = onBack,
@@ -542,5 +492,36 @@ private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color =
             color = textColor,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
+    }
+}
+
+/**
+ * Mobile implementation of PlaybackReporter.
+ */
+private class MobilePlaybackReporter(
+    private val jellyfinClient: JellyfinClient,
+) : PlaybackReporter {
+    override suspend fun loadItem(itemId: String): Result<JellyfinItem> {
+        return jellyfinClient.getItem(itemId)
+    }
+
+    override fun getStreamUrl(itemId: String): String {
+        return jellyfinClient.getStreamUrl(itemId)
+    }
+
+    override suspend fun reportPlaybackStart(itemId: String, positionTicks: Long) {
+        jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
+    }
+
+    override suspend fun reportPlaybackProgress(itemId: String, positionTicks: Long, isPaused: Boolean) {
+        jellyfinClient.reportPlaybackProgress(itemId, positionTicks, isPaused)
+    }
+
+    override suspend fun reportPlaybackStopped(itemId: String, positionTicks: Long) {
+        jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
+    }
+
+    override suspend fun setPlayed(itemId: String, played: Boolean) {
+        jellyfinClient.setPlayed(itemId, played)
     }
 }

@@ -26,10 +26,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.jausc.myflix.core.common.ui.SplashScreen
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
-import dev.jausc.myflix.mobile.ui.screens.*
+import dev.jausc.myflix.mobile.ui.screens.DetailScreen
+import dev.jausc.myflix.mobile.ui.screens.HomeScreen
+import dev.jausc.myflix.mobile.ui.screens.LibraryScreen
+import dev.jausc.myflix.mobile.ui.screens.LoginScreen
+import dev.jausc.myflix.mobile.ui.screens.PlayerScreen
+import dev.jausc.myflix.mobile.ui.screens.SearchScreen
+import dev.jausc.myflix.mobile.ui.screens.SeerrDetailScreen
+import dev.jausc.myflix.mobile.ui.screens.SeerrHomeScreen
+import dev.jausc.myflix.mobile.ui.screens.SeerrSetupScreen
+import dev.jausc.myflix.mobile.ui.screens.SettingsScreen
 import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
 
 class MainActivity : ComponentActivity() {

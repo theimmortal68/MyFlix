@@ -26,12 +26,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.LibraryFinder
+import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.HomeContentLoader
+import dev.jausc.myflix.core.common.ui.HomeScreenConfig
+import dev.jausc.myflix.core.common.ui.rememberHomeScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
@@ -52,12 +54,6 @@ import dev.jausc.myflix.mobile.ui.components.MobileRowData
 import dev.jausc.myflix.mobile.ui.components.MobileTopBar
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.buildHomeMenuItems
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-
-/** Background polling interval in milliseconds */
-private const val POLL_INTERVAL_MS = 30_000L
 
 /**
  * Mobile home screen with Netflix-style hero section and dropdown navigation.
@@ -86,25 +82,38 @@ fun HomeScreen(
     onDiscoverClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
 ) {
-    val scope = rememberCoroutineScope()
+    // Shared state for home screen
+    val loader = remember(jellyfinClient) { MobileHomeContentLoader(jellyfinClient) }
+    val config = remember(
+        showSeasonPremieres, showGenreRows, enabledGenres,
+        showCollections, pinnedCollections, showSuggestions,
+    ) {
+        HomeScreenConfig(
+            showSeasonPremieres = showSeasonPremieres,
+            showGenreRows = showGenreRows,
+            enabledGenres = enabledGenres,
+            showCollections = showCollections,
+            pinnedCollections = pinnedCollections,
+            showSuggestions = showSuggestions,
+            hideWatchedFromRecent = false,
+            heroConfig = HeroContentBuilder.mobileConfig,
+        )
+    }
+    val state = rememberHomeScreenState(loader, config)
 
     // Popup menu state for long-press
     var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
 
     // Menu actions for long-press
-    val menuActions = remember(scope) {
+    val menuActions = remember(state) {
         HomeMenuActions(
             onGoTo = { itemId -> onItemClick(itemId) },
             onPlay = { itemId -> onPlayClick(itemId) },
             onMarkWatched = { itemId, watched ->
-                scope.launch {
-                    jellyfinClient.setPlayed(itemId, watched)
-                }
+                state.setPlayed(itemId, watched)
             },
             onToggleFavorite = { itemId, favorite ->
-                scope.launch {
-                    jellyfinClient.setFavorite(itemId, favorite)
-                }
+                state.setFavorite(itemId, favorite)
             },
             onGoToSeries = { seriesId -> onItemClick(seriesId) },
         )
@@ -135,180 +144,8 @@ fun HomeScreen(
         "$screenWidthDp-$screenHeightDp"
     }
 
-    // Content state
-    var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var continueWatching by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var nextUp by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var recentMovies by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var recentShows by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var recentEpisodes by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var featuredItems by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // New content rows
-    var seasonPremieres by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var suggestions by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var genreRowsData by remember { mutableStateOf<Map<String, List<JellyfinItem>>>(emptyMap()) }
-    var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
-    // Pinned collection rows: collectionId -> (collectionName, items)
-    var pinnedCollectionsData by remember { mutableStateOf<Map<String, Pair<String, List<JellyfinItem>>>>(emptyMap()) }
-
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(MobileNavItem.HOME) }
-
-    /**
-     * Load or refresh all home screen content.
-     */
-    suspend fun loadContent(showLoading: Boolean = false) {
-        if (showLoading) isLoading = true
-        errorMessage = null
-
-        // Clear cache to get fresh data
-        jellyfinClient.clearCache()
-
-        // Get libraries first
-        jellyfinClient.getLibraries()
-            .onSuccess { libs ->
-                libraries = libs
-
-                // Find libraries using shared finder
-                val moviesLibrary = LibraryFinder.findMoviesLibrary(libs)
-                val showsLibrary = LibraryFinder.findShowsLibrary(libs)
-
-                // Get latest movies
-                moviesLibrary?.let { lib ->
-                    jellyfinClient.getLatestMovies(lib.id, limit = 12).onSuccess { items ->
-                        recentMovies = items
-                    }
-                }
-
-                // Get latest series
-                showsLibrary?.let { lib ->
-                    jellyfinClient.getLatestSeries(lib.id, limit = 12).onSuccess { items ->
-                        recentShows = items
-                    }
-                }
-
-                // Get latest episodes
-                showsLibrary?.let { lib ->
-                    jellyfinClient.getLatestEpisodes(lib.id, limit = 12).onSuccess { items ->
-                        recentEpisodes = items
-                    }
-                }
-            }
-            .onFailure { e ->
-                errorMessage = "Failed to load libraries: ${e.message ?: "Unknown error"}"
-            }
-
-        // Get Next Up
-        jellyfinClient.getNextUp(limit = 12)
-            .onSuccess { items -> nextUp = items }
-            .onFailure { /* Non-critical, continue */ }
-
-        // Get Continue Watching
-        jellyfinClient.getContinueWatching(limit = 12)
-            .onSuccess { items -> continueWatching = items }
-            .onFailure { /* Non-critical, continue */ }
-
-        // Get Season Premieres (upcoming episodes)
-        if (showSeasonPremieres) {
-            jellyfinClient.getUpcomingEpisodes(limit = 12)
-                .onSuccess { items -> seasonPremieres = items }
-                .onFailure { /* Non-critical, continue */ }
-        }
-
-        // Get Collections
-        if (showCollections) {
-            jellyfinClient.getCollections(limit = 50)
-                .onSuccess { items ->
-                    collections = items
-
-                    // Load items for pinned collections (preserving user-defined order)
-                    if (pinnedCollections.isNotEmpty()) {
-                        val pinnedData = linkedMapOf<String, Pair<String, List<JellyfinItem>>>()
-                        // Iterate in user-defined order
-                        pinnedCollections.forEach { collectionId ->
-                            val collection = items.find { it.id == collectionId }
-                            if (collection != null) {
-                                jellyfinClient.getCollectionItems(collection.id, limit = 20)
-                                    .onSuccess { collectionItems ->
-                                        if (collectionItems.isNotEmpty()) {
-                                            pinnedData[collection.id] = Pair(collection.name, collectionItems)
-                                        }
-                                    }
-                            }
-                        }
-                        pinnedCollectionsData = pinnedData
-                    }
-                }
-                .onFailure { /* Non-critical, continue */ }
-        }
-
-        // Get Suggestions
-        if (showSuggestions) {
-            jellyfinClient.getSuggestions(limit = 12)
-                .onSuccess { items -> suggestions = items }
-                .onFailure { /* Non-critical, continue */ }
-        }
-
-        // Get Genre Rows
-        if (showGenreRows) {
-            // First get available genres if not already loaded
-            if (availableGenres.isEmpty()) {
-                jellyfinClient.getGenres()
-                    .onSuccess { genres ->
-                        availableGenres = genres.map { it.name }
-                    }
-            }
-
-            // Load items for each enabled genre (preserving user-defined order)
-            val genresToLoad = if (enabledGenres.isNotEmpty()) {
-                enabledGenres
-            } else {
-                // Default to first 3 genres if none selected
-                availableGenres.take(3)
-            }
-
-            val newGenreData = mutableMapOf<String, List<JellyfinItem>>()
-            genresToLoad.forEach { genreName ->
-                jellyfinClient.getItemsByGenre(genreName, limit = 12)
-                    .onSuccess { items ->
-                        if (items.isNotEmpty()) {
-                            newGenreData[genreName] = items
-                        }
-                    }
-            }
-            genreRowsData = newGenreData
-        }
-
-        // Build featured items for hero section using shared logic
-        featuredItems = HeroContentBuilder.buildFeaturedItems(
-            continueWatching = continueWatching,
-            nextUp = nextUp,
-            recentMovies = recentMovies,
-            recentShows = recentShows,
-            config = HeroContentBuilder.mobileConfig,
-        )
-
-        isLoading = false
-    }
-
-    // Initial load
-    LaunchedEffect(Unit) {
-        scope.launch {
-            loadContent(showLoading = true)
-        }
-    }
-
-    // Background polling for updates
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            delay(POLL_INTERVAL_MS)
-            loadContent(showLoading = false)
-        }
-    }
 
     // Handle navigation selection
     val handleNavSelection: (MobileNavItem) -> Unit = { item ->
@@ -317,9 +154,9 @@ fun HomeScreen(
             MobileNavItem.HOME -> Unit // Already on home
             MobileNavItem.SEARCH -> onSearchClick()
             MobileNavItem.MOVIES ->
-                LibraryFinder.findMoviesLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findMoviesLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
             MobileNavItem.SHOWS ->
-                LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findShowsLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
             MobileNavItem.DISCOVER -> onDiscoverClick()
             MobileNavItem.SETTINGS -> onSettingsClick()
         }
@@ -327,51 +164,51 @@ fun HomeScreen(
 
     // Build content rows in specified order
     val rows = remember(
-        continueWatching, nextUp, recentEpisodes, recentShows, recentMovies,
-        seasonPremieres, collections, suggestions, genreRowsData, pinnedCollectionsData,
+        state.continueWatching, state.nextUp, state.recentEpisodes, state.recentShows, state.recentMovies,
+        state.seasonPremieres, state.collections, state.suggestions, state.genreRowsData, state.pinnedCollectionsData,
         showSeasonPremieres, showGenreRows, showCollections, showSuggestions, pinnedCollections,
     ) {
         buildList {
-            if (continueWatching.isNotEmpty()) {
+            if (state.continueWatching.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "continue",
                         title = "Continue Watching",
-                        items = continueWatching,
+                        items = state.continueWatching,
                         isWideCard = true,
                         accentColor = MobileRowColors.ContinueWatching,
                     ),
                 )
             }
-            if (nextUp.isNotEmpty()) {
+            if (state.nextUp.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "nextup",
                         title = "Next Up",
-                        items = nextUp,
+                        items = state.nextUp,
                         isWideCard = true,
                         accentColor = MobileRowColors.NextUp,
                     ),
                 )
             }
 
-            if (recentEpisodes.isNotEmpty()) {
+            if (state.recentEpisodes.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "episodes",
                         title = "Recently Added Episodes",
-                        items = recentEpisodes,
+                        items = state.recentEpisodes,
                         isWideCard = true,
                         accentColor = MobileRowColors.RecentlyAdded,
                     ),
                 )
             }
-            if (recentShows.isNotEmpty()) {
+            if (state.recentShows.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "shows",
                         title = "Recently Added Shows",
-                        items = recentShows,
+                        items = state.recentShows,
                         isWideCard = false,
                         accentColor = MobileRowColors.Shows,
                     ),
@@ -379,12 +216,12 @@ fun HomeScreen(
             }
 
             // Upcoming Episodes (season premieres) - show series poster with episode badge and air date
-            if (showSeasonPremieres && seasonPremieres.isNotEmpty()) {
+            if (showSeasonPremieres && state.seasonPremieres.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "premieres",
                         title = "Upcoming Episodes",
-                        items = seasonPremieres,
+                        items = state.seasonPremieres,
                         isWideCard = false, // Use series poster instead of episode thumb
                         accentColor = MobileRowColors.Premieres,
                         isUpcomingEpisodes = true,
@@ -392,12 +229,12 @@ fun HomeScreen(
                 )
             }
 
-            if (recentMovies.isNotEmpty()) {
+            if (state.recentMovies.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "movies",
                         title = "Recently Added Movies",
-                        items = recentMovies,
+                        items = state.recentMovies,
                         isWideCard = false,
                         accentColor = MobileRowColors.Movies,
                     ),
@@ -405,12 +242,12 @@ fun HomeScreen(
             }
 
             // Suggestions (before collections and genres)
-            if (showSuggestions && suggestions.isNotEmpty()) {
+            if (showSuggestions && state.suggestions.isNotEmpty()) {
                 add(
                     MobileRowData(
                         key = "suggestions",
                         title = "You Might Like",
-                        items = suggestions,
+                        items = state.suggestions,
                         isWideCard = false,
                         accentColor = MobileRowColors.Suggestions,
                     ),
@@ -418,8 +255,8 @@ fun HomeScreen(
             }
 
             // Pinned collection rows (each pinned collection shows its items)
-            if (showCollections && pinnedCollectionsData.isNotEmpty()) {
-                pinnedCollectionsData.entries.forEachIndexed { index, (collectionId, pair) ->
+            if (showCollections && state.pinnedCollectionsData.isNotEmpty()) {
+                state.pinnedCollectionsData.entries.forEachIndexed { index, (collectionId, pair) ->
                     val (collectionName, items) = pair
                     if (items.isNotEmpty()) {
                         val color = MobileRowColors.pinnedCollectionColors[index % MobileRowColors.pinnedCollectionColors.size]
@@ -438,7 +275,7 @@ fun HomeScreen(
 
             // Genre Rows
             if (showGenreRows) {
-                genreRowsData.entries.forEachIndexed { index, (genreName, items) ->
+                state.genreRowsData.entries.forEachIndexed { index, (genreName, items) ->
                     if (items.isNotEmpty()) {
                         val color = MobileRowColors.genreColors[index % MobileRowColors.genreColors.size]
                         add(
@@ -463,7 +300,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            if (isLoading) {
+            if (state.isLoading) {
                 // Loading state
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -471,7 +308,7 @@ fun HomeScreen(
                 ) {
                     CircularProgressIndicator()
                 }
-            } else if (errorMessage != null && featuredItems.isEmpty() && rows.isEmpty()) {
+            } else if (state.error != null && state.featuredItems.isEmpty() && rows.isEmpty()) {
                 // Error state with retry
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -483,15 +320,13 @@ fun HomeScreen(
                         modifier = Modifier.padding(32.dp),
                     ) {
                         Text(
-                            text = errorMessage ?: "Something went wrong",
+                            text = state.error ?: "Something went wrong",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = {
-                                scope.launch { loadContent(showLoading = true) }
-                            },
+                            onClick = { state.refresh() },
                         ) {
                             Text("Retry")
                         }
@@ -506,7 +341,7 @@ fun HomeScreen(
                     // Hero section
                     item(key = "hero") {
                         MobileHeroSection(
-                            featuredItems = featuredItems,
+                            featuredItems = state.featuredItems,
                             jellyfinClient = jellyfinClient,
                             onItemClick = onItemClick,
                             onPlayClick = onPlayClick, // Now goes to player
@@ -546,5 +381,84 @@ fun HomeScreen(
                     .zIndex(1f),
             )
         }
+    }
+}
+
+/**
+ * Mobile implementation of HomeContentLoader.
+ */
+private class MobileHomeContentLoader(
+    private val jellyfinClient: JellyfinClient,
+) : HomeContentLoader {
+    override suspend fun clearCache() {
+        jellyfinClient.clearCache()
+    }
+
+    override suspend fun getLibraries(): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLibraries()
+    }
+
+    override fun findMoviesLibraryId(libraries: List<JellyfinItem>): String? {
+        return LibraryFinder.findMoviesLibrary(libraries)?.id
+    }
+
+    override fun findShowsLibraryId(libraries: List<JellyfinItem>): String? {
+        return LibraryFinder.findShowsLibrary(libraries)?.id
+    }
+
+    override suspend fun getLatestMovies(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLatestMovies(libraryId, limit)
+    }
+
+    override suspend fun getLatestSeries(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLatestSeries(libraryId, limit)
+    }
+
+    override suspend fun getLatestEpisodes(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getLatestEpisodes(libraryId, limit)
+    }
+
+    override suspend fun getNextUp(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getNextUp(limit)
+    }
+
+    override suspend fun getContinueWatching(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getContinueWatching(limit)
+    }
+
+    override suspend fun getUpcomingEpisodes(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getUpcomingEpisodes(limit = limit)
+    }
+
+    override suspend fun getCollections(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getCollections(limit)
+    }
+
+    override suspend fun getItem(itemId: String): Result<JellyfinItem> {
+        return jellyfinClient.getItem(itemId)
+    }
+
+    override suspend fun getCollectionItems(collectionId: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getCollectionItems(collectionId, limit)
+    }
+
+    override suspend fun getSuggestions(limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getSuggestions(limit)
+    }
+
+    override suspend fun getGenres(): Result<List<JellyfinGenre>> {
+        return jellyfinClient.getGenres()
+    }
+
+    override suspend fun getItemsByGenre(genreName: String, limit: Int): Result<List<JellyfinItem>> {
+        return jellyfinClient.getItemsByGenre(genreName, limit = limit)
+    }
+
+    override suspend fun setPlayed(itemId: String, played: Boolean) {
+        jellyfinClient.setPlayed(itemId, played)
+    }
+
+    override suspend fun setFavorite(itemId: String, favorite: Boolean) {
+        jellyfinClient.setFavorite(itemId, favorite)
     }
 }

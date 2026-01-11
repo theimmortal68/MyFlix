@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.*
+import dev.jausc.myflix.core.common.ui.DetailLoader
+import dev.jausc.myflix.core.common.ui.rememberDetailScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DetailDialogActions
 import dev.jausc.myflix.tv.ui.components.DialogParams
@@ -45,44 +47,34 @@ fun DetailScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    var item by remember { mutableStateOf<JellyfinItem?>(null) }
-    var seasons by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var selectedSeason by remember { mutableStateOf<JellyfinItem?>(null) }
-    var episodes by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val state = rememberDetailScreenState(
+        itemId = itemId,
+        loader = object : DetailLoader {
+            override suspend fun loadItem(itemId: String) = jellyfinClient.getItem(itemId)
+            override suspend fun loadSeasons(seriesId: String) = jellyfinClient.getSeasons(seriesId)
+            override suspend fun loadEpisodes(seriesId: String, seasonId: String) =
+                jellyfinClient.getEpisodes(seriesId, seasonId)
+        },
+    )
 
-    // Long-press dialog state
+    // Long-press dialog state (TV-specific)
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
-    // Dialog actions
-    val dialogActions = remember(scope) {
+    // Dialog actions (TV-specific)
+    val dialogActions = remember(scope, state) {
         DetailDialogActions(
             onPlay = { episodeId -> onEpisodeClick(episodeId) },
             onMarkWatched = { episodeId, watched ->
                 scope.launch {
                     jellyfinClient.setPlayed(episodeId, watched)
-                    // Refresh episodes
-                    selectedSeason?.let { season ->
-                        item?.let { currentItem ->
-                            jellyfinClient.getEpisodes(currentItem.id, season.id).onSuccess { eps ->
-                                episodes = eps
-                            }
-                        }
-                    }
+                    state.refreshEpisodes()
                 }
             },
             onToggleFavorite = { episodeId, favorite ->
                 scope.launch {
                     jellyfinClient.setFavorite(episodeId, favorite)
-                    // Refresh episodes
-                    selectedSeason?.let { season ->
-                        item?.let { currentItem ->
-                            jellyfinClient.getEpisodes(currentItem.id, season.id).onSuccess { eps ->
-                                episodes = eps
-                            }
-                        }
-                    }
+                    state.refreshEpisodes()
                 }
             },
             onShowMediaInfo = { episode -> mediaInfoItem = episode },
@@ -90,45 +82,12 @@ fun DetailScreen(
         )
     }
 
-    LaunchedEffect(itemId) {
-        scope.launch {
-            jellyfinClient.getItem(itemId).onSuccess { loadedItem ->
-                item = loadedItem
-
-                if (loadedItem.isSeries) {
-                    jellyfinClient.getSeasons(itemId).onSuccess { seasonList ->
-                        seasons = seasonList
-                        selectedSeason = seasonList.firstOrNull()
-                        selectedSeason?.let { season ->
-                            jellyfinClient.getEpisodes(itemId, season.id).onSuccess { eps ->
-                                episodes = eps
-                            }
-                        }
-                    }
-                }
-            }
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(selectedSeason) {
-        selectedSeason?.let { season ->
-            item?.let { currentItem ->
-                if (currentItem.isSeries) {
-                    jellyfinClient.getEpisodes(currentItem.id, season.id).onSuccess { eps ->
-                        episodes = eps
-                    }
-                }
-            }
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        if (isLoading || item == null) {
+        if (state.isLoading || state.item == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -139,7 +98,7 @@ fun DetailScreen(
                 )
             }
         } else {
-            val currentItem = item!!
+            val currentItem = state.item!!
 
             Row(modifier = Modifier.fillMaxSize()) {
                 Column(
@@ -221,7 +180,7 @@ fun DetailScreen(
                         }
                     }
 
-                    if (currentItem.isSeries && seasons.isNotEmpty()) {
+                    if (state.hasSeasons) {
                         item {
                             Text(
                                 text = "Seasons",
@@ -234,10 +193,10 @@ fun DetailScreen(
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(seasons, key = { it.id }) { season ->
-                                    val isSelected = selectedSeason?.id == season.id
+                                items(state.seasons, key = { it.id }) { season ->
+                                    val isSelected = state.selectedSeason?.id == season.id
                                     Surface(
-                                        onClick = { selectedSeason = season },
+                                        onClick = { state.selectSeason(season) },
                                         shape = ClickableSurfaceDefaults.shape(
                                             shape = MaterialTheme.shapes.small,
                                         ),
@@ -257,7 +216,7 @@ fun DetailScreen(
                             }
                         }
 
-                        if (episodes.isNotEmpty()) {
+                        if (state.hasEpisodes) {
                             item {
                                 Text(
                                     text = "Episodes",
@@ -266,7 +225,7 @@ fun DetailScreen(
                                 )
                             }
 
-                            items(episodes, key = { it.id }) { episode ->
+                            items(state.episodes, key = { it.id }) { episode ->
                                 EpisodeCard(
                                     episode = episode,
                                     imageUrl = jellyfinClient.getPrimaryImageUrl(

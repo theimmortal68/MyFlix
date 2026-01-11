@@ -40,7 +40,13 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import dev.jausc.myflix.core.common.model.AuthResponse
+import dev.jausc.myflix.core.common.ui.DiscoveredServerInfo
+import dev.jausc.myflix.core.common.ui.LoginAuthenticator
 import dev.jausc.myflix.core.common.ui.MyFlixLogo
+import dev.jausc.myflix.core.common.ui.PublicUserInfo
+import dev.jausc.myflix.core.common.ui.ValidatedServerInfo
+import dev.jausc.myflix.core.common.ui.rememberLoginScreenState
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.*
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
@@ -64,20 +70,20 @@ private enum class LoginStep {
 }
 
 @Composable
-fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSuccess: () -> Unit,) {
-    var currentStep by remember { mutableStateOf(LoginStep.SERVER_SELECT) }
-    var connectedServer by remember { mutableStateOf<ValidatedServer?>(null) }
-    var publicUsers by remember { mutableStateOf<List<PublicUser>>(emptyList()) }
-    var selectedUser by remember { mutableStateOf<PublicUser?>(null) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSuccess: () -> Unit) {
+    val authenticator = remember(jellyfinClient, appState) {
+        TvLoginAuthenticator(jellyfinClient, appState)
+    }
+    val state = rememberLoginScreenState(authenticator)
 
-    val scope = rememberCoroutineScope()
+    var currentStep by remember { mutableStateOf(LoginStep.SERVER_SELECT) }
+    var selectedUser by remember { mutableStateOf<PublicUserInfo?>(null) }
 
     // Auto-dismiss errors
-    LaunchedEffect(errorMessage) {
-        if (errorMessage != null) {
+    LaunchedEffect(state.error) {
+        if (state.error != null) {
             delay(5000)
-            errorMessage = null
+            state.clearError()
         }
     }
 
@@ -88,18 +94,15 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
     ) {
         when (currentStep) {
             LoginStep.SERVER_SELECT -> ServerSelectScreen(
-                jellyfinClient = jellyfinClient,
-                onServerConnected = { server, users ->
-                    connectedServer = server
-                    publicUsers = users
+                state = state,
+                onServerConnected = { users ->
                     currentStep = if (users.isNotEmpty()) LoginStep.USER_SELECT else LoginStep.AUTH_METHOD
                 },
-                onError = { errorMessage = it },
             )
 
             LoginStep.USER_SELECT -> UserSelectScreen(
-                server = connectedServer!!,
-                users = publicUsers,
+                server = state.connectedServer!!,
+                users = state.publicUsers,
                 onUserSelected = { user ->
                     selectedUser = user
                     currentStep = LoginStep.AUTH_METHOD
@@ -109,38 +112,39 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
                     currentStep = LoginStep.AUTH_METHOD
                 },
                 onBack = {
-                    connectedServer = null
+                    state.disconnectServer()
                     currentStep = LoginStep.SERVER_SELECT
                 },
             )
 
             LoginStep.AUTH_METHOD -> AuthMethodScreen(
-                server = connectedServer!!,
+                server = state.connectedServer!!,
                 selectedUser = selectedUser,
                 jellyfinClient = jellyfinClient,
-                appState = appState,
+                state = state,
                 onLoginSuccess = onLoginSuccess,
                 onPasswordLogin = { currentStep = LoginStep.PASSWORD_ENTRY },
                 onBack = {
-                    currentStep = if (publicUsers.isNotEmpty()) LoginStep.USER_SELECT else LoginStep.SERVER_SELECT
-                    if (publicUsers.isEmpty()) connectedServer = null
+                    currentStep = if (state.publicUsers.isNotEmpty()) {
+                        LoginStep.USER_SELECT
+                    } else {
+                        state.disconnectServer()
+                        LoginStep.SERVER_SELECT
+                    }
                 },
-                onError = { errorMessage = it },
             )
 
             LoginStep.PASSWORD_ENTRY -> PasswordEntryScreen(
-                server = connectedServer!!,
+                server = state.connectedServer!!,
                 prefilledUsername = selectedUser?.name,
-                jellyfinClient = jellyfinClient,
-                appState = appState,
+                state = state,
                 onLoginSuccess = onLoginSuccess,
                 onBack = { currentStep = LoginStep.AUTH_METHOD },
-                onError = { errorMessage = it },
             )
         }
 
         // Error snackbar
-        errorMessage?.let { error ->
+        state.error?.let { error ->
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -158,35 +162,16 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
 
 @Composable
 private fun ServerSelectScreen(
-    jellyfinClient: JellyfinClient,
-    onServerConnected: (ValidatedServer, List<PublicUser>) -> Unit,
-    onError: (String) -> Unit,
+    state: dev.jausc.myflix.core.common.ui.LoginScreenState,
+    onServerConnected: (List<PublicUserInfo>) -> Unit,
 ) {
-    var discoveredServers by remember { mutableStateOf<List<DiscoveredServer>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(true) }
-    var isConnecting by remember { mutableStateOf(false) }
     var showManualEntry by remember { mutableStateOf(false) }
     var manualAddress by remember { mutableStateOf("") }
 
-    val scope = rememberCoroutineScope()
-
+    // Auto-discover on first display
     LaunchedEffect(Unit) {
-        isSearching = true
-        discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
-        isSearching = false
-    }
-
-    fun connectTo(address: String) {
-        if (isConnecting) return
-        scope.launch {
-            isConnecting = true
-            jellyfinClient.connectToServer(address)
-                .onSuccess { server ->
-                    val users = jellyfinClient.getPublicUsers(server.url).getOrDefault(emptyList())
-                    onServerConnected(server, users)
-                }
-                .onFailure { onError(it.message ?: "Connection failed") }
-            isConnecting = false
+        if (state.discoveredServers.isEmpty() && !state.isSearching) {
+            state.discoverServers()
         }
     }
 
@@ -226,22 +211,26 @@ private fun ServerSelectScreen(
                     value = manualAddress,
                     onValueChange = { manualAddress = it },
                     inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_URI,
-                    enabled = !isConnecting,
+                    enabled = !state.isConnecting,
                     modifier = Modifier.width(400.dp),
                 )
                 Spacer(Modifier.height(24.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
-                        onClick = { connectTo(manualAddress) },
-                        enabled = manualAddress.isNotBlank() && !isConnecting,
+                        onClick = {
+                            state.connectToServer(manualAddress) { _, users ->
+                                onServerConnected(users)
+                            }
+                        },
+                        enabled = manualAddress.isNotBlank() && !state.isConnecting,
                         modifier = Modifier.height(40.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.BluePrimary,
                             focusedContainerColor = TvColors.BlueLight,
                         ),
                     ) {
-                        if (isConnecting) {
+                        if (state.isConnecting) {
                             TvLoadingIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                         } else {
                             Text("Connect", style = MaterialTheme.typography.bodyMedium)
@@ -250,7 +239,7 @@ private fun ServerSelectScreen(
 
                     Button(
                         onClick = { showManualEntry = false },
-                        enabled = !isConnecting,
+                        enabled = !state.isConnecting,
                         modifier = Modifier.height(40.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.Surface,
@@ -264,7 +253,7 @@ private fun ServerSelectScreen(
                 Text("Select Server", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
                 Spacer(Modifier.height(24.dp))
 
-                if (isSearching) {
+                if (state.isSearching) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -272,12 +261,16 @@ private fun ServerSelectScreen(
                         TvLoadingIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                         Text("Searching for servers...", color = TvColors.TextSecondary)
                     }
-                } else if (discoveredServers.isEmpty()) {
+                } else if (state.discoveredServers.isEmpty()) {
                     Text("No servers found on your network", color = TvColors.TextSecondary)
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        discoveredServers.take(4).forEach { server ->
-                            ServerCard(server, isConnecting) { connectTo(server.address) }
+                        state.discoveredServers.take(4).forEach { server ->
+                            ServerCard(server, state.isConnecting) {
+                                state.connectToServer(server.address) { _, users ->
+                                    onServerConnected(users)
+                                }
+                            }
                         }
                     }
                 }
@@ -287,7 +280,7 @@ private fun ServerSelectScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
                         onClick = { showManualEntry = true },
-                        enabled = !isConnecting,
+                        enabled = !state.isConnecting,
                         modifier = Modifier.height(40.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.Surface,
@@ -297,16 +290,10 @@ private fun ServerSelectScreen(
                         Text("Enter Manually", style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    if (!isSearching) {
+                    if (!state.isSearching) {
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    isSearching = true
-                                    discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
-                                    isSearching = false
-                                }
-                            },
-                            enabled = !isConnecting,
+                            onClick = { state.discoverServers() },
+                            enabled = !state.isConnecting,
                             modifier = Modifier.height(40.dp),
                             colors = ButtonDefaults.colors(
                                 containerColor = TvColors.Surface,
@@ -318,7 +305,7 @@ private fun ServerSelectScreen(
                     }
                 }
 
-                if (isConnecting) {
+                if (state.isConnecting) {
                     Spacer(Modifier.height(24.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -334,7 +321,7 @@ private fun ServerSelectScreen(
 }
 
 @Composable
-private fun ServerCard(server: DiscoveredServer, isConnecting: Boolean, onClick: () -> Unit,) {
+private fun ServerCard(server: DiscoveredServerInfo, isConnecting: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = !isConnecting,
@@ -374,9 +361,9 @@ private fun ServerCard(server: DiscoveredServer, isConnecting: Boolean, onClick:
 
 @Composable
 private fun UserSelectScreen(
-    server: ValidatedServer,
-    users: List<PublicUser>,
-    onUserSelected: (PublicUser) -> Unit,
+    server: ValidatedServerInfo,
+    users: List<PublicUserInfo>,
+    onUserSelected: (PublicUserInfo) -> Unit,
     onManualLogin: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -392,12 +379,12 @@ private fun UserSelectScreen(
             MyFlixLogo(modifier = Modifier.fillMaxWidth(), height = null)
             Spacer(Modifier.height(16.dp))
             Text(
-                server.serverInfo.serverName,
+                server.serverName,
                 style = MaterialTheme.typography.headlineSmall,
                 color = TvColors.TextPrimary,
             )
             Text(
-                "v${server.serverInfo.version}",
+                "v${server.version ?: ""}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TvColors.TextSecondary,
             )
@@ -434,7 +421,7 @@ private fun UserSelectScreen(
 }
 
 @Composable
-private fun UserCard(user: PublicUser, serverUrl: String, onClick: () -> Unit) {
+private fun UserCard(user: PublicUserInfo, serverUrl: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.size(100.dp),
@@ -512,14 +499,13 @@ private fun OtherUserCard(onClick: () -> Unit) {
 
 @Composable
 private fun AuthMethodScreen(
-    server: ValidatedServer,
-    selectedUser: PublicUser?,
+    server: ValidatedServerInfo,
+    selectedUser: PublicUserInfo?,
     jellyfinClient: JellyfinClient,
-    appState: AppState,
+    state: dev.jausc.myflix.core.common.ui.LoginScreenState,
     onLoginSuccess: () -> Unit,
     onPasswordLogin: () -> Unit,
     onBack: () -> Unit,
-    onError: (String) -> Unit,
 ) {
     var quickConnectState by remember { mutableStateOf<QuickConnectFlowState?>(null) }
     var quickConnectJob by remember { mutableStateOf<Job?>(null) }
@@ -530,20 +516,19 @@ private fun AuthMethodScreen(
     LaunchedEffect(server) {
         if (server.quickConnectEnabled) {
             quickConnectJob = scope.launch {
-                jellyfinClient.quickConnectFlow(server.url).collect { state ->
-                    quickConnectState = state
-                    when (state) {
+                jellyfinClient.quickConnectFlow(server.url).collect { qcState ->
+                    quickConnectState = qcState
+                    when (qcState) {
                         is QuickConnectFlowState.WaitingForApproval -> {
                             qrBitmap = generateQrCode("${server.url}/web/#/quickconnect", 120)
                         }
                         is QuickConnectFlowState.Authenticated -> {
-                            val response = state.authResponse
-                            jellyfinClient.configure(server.url, response.accessToken, response.user.id, jellyfinClient.deviceId)
-                            appState.login(server.url, response.accessToken, response.user.id)
-                            onLoginSuccess()
+                            state.handleQuickConnectSuccess(qcState.authResponse) {
+                                onLoginSuccess()
+                            }
                         }
                         is QuickConnectFlowState.Error -> {
-                            onError(state.message)
+                            // Error is handled via state.error
                         }
                         else -> {
                             // Ignore other states
@@ -705,51 +690,14 @@ private fun AuthMethodScreen(
 
 @Composable
 private fun PasswordEntryScreen(
-    server: ValidatedServer,
+    server: ValidatedServerInfo,
     prefilledUsername: String?,
-    jellyfinClient: JellyfinClient,
-    appState: AppState,
+    state: dev.jausc.myflix.core.common.ui.LoginScreenState,
     onLoginSuccess: () -> Unit,
     onBack: () -> Unit,
-    onError: (String) -> Unit,
 ) {
     var username by remember { mutableStateOf(prefilledUsername ?: "") }
     var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
-
-    fun doLogin() {
-        if (username.isBlank()) {
-            onError("Please enter a username")
-            return
-        }
-        scope.launch {
-            isLoading = true
-            jellyfinClient.login(server.url, username, password)
-                .onSuccess { response ->
-                    jellyfinClient.configure(
-                        server.url,
-                        response.accessToken,
-                        response.user.id,
-                        jellyfinClient.deviceId,
-                    )
-                    // Store username/password for Seerr integration
-                    appState.login(server.url, response.accessToken, response.user.id, username, password)
-                    onLoginSuccess()
-                }
-                .onFailure { e ->
-                    onError(
-                        when {
-                            e.message?.contains("401") == true -> "Invalid username or password"
-                            e.message?.contains("timeout", true) == true -> "Connection timed out"
-                            else -> e.message ?: "Login failed"
-                        },
-                    )
-                }
-            isLoading = false
-        }
-    }
 
     Row(
         modifier = Modifier.fillMaxSize().padding(48.dp),
@@ -763,7 +711,7 @@ private fun PasswordEntryScreen(
             MyFlixLogo(modifier = Modifier.fillMaxWidth(), height = null)
             Spacer(Modifier.height(16.dp))
             Text(
-                server.serverInfo.serverName,
+                server.serverName,
                 style = MaterialTheme.typography.headlineSmall,
                 color = TvColors.TextPrimary,
             )
@@ -783,7 +731,7 @@ private fun PasswordEntryScreen(
                 value = username,
                 onValueChange = { username = it },
                 inputType = EditorInfo.TYPE_CLASS_TEXT,
-                enabled = !isLoading && prefilledUsername == null,
+                enabled = !state.isAuthenticating && prefilledUsername == null,
                 modifier = Modifier.width(400.dp),
             )
             Spacer(Modifier.height(16.dp))
@@ -795,22 +743,22 @@ private fun PasswordEntryScreen(
                 onValueChange = { password = it },
                 inputType = EditorInfo.TYPE_CLASS_TEXT or EditorInfo.TYPE_TEXT_VARIATION_PASSWORD,
                 isPassword = true,
-                enabled = !isLoading,
+                enabled = !state.isAuthenticating,
                 modifier = Modifier.width(400.dp),
             )
             Spacer(Modifier.height(32.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
-                    onClick = { doLogin() },
-                    enabled = !isLoading && username.isNotBlank(),
+                    onClick = { state.login(username, password, onLoginSuccess) },
+                    enabled = !state.isAuthenticating && username.isNotBlank(),
                     modifier = Modifier.height(40.dp),
                     colors = ButtonDefaults.colors(
                         containerColor = TvColors.BluePrimary,
                         focusedContainerColor = TvColors.BlueLight,
                     ),
                 ) {
-                    if (isLoading) {
+                    if (state.isAuthenticating) {
                         TvLoadingIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
                         Text("Sign In", style = MaterialTheme.typography.bodyMedium)
@@ -819,7 +767,7 @@ private fun PasswordEntryScreen(
 
                 Button(
                     onClick = onBack,
-                    enabled = !isLoading,
+                    enabled = !state.isAuthenticating,
                     modifier = Modifier.height(40.dp),
                     colors = ButtonDefaults.colors(
                         containerColor = TvColors.Surface,
@@ -901,4 +849,82 @@ private fun generateQrCode(content: String, size: Int): Bitmap? = try {
 } catch (e: Exception) {
     android.util.Log.e("LoginScreen", "QR code generation failed", e)
     null
+}
+
+// ==================== Authenticator ====================
+
+/**
+ * TV-specific implementation of LoginAuthenticator.
+ * Bridges the shared LoginScreenState to JellyfinClient and AppState.
+ */
+private class TvLoginAuthenticator(
+    private val jellyfinClient: JellyfinClient,
+    private val appState: AppState,
+) : LoginAuthenticator {
+    override suspend fun discoverServers(timeoutMs: Long): Result<List<DiscoveredServerInfo>> {
+        return runCatching {
+            jellyfinClient.discoverServers(timeoutMs).map { server ->
+                DiscoveredServerInfo(
+                    name = server.name,
+                    address = server.address,
+                )
+            }
+        }
+    }
+
+    override suspend fun connectToServer(address: String): Result<ValidatedServerInfo> {
+        return jellyfinClient.connectToServer(address).map { server ->
+            ValidatedServerInfo(
+                url = server.url,
+                serverName = server.serverInfo.serverName,
+                version = server.serverInfo.version,
+                quickConnectEnabled = server.quickConnectEnabled,
+            )
+        }
+    }
+
+    override suspend fun getPublicUsers(serverUrl: String): Result<List<PublicUserInfo>> {
+        return jellyfinClient.getPublicUsers(serverUrl).map { users ->
+            users.map { user ->
+                PublicUserInfo(
+                    id = user.id,
+                    name = user.name,
+                    primaryImageTag = user.primaryImageTag,
+                )
+            }
+        }
+    }
+
+    override suspend fun login(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ): Result<AuthResponse> {
+        return jellyfinClient.login(serverUrl, username, password)
+    }
+
+    override suspend fun onLoginSuccess(
+        server: ValidatedServerInfo,
+        response: AuthResponse,
+        username: String,
+        password: String,
+    ) {
+        jellyfinClient.configure(
+            server.url,
+            response.accessToken,
+            response.user.id,
+            jellyfinClient.deviceId,
+        )
+        appState.login(server.url, response.accessToken, response.user.id, username, password)
+    }
+
+    override suspend fun onQuickConnectSuccess(server: ValidatedServerInfo, response: AuthResponse) {
+        jellyfinClient.configure(
+            server.url,
+            response.accessToken,
+            response.user.id,
+            jellyfinClient.deviceId,
+        )
+        appState.login(server.url, response.accessToken, response.user.id)
+    }
 }
