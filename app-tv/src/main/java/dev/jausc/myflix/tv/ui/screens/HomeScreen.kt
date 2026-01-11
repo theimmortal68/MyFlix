@@ -577,6 +577,7 @@ private fun HomeContent(
                             }
                         }
                     },
+                    navBarVisible = navBarState.isVisible,
                 )
             }
 

@@ -171,6 +171,7 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
  * @param onCurrentItemChanged Callback when the displayed item changes (for dynamic background)
  * @param onPreviewClear Callback when focus returns to hero buttons (to clear preview)
  * @param onUpPressed Callback when UP is pressed on hero buttons (to show nav bar)
+ * @param navBarVisible Whether the nav bar popup is currently visible (prevents focus stealing)
  */
 @Composable
 fun HeroSection(
@@ -187,6 +188,7 @@ fun HeroSection(
     onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null,
     onPreviewClear: (() -> Unit)? = null,
     onUpPressed: (() -> Unit)? = null,
+    navBarVisible: Boolean = false,
 ) {
     if (featuredItems.isEmpty() && previewItem == null) return
 
@@ -246,7 +248,7 @@ fun HeroSection(
                     playButtonShouldHaveFocus = true
                     onPreviewClear?.invoke()
                 },
-                shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode,
+                shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode && !navBarVisible,
                 onUpPressed = onUpPressed,
             )
         }
