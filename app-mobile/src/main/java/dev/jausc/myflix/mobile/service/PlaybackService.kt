@@ -140,7 +140,6 @@ class PlaybackService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, player!!)
             .setSessionActivity(sessionActivityIntent)
-            .setCallback(MediaSessionCallback())
             .build()
     }
 
@@ -204,24 +203,4 @@ class PlaybackService : MediaSessionService() {
      * Get the current player for UI binding
      */
     fun getPlayer(): Player? = player
-
-    /**
-     * MediaSession callback for handling media button events
-     */
-    private inner class MediaSessionCallback : MediaSession.Callback {
-        @Deprecated("Deprecated in MediaSession.Callback")
-        override fun onPlaybackResumption(
-            mediaSession: MediaSession,
-            controller: MediaSession.ControllerInfo,
-        ): com.google.common.util.concurrent.ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
-            // Return empty - we don't support resumption from notification after app killed
-            return com.google.common.util.concurrent.Futures.immediateFuture(
-                MediaSession.MediaItemsWithStartPosition(
-                    emptyList(),
-                    0,
-                    0,
-                ),
-            )
-        }
-    }
 }

@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import android.view.Surface
 import android.view.WindowManager
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -259,17 +260,20 @@ class PlayerController(
             }
 
             return try {
-                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    context.display
-                } else {
-                    @Suppress("DEPRECATION")
-                    windowManager.defaultDisplay
+                val supportedTypes = when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                        // API 34+: Use mode-specific HDR types from context.display
+                        getHdrTypesApi34(context)
+                    }
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                        // API 30-33: Use context.display with HdrCapabilities
+                        getHdrTypesApi30(context)
+                    }
+                    else -> {
+                        // API 24-29: Use WindowManager.defaultDisplay
+                        getHdrTypesLegacy(context)
+                    }
                 }
-
-                val hdrCapabilities = display?.hdrCapabilities
-                @Suppress("DEPRECATION")
-                val supportedTypes = hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
 
                 val hasDV = supportedTypes.contains(HDR_TYPE_DOLBY_VISION)
                 Log.d(TAG, "Device HDR capabilities: ${supportedTypes.toList()}, DV capable: $hasDV")
@@ -278,6 +282,29 @@ class PlayerController(
                 Log.w(TAG, "Failed to check DV capability", e)
                 false
             }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        private fun getHdrTypesApi34(context: Context): IntArray {
+            return context.display.mode.supportedHdrTypes
+        }
+
+        @RequiresApi(Build.VERSION_CODES.R)
+        private fun getHdrTypesApi30(context: Context): IntArray {
+            // hdrCapabilities.supportedHdrTypes is deprecated in API 34+ in favor of
+            // mode.supportedHdrTypes, but there's no alternative for API 30-33
+            @Suppress("DEPRECATION")
+            return context.display.hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
+        }
+
+        private fun getHdrTypesLegacy(context: Context): IntArray {
+            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            // defaultDisplay and supportedHdrTypes are deprecated in API 30+ but there's
+            // no alternative for API 24-29 (our min SDK is 25)
+            @Suppress("DEPRECATION")
+            val display = windowManager.defaultDisplay ?: return intArrayOf()
+            @Suppress("DEPRECATION")
+            return display.hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
         }
     }
 }

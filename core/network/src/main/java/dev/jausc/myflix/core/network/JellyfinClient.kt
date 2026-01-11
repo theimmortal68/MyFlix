@@ -28,6 +28,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
@@ -218,7 +219,6 @@ class JellyfinClient(
      * Returns a Flow that emits servers as they're discovered.
      */
     @Suppress("NestedBlockDepth", "CognitiveComplexMethod")
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlinx.coroutines.DelicateCoroutinesApi::class)
     fun discoverServersFlow(timeoutMs: Long = 5000): Flow<DiscoveredServer> = channelFlow {
         val seen = mutableSetOf<String>()
 
@@ -249,7 +249,7 @@ class JellyfinClient(
                 val receiveBuffer = ByteArray(4096)
                 val endTime = System.currentTimeMillis() + timeoutMs
 
-                while (System.currentTimeMillis() < endTime && !isClosedForSend) {
+                while (System.currentTimeMillis() < endTime && isActive) {
                     try {
                         val receivePacket = DatagramPacket(receiveBuffer, receiveBuffer.size)
                         socket.receive(receivePacket)
@@ -260,14 +260,19 @@ class JellyfinClient(
                         parseDiscoveryResponse(response, receivePacket.address.hostAddress)?.let { server ->
                             if (server.id !in seen) {
                                 seen.add(server.id)
-                                trySend(server)
-                                android.util.Log.i("JellyfinClient", "Discovered: ${server.name} at ${server.address}")
+                                val sendResult = trySend(server)
+                                if (sendResult.isSuccess) {
+                                    android.util.Log.i(
+                                        "JellyfinClient",
+                                        "Discovered: ${server.name} at ${server.address}",
+                                    )
+                                }
                             }
                         }
                     } catch (_: java.net.SocketTimeoutException) {
                         // Normal - continue listening
                     } catch (_: Exception) {
-                        if (!isClosedForSend) {
+                        if (isActive) {
                             android.util.Log.w("JellyfinClient", "Receive error during discovery")
                         }
                     }

@@ -344,9 +344,12 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
          * Get supported audio passthrough formats on this device
          * TODO: Use this for passthrough settings option
          */
-        @Suppress("DEPRECATION")
         fun getPassthroughCapabilities(context: Context): String {
-            val capabilities = AudioCapabilities.getCapabilities(context)
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build()
+            val capabilities = AudioCapabilities.getCapabilities(context, audioAttributes, null)
             val formats = mutableListOf<String>()
 
             if (capabilities.supportsEncoding(C.ENCODING_AC3)) formats.add("AC3")
