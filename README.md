@@ -11,11 +11,17 @@ A modular Jellyfin client for Android with separate TV and Mobile apps.
 - D-pad navigation with focus management
 - Dynamic backdrop with color extraction
 - Continue Watching, Next Up, and Recently Added rows
+- Season Premieres (upcoming episodes) row
+- Genre rows with randomization
+- Collection rows with pinning support
+- Long-press context menus on media cards
+- Search screen with text input
 - Detail screen with season/episode browsing
 - Video player with ExoPlayer (Dolby Vision) and MPV (HDR10/SDR)
 - Quick Connect and QR code authentication
 - Server discovery via UDP broadcast
 - Playback progress reporting to Jellyfin
+- Jellyseerr integration for media requests
 
 ### Mobile App
 - Responsive home screen with auto-rotating hero carousel
@@ -23,12 +29,17 @@ A modular Jellyfin client for Android with separate TV and Mobile apps.
 - Adaptive layout for phones, foldables, and tablets
 - Progress indicators on continue watching cards
 - Episode badges on wide cards
+- Season Premieres, Genre, and Collection rows
 - Touch-optimized media cards
+- Search screen
+- Settings screen with home customization
 - PlaybackService for background/foreground playback
 - Playback progress reporting to Jellyfin
+- Jellyseerr integration for media requests
 
 ### Shared Features
-- Jellyfin API client with caching
+- Jellyfin API client with caching and DNS resilience
+- Jellyseerr/Overseerr client with session persistence
 - Automatic server discovery
 - Resume playback from last position
 - Real-time playback state sync
@@ -71,7 +82,8 @@ MyFlix/
 │   ├── common/      # Shared models, utilities
 │   ├── network/     # Ktor-based Jellyfin API client
 │   ├── data/        # DataStore preferences
-│   └── player/      # ExoPlayer + MPV abstraction
+│   ├── player/      # ExoPlayer + MPV abstraction
+│   └── seerr/       # Jellyseerr/Overseerr API client
 └── ui/
     ├── common/      # Shared theme, colors
     ├── tv/          # TV-specific components

@@ -51,13 +51,18 @@ MyFlix/
 │   │   └── dev.jausc.myflix.core.data/
 │   │       └── AppState.kt
 │   │
-│   └── player/                # Video player abstraction (ExoPlayer + MPV)
-│       └── dev.jausc.myflix.core.player/
-│           ├── PlayerController.kt
-│           ├── PlayerManager.kt
-│           ├── UnifiedPlayer.kt
-│           ├── ExoPlayerWrapper.kt
-│           └── MpvPlayer.kt
+│   ├── player/                # Video player abstraction (ExoPlayer + MPV)
+│   │   └── dev.jausc.myflix.core.player/
+│   │       ├── PlayerController.kt
+│   │       ├── PlayerManager.kt
+│   │       ├── UnifiedPlayer.kt
+│   │       ├── ExoPlayerWrapper.kt
+│   │       └── MpvPlayer.kt
+│   │
+│   └── seerr/                 # Jellyseerr/Overseerr API client
+│       └── dev.jausc.myflix.core.seerr/
+│           ├── SeerrClient.kt
+│           └── SeerrModels.kt
 │
 └── ui/
     ├── common/                # Shared theme, colors
@@ -84,22 +89,28 @@ MyFlix/
 ### TV App (app-tv)
 - [x] Home screen with hero section and content rows
 - [x] Dynamic backdrop with color extraction
-- [x] Top navigation bar (Home, Movies, Shows, Search, Settings)
+- [x] Top navigation bar (Home, Movies, Shows, Search, Discover, Settings)
 - [x] Continue Watching row
 - [x] Next Up row
 - [x] Latest Movies/Shows/Episodes rows
+- [x] Season Premieres (upcoming episodes) row
+- [x] Genre rows with randomization
+- [x] Collection rows with pinning support
 - [x] Media cards (portrait + wide/landscape)
+- [x] Long-press context menus on media cards
 - [x] Hero section with featured items carousel
 - [x] Detail screen
 - [x] Player screen
 - [x] Library screen
+- [x] Search screen
 - [x] Login screen
 - [x] Server discovery (UDP broadcast)
 - [x] Quick Connect authentication
 - [x] QR code login display
-- [x] Preferences screen
+- [x] Preferences screen with home customization
 - [x] D-pad navigation with focus management
 - [x] Background polling for content updates
+- [x] Jellyseerr integration (setup, browse, request)
 
 ### Mobile App (app-mobile)
 - [x] Home screen with responsive hero section
@@ -108,15 +119,19 @@ MyFlix/
 - [x] Responsive layout (phones, foldables, tablets)
 - [x] Progress bars on continue watching cards
 - [x] Episode badges on wide cards
+- [x] Season Premieres, Genre, and Collection rows
 - [x] Detail screen
 - [x] Player screen with PlaybackService
 - [x] Library screen
 - [x] Search screen
+- [x] Settings screen with home customization
 - [x] Login screen
 - [x] Splash screen
+- [x] Jellyseerr integration (setup, browse, request)
 
 ### Core Modules
 - [x] JellyfinClient with caching (variable TTL)
+- [x] DNS caching for network resilience
 - [x] Server discovery via UDP
 - [x] Quick Connect flow
 - [x] Playback reporting (start/progress/stop)
@@ -127,6 +142,7 @@ MyFlix/
 - [x] HeroContentBuilder (shared hero content logic)
 - [x] LibraryFinder (shared library detection)
 - [x] ScreenSizeClass responsive utility
+- [x] SeerrClient with session cookie persistence
 - [x] Unit tests for JellyfinClient (28 tests)
 - [x] GitHub Actions CI/CD
 
@@ -161,11 +177,12 @@ MyFlix/
 - [ ] Collection Binge Mode (auto-queue next item)
 
 ### Home Screen
-- [ ] User-selectable collection rows
-- [ ] Collection picker settings UI
-- [ ] Genre rows with randomization
-- [ ] Genre picker settings UI
-- [ ] Section visibility toggles
+- [x] User-selectable collection rows
+- [x] Collection picker settings UI
+- [x] Genre rows with randomization
+- [x] Genre picker settings UI
+- [x] Section visibility toggles
+- [x] Season Premieres (upcoming episodes) row
 - [x] Continue Watching row
 - [x] Next Up row
 - [x] Latest additions rows
@@ -198,7 +215,7 @@ MyFlix/
 - [x] Quick Connect support
 
 ### Integration Features
-- [ ] Jellyseerr integration
+- [x] Jellyseerr integration
 - [ ] OTA updates from GitHub releases
 - [ ] Dream Service (screensaver)
 - [ ] Photo player/slideshow
@@ -220,7 +237,6 @@ MyFlix/
 - [ ] HDR detection and handling
 
 ### Long-term
-- [ ] Jellyseerr integration
 - [ ] OTA updates from GitHub releases
 - [ ] Universe Collections integration
 - [ ] Dream Service (screensaver)
@@ -284,13 +300,17 @@ adb logcat -s MyFlix:V ExoPlayer:V MPV:V JellyfinClient:D
 
 | Change | Files to Modify |
 |--------|-----------------|
-| Add API endpoint | `core/network/JellyfinClient.kt` |
+| Add Jellyfin API endpoint | `core/network/JellyfinClient.kt` |
+| Add Seerr API endpoint | `core/seerr/SeerrClient.kt` |
 | Add data model | `core/common/model/JellyfinModels.kt` |
-| Add TV screen | `app-tv/ui/screens/`, update navigation |
-| Add Mobile screen | `app-mobile/ui/screens/`, update navigation |
+| Add Seerr model | `core/seerr/SeerrModels.kt` |
+| Add TV screen | `app-tv/ui/screens/`, update navigation in `MainActivity.kt` |
+| Add Mobile screen | `app-mobile/ui/screens/`, update navigation in `MainActivity.kt` |
 | Add TV component | `app-tv/ui/components/` |
 | Add player feature | `core/player/` |
-| Modify home rows | `app-tv/ui/screens/HomeScreen.kt` |
+| Modify home rows | `app-tv/ui/screens/HomeScreen.kt` or `app-mobile/ui/screens/HomeScreen.kt` |
+| Add TV preference | `app-tv/TvPreferences.kt` |
+| Add Mobile preference | `app-mobile/MobilePreferences.kt` |
 | Change theme | `app-tv/ui/theme/` or `app-mobile/ui/theme/` |
 
 ## Navigation Routes
@@ -304,10 +324,13 @@ Both apps use Jetpack Navigation Compose with string-based routes. Navigation is
 | `splash` | — | `SplashScreen` | Start destination, animated logo |
 | `login` | — | `LoginScreen` | Server discovery, Quick Connect, QR code |
 | `home` | — | `HomeScreen` | Main hub with content rows, hero section |
+| `search` | — | `SearchScreen` | Text search with results |
 | `settings` | — | `PreferencesScreen` | App settings and preferences |
 | `library/{libraryId}/{libraryName}` | `libraryId: String`, `libraryName: String` | `LibraryScreen` | Browse library contents |
 | `detail/{itemId}` | `itemId: String` | `DetailScreen` | Item details, episodes, play button |
 | `player/{itemId}` | `itemId: String` | `PlayerScreen` | Video playback |
+| `seerr` | — | `SeerrSetupScreen` / `SeerrHomeScreen` | Jellyseerr setup or browse |
+| `seerr/{mediaType}/{tmdbId}` | `mediaType: String`, `tmdbId: Int` | `SeerrDetailScreen` | Jellyseerr media details |
 
 **Flow:** `splash` → `login` (if needed) → `home` → `detail` → `player`
 
@@ -317,11 +340,14 @@ Both apps use Jetpack Navigation Compose with string-based routes. Navigation is
 |-------|-----------|--------|-------------|
 | `splash` | — | `SplashScreen` | Start destination, animated logo |
 | `login` | — | `LoginScreen` | Server discovery, Quick Connect |
-| `home` | — | `HomeScreen` | Main hub with bottom nav |
+| `home` | — | `HomeScreen` | Main hub with dropdown nav |
 | `search` | — | `SearchScreen` | Text search with results |
+| `settings` | — | `SettingsScreen` | App settings and preferences |
 | `library/{libraryId}/{libraryName}` | `libraryId: String`, `libraryName: String` | `LibraryScreen` | Browse library contents |
 | `detail/{itemId}` | `itemId: String` | `DetailScreen` | Item details, episodes, play button |
 | `player/{itemId}` | `itemId: String` | `PlayerScreen` | Video playback with PlaybackService |
+| `seerr` | — | `SeerrSetupScreen` / `SeerrHomeScreen` | Jellyseerr setup or browse |
+| `seerr/{mediaType}/{tmdbId}` | `mediaType: String`, `tmdbId: Int` | `SeerrDetailScreen` | Jellyseerr media details |
 
 **Flow:** `splash` → `login` (if needed) → `home` → `detail` → `player`
 
@@ -997,8 +1023,8 @@ LaunchedEffect(contentReady) {
 
 ## Related Projects
 
-| Project | Purpose |
-|---------|---------|
-| MyFlix-Wholphin | Legacy fork-based client (production) |
-| Universe Collections | Jellyfin plugin for collection tagging |
-| UMTK | Unraid Media Toolkit |
+| Project | Location | Purpose |
+|---------|----------|---------|
+| MyFlix-Wholphin | `/home/jstout/StudioProjects/MyFlix-Wholphin` | Legacy fork-based client (production reference) |
+| Universe Collections | — | Jellyfin plugin for collection tagging |
+| UMTK | — | Unraid Media Toolkit |
