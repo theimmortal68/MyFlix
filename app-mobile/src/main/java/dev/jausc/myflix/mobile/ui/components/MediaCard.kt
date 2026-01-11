@@ -1,3 +1,14 @@
+@file:Suppress(
+    "LongMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "ModifierMissing",
+    "ParameterNaming",
+    "ComposableParamOrder",
+)
+
 package dev.jausc.myflix.mobile.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -38,10 +49,7 @@ import dev.jausc.myflix.core.common.model.progressPercent
  * Shows at the bottom of the card when item has partial progress.
  */
 @Composable
-private fun ProgressOverlay(
-    progress: Float,
-    modifier: Modifier = Modifier
-) {
+private fun ProgressOverlay(progress: Float, modifier: Modifier = Modifier) {
     if (progress > 0f && progress < 1f) {
         LinearProgressIndicator(
             progress = { progress },
@@ -49,7 +57,7 @@ private fun ProgressOverlay(
                 .fillMaxWidth()
                 .height(3.dp),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = Color.Black.copy(alpha = 0.5f)
+            trackColor = Color.Black.copy(alpha = 0.5f),
         )
     }
 }
@@ -61,15 +69,15 @@ object MobileCardSizes {
     // Compact (standard phones < 600dp)
     val CompactPosterWidth = 110.dp
     val CompactWideCardWidth = 180.dp
-    
+
     // Medium (large phones, foldables 600-840dp)
     val MediumPosterWidth = 130.dp
     val MediumWideCardWidth = 220.dp
-    
+
     // Expanded (tablets > 840dp)
     val ExpandedPosterWidth = 150.dp
     val ExpandedWideCardWidth = 280.dp
-    
+
     /**
      * Get poster width based on screen size class.
      */
@@ -78,7 +86,7 @@ object MobileCardSizes {
         ScreenSizeClass.MEDIUM -> MediumPosterWidth
         ScreenSizeClass.EXPANDED -> ExpandedPosterWidth
     }
-    
+
     /**
      * Get wide card width based on screen size class.
      */
@@ -94,6 +102,7 @@ object MobileCardSizes {
  * Shows title and year below the image.
  * Responsive sizing based on screen width.
  */
+@Suppress("CognitiveComplexMethod")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MobileMediaCard(
@@ -104,25 +113,25 @@ fun MobileMediaCard(
     onLongClick: (() -> Unit)? = null,
     screenSizeClass: ScreenSizeClass = getScreenSizeClass(LocalConfiguration.current.screenWidthDp),
     showLabel: Boolean = true,
-    isUpcomingEpisode: Boolean = false
+    isUpcomingEpisode: Boolean = false,
 ) {
     val width = MobileCardSizes.getPosterWidth(screenSizeClass)
 
     Column(
-        modifier = modifier.width(width)
+        modifier = modifier.width(width),
     ) {
         Card(
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surface,
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 4.dp
+                defaultElevation = 4.dp,
             ),
             modifier = Modifier.combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
-            )
+                onLongClick = onLongClick,
+            ),
         ) {
             Box {
                 AsyncImage(
@@ -131,7 +140,7 @@ fun MobileMediaCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(2f / 3f)
+                        .aspectRatio(2f / 3f),
                 )
 
                 // Episode number badge in top right corner (for upcoming episodes)
@@ -144,14 +153,14 @@ fun MobileMediaCard(
                                 .padding(8.dp)
                                 .align(Alignment.TopEnd)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color.Black.copy(alpha = 0.7f))
+                                .background(Color.Black.copy(alpha = 0.7f)),
                         ) {
                             Text(
                                 text = if (seasonNumber != null) "S$seasonNumber E$episodeNumber" else "E$episodeNumber",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             )
                         }
                     }
@@ -160,14 +169,14 @@ fun MobileMediaCard(
                 // Progress bar for continue watching
                 ProgressOverlay(
                     progress = item.progressPercent,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }
 
         if (showLabel) {
             Column(
-                modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp)
+                modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp),
             ) {
                 if (isUpcomingEpisode && item.isEpisode) {
                     // For upcoming episodes: show series name, episode title, and air date
@@ -176,7 +185,7 @@ fun MobileMediaCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = item.name,
@@ -184,14 +193,14 @@ fun MobileMediaCard(
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                     item.formattedPremiereDate?.let { date ->
                         Text(
                             text = date,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 } else {
@@ -202,13 +211,13 @@ fun MobileMediaCard(
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                     item.productionYear?.let { year ->
                         Text(
                             text = year.toString(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
                         )
                     }
                 }
@@ -231,25 +240,25 @@ fun MobileWideMediaCard(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     screenSizeClass: ScreenSizeClass = getScreenSizeClass(LocalConfiguration.current.screenWidthDp),
-    showLabel: Boolean = true
+    showLabel: Boolean = true,
 ) {
     val width = MobileCardSizes.getWideCardWidth(screenSizeClass)
 
     Column(
-        modifier = modifier.width(width)
+        modifier = modifier.width(width),
     ) {
         Card(
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surface,
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 4.dp
+                defaultElevation = 4.dp,
             ),
             modifier = Modifier.combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
-            )
+                onLongClick = onLongClick,
+            ),
         ) {
             Box {
                 AsyncImage(
@@ -258,7 +267,7 @@ fun MobileWideMediaCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
+                        .aspectRatio(16f / 9f),
                 )
 
                 // Episode number badge (for episodes)
@@ -271,14 +280,14 @@ fun MobileWideMediaCard(
                                 .padding(8.dp)
                                 .align(Alignment.TopEnd)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color.Black.copy(alpha = 0.7f))
+                                .background(Color.Black.copy(alpha = 0.7f)),
                         ) {
                             Text(
                                 text = if (seasonNumber != null) "S$seasonNumber E$episodeNumber" else "E$episodeNumber",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             )
                         }
                     }
@@ -287,14 +296,14 @@ fun MobileWideMediaCard(
                 // Progress bar for continue watching
                 ProgressOverlay(
                     progress = item.progressPercent,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }
 
         if (showLabel) {
             Column(
-                modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp)
+                modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp),
             ) {
                 // For episodes, show the episode name
                 if (item.isEpisode) {
@@ -303,7 +312,7 @@ fun MobileWideMediaCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = item.name,
@@ -311,7 +320,7 @@ fun MobileWideMediaCard(
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 } else {
                     Text(
@@ -320,7 +329,7 @@ fun MobileWideMediaCard(
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }

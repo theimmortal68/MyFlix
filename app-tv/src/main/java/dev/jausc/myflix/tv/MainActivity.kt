@@ -1,3 +1,14 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "StringLiteralDuplication",
+)
+
 package dev.jausc.myflix.tv
 
 import android.os.Bundle
@@ -35,12 +46,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MyFlixTvApp() {
     val context = LocalContext.current
-    
+
     val jellyfinClient = remember { JellyfinClient() }
     val appState = remember { AppState(context, jellyfinClient) }
     val tvPreferences = remember { TvPreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
-    
+
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var splashFinished by remember { mutableStateOf(false) }
@@ -74,7 +85,10 @@ fun MyFlixTvApp() {
             return@LaunchedEffect
         }
 
-        android.util.Log.d("MyFlixSeerr", "LaunchedEffect: init=$isInitialized, logged=$isLoggedIn, enabled=$seerrEnabled, url=$seerrUrl, hasCookie=${!seerrSessionCookie.isNullOrBlank()}, hasKey=${!seerrApiKey.isNullOrBlank()}")
+        android.util.Log.d(
+            "MyFlixSeerr",
+            "LaunchedEffect: init=$isInitialized, logged=$isLoggedIn, enabled=$seerrEnabled, url=$seerrUrl, hasCookie=${!seerrSessionCookie.isNullOrBlank()}, hasKey=${!seerrApiKey.isNullOrBlank()}",
+        )
         if (isInitialized && isLoggedIn && seerrEnabled && !seerrUrl.isNullOrBlank()) {
             android.util.Log.d("MyFlixSeerr", "Connecting to Seerr at $seerrUrl")
             seerrClient.connectToServer(seerrUrl!!)
@@ -111,7 +125,10 @@ fun MyFlixTvApp() {
                                 isSeerrAuthenticated = true
                             }
                             .onFailure { e ->
-                                android.util.Log.w("MyFlixSeerr", "Session cookie auth FAILED: ${e.message}, trying credentials")
+                                android.util.Log.w(
+                                    "MyFlixSeerr",
+                                    "Session cookie auth FAILED: ${e.message}, trying credentials",
+                                )
                                 tryCredentials()
                             }
                     } else {
@@ -129,7 +146,7 @@ fun MyFlixTvApp() {
     }
 
     val navController = rememberNavController()
-    
+
     // Navigate when BOTH splash animation completes AND initialization is done
     LaunchedEffect(splashFinished, isInitialized) {
         if (splashFinished && isInitialized) {
@@ -143,18 +160,18 @@ fun MyFlixTvApp() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
+            .background(TvColors.Background),
     ) {
         NavHost(
             navController = navController,
-            startDestination = "splash"
+            startDestination = "splash",
         ) {
             composable("splash") {
                 SplashScreen(
-                    onFinished = { splashFinished = true }
+                    onFinished = { splashFinished = true },
                 )
             }
-            
+
             composable("login") {
                 LoginScreen(
                     appState = appState,
@@ -164,7 +181,7 @@ fun MyFlixTvApp() {
                         navController.navigate("home") {
                             popUpTo("login") { inclusive = true }
                         }
-                    }
+                    },
                 )
             }
 
@@ -195,7 +212,7 @@ fun MyFlixTvApp() {
                     },
                     onSettingsClick = {
                         navController.navigate("settings")
-                    }
+                    },
                 )
             }
 
@@ -219,10 +236,10 @@ fun MyFlixTvApp() {
                     },
                     onNavigateSettings = {
                         navController.navigate("settings")
-                    }
+                    },
                 )
             }
-            
+
             composable("settings") {
                 PreferencesScreen(
                     preferences = tvPreferences,
@@ -243,7 +260,7 @@ fun MyFlixTvApp() {
                     },
                     onNavigateDiscover = {
                         navController.navigate("seerr")
-                    }
+                    },
                 )
             }
 
@@ -261,7 +278,7 @@ fun MyFlixTvApp() {
                             // Just set authenticated - recomposition will show SeerrHomeScreen
                             isSeerrAuthenticated = true
                         },
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
                     )
                 } else {
                     SeerrHomeScreen(
@@ -285,7 +302,7 @@ fun MyFlixTvApp() {
                         },
                         onNavigateSettings = {
                             navController.navigate("settings")
-                        }
+                        },
                     )
                 }
             }
@@ -302,7 +319,7 @@ fun MyFlixTvApp() {
                             popUpTo("seerr/setup") { inclusive = true }
                         }
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -310,8 +327,8 @@ fun MyFlixTvApp() {
                 route = "seerr/{mediaType}/{tmdbId}",
                 arguments = listOf(
                     navArgument("mediaType") { type = NavType.StringType },
-                    navArgument("tmdbId") { type = NavType.IntType }
-                )
+                    navArgument("tmdbId") { type = NavType.IntType },
+                ),
             ) { backStackEntry ->
                 val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
                 val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: return@composable
@@ -319,7 +336,7 @@ fun MyFlixTvApp() {
                     mediaType = mediaType,
                     tmdbId = tmdbId,
                     seerrClient = seerrClient,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -327,8 +344,8 @@ fun MyFlixTvApp() {
                 route = "library/{libraryId}/{libraryName}",
                 arguments = listOf(
                     navArgument("libraryId") { type = NavType.StringType },
-                    navArgument("libraryName") { type = NavType.StringType }
-                )
+                    navArgument("libraryName") { type = NavType.StringType },
+                ),
             ) { backStackEntry ->
                 val libraryId = backStackEntry.arguments?.getString("libraryId") ?: return@composable
                 val libraryName = backStackEntry.arguments?.getString("libraryName") ?: ""
@@ -339,13 +356,13 @@ fun MyFlixTvApp() {
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
 
             composable(
                 route = "detail/{itemId}",
-                arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+                arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
             ) { backStackEntry ->
                 val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
                 DetailScreen(
@@ -355,20 +372,20 @@ fun MyFlixTvApp() {
                     onEpisodeClick = { episodeId ->
                         navController.navigate("player/$episodeId")
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
 
             composable(
                 route = "player/{itemId}",
-                arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+                arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
             ) { backStackEntry ->
                 val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
                 PlayerScreen(
                     itemId = itemId,
                     jellyfinClient = jellyfinClient,
                     useMpvPlayer = useMpvPlayer,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
         }

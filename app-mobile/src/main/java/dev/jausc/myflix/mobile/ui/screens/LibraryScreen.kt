@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -26,7 +36,7 @@ fun LibraryScreen(
     libraryName: String,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -50,16 +60,16 @@ fun LibraryScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         if (isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
@@ -71,11 +81,11 @@ fun LibraryScreen(
                     .padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(items, key = { it.id }) { item ->
                     ElevatedCard(
-                        onClick = { onItemClick(item.id) }
+                        onClick = { onItemClick(item.id) },
                     ) {
                         Column {
                             AsyncImage(
@@ -85,20 +95,20 @@ fun LibraryScreen(
                                     .fillMaxWidth()
                                     .aspectRatio(2f / 3f)
                                     .clip(MaterialTheme.shapes.medium),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
                             )
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text(
                                     text = item.name,
                                     style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                                 item.productionYear?.let { year ->
                                     Text(
                                         text = year.toString(),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }

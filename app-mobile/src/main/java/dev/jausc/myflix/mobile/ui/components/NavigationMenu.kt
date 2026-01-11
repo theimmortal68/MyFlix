@@ -50,32 +50,29 @@ import androidx.compose.ui.unit.dp
  */
 enum class MobileNavItem(
     val label: String,
-    val icon: ImageVector
+    val icon: ImageVector,
 ) {
     HOME("Home", Icons.Default.Home),
     SEARCH("Search", Icons.Default.Search),
     MOVIES("Movies", Icons.Default.Movie),
     SHOWS("TV Shows", Icons.Default.Tv),
     DISCOVER("Discover", Icons.Outlined.Explore),
-    SETTINGS("Settings", Icons.Default.Settings)
+    SETTINGS("Settings", Icons.Default.Settings),
 }
 
 /**
  * Top app bar with dropdown navigation menu.
  * Features a hamburger menu icon and dropdown for navigation.
  */
+@Suppress("CognitiveComplexMethod")
 @Composable
-fun MobileTopBar(
-    selectedItem: MobileNavItem,
-    onItemSelected: (MobileNavItem) -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun MobileTopBar(selectedItem: MobileNavItem, onItemSelected: (MobileNavItem) -> Unit, modifier: Modifier = Modifier) {
     var isMenuExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 28.dp)  // Extra padding to clear status bar touch area
+            .padding(top = 28.dp), // Extra padding to clear status bar touch area
     ) {
         // Top bar with menu toggle
         Row(
@@ -83,24 +80,24 @@ fun MobileTopBar(
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // Menu dropdown toggle - Surface ensures touch events work
             Surface(
                 onClick = { isMenuExpanded = !isMenuExpanded },
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = Color.Transparent
+                color = Color.Transparent,
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = if (isMenuExpanded) "Close menu" else "Open menu",
                         tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(28.dp),
                     )
                 }
             }
@@ -110,17 +107,17 @@ fun MobileTopBar(
                 onClick = { onItemSelected(MobileNavItem.SEARCH) },
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = Color.Transparent
+                color = Color.Transparent,
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
                         tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(28.dp),
                     )
                 }
             }
@@ -130,7 +127,7 @@ fun MobileTopBar(
         AnimatedVisibility(
             visible = isMenuExpanded,
             enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            exit = shrinkVertically() + fadeOut(),
         ) {
             Surface(
                 modifier = Modifier
@@ -138,14 +135,14 @@ fun MobileTopBar(
                     .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                shadowElevation = 8.dp
+                shadowElevation = 8.dp,
             ) {
                 Column(
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 8.dp),
                 ) {
                     MobileNavItem.entries.forEach { item ->
                         val isSelected = item == selectedItem
-                        
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -155,40 +152,45 @@ fun MobileTopBar(
                                     isMenuExpanded = false
                                 }
                                 .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                    else Color.Transparent
+                                    if (isSelected) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    } else {
+                                        Color.Transparent
+                                    },
                                 )
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = item.label,
-                                tint = if (isSelected)
+                                tint = if (isSelected) {
                                     MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                modifier = Modifier.size(24.dp),
                             )
-                            
+
                             Spacer(modifier = Modifier.width(16.dp))
-                            
+
                             Text(
                                 text = item.label,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (isSelected) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
                                     MaterialTheme.colorScheme.onSurface
+                                },
                             )
                         }
-                        
+
                         // Divider before Settings
                         if (item == MobileNavItem.DISCOVER) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                             )
                         }
                     }

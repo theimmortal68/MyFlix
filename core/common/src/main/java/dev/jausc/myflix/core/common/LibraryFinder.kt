@@ -8,7 +8,6 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
  * Prefers matching by collectionType, falls back to name-based matching.
  */
 object LibraryFinder {
-
     /**
      * Find the movies library from a list of libraries.
      *
@@ -20,7 +19,7 @@ object LibraryFinder {
             it.collectionType == "movies"
         } ?: libraries.find {
             it.name.contains("movie", ignoreCase = true) ||
-            it.name.contains("film", ignoreCase = true)
+                it.name.contains("film", ignoreCase = true)
         }
     }
 
@@ -35,8 +34,8 @@ object LibraryFinder {
             it.collectionType == "tvshows"
         } ?: libraries.find {
             it.name.contains("show", ignoreCase = true) ||
-            it.name.contains("series", ignoreCase = true) ||
-            it.name.equals("tv", ignoreCase = true)
+                it.name.contains("series", ignoreCase = true) ||
+                it.name.equals("tv", ignoreCase = true)
         }
     }
 }

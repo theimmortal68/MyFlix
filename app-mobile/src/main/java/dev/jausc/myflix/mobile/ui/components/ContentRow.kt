@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.isEpisode
@@ -76,7 +75,7 @@ fun MobileContentRow(
     accentColor: Color = MobileRowColors.Default,
     isWideCard: Boolean = false,
     showLabels: Boolean = true,
-    isUpcomingEpisodes: Boolean = false
+    isUpcomingEpisodes: Boolean = false,
 ) {
     if (items.isEmpty()) return
 
@@ -86,32 +85,32 @@ fun MobileContentRow(
     val cardSpacing = getCardSpacing(screenSizeClass)
 
     Column(
-        modifier = modifier.padding(vertical = 8.dp)
+        modifier = modifier.padding(vertical = 8.dp),
     ) {
         // Row header with accent bar
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
                     .height(20.dp)
-                    .background(accentColor, shape = RoundedCornerShape(2.dp))
+                    .background(accentColor, shape = RoundedCornerShape(2.dp)),
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
         // Horizontal scrolling cards
         LazyRow(
             contentPadding = PaddingValues(horizontal = horizontalPadding),
-            horizontalArrangement = Arrangement.spacedBy(cardSpacing)
+            horizontalArrangement = Arrangement.spacedBy(cardSpacing),
         ) {
             items(items, key = { it.id }) { item ->
                 if (isWideCard) {
@@ -120,7 +119,11 @@ fun MobileContentRow(
                             jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 500)
                         }
                         !item.backdropImageTags.isNullOrEmpty() -> {
-                            jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull(), maxWidth = 500)
+                            jellyfinClient.getBackdropUrl(
+                                item.id,
+                                item.backdropImageTags?.firstOrNull(),
+                                maxWidth = 500,
+                            )
                         }
                         else -> {
                             jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 500)
@@ -132,7 +135,7 @@ fun MobileContentRow(
                         onClick = { onItemClick(item.id) },
                         onLongClick = onItemLongClick?.let { { it(item) } },
                         showLabel = showLabels,
-                        screenSizeClass = screenSizeClass
+                        screenSizeClass = screenSizeClass,
                     )
                 } else {
                     // For portrait cards: use series poster for episodes
@@ -148,7 +151,7 @@ fun MobileContentRow(
                         onLongClick = onItemLongClick?.let { { it(item) } },
                         showLabel = showLabels,
                         screenSizeClass = screenSizeClass,
-                        isUpcomingEpisode = isUpcomingEpisodes
+                        isUpcomingEpisode = isUpcomingEpisodes,
                     )
                 }
             }
@@ -165,5 +168,5 @@ data class MobileRowData(
     val items: List<JellyfinItem>,
     val isWideCard: Boolean = false,
     val accentColor: Color = MobileRowColors.Default,
-    val isUpcomingEpisodes: Boolean = false
+    val isUpcomingEpisodes: Boolean = false,
 )

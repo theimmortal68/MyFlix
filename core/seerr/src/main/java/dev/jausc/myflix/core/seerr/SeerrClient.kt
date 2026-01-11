@@ -1,16 +1,26 @@
 package dev.jausc.myflix.core.seerr
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.cookies.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
@@ -25,14 +35,22 @@ import java.net.URL
  * - Full discovery, search, and request management
  * - TMDB image URL building
  */
+@Suppress(
+    "TooManyFunctions",
+    "LargeClass",
+    "StringLiteralDuplication",
+    "MagicNumber",
+    "LabeledExpression",
+    "CognitiveComplexMethod",
+)
 class SeerrClient(
-    httpClient: HttpClient? = null  // Allow injection for testing
+    httpClient: HttpClient? = null, // Allow injection for testing
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
-        explicitNulls = false  // Don't send null values in request bodies
+        explicitNulls = false // Don't send null values in request bodies
     }
 
     private val httpClient = httpClient ?: HttpClient(OkHttp) {
@@ -47,7 +65,7 @@ class SeerrClient(
             requestTimeoutMillis = 15_000
             connectTimeoutMillis = 10_000
         }
-        install(HttpCookies)  // Cookie storage for session auth
+        install(HttpCookies) // Cookie storage for session auth
         defaultRequest {
             contentType(ContentType.Application.Json)
             // Include session cookie in all requests if set (for restored sessions)
@@ -197,16 +215,18 @@ class SeerrClient(
     suspend fun loginWithJellyfin(
         username: String,
         password: String,
-        @Suppress("UNUSED_PARAMETER") jellyfinHost: String? = null  // Kept for API compatibility
+        @Suppress("UNUSED_PARAMETER") jellyfinHost: String? = null, // Kept for API compatibility
     ): Result<SeerrUser> = runCatching {
         requireBaseUrl()
 
         val response = httpClient.post("$baseUrl/api/v1/auth/jellyfin") {
-            setBody(SeerrJellyfinAuthRequest(
-                username = username,
-                password = password
-                // Don't pass hostname - Seerr already knows the Jellyfin server
-            ))
+            setBody(
+                SeerrJellyfinAuthRequest(
+                    username = username,
+                    password = password,
+                    // Don't pass hostname - Seerr already knows the Jellyfin server
+                ),
+            )
         }
 
         if (!response.status.isSuccess()) {
@@ -225,7 +245,7 @@ class SeerrClient(
         val user: SeerrUser = response.body()
         isAuthenticated = true
         currentUser = user
-        apiKey = user.apiKey  // Store API key for persistent auth (if provided)
+        apiKey = user.apiKey // Store API key for persistent auth (if provided)
         user
     }
 
@@ -372,9 +392,11 @@ class SeerrClient(
         // Initiate Quick Connect
         val initResult = initiateQuickConnect()
         if (initResult.isFailure) {
-            emit(SeerrQuickConnectFlowState.Error(
-                initResult.exceptionOrNull()?.message ?: "Failed to initiate Quick Connect"
-            ))
+            emit(
+                SeerrQuickConnectFlowState.Error(
+                    initResult.exceptionOrNull()?.message ?: "Failed to initiate Quick Connect",
+                ),
+            )
             return@flow
         }
 
@@ -387,9 +409,11 @@ class SeerrClient(
 
             val statusResult = checkQuickConnectStatus(state.secret)
             if (statusResult.isFailure) {
-                emit(SeerrQuickConnectFlowState.Error(
-                    statusResult.exceptionOrNull()?.message ?: "Quick Connect check failed"
-                ))
+                emit(
+                    SeerrQuickConnectFlowState.Error(
+                        statusResult.exceptionOrNull()?.message ?: "Quick Connect check failed",
+                    ),
+                )
                 return@flow
             }
 
@@ -406,9 +430,11 @@ class SeerrClient(
         // Fetch authenticated user to get API key
         val userResult = getCurrentUser()
         if (userResult.isFailure) {
-            emit(SeerrQuickConnectFlowState.Error(
-                "Quick Connect succeeded but failed to get user: ${userResult.exceptionOrNull()?.message}"
-            ))
+            emit(
+                SeerrQuickConnectFlowState.Error(
+                    "Quick Connect succeeded but failed to get user: ${userResult.exceptionOrNull()?.message}",
+                ),
+            )
             return@flow
         }
 
@@ -456,12 +482,12 @@ class SeerrClient(
         SeerrUserQuota(
             movie = SeerrQuotaDetails(
                 limit = user.movieQuotaLimit,
-                days = user.movieQuotaDays
+                days = user.movieQuotaDays,
             ),
             tv = SeerrQuotaDetails(
                 limit = user.tvQuotaLimit,
-                days = user.tvQuotaDays
-            )
+                days = user.tvQuotaDays,
+            ),
         )
     }
 
@@ -549,7 +575,7 @@ class SeerrClient(
         page: Int = 1,
         genreId: Int? = null,
         sortBy: String = "popularity.desc",
-        year: Int? = null
+        year: Int? = null,
     ): Result<SeerrDiscoverResult> = runCatching {
         requireBaseUrl()
         val response = httpClient.get("$baseUrl/api/v1/discover/movies") {
@@ -569,7 +595,7 @@ class SeerrClient(
         page: Int = 1,
         genreId: Int? = null,
         sortBy: String = "popularity.desc",
-        year: Int? = null
+        year: Int? = null,
     ): Result<SeerrDiscoverResult> = runCatching {
         requireBaseUrl()
         val response = httpClient.get("$baseUrl/api/v1/discover/tv") {
@@ -710,7 +736,7 @@ class SeerrClient(
     suspend fun getMyRequests(
         page: Int = 1,
         pageSize: Int = 20,
-        status: Int? = null
+        @Suppress("UnusedParameter") status: Int? = null,
     ): Result<SeerrRequestResult> = runCatching {
         requireAuth()
         val response = httpClient.get("$baseUrl/api/v1/request") {
@@ -718,7 +744,7 @@ class SeerrClient(
             parameter("skip", (page - 1) * pageSize)
             parameter("filter", "all")
             parameter("sort", "added")
-            status?.let { parameter("requestedBy", currentUser?.id) }
+            currentUser?.id?.let { parameter("requestedBy", it) }
         }
         response.body()
     }
@@ -729,7 +755,7 @@ class SeerrClient(
     suspend fun getAllRequests(
         page: Int = 1,
         pageSize: Int = 20,
-        status: Int? = null
+        @Suppress("UnusedParameter") status: Int? = null,
     ): Result<SeerrRequestResult> = runCatching {
         requireAuth()
         val response = httpClient.get("$baseUrl/api/v1/request") {
@@ -769,11 +795,13 @@ class SeerrClient(
      * Request a movie by TMDB ID.
      */
     suspend fun requestMovie(tmdbId: Int, is4k: Boolean = false): Result<SeerrRequest> {
-        return createRequest(CreateMediaRequest(
-            mediaType = "movie",
-            mediaId = tmdbId,
-            is4k = is4k
-        ))
+        return createRequest(
+            CreateMediaRequest(
+                mediaType = "movie",
+                mediaId = tmdbId,
+                is4k = is4k,
+            ),
+        )
     }
 
     /**
@@ -783,17 +811,15 @@ class SeerrClient(
      * @param seasons List of season numbers to request (null = all seasons)
      * @param is4k Whether to request 4K version
      */
-    suspend fun requestTVShow(
-        tmdbId: Int,
-        seasons: List<Int>? = null,
-        is4k: Boolean = false
-    ): Result<SeerrRequest> {
-        return createRequest(CreateMediaRequest(
-            mediaType = "tv",
-            mediaId = tmdbId,
-            seasons = seasons,
-            is4k = is4k
-        ))
+    suspend fun requestTVShow(tmdbId: Int, seasons: List<Int>? = null, is4k: Boolean = false,): Result<SeerrRequest> {
+        return createRequest(
+            CreateMediaRequest(
+                mediaType = "tv",
+                mediaId = tmdbId,
+                seasons = seasons,
+                is4k = is4k,
+            ),
+        )
     }
 
     /**
@@ -837,10 +863,12 @@ class SeerrClient(
     suspend fun addToWatchlist(tmdbId: Int, mediaType: String): Result<Unit> = runCatching {
         requireAuth()
         val response = httpClient.post("$baseUrl/api/v1/discover/watchlist") {
-            setBody(mapOf(
-                "tmdbId" to tmdbId,
-                "mediaType" to mediaType
-            ))
+            setBody(
+                mapOf(
+                    "tmdbId" to tmdbId,
+                    "mediaType" to mediaType,
+                ),
+            )
         }
         if (!response.status.isSuccess()) {
             throw Exception("Failed to add to watchlist: ${response.status}")
@@ -870,9 +898,8 @@ class SeerrClient(
      * @param posterPath Path from SeerrMedia.posterPath
      * @param size Image size (w92, w154, w185, w342, w500, w780, original)
      */
-    fun getPosterUrl(posterPath: String?, size: String = "w500"): String? {
-        return posterPath?.let { "$TMDB_IMAGE_BASE/$size$it" }
-    }
+    fun getPosterUrl(posterPath: String?, size: String = "w500"): String? =
+        posterPath?.let { "$TMDB_IMAGE_BASE/$size$it" }
 
     /**
      * Build TMDB backdrop URL.
@@ -880,9 +907,8 @@ class SeerrClient(
      * @param backdropPath Path from SeerrMedia.backdropPath
      * @param size Image size (w300, w780, w1280, original)
      */
-    fun getBackdropUrl(backdropPath: String?, size: String = "w1280"): String? {
-        return backdropPath?.let { "$TMDB_IMAGE_BASE/$size$it" }
-    }
+    fun getBackdropUrl(backdropPath: String?, size: String = "w1280"): String? =
+        backdropPath?.let { "$TMDB_IMAGE_BASE/$size$it" }
 
     /**
      * Build TMDB profile URL (for cast/crew photos).
@@ -890,9 +916,8 @@ class SeerrClient(
      * @param profilePath Path from SeerrCastMember.profilePath
      * @param size Image size (w45, w185, h632, original)
      */
-    fun getProfileUrl(profilePath: String?, size: String = "w185"): String? {
-        return profilePath?.let { "$TMDB_IMAGE_BASE/$size$it" }
-    }
+    fun getProfileUrl(profilePath: String?, size: String = "w185"): String? =
+        profilePath?.let { "$TMDB_IMAGE_BASE/$size$it" }
 
     /**
      * Build TMDB still URL (for episode thumbnails).
@@ -900,8 +925,8 @@ class SeerrClient(
      * @param stillPath Path from SeerrEpisode.stillPath
      * @param size Image size (w92, w185, w300, original)
      */
-    fun getStillUrl(stillPath: String?, size: String = "w300"): String? {
-        return stillPath?.let { "$TMDB_IMAGE_BASE/$size$it" }
+    fun getStillUrl(stillPath: String?, size: String = "w300"): String? = stillPath?.let {
+        "$TMDB_IMAGE_BASE/$size$it"
     }
 
     // ========================================================================

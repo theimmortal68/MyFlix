@@ -1,6 +1,13 @@
 package dev.jausc.myflix.tv.ui.components
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -23,7 +30,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 /**
  * A circular progress indicator compatible with TV Compose.
  * Uses Canvas drawing instead of Material3's CircularProgressIndicator.
- * 
+ *
  * @param modifier Modifier for sizing and positioning
  * @param progress Optional progress value (0f to 1f). If null, shows indeterminate spinner.
  * @param showPercentage Whether to show percentage text in the center (only when progress is set)
@@ -38,7 +45,7 @@ fun TvLoadingIndicator(
     showPercentage: Boolean = false,
     color: Color = TvColors.BluePrimary,
     trackColor: Color = TvColors.Surface,
-    strokeWidth: Dp = 4.dp
+    strokeWidth: Dp = 4.dp,
 ) {
     if (progress != null) {
         // Determinate mode - show progress
@@ -48,14 +55,14 @@ fun TvLoadingIndicator(
             color = color,
             trackColor = trackColor,
             strokeWidth = strokeWidth,
-            modifier = modifier
+            modifier = modifier,
         )
     } else {
         // Indeterminate mode - animated spinner
         IndeterminateIndicator(
             color = color,
             strokeWidth = strokeWidth,
-            modifier = modifier
+            modifier = modifier,
         )
     }
 }
@@ -67,27 +74,27 @@ private fun DeterminateIndicator(
     color: Color,
     trackColor: Color,
     strokeWidth: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // Animate progress changes smoothly
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
-        label = "progress"
+        label = "progress",
     )
-    
+
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.size(48.dp)
+        modifier = modifier.size(48.dp),
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
             val strokeWidthPx = strokeWidth.toPx()
             val arcSize = Size(
                 size.width - strokeWidthPx,
-                size.height - strokeWidthPx
+                size.height - strokeWidthPx,
             )
             val topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2)
-            
+
             // Draw background track
             drawArc(
                 color = trackColor,
@@ -96,9 +103,9 @@ private fun DeterminateIndicator(
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
-                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
             )
-            
+
             // Draw progress arc
             drawArc(
                 color = color,
@@ -107,57 +114,53 @@ private fun DeterminateIndicator(
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
-                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
             )
         }
-        
+
         // Show percentage text
         if (showPercentage) {
             Text(
                 text = "${(animatedProgress * 100).toInt()}%",
                 style = MaterialTheme.typography.labelSmall,
                 color = color,
-                fontSize = 10.sp
+                fontSize = 10.sp,
             )
         }
     }
 }
 
 @Composable
-private fun IndeterminateIndicator(
-    color: Color,
-    strokeWidth: Dp,
-    modifier: Modifier = Modifier
-) {
+private fun IndeterminateIndicator(color: Color, strokeWidth: Dp, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "loading")
-    
+
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "rotation"
+        label = "rotation",
     )
-    
+
     val sweepAngle by infiniteTransition.animateFloat(
         initialValue = 30f,
         targetValue = 270f,
         animationSpec = infiniteRepeatable(
             animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "sweep"
+        label = "sweep",
     )
-    
+
     Canvas(modifier = modifier.size(48.dp)) {
         val strokeWidthPx = strokeWidth.toPx()
         val arcSize = Size(
             size.width - strokeWidthPx,
-            size.height - strokeWidthPx
+            size.height - strokeWidthPx,
         )
-        
+
         drawArc(
             color = color,
             startAngle = rotation,
@@ -165,7 +168,7 @@ private fun IndeterminateIndicator(
             useCenter = false,
             topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2),
             size = arcSize,
-            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
         )
     }
 }
@@ -177,13 +180,13 @@ private fun IndeterminateIndicator(
 fun TvLoadingIndicatorSmall(
     modifier: Modifier = Modifier,
     progress: Float? = null,
-    color: Color = TvColors.BluePrimary
+    color: Color = TvColors.BluePrimary,
 ) {
     TvLoadingIndicator(
         modifier = modifier.size(20.dp),
         progress = progress,
         showPercentage = false,
         color = color,
-        strokeWidth = 2.dp
+        strokeWidth = 2.dp,
     )
 }

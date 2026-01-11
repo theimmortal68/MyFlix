@@ -1,8 +1,17 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import android.text.InputType
 import android.text.method.PasswordTransformationMethod
-import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -68,11 +77,13 @@ fun SeerrSetupScreen(
     jellyfinPassword: String? = null,
     jellyfinServerUrl: String? = null,
     onSetupComplete: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
-    var currentStep by remember { mutableIntStateOf(0) } // 0 = discovering, 1 = manual/credentials, 2 = logging in, 3 = done
+    var currentStep by remember {
+        mutableIntStateOf(0)
+    } // 0 = discovering, 1 = manual/credentials, 2 = logging in, 3 = done
     var serverUrl by remember { mutableStateOf("") }
     var manualUsername by remember { mutableStateOf("") }
     var manualPassword by remember { mutableStateOf("") }
@@ -80,7 +91,7 @@ fun SeerrSetupScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf("Searching for Seerr server...") }
     var needsManualCredentials by remember { mutableStateOf(false) }
-    var serverConnected by remember { mutableStateOf(false) }  // Track if server was connected by autodiscovery
+    var serverConnected by remember { mutableStateOf(false) } // Track if server was connected by autodiscovery
 
     // Check if credentials are available
     val hasCredentials = !jellyfinUsername.isNullOrBlank() && !jellyfinPassword.isNullOrBlank()
@@ -104,21 +115,25 @@ fun SeerrSetupScreen(
                 .trimEnd('/')
 
             // Common Seerr ports and paths
-            urlsToTry.addAll(listOf(
-                "$baseUrl:5055",           // Default Jellyseerr/Overseerr port
-                "$baseUrl:5056",           // Alternative port
-                "${baseUrl.replace("http://", "https://")}:5055", // HTTPS variant
-                "$baseUrl/jellyseerr",     // Reverse proxy path
-                "$baseUrl/overseerr",      // Reverse proxy path
-                "$baseUrl/seerr"           // Reverse proxy path
-            ))
+            urlsToTry.addAll(
+                listOf(
+                    "$baseUrl:5055", // Default Jellyseerr/Overseerr port
+                    "$baseUrl:5056", // Alternative port
+                    "${baseUrl.replace("http://", "https://")}:5055", // HTTPS variant
+                    "$baseUrl/jellyseerr", // Reverse proxy path
+                    "$baseUrl/overseerr", // Reverse proxy path
+                    "$baseUrl/seerr", // Reverse proxy path
+                ),
+            )
         }
 
         // Also try localhost variants
-        urlsToTry.addAll(listOf(
-            "http://localhost:5055",
-            "http://127.0.0.1:5055"
-        ))
+        urlsToTry.addAll(
+            listOf(
+                "http://localhost:5055",
+                "http://127.0.0.1:5055",
+            ),
+        )
 
         var foundUrl: String? = null
 
@@ -134,7 +149,7 @@ fun SeerrSetupScreen(
 
         if (foundUrl != null) {
             serverUrl = foundUrl
-            serverConnected = true  // Mark that we connected via autodiscovery
+            serverConnected = true // Mark that we connected via autodiscovery
             statusMessage = "Found Seerr at $foundUrl"
 
             // Auto-login with Jellyfin credentials if available
@@ -173,10 +188,14 @@ fun SeerrSetupScreen(
         return if (needsManualCredentials) {
             if (manualUsername.isNotBlank() && manualPassword.isNotBlank()) {
                 Pair(manualUsername, manualPassword)
-            } else null
+            } else {
+                null
+            }
         } else if (hasCredentials) {
             Pair(jellyfinUsername!!, jellyfinPassword!!)
-        } else null
+        } else {
+            null
+        }
     }
 
     // Manual connection and login
@@ -257,27 +276,27 @@ fun SeerrSetupScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
+            .background(TvColors.Background),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(
                     onClick = onBack,
-                    colors = ButtonDefaults.colors(containerColor = TvColors.Surface)
+                    colors = ButtonDefaults.colors(containerColor = TvColors.Surface),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
-                        tint = TvColors.TextPrimary
+                        tint = TvColors.TextPrimary,
                     )
                 }
 
@@ -287,7 +306,7 @@ fun SeerrSetupScreen(
                     imageVector = Icons.Outlined.Explore,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = Color(0xFF8B5CF6)
+                    tint = Color(0xFF8B5CF6),
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -296,7 +315,7 @@ fun SeerrSetupScreen(
                     text = "Seerr Setup",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TvColors.TextPrimary
+                    color = TvColors.TextPrimary,
                 )
             }
 
@@ -307,20 +326,20 @@ fun SeerrSetupScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 when (currentStep) {
                     0 -> {
                         // Autodiscovery in progress
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(400.dp)
+                            modifier = Modifier.width(400.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Search,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
-                                tint = Color(0xFF8B5CF6)
+                                tint = Color(0xFF8B5CF6),
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -329,7 +348,7 @@ fun SeerrSetupScreen(
                                 text = "Looking for Seerr",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -337,7 +356,7 @@ fun SeerrSetupScreen(
                             TvLoadingIndicator(
                                 modifier = Modifier.size(32.dp),
                                 color = Color(0xFF8B5CF6),
-                                strokeWidth = 3.dp
+                                strokeWidth = 3.dp,
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -345,7 +364,7 @@ fun SeerrSetupScreen(
                             Text(
                                 text = statusMessage,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                         }
                     }
@@ -354,30 +373,32 @@ fun SeerrSetupScreen(
                         // Manual entry - URL and/or credentials
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(500.dp)
+                            modifier = Modifier.width(500.dp),
                         ) {
                             // Title based on what's needed
                             Text(
-                                text = if (serverUrl.isNotBlank() && needsManualCredentials)
+                                text = if (serverUrl.isNotBlank() && needsManualCredentials) {
                                     "Enter Jellyfin Credentials"
-                                else
-                                    "Seerr Setup",
+                                } else {
+                                    "Seerr Setup"
+                                },
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = if (serverUrl.isNotBlank() && needsManualCredentials)
+                                text = if (serverUrl.isNotBlank() && needsManualCredentials) {
                                     "Found Seerr at $serverUrl\nEnter your Jellyfin credentials to login."
-                                else if (needsManualCredentials)
+                                } else if (needsManualCredentials) {
                                     "Enter server URL and Jellyfin credentials"
-                                else
-                                    "Could not auto-detect. Enter the address manually.",
+                                } else {
+                                    "Could not auto-detect. Enter the address manually."
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -390,7 +411,7 @@ fun SeerrSetupScreen(
                                     value = serverUrl,
                                     onValueChange = { serverUrl = it },
                                     enabled = !isLoading,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
@@ -403,7 +424,7 @@ fun SeerrSetupScreen(
                                     value = manualUsername,
                                     onValueChange = { manualUsername = it },
                                     enabled = !isLoading,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
 
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -415,7 +436,7 @@ fun SeerrSetupScreen(
                                     onValueChange = { manualPassword = it },
                                     enabled = !isLoading,
                                     isPassword = true,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
 
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -439,23 +460,23 @@ fun SeerrSetupScreen(
                                 },
                                 enabled = canProceed && !isLoading,
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.colors(containerColor = Color(0xFF8B5CF6))
+                                colors = ButtonDefaults.colors(containerColor = Color(0xFF8B5CF6)),
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                    horizontalArrangement = Arrangement.Center,
                                 ) {
                                     if (isLoading) {
                                         TvLoadingIndicator(
                                             modifier = Modifier.size(20.dp),
                                             color = TvColors.TextPrimary,
-                                            strokeWidth = 2.dp
+                                            strokeWidth = 2.dp,
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Connecting...")
                                     } else {
                                         Text(
-                                            text = if (serverUrl.isNotBlank() && needsManualCredentials) "Login" else "Connect"
+                                            text = if (serverUrl.isNotBlank() && needsManualCredentials) "Login" else "Connect",
                                         )
                                     }
                                 }
@@ -468,19 +489,19 @@ fun SeerrSetupScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .background(TvColors.Error.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                                        .padding(12.dp)
+                                        .padding(12.dp),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Outlined.Error,
                                         contentDescription = null,
                                         tint = TvColors.Error,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(20.dp),
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = error,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TvColors.Error
+                                        color = TvColors.Error,
                                     )
                                 }
                             }
@@ -491,13 +512,13 @@ fun SeerrSetupScreen(
                         // Logging in
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(400.dp)
+                            modifier = Modifier.width(400.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.CheckCircle,
                                 contentDescription = null,
                                 tint = Color(0xFF22C55E),
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(48.dp),
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -506,7 +527,7 @@ fun SeerrSetupScreen(
                                 text = "Connected to Seerr",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -514,7 +535,7 @@ fun SeerrSetupScreen(
                             Text(
                                 text = serverUrl,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -522,7 +543,7 @@ fun SeerrSetupScreen(
                             TvLoadingIndicator(
                                 modifier = Modifier.size(32.dp),
                                 color = Color(0xFF8B5CF6),
-                                strokeWidth = 3.dp
+                                strokeWidth = 3.dp,
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -530,7 +551,7 @@ fun SeerrSetupScreen(
                             Text(
                                 text = "Logging in as ${if (needsManualCredentials) manualUsername else jellyfinUsername}...",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                         }
                     }
@@ -539,7 +560,7 @@ fun SeerrSetupScreen(
                         // Success
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(400.dp)
+                            modifier = Modifier.width(400.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Check,
@@ -548,7 +569,7 @@ fun SeerrSetupScreen(
                                 modifier = Modifier
                                     .size(80.dp)
                                     .background(Color(0xFF22C55E).copy(alpha = 0.1f), RoundedCornerShape(40.dp))
-                                    .padding(16.dp)
+                                    .padding(16.dp),
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -557,7 +578,7 @@ fun SeerrSetupScreen(
                                 text = "Setup Complete!",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -565,7 +586,7 @@ fun SeerrSetupScreen(
                             Text(
                                 text = "Seerr is ready to use.\nDiscover and request new content.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
 
                             Spacer(modifier = Modifier.height(32.dp))
@@ -573,7 +594,7 @@ fun SeerrSetupScreen(
                             Button(
                                 onClick = onSetupComplete,
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.colors(containerColor = Color(0xFF8B5CF6))
+                                colors = ButtonDefaults.colors(containerColor = Color(0xFF8B5CF6)),
                             ) {
                                 Text("Get Started")
                             }
@@ -593,14 +614,14 @@ private fun SeerrEditText(
     onValueChange: (String) -> Unit,
     enabled: Boolean = true,
     isPassword: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             color = TvColors.TextSecondary,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
         )
 
         AndroidView(
@@ -636,7 +657,7 @@ private fun SeerrEditText(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(56.dp),
         )
     }
 }

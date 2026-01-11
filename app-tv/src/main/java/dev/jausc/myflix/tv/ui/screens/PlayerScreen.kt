@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import android.view.SurfaceHolder
@@ -21,7 +31,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.isDolbyVision
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -38,7 +47,7 @@ fun PlayerScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
     useMpvPlayer: Boolean = false,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -54,19 +63,19 @@ fun PlayerScreen(
     // Player controller from core module - pass MPV preference
     val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
     var playerReady by remember { mutableStateOf(false) }
-    
+
     // Collect player state
     val playbackState by playerController.state.collectAsState()
-    
+
     // Load item info first, then initialize player with DV-aware selection
     LaunchedEffect(itemId) {
         jellyfinClient.getItem(itemId).onSuccess { loadedItem ->
             item = loadedItem
             streamUrl = jellyfinClient.getStreamUrl(itemId)
-            startPosition = loadedItem.userData?.playbackPositionTicks?.let { 
-                it / 10_000  // Convert ticks to milliseconds
+            startPosition = loadedItem.userData?.playbackPositionTicks?.let {
+                it / 10_000 // Convert ticks to milliseconds
             } ?: 0L
-            
+
             // Create MediaInfo for DV-aware player selection
             val videoStream = loadedItem.videoStream
             val mediaInfo = MediaInfo(
@@ -76,9 +85,9 @@ fun PlayerScreen(
                 videoRangeType = videoStream?.videoRangeType,
                 width = videoStream?.width ?: 0,
                 height = videoStream?.height ?: 0,
-                bitrate = videoStream?.bitRate ?: 0
+                bitrate = videoStream?.bitRate ?: 0,
             )
-            
+
             // Initialize player with content-aware backend selection
             // DV content → ExoPlayer, everything else → MPV
             playerReady = playerController.initializeForMedia(mediaInfo)
@@ -86,7 +95,7 @@ fun PlayerScreen(
         isLoading = false
         focusRequester.requestFocus()
     }
-    
+
     // Report playback start when playback begins
     LaunchedEffect(playbackState.isPlaying) {
         if (playbackState.isPlaying && !playbackStarted) {
@@ -95,7 +104,7 @@ fun PlayerScreen(
             jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
         }
     }
-    
+
     // Report progress periodically (every 10 seconds while playing)
     LaunchedEffect(playbackStarted) {
         if (playbackStarted) {
@@ -106,13 +115,13 @@ fun PlayerScreen(
                     jellyfinClient.reportPlaybackProgress(
                         itemId = itemId,
                         positionTicks = positionTicks,
-                        isPaused = false
+                        isPaused = false,
                     )
                 }
             }
         }
     }
-    
+
     // Report pause/unpause
     LaunchedEffect(playbackState.isPaused) {
         if (playbackStarted) {
@@ -120,11 +129,11 @@ fun PlayerScreen(
             jellyfinClient.reportPlaybackProgress(
                 itemId = itemId,
                 positionTicks = positionTicks,
-                isPaused = playbackState.isPaused
+                isPaused = playbackState.isPaused,
             )
         }
     }
-    
+
     // Auto-hide controls
     LaunchedEffect(showControls, playbackState.isPlaying) {
         if (showControls && playbackState.isPlaying) {
@@ -203,61 +212,60 @@ fun PlayerScreen(
                             false
                         }
                     }
-                } else false
-            }
+                } else {
+                    false
+                }
+            },
     ) {
-        when {
-            isLoading || !playerReady || streamUrl == null -> {
-                LoadingIndicator("Loading...")
-            }
-            else -> {
-                // Render appropriate surface based on backend
-                when (playerController.backend) {
-                    PlayerBackend.MPV -> {
-                        MpvSurfaceView(
-                            playerController = playerController,
-                            url = streamUrl!!,
-                            startPositionMs = startPosition,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    PlayerBackend.EXOPLAYER -> {
-                        ExoPlayerSurfaceView(
-                            playerController = playerController,
-                            url = streamUrl!!,
-                            startPositionMs = startPosition,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-                
-                // Buffering indicator
-                if (playbackState.isBuffering) {
-                    LoadingIndicator("Buffering...")
-                }
-                
-                // Error display
-                playbackState.error?.let { error ->
-                    Box(
+        if (isLoading || !playerReady || streamUrl == null) {
+            LoadingIndicator("Loading...")
+        } else {
+            // Render appropriate surface based on backend
+            when (playerController.backend) {
+                PlayerBackend.MPV -> {
+                    MpvSurfaceView(
+                        playerController = playerController,
+                        url = streamUrl!!,
+                        startPositionMs = startPosition,
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Error: $error",
-                            color = Color.Red,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                }
-                
-                // Controls overlay
-                if (showControls) {
-                    PlayerControlsOverlay(
-                        item = item,
-                        playbackState = playbackState,
-                        onPlayPause = { playerController.togglePause() }
                     )
                 }
+                PlayerBackend.EXOPLAYER -> {
+                    ExoPlayerSurfaceView(
+                        playerController = playerController,
+                        url = streamUrl!!,
+                        startPositionMs = startPosition,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            // Buffering indicator
+            if (playbackState.isBuffering) {
+                LoadingIndicator("Buffering...")
+            }
+
+            // Error display
+            playbackState.error?.let { error ->
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Error: $error",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+            }
+
+            // Controls overlay
+            if (showControls) {
+                PlayerControlsOverlay(
+                    item = item,
+                    playbackState = playbackState,
+                    onPlayPause = { playerController.togglePause() },
+                )
             }
         }
     }
@@ -268,7 +276,7 @@ private fun MpvSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var surfaceReady by remember { mutableStateOf(false) }
     val playbackState by playerController.state.collectAsState()
@@ -285,7 +293,7 @@ private fun MpvSurfaceView(
 
     BoxWithConstraints(
         modifier = modifier,
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         val containerWidth = constraints.maxWidth.toFloat()
         val containerHeight = constraints.maxHeight.toFloat()
@@ -301,10 +309,10 @@ private fun MpvSurfaceView(
         val containerAspect = containerWidth / containerHeight
         val (surfaceWidth, surfaceHeight) = if (videoAspect > containerAspect) {
             // Video is wider than container - fit width, letterbox top/bottom
-            containerWidth to (containerWidth / videoAspect)
+            containerWidth to containerWidth / videoAspect
         } else {
             // Video is taller than container - fit height, pillarbox left/right
-            (containerHeight * videoAspect) to containerHeight
+            containerHeight * videoAspect to containerHeight
         }
 
         AndroidView(
@@ -315,7 +323,12 @@ private fun MpvSurfaceView(
                             playerController.attachSurface(holder.surface)
                             surfaceReady = true
                         }
-                        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+                        override fun surfaceChanged(
+                            holder: SurfaceHolder,
+                            format: Int,
+                            width: Int,
+                            height: Int,
+                        ) {}
                         override fun surfaceDestroyed(holder: SurfaceHolder) {
                             surfaceReady = false
                             playerController.detachSurface()
@@ -326,9 +339,9 @@ private fun MpvSurfaceView(
             modifier = with(density) {
                 Modifier.size(
                     width = surfaceWidth.toDp(),
-                    height = surfaceHeight.toDp()
+                    height = surfaceHeight.toDp(),
                 )
-            }
+            },
         )
     }
 }
@@ -338,13 +351,13 @@ private fun ExoPlayerSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // Start playback
     LaunchedEffect(url) {
         playerController.play(url, startPositionMs)
     }
-    
+
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
@@ -352,14 +365,14 @@ private fun ExoPlayerSurfaceView(
                 useController = false
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             }
         },
         update = { view ->
             view.player = playerController.exoPlayer
         },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -367,12 +380,12 @@ private fun ExoPlayerSurfaceView(
 private fun LoadingIndicator(text: String) {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             color = Color.White,
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
         )
     }
 }
@@ -381,45 +394,45 @@ private fun LoadingIndicator(text: String) {
 private fun PlayerControlsOverlay(
     item: JellyfinItem?,
     playbackState: dev.jausc.myflix.core.player.PlaybackState,
-    onPlayPause: () -> Unit
+    onPlayPause: () -> Unit,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val playerType = playbackState.playerType
-    
+
     // Determine colors based on content type
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
+            .background(Color.Black.copy(alpha = 0.5f)),
     ) {
         // Top bar - title and info badges
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(24.dp),
         ) {
             // Title row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = item?.name ?: "",
                     style = MaterialTheme.typography.titleLarge,
                     color = Color.White,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
-            
+
             // Quality and player badges row
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Player type badge
                 PlayerBadge(
@@ -428,9 +441,9 @@ private fun PlayerControlsOverlay(
                         "MPV" -> Color(0xFF9C27B0) // Purple for MPV
                         "ExoPlayer" -> Color(0xFF2196F3) // Blue for ExoPlayer
                         else -> Color.Gray
-                    }
+                    },
                 )
-                
+
                 // Video quality badges
                 if (videoQuality.isNotEmpty()) {
                     // Resolution badge
@@ -444,21 +457,21 @@ private fun PlayerControlsOverlay(
                         PlayerBadge(
                             text = it,
                             backgroundColor = Color.White.copy(alpha = 0.2f),
-                            textColor = Color.White
+                            textColor = Color.White,
                         )
                     }
-                    
+
                     // HDR type badge
                     when {
                         isDV -> PlayerBadge(
                             text = "Dolby Vision",
                             backgroundColor = Color(0xFFE50914), // DV red
-                            textColor = Color.White
+                            textColor = Color.White,
                         )
                         isHDR -> PlayerBadge(
                             text = "HDR",
                             backgroundColor = Color(0xFFFFD700), // Gold
-                            textColor = Color.Black
+                            textColor = Color.Black,
                         )
                     }
                 }
@@ -468,22 +481,22 @@ private fun PlayerControlsOverlay(
         // Center play/pause
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Surface(
                 shape = ClickableSurfaceDefaults.shape(
-                    shape = MaterialTheme.shapes.extraLarge
+                    shape = MaterialTheme.shapes.extraLarge,
                 ),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.Black.copy(alpha = 0.7f)
+                    containerColor = Color.Black.copy(alpha = 0.7f),
                 ),
-                onClick = onPlayPause
+                onClick = onPlayPause,
             ) {
                 Text(
                     text = if (playbackState.isPlaying && !playbackState.isPaused) "⏸" else "▶",
                     style = MaterialTheme.typography.displayLarge,
                     color = Color.White,
-                    modifier = Modifier.padding(32.dp)
+                    modifier = Modifier.padding(32.dp),
                 )
             }
         }
@@ -493,20 +506,20 @@ private fun PlayerControlsOverlay(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(24.dp)
+                .padding(24.dp),
         ) {
             // Progress bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .background(Color.White.copy(alpha = 0.3f), MaterialTheme.shapes.small)
+                    .background(Color.White.copy(alpha = 0.3f), MaterialTheme.shapes.small),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(playbackState.progress)
-                        .background(TvColors.BluePrimary, MaterialTheme.shapes.small)
+                        .background(TvColors.BluePrimary, MaterialTheme.shapes.small),
                 )
             }
 
@@ -515,47 +528,43 @@ private fun PlayerControlsOverlay(
             // Time
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = PlayerUtils.formatTime(playbackState.position),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
+                    color = Color.White,
                 )
                 Text(
                     text = PlayerUtils.formatTime(playbackState.duration),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
+                    color = Color.White,
                 )
             }
-            
+
             // Hints
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "◀ -10s  |  ▶ +10s  |  ▲ +1min  |  ▼ -1min  |  OK Play/Pause",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
         }
     }
 }
 
 @Composable
-private fun PlayerBadge(
-    text: String,
-    backgroundColor: Color,
-    textColor: Color = Color.White
-) {
+private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color = Color.White) {
     Box(
         modifier = Modifier
             .background(backgroundColor, MaterialTheme.shapes.small)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            color = textColor
+            color = textColor,
         )
     }
 }

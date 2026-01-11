@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import android.view.SurfaceHolder
@@ -7,7 +17,6 @@ import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,11 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.isDolbyVision
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -41,10 +50,13 @@ import kotlinx.coroutines.isActive
 private object PlayerConstants {
     /** Jellyfin uses ticks (100 nanoseconds), 10,000 ticks = 1 millisecond */
     const val TICKS_PER_MS = 10_000L
+
     /** Auto-hide controls after this duration when playing */
     const val CONTROLS_AUTO_HIDE_MS = 4_000L
+
     /** Seek forward/backward step duration */
     const val SEEK_STEP_MS = 10_000L
+
     /** Interval for reporting playback progress to server */
     const val PROGRESS_REPORT_INTERVAL_MS = 10_000L
 }
@@ -54,7 +66,7 @@ fun PlayerScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
     useMpvPlayer: Boolean = false,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -68,10 +80,10 @@ fun PlayerScreen(
     // Player controller from core module - pass MPV preference
     val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
     var playerReady by remember { mutableStateOf(false) }
-    
+
     // Collect player state
     val playbackState by playerController.state.collectAsState()
-    
+
     // Load item info first, then initialize player with DV-aware selection
     LaunchedEffect(itemId) {
         jellyfinClient.getItem(itemId).onSuccess { loadedItem ->
@@ -80,7 +92,7 @@ fun PlayerScreen(
             startPosition = loadedItem.userData?.playbackPositionTicks?.let {
                 it / PlayerConstants.TICKS_PER_MS
             } ?: 0L
-            
+
             // Create MediaInfo for DV-aware player selection
             val videoStream = loadedItem.videoStream
             val mediaInfo = MediaInfo(
@@ -90,16 +102,16 @@ fun PlayerScreen(
                 videoRangeType = videoStream?.videoRangeType,
                 width = videoStream?.width ?: 0,
                 height = videoStream?.height ?: 0,
-                bitrate = videoStream?.bitRate ?: 0
+                bitrate = videoStream?.bitRate ?: 0,
             )
-            
+
             // Initialize player with content-aware backend selection
             // DV content + DV device → ExoPlayer, everything else → MPV
             playerReady = playerController.initializeForMedia(mediaInfo)
         }
         isLoading = false
     }
-    
+
     // Report playback start when playback begins
     LaunchedEffect(playbackState.isPlaying) {
         if (playbackState.isPlaying && !playbackStarted) {
@@ -108,7 +120,7 @@ fun PlayerScreen(
             jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
         }
     }
-    
+
     // Report progress periodically while playing
     LaunchedEffect(playbackStarted) {
         if (playbackStarted) {
@@ -119,13 +131,13 @@ fun PlayerScreen(
                     jellyfinClient.reportPlaybackProgress(
                         itemId = itemId,
                         positionTicks = positionTicks,
-                        isPaused = false
+                        isPaused = false,
                     )
                 }
             }
         }
     }
-    
+
     // Report pause/unpause
     LaunchedEffect(playbackState.isPaused) {
         if (playbackStarted) {
@@ -133,11 +145,11 @@ fun PlayerScreen(
             jellyfinClient.reportPlaybackProgress(
                 itemId = itemId,
                 positionTicks = positionTicks,
-                isPaused = playbackState.isPaused
+                isPaused = playbackState.isPaused,
             )
         }
     }
-    
+
     // Auto-hide controls
     LaunchedEffect(showControls, playbackState.isPlaying) {
         if (showControls && playbackState.isPlaying) {
@@ -174,71 +186,68 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable { showControls = !showControls }
+            .clickable { showControls = !showControls },
     ) {
-        when {
-            isLoading || !playerReady || streamUrl == null -> {
+        if (isLoading || !playerReady || streamUrl == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        } else {
+            // Render appropriate surface based on backend
+            when (playerController.backend) {
+                PlayerBackend.MPV -> {
+                    MpvSurfaceView(
+                        playerController = playerController,
+                        url = streamUrl!!,
+                        startPositionMs = startPosition,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                PlayerBackend.EXOPLAYER -> {
+                    ExoPlayerSurfaceView(
+                        playerController = playerController,
+                        url = streamUrl!!,
+                        startPositionMs = startPosition,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            // Buffering indicator
+            if (playbackState.isBuffering) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(color = Color.White)
                 }
             }
-            else -> {
-                // Render appropriate surface based on backend
-                when (playerController.backend) {
-                    PlayerBackend.MPV -> {
-                        MpvSurfaceView(
-                            playerController = playerController,
-                            url = streamUrl!!,
-                            startPositionMs = startPosition,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    PlayerBackend.EXOPLAYER -> {
-                        ExoPlayerSurfaceView(
-                            playerController = playerController,
-                            url = streamUrl!!,
-                            startPositionMs = startPosition,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-                
-                // Buffering indicator
-                if (playbackState.isBuffering) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
-                }
-                
-                // Error display
-                playbackState.error?.let { error ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Error: $error",
-                            color = Color.Red,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                }
-                
-                // Controls overlay
-                if (showControls) {
-                    MobilePlayerControls(
-                        item = item,
-                        playbackState = playbackState,
-                        playerController = playerController,
-                        onBack = onBack
+
+            // Error display
+            playbackState.error?.let { error ->
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Error: $error",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.titleMedium,
                     )
                 }
+            }
+
+            // Controls overlay
+            if (showControls) {
+                MobilePlayerControls(
+                    item = item,
+                    playbackState = playbackState,
+                    playerController = playerController,
+                    onBack = onBack,
+                )
             }
         }
     }
@@ -249,7 +258,7 @@ private fun MpvSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var surfaceReady by remember { mutableStateOf(false) }
     val playbackState by playerController.state.collectAsState()
@@ -266,7 +275,7 @@ private fun MpvSurfaceView(
 
     BoxWithConstraints(
         modifier = modifier,
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         val containerWidth = constraints.maxWidth.toFloat()
         val containerHeight = constraints.maxHeight.toFloat()
@@ -282,10 +291,10 @@ private fun MpvSurfaceView(
         val containerAspect = containerWidth / containerHeight
         val (surfaceWidth, surfaceHeight) = if (videoAspect > containerAspect) {
             // Video is wider than container - fit width, letterbox top/bottom
-            containerWidth to (containerWidth / videoAspect)
+            containerWidth to containerWidth / videoAspect
         } else {
             // Video is taller than container - fit height, pillarbox left/right
-            (containerHeight * videoAspect) to containerHeight
+            containerHeight * videoAspect to containerHeight
         }
 
         AndroidView(
@@ -296,7 +305,12 @@ private fun MpvSurfaceView(
                             playerController.attachSurface(holder.surface)
                             surfaceReady = true
                         }
-                        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+                        override fun surfaceChanged(
+                            holder: SurfaceHolder,
+                            format: Int,
+                            width: Int,
+                            height: Int
+                        ) {}
                         override fun surfaceDestroyed(holder: SurfaceHolder) {
                             surfaceReady = false
                             playerController.detachSurface()
@@ -307,9 +321,9 @@ private fun MpvSurfaceView(
             modifier = with(density) {
                 Modifier.size(
                     width = surfaceWidth.toDp(),
-                    height = surfaceHeight.toDp()
+                    height = surfaceHeight.toDp(),
                 )
-            }
+            },
         )
     }
 }
@@ -319,13 +333,13 @@ private fun ExoPlayerSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // Start playback
     LaunchedEffect(url) {
         playerController.play(url, startPositionMs)
     }
-    
+
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
@@ -333,14 +347,14 @@ private fun ExoPlayerSurfaceView(
                 useController = false
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             }
         },
         update = { view ->
             view.player = playerController.exoPlayer
         },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -349,16 +363,16 @@ private fun MobilePlayerControls(
     item: JellyfinItem?,
     playbackState: PlaybackState,
     playerController: PlayerController,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
+            .background(Color.Black.copy(alpha = 0.4f)),
     ) {
         // Top bar
         Row(
@@ -366,13 +380,13 @@ private fun MobilePlayerControls(
                 .fillMaxWidth()
                 .padding(16.dp)
                 .statusBarsPadding(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.White
+                    tint = Color.White,
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -380,12 +394,12 @@ private fun MobilePlayerControls(
                 Text(
                     text = item?.name ?: "",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
+                    color = Color.White,
                 )
                 // Quality and player badges
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 ) {
                     // Player type badge
                     PlayerBadge(
@@ -394,9 +408,9 @@ private fun MobilePlayerControls(
                             "MPV" -> Color(0xFF9C27B0) // Purple
                             "ExoPlayer" -> Color(0xFF2196F3) // Blue
                             else -> Color.Gray
-                        }
+                        },
                     )
-                    
+
                     // Resolution badge
                     val resolution = when {
                         videoQuality.contains("4K") -> "4K"
@@ -407,10 +421,10 @@ private fun MobilePlayerControls(
                     resolution?.let {
                         PlayerBadge(
                             text = it,
-                            backgroundColor = Color.White.copy(alpha = 0.2f)
+                            backgroundColor = Color.White.copy(alpha = 0.2f),
                         )
                     }
-                    
+
                     // HDR type badge
                     when {
                         isDV -> PlayerBadge(
@@ -420,7 +434,7 @@ private fun MobilePlayerControls(
                         isHDR -> PlayerBadge(
                             text = "HDR",
                             backgroundColor = Color(0xFFFFD700), // Gold
-                            textColor = Color.Black
+                            textColor = Color.Black,
                         )
                     }
                 }
@@ -431,47 +445,48 @@ private fun MobilePlayerControls(
         Row(
             modifier = Modifier.align(Alignment.Center),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // Rewind
             IconButton(
                 onClick = { playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS) },
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastRewind,
                     contentDescription = "Rewind 10s",
                     tint = Color.White,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 )
             }
-            
+
             // Play/Pause
             IconButton(
                 onClick = { playerController.togglePause() },
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(72.dp),
             ) {
                 Icon(
-                    if (playbackState.isPlaying && !playbackState.isPaused) 
-                        Icons.Default.Pause 
-                    else 
-                        Icons.Default.PlayArrow,
+                    if (playbackState.isPlaying && !playbackState.isPaused) {
+                        Icons.Default.Pause
+                    } else {
+                        Icons.Default.PlayArrow
+                    },
                     contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
                     tint = Color.White,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
                 )
             }
-            
+
             // Forward
             IconButton(
                 onClick = { playerController.seekRelative(PlayerConstants.SEEK_STEP_MS) },
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastForward,
                     contentDescription = "Forward 10s",
                     tint = Color.White,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 )
             }
         }
@@ -482,33 +497,33 @@ private fun MobilePlayerControls(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .padding(16.dp)
-                .navigationBarsPadding()
+                .navigationBarsPadding(),
         ) {
             Slider(
                 value = playbackState.progress,
-                onValueChange = { 
-                    playerController.seekTo((it * playbackState.duration).toLong()) 
+                onValueChange = {
+                    playerController.seekTo((it * playbackState.duration).toLong())
                 },
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
                     activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                )
+                    inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                ),
             )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = PlayerUtils.formatTime(playbackState.position),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White
+                    color = Color.White,
                 )
                 Text(
                     text = PlayerUtils.formatTime(playbackState.duration),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White
+                    color = Color.White,
                 )
             }
         }
@@ -516,20 +531,16 @@ private fun MobilePlayerControls(
 }
 
 @Composable
-private fun PlayerBadge(
-    text: String,
-    backgroundColor: Color,
-    textColor: Color = Color.White
-) {
+private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color = Color.White,) {
     Surface(
         color = backgroundColor,
-        shape = RoundedCornerShape(4.dp)
+        shape = RoundedCornerShape(4.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = textColor,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }

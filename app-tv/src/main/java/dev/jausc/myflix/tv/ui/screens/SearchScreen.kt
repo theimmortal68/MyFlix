@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.background
@@ -43,7 +53,7 @@ fun SearchScreen(
     onNavigateHome: () -> Unit,
     onNavigateMovies: () -> Unit,
     onNavigateShows: () -> Unit,
-    onNavigateSettings: () -> Unit
+    onNavigateSettings: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
@@ -76,7 +86,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 48.dp)
+            .padding(horizontal = 48.dp),
     ) {
         TopNavigationBar(
             selectedItem = NavItem.SEARCH,
@@ -89,7 +99,7 @@ fun SearchScreen(
                     NavItem.SETTINGS -> onNavigateSettings()
                     else -> { /* Collections/Universes not implemented */ }
                 }
-            }
+            },
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -98,7 +108,7 @@ fun SearchScreen(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Custom styled text field
             Box(
@@ -109,16 +119,16 @@ fun SearchScreen(
                     .border(
                         width = 2.dp,
                         color = if (isTextFieldFocused) TvColors.BluePrimary else TvColors.SurfaceLight,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
                     )
                     .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.CenterStart,
             ) {
                 if (query.isEmpty()) {
                     Text(
                         text = "Search movies, shows...",
                         color = TvColors.TextSecondary,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
                     )
                 }
                 BasicTextField(
@@ -127,7 +137,7 @@ fun SearchScreen(
                     singleLine = true,
                     textStyle = TextStyle(
                         color = TvColors.TextPrimary,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
                     ),
                     cursorBrush = SolidColor(TvColors.BluePrimary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -146,13 +156,13 @@ fun SearchScreen(
                             } else {
                                 false
                             }
-                        }
+                        },
                 )
             }
 
             androidx.tv.material3.Button(
                 onClick = { performSearch() },
-                enabled = query.isNotBlank() && !isSearching
+                enabled = query.isNotBlank() && !isSearching,
             ) {
                 Text("Search")
             }
@@ -163,7 +173,7 @@ fun SearchScreen(
         // Results area
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             when {
                 isSearching -> {
@@ -173,7 +183,7 @@ fun SearchScreen(
                     Text(
                         text = "No results found for \"$query\"",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TvColors.TextSecondary
+                        color = TvColors.TextSecondary,
                     )
                 }
                 results.isNotEmpty() -> {
@@ -182,7 +192,7 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 48.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         items(results, key = { it.id }) { item ->
                             val focusModifier = if (results.indexOf(item) == 0) {
@@ -195,7 +205,7 @@ fun SearchScreen(
                                 item = item,
                                 imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
                                 onClick = { onItemClick(item.id) },
-                                modifier = focusModifier
+                                modifier = focusModifier,
                             )
                         }
                     }
@@ -203,17 +213,17 @@ fun SearchScreen(
                 else -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = "Search for movies, TV shows, and more",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = TvColors.TextSecondary
+                            color = TvColors.TextSecondary,
                         )
                         Text(
                             text = "Type your search and press Enter or click Search",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TvColors.TextSecondary.copy(alpha = 0.7f)
+                            color = TvColors.TextSecondary.copy(alpha = 0.7f),
                         )
                     }
                 }

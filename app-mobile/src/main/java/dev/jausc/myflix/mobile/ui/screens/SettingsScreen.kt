@@ -1,8 +1,15 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,11 +75,7 @@ import dev.jausc.myflix.mobile.MobilePreferences
  * Provides toggle options for display and playback preferences.
  */
 @Composable
-fun SettingsScreen(
-    preferences: MobilePreferences,
-    jellyfinClient: JellyfinClient? = null,
-    onBack: () -> Unit
-) {
+fun SettingsScreen(preferences: MobilePreferences, jellyfinClient: JellyfinClient? = null, onBack: () -> Unit,) {
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
@@ -117,7 +120,7 @@ fun SettingsScreen(
                 preferences.setEnabledGenres(newSelection)
                 showGenreDialog = false
             },
-            accentColor = Color(0xFFFBBF24)
+            accentColor = Color(0xFFFBBF24),
         )
     }
 
@@ -138,7 +141,7 @@ fun SettingsScreen(
                 preferences.setPinnedCollections(newIds)
                 showCollectionDialog = false
             },
-            accentColor = Color(0xFF34D399)
+            accentColor = Color(0xFF34D399),
         )
     }
 
@@ -146,20 +149,20 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
+            .statusBarsPadding(),
     ) {
         // Top bar with back button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -167,7 +170,7 @@ fun SettingsScreen(
                 text = "Settings",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
@@ -175,7 +178,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Home Screen Section
             item {
@@ -185,40 +188,64 @@ fun SettingsScreen(
                             title = "Upcoming Episodes",
                             description = "Show upcoming season premieres on home screen",
                             icon = Icons.Outlined.CalendarMonth,
-                            iconTint = if (showSeasonPremieres) Color(0xFF60A5FA) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            iconTint = if (showSeasonPremieres) {
+                                Color(
+                                    0xFF60A5FA,
+                                )
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             checked = showSeasonPremieres,
-                            onCheckedChange = { preferences.setShowSeasonPremieres(it) }
+                            onCheckedChange = { preferences.setShowSeasonPremieres(it) },
                         )
                         SettingsDivider()
                         ToggleWithEditItem(
                             title = "Genre Rows",
                             description = if (enabledGenres.isEmpty()) "No genres selected" else "${enabledGenres.size} genres selected",
                             icon = Icons.Outlined.Category,
-                            iconTint = if (showGenreRows) Color(0xFFFBBF24) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            iconTint = if (showGenreRows) {
+                                Color(
+                                    0xFFFBBF24,
+                                )
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             checked = showGenreRows,
                             onCheckedChange = { preferences.setShowGenreRows(it) },
                             showEditButton = showGenreRows && availableGenres.isNotEmpty(),
-                            onEditClick = { showGenreDialog = true }
+                            onEditClick = { showGenreDialog = true },
                         )
                         SettingsDivider()
                         ToggleWithEditItem(
                             title = "Collections",
                             description = if (pinnedCollections.isEmpty()) "No collections pinned" else "${pinnedCollections.size} collections pinned",
                             icon = Icons.Outlined.Collections,
-                            iconTint = if (showCollections) Color(0xFF34D399) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            iconTint = if (showCollections) {
+                                Color(
+                                    0xFF34D399,
+                                )
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             checked = showCollections,
                             onCheckedChange = { preferences.setShowCollections(it) },
                             showEditButton = showCollections && availableCollections.isNotEmpty(),
-                            onEditClick = { showCollectionDialog = true }
+                            onEditClick = { showCollectionDialog = true },
                         )
                         SettingsDivider()
                         ToggleSettingItem(
                             title = "Suggestions",
                             description = "Show personalized recommendations",
                             icon = Icons.Outlined.Lightbulb,
-                            iconTint = if (showSuggestions) Color(0xFFF472B6) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            iconTint = if (showSuggestions) {
+                                Color(
+                                    0xFFF472B6,
+                                )
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             checked = showSuggestions,
-                            onCheckedChange = { preferences.setShowSuggestions(it) }
+                            onCheckedChange = { preferences.setShowSuggestions(it) },
                         )
                     }
                 }
@@ -233,7 +260,7 @@ fun SettingsScreen(
                         icon = if (hideWatched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                         iconTint = if (hideWatched) Color(0xFF34D399) else MaterialTheme.colorScheme.onSurfaceVariant,
                         checked = hideWatched,
-                        onCheckedChange = { preferences.setHideWatchedFromRecent(it) }
+                        onCheckedChange = { preferences.setHideWatchedFromRecent(it) },
                     )
                 }
             }
@@ -247,7 +274,7 @@ fun SettingsScreen(
                         icon = Icons.Outlined.PlayCircle,
                         iconTint = if (useMpvPlayer) Color(0xFF9C27B0) else MaterialTheme.colorScheme.onSurfaceVariant,
                         checked = useMpvPlayer,
-                        onCheckedChange = { preferences.setUseMpvPlayer(it) }
+                        onCheckedChange = { preferences.setUseMpvPlayer(it) },
                     )
                 }
             }
@@ -258,12 +285,12 @@ fun SettingsScreen(
                 Text(
                     text = "MyFlix for Android",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = "Version 1.0.0",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -275,29 +302,26 @@ fun SettingsScreen(
 private fun SettingsDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = 16.dp),
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
     )
 }
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable () -> Unit
-) {
+private fun SettingsSection(title: String, content: @Composable () -> Unit,) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title.uppercase(),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.surface),
         ) {
             content()
         }
@@ -311,7 +335,7 @@ private fun ToggleSettingItem(
     icon: ImageVector,
     iconTint: Color,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -319,14 +343,14 @@ private fun ToggleSettingItem(
             .clickable { onCheckedChange(!checked) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Icon
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(28.dp),
-            tint = iconTint
+            tint = iconTint,
         )
 
         // Text content
@@ -335,13 +359,13 @@ private fun ToggleSettingItem(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
 
@@ -351,8 +375,8 @@ private fun ToggleSettingItem(
             onCheckedChange = null, // Handled by row click
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color(0xFF34D399),
-                checkedTrackColor = Color(0xFF34D399).copy(alpha = 0.5f)
-            )
+                checkedTrackColor = Color(0xFF34D399).copy(alpha = 0.5f),
+            ),
         )
     }
 }
@@ -366,7 +390,7 @@ private fun ToggleWithEditItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     showEditButton: Boolean,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -374,13 +398,13 @@ private fun ToggleWithEditItem(
             .clickable { onCheckedChange(!checked) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(28.dp),
-            tint = iconTint
+            tint = iconTint,
         )
 
         Column(modifier = Modifier.weight(1f)) {
@@ -388,25 +412,25 @@ private fun ToggleWithEditItem(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
 
         if (showEditButton) {
             IconButton(
                 onClick = onEditClick,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Edit,
                     contentDescription = "Edit",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -416,8 +440,8 @@ private fun ToggleWithEditItem(
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color(0xFF34D399),
-                checkedTrackColor = Color(0xFF34D399).copy(alpha = 0.5f)
-            )
+                checkedTrackColor = Color(0xFF34D399).copy(alpha = 0.5f),
+            ),
         )
     }
 }
@@ -429,7 +453,7 @@ private fun SelectionDialog(
     selectedItems: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (List<String>) -> Unit,
-    accentColor: Color
+    accentColor: Color,
 ) {
     // Mutable list for reordering - selected items first, then unselected
     val orderedItems = remember(selectedItems, availableItems) {
@@ -449,7 +473,7 @@ private fun SelectionDialog(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
         },
         text = {
@@ -458,10 +482,10 @@ private fun SelectionDialog(
                     text = "Check to enable, use arrows to reorder",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
                 LazyColumn(
-                    modifier = Modifier.height(400.dp)
+                    modifier = Modifier.height(400.dp),
                 ) {
                     itemsIndexed(orderedItems) { index, item ->
                         ReorderableCheckboxItem(
@@ -488,7 +512,7 @@ private fun SelectionDialog(
                                     checkedState.add(index + 1, checkToMove)
                                 }
                             },
-                            accentColor = accentColor
+                            accentColor = accentColor,
                         )
                     }
                 }
@@ -500,7 +524,7 @@ private fun SelectionDialog(
                     // Return only checked items in their current order
                     val result = orderedItems.filterIndexed { index, _ -> checkedState[index] }
                     onConfirm(result)
-                }
+                },
             ) {
                 Text("Save", color = accentColor)
             }
@@ -509,7 +533,7 @@ private fun SelectionDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
     )
 }
 
@@ -522,22 +546,22 @@ private fun ReorderableCheckboxItem(
     canMoveDown: Boolean,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
-    accentColor: Color
+    accentColor: Color,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
             .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
             checked = checked,
             onCheckedChange = { onCheckedChange(it) },
             colors = CheckboxDefaults.colors(
                 checkedColor = accentColor,
-                checkmarkColor = Color.White
-            )
+                checkmarkColor = Color.White,
+            ),
         )
         Text(
             text = text,
@@ -545,29 +569,35 @@ private fun ReorderableCheckboxItem(
             color = if (checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 8.dp)
+                .padding(horizontal = 8.dp),
         )
         if (checked) {
             IconButton(
                 onClick = onMoveUp,
                 enabled = canMoveUp,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowUp,
                     contentDescription = "Move up",
-                    tint = if (canMoveUp) accentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    tint = if (canMoveUp) accentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                 )
             }
             IconButton(
                 onClick = onMoveDown,
                 enabled = canMoveDown,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(32.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowDown,
                     contentDescription = "Move down",
-                    tint = if (canMoveDown) accentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    tint = if (canMoveDown) {
+                        accentColor
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.3f,
+                        )
+                    },
                 )
             }
         }

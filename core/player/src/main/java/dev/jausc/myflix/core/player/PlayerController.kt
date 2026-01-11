@@ -3,7 +3,6 @@ package dev.jausc.myflix.core.player
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import android.view.Display
 import android.view.Surface
 import android.view.WindowManager
 import kotlinx.coroutines.CoroutineScope
@@ -21,48 +20,13 @@ import kotlinx.coroutines.launch
  * Backend selection strategy:
  * - Default: ExoPlayer (best compatibility)
  * - If useMpv=true: MPV for non-DV content (better codec support)
- * - Dolby Vision content + DV-capable device → Always ExoPlayer
+ * - Dolby Vision content + DV-capable device -> Always ExoPlayer
  */
+@Suppress("TooManyFunctions")
 class PlayerController(
     private val context: Context,
-    private val useMpv: Boolean = false
+    private val useMpv: Boolean = false,
 ) {
-    companion object {
-        private const val TAG = "PlayerController"
-        
-        // Dolby Vision HDR transfer function constant
-        private const val HDR_TYPE_DOLBY_VISION = 1 // Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION
-        
-        /**
-         * Check if device supports Dolby Vision playback
-         */
-        fun isDeviceDolbyVisionCapable(context: Context): Boolean {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-                return false
-            }
-            
-            return try {
-                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    context.display
-                } else {
-                    @Suppress("DEPRECATION")
-                    windowManager.defaultDisplay
-                }
-                
-                val hdrCapabilities = display?.hdrCapabilities
-                val supportedTypes = hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
-                
-                val hasDV = supportedTypes.contains(HDR_TYPE_DOLBY_VISION)
-                Log.d(TAG, "Device HDR capabilities: ${supportedTypes.toList()}, DV capable: $hasDV")
-                hasDV
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to check DV capability", e)
-                false
-            }
-        }
-    }
-    
     private var currentPlayer: UnifiedPlayer? = null
     private var _backend: PlayerBackend = PlayerBackend.EXOPLAYER
     private var currentMediaInfo: MediaInfo? = null
@@ -87,23 +51,23 @@ class PlayerController(
             }
         }
     }
-    
+
     val isInitialized: Boolean
         get() = currentPlayer != null
-    
+
     /**
      * Whether this device supports Dolby Vision
      */
     val deviceSupportsDolbyVision: Boolean
         get() = isDvCapable
-    
+
     /**
      * Get the underlying ExoPlayer instance (for use with PlayerView)
      * Returns null if using MPV backend or not initialized
      */
     val exoPlayer: androidx.media3.exoplayer.ExoPlayer?
         get() = (currentPlayer as? ExoPlayerWrapper)?.exoPlayer
-    
+
     /**
      * Initialize the player with automatic backend selection.
      * Call this before attachSurface/play, or use initializeForMedia() for content-aware selection.
@@ -118,7 +82,7 @@ class PlayerController(
             initializeExoPlayer()
         }
     }
-    
+
     /**
      * Initialize with content-aware backend selection.
      *
@@ -135,8 +99,11 @@ class PlayerController(
         // Use MPV only if enabled, available, and not forced to ExoPlayer for DV
         val shouldUseMpv = useMpv && MpvPlayer.isAvailable() && !forceDvExoPlayer
 
-        Log.d(TAG, "Media: ${mediaInfo.title}, isDV: ${mediaInfo.isDolbyVision}, " +
-                   "deviceDV: $isDvCapable, useMpvPref: $useMpv, shouldUseMpv: $shouldUseMpv")
+        Log.d(
+            TAG,
+            "Media: ${mediaInfo.title}, isDV: ${mediaInfo.isDolbyVision}, " +
+                "deviceDV: $isDvCapable, useMpvPref: $useMpv, shouldUseMpv: $shouldUseMpv",
+        )
 
         // Release existing player if switching backends
         val currentIsMpv = currentPlayer is MpvPlayer
@@ -154,16 +121,22 @@ class PlayerController(
         }
 
         return if (shouldUseMpv) {
-            Log.d(TAG, "Using MPV for: ${mediaInfo.title}" +
-                       if (mediaInfo.isDolbyVision) " (DV content, but device not DV-capable - using HDR10 layer)" else "")
+            Log.d(
+                TAG,
+                "Using MPV for: ${mediaInfo.title}" +
+                    if (mediaInfo.isDolbyVision) " (DV content, but device not DV-capable - using HDR10 layer)" else "",
+            )
             initializeMpv()
         } else {
-            Log.d(TAG, "Using ExoPlayer for: ${mediaInfo.title}" +
-                       if (forceDvExoPlayer) " (Dolby Vision)" else "")
+            Log.d(
+                TAG,
+                "Using ExoPlayer for: ${mediaInfo.title}" +
+                    if (forceDvExoPlayer) " (Dolby Vision)" else "",
+            )
             initializeExoPlayer()
         }
     }
-    
+
     private fun initializeMpv(): Boolean {
         Log.d(TAG, "Initializing MPV backend")
         val mpvPlayer = MpvPlayer(context)
@@ -178,7 +151,7 @@ class PlayerController(
             initializeExoPlayer()
         }
     }
-    
+
     private fun initializeExoPlayer(): Boolean {
         Log.d(TAG, "Initializing ExoPlayer backend")
         val exoPlayerWrapper = ExoPlayerWrapper(context)
@@ -193,19 +166,19 @@ class PlayerController(
             false
         }
     }
-    
+
     fun attachSurface(surface: Surface) {
         currentPlayer?.attachSurface(surface)
     }
-    
+
     fun detachSurface() {
         currentPlayer?.detachSurface()
     }
-    
+
     fun play(url: String, startPositionMs: Long = 0) {
         currentPlayer?.play(url, startPositionMs)
     }
-    
+
     /**
      * Play with content-aware backend selection.
      * Automatically switches to ExoPlayer for DV content on DV-capable devices.
@@ -214,54 +187,54 @@ class PlayerController(
         // Check if we need to switch backends
         val needsExoPlayer = mediaInfo.isDolbyVision && isDvCapable
         val currentIsMpv = currentPlayer is MpvPlayer
-        
+
         if (needsExoPlayer && currentIsMpv) {
             Log.d(TAG, "DV content on DV device, switching to ExoPlayer")
             release()
             initializeExoPlayer()
             // Note: Surface needs to be reattached by the caller
         }
-        
+
         currentMediaInfo = mediaInfo
         currentPlayer?.play(url, startPositionMs)
     }
-    
+
     fun pause() {
         currentPlayer?.pause()
     }
-    
+
     fun resume() {
         currentPlayer?.resume()
     }
-    
+
     fun togglePause() {
         currentPlayer?.togglePause()
     }
-    
+
     fun stop() {
         currentPlayer?.stop()
     }
-    
+
     fun seekTo(positionMs: Long) {
         currentPlayer?.seekTo(positionMs)
     }
-    
+
     fun seekRelative(offsetMs: Long) {
         currentPlayer?.seekRelative(offsetMs)
     }
-    
+
     fun setSpeed(speed: Float) {
         currentPlayer?.setSpeed(speed)
     }
-    
+
     fun cycleAudio() {
         currentPlayer?.cycleAudio()
     }
-    
+
     fun cycleSubtitles() {
         currentPlayer?.cycleSubtitles()
     }
-    
+
     fun release() {
         stateForwardingJob?.cancel()
         stateForwardingJob = null
@@ -269,6 +242,42 @@ class PlayerController(
         currentPlayer = null
         currentMediaInfo = null
         _state.value = PlaybackState(playerType = "Released")
+    }
+
+    companion object {
+        private const val TAG = "PlayerController"
+
+        // Dolby Vision HDR transfer function constant
+        private const val HDR_TYPE_DOLBY_VISION = 1 // Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION
+
+        /**
+         * Check if device supports Dolby Vision playback
+         */
+        fun isDeviceDolbyVisionCapable(context: Context): Boolean {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                return false
+            }
+
+            return try {
+                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    context.display
+                } else {
+                    @Suppress("DEPRECATION")
+                    windowManager.defaultDisplay
+                }
+
+                val hdrCapabilities = display?.hdrCapabilities
+                val supportedTypes = hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
+
+                val hasDV = supportedTypes.contains(HDR_TYPE_DOLBY_VISION)
+                Log.d(TAG, "Device HDR capabilities: ${supportedTypes.toList()}, DV capable: $hasDV")
+                hasDV
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to check DV capability", e)
+                false
+            }
+        }
     }
 }
 
@@ -279,10 +288,10 @@ data class MediaInfo(
     val title: String = "",
     val videoCodec: String? = null,
     val videoProfile: String? = null,
-    val videoRangeType: String? = null,  // "SDR", "HDR10", "HDR10Plus", "DolbyVision", "HLG"
+    val videoRangeType: String? = null, // "SDR", "HDR10", "HDR10Plus", "DolbyVision", "HLG"
     val width: Int = 0,
     val height: Int = 0,
-    val bitrate: Long = 0
+    val bitrate: Long = 0,
 ) {
     /**
      * Check if content is Dolby Vision
@@ -298,38 +307,39 @@ data class MediaInfo(
             if (rangeType.contains("dolby") || rangeType.contains("dovi") || rangeType == "dv") {
                 return true
             }
-            
+
             // Check codec profile for DV indicators
             val profile = videoProfile?.lowercase() ?: ""
-            if (profile.contains("dvhe") ||    // Dolby Vision HEVC
-                profile.contains("dvh1") ||    // Dolby Vision HEVC (alternate)
-                profile.contains("dav1") ||    // Dolby Vision AV1
-                profile.contains("dolby vision")) {
+            if (profile.contains("dvhe") || // Dolby Vision HEVC
+                profile.contains("dvh1") || // Dolby Vision HEVC (alternate)
+                profile.contains("dav1") || // Dolby Vision AV1
+                profile.contains("dolby vision")
+            ) {
                 return true
             }
-            
+
             // Check codec string
             val codec = videoCodec?.lowercase() ?: ""
             if (codec.contains("dolby") || codec.contains("dovi")) {
                 return true
             }
-            
+
             return false
         }
-    
+
     val isHdr: Boolean
         get() {
             val rangeType = videoRangeType?.lowercase() ?: ""
-            return rangeType.contains("hdr") || 
-                   rangeType.contains("dolby") ||
-                   rangeType.contains("dovi") ||
-                   rangeType.contains("hlg") ||
-                   rangeType.contains("pq")
+            return rangeType.contains("hdr") ||
+                rangeType.contains("dolby") ||
+                rangeType.contains("dovi") ||
+                rangeType.contains("hlg") ||
+                rangeType.contains("pq")
         }
-    
+
     val is4K: Boolean
         get() = width >= 3840 || height >= 2160
-        
+
     companion object {
         /**
          * Create MediaInfo from Jellyfin MediaStream data
@@ -341,7 +351,7 @@ data class MediaInfo(
             videoRangeType: String?,
             width: Int,
             height: Int,
-            bitrate: Long
+            bitrate: Long,
         ): MediaInfo {
             return MediaInfo(
                 title = title,
@@ -350,7 +360,7 @@ data class MediaInfo(
                 videoRangeType = videoRangeType,
                 width = width,
                 height = height,
-                bitrate = bitrate
+                bitrate = bitrate,
             )
         }
     }

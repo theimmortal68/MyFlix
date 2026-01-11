@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.service
 
 import android.content.ComponentName
@@ -17,20 +27,19 @@ import kotlinx.coroutines.flow.asStateFlow
  * Use this in your UI to control playback.
  */
 class PlaybackServiceConnection(private val context: Context) {
-    
     companion object {
         private const val TAG = "PlaybackServiceConn"
     }
-    
+
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
-    
+
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
-    
+
     private val _player = MutableStateFlow<Player?>(null)
     val player: StateFlow<Player?> = _player.asStateFlow()
-    
+
     /**
      * Connect to the PlaybackService
      */
@@ -39,14 +48,14 @@ class PlaybackServiceConnection(private val context: Context) {
             Log.d(TAG, "Already connecting/connected")
             return
         }
-        
+
         Log.d(TAG, "Connecting to PlaybackService")
-        
+
         val sessionToken = SessionToken(
             context,
-            ComponentName(context, PlaybackService::class.java)
+            ComponentName(context, PlaybackService::class.java),
         )
-        
+
         controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
         controllerFuture?.addListener({
             try {
@@ -60,7 +69,7 @@ class PlaybackServiceConnection(private val context: Context) {
             }
         }, MoreExecutors.directExecutor())
     }
-    
+
     /**
      * Disconnect from the PlaybackService
      */
@@ -72,12 +81,12 @@ class PlaybackServiceConnection(private val context: Context) {
         _player.value = null
         _isConnected.value = false
     }
-    
+
     /**
      * Get the current MediaController
      */
     fun getController(): MediaController? = mediaController
-    
+
     /**
      * Play a URL with metadata
      */
@@ -86,27 +95,27 @@ class PlaybackServiceConnection(private val context: Context) {
         title: String,
         subtitle: String? = null,
         artworkUrl: String? = null,
-        startPositionMs: Long = 0
+        startPositionMs: Long = 0,
     ) {
         Log.d(TAG, "play() called - url: $url, startPos: $startPositionMs")
         Log.d(TAG, "mediaController: $mediaController, isConnected: ${_isConnected.value}")
-        
+
         if (mediaController == null) {
             Log.e(TAG, "mediaController is null, cannot play")
             return
         }
-        
+
         val metadata = androidx.media3.common.MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(subtitle)
             .setArtworkUri(artworkUrl?.let { android.net.Uri.parse(it) })
             .build()
-        
+
         val mediaItem = androidx.media3.common.MediaItem.Builder()
             .setUri(url)
             .setMediaMetadata(metadata)
             .build()
-        
+
         mediaController?.apply {
             Log.d(TAG, "Setting media item and starting playback")
             setMediaItem(mediaItem)
@@ -116,7 +125,7 @@ class PlaybackServiceConnection(private val context: Context) {
             Log.d(TAG, "Playback started")
         }
     }
-    
+
     /**
      * Toggle play/pause
      */
@@ -129,14 +138,14 @@ class PlaybackServiceConnection(private val context: Context) {
             }
         }
     }
-    
+
     /**
      * Seek to position
      */
     fun seekTo(positionMs: Long) {
         mediaController?.seekTo(positionMs)
     }
-    
+
     /**
      * Seek relative to current position
      */
@@ -146,7 +155,7 @@ class PlaybackServiceConnection(private val context: Context) {
             controller.seekTo(newPosition)
         }
     }
-    
+
     /**
      * Stop playback
      */

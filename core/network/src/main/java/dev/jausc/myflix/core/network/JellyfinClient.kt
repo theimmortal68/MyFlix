@@ -1,20 +1,38 @@
 package dev.jausc.myflix.core.network
 
 import android.content.Context
-import dev.jausc.myflix.core.common.model.*
+import dev.jausc.myflix.core.common.model.AuthResponse
+import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.*
+import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.ServerInfo
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpRedirect
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -32,7 +50,7 @@ data class DiscoveredServer(
     @SerialName("Name") val name: String,
     @SerialName("Address") val address: String,
     @SerialName("EndpointAddress") val endpointAddress: String? = null,
-    @SerialName("LocalAddress") val localAddress: String? = null
+    @SerialName("LocalAddress") val localAddress: String? = null,
 )
 
 @Serializable
@@ -40,12 +58,12 @@ data class QuickConnectState(
     @SerialName("Secret") val secret: String,
     @SerialName("Code") val code: String,
     @SerialName("Authenticated") val authenticated: Boolean = false,
-    @SerialName("DateAdded") val dateAdded: String? = null
+    @SerialName("DateAdded") val dateAdded: String? = null,
 )
 
 /**
  * Jellyfin API client with optimized endpoints based on official OpenAPI spec.
- * 
+ *
  * Key optimizations:
  * - Uses modern endpoint paths (/Items/Latest instead of /Users/{id}/Items/Latest)
  * - Requests only necessary fields to minimize data transfer
@@ -53,9 +71,10 @@ data class QuickConnectState(
  * - Variable cache TTL based on data volatility
  * - Proper parameter casing per API spec
  */
+@Suppress("TooManyFunctions", "LargeClass", "StringLiteralDuplication")
 class JellyfinClient(
-    private val context: Context? = null,
-    httpClient: HttpClient? = null  // Allow injection for testing
+    @Suppress("UnusedPrivateProperty") private val context: Context? = null,
+    httpClient: HttpClient? = null, // Allow injection for testing
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -96,7 +115,7 @@ class JellyfinClient(
             connectTimeoutMillis = 10_000
         }
         install(HttpRedirect) {
-            checkHttpMethod = false  // Follow redirects for POST requests too
+            checkHttpMethod = false // Follow redirects for POST requests too
             allowHttpsDowngrade = false
         }
         defaultRequest { contentType(ContentType.Application.Json) }
@@ -110,36 +129,38 @@ class JellyfinClient(
     val isAuthenticated: Boolean get() = serverUrl != null && accessToken != null && userId != null
 
     // ==================== Caching ====================
-    
+
     private data class CacheEntry<T>(val data: T, val timestamp: Long)
     private val cache = ConcurrentHashMap<String, CacheEntry<Any>>()
-    
+
     // Variable TTL based on data type
     private object CacheTtl {
-        const val LIBRARIES = 300_000L      // 5 min - rarely changes
-        const val ITEM_DETAILS = 120_000L   // 2 min - moderate
-        const val RESUME = 30_000L          // 30 sec - changes frequently
-        const val NEXT_UP = 60_000L         // 1 min
-        const val LATEST = 60_000L          // 1 min
-        const val DEFAULT = 60_000L         // 1 min
+        const val LIBRARIES = 300_000L // 5 min - rarely changes
+        const val ITEM_DETAILS = 120_000L // 2 min - moderate
+        const val RESUME = 30_000L // 30 sec - changes frequently
+        const val NEXT_UP = 60_000L // 1 min
+        const val LATEST = 60_000L // 1 min
+        const val DEFAULT = 60_000L // 1 min
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> getCached(key: String, ttlMs: Long = CacheTtl.DEFAULT): T? {
         val entry = cache[key] ?: return null
-        if (System.currentTimeMillis() - entry.timestamp > ttlMs) { 
+        if (System.currentTimeMillis() - entry.timestamp > ttlMs) {
             cache.remove(key)
-            return null 
+            return null
         }
         return entry.data as? T
     }
 
-    private fun <T : Any> putCache(key: String, data: T) { 
-        cache[key] = CacheEntry(data, System.currentTimeMillis()) 
+    private fun <T : Any> putCache(key: String, data: T) {
+        cache[key] = CacheEntry(data, System.currentTimeMillis())
     }
-    
-    fun clearCache() { cache.clear() }
-    
+
+    fun clearCache() {
+        cache.clear()
+    }
+
     /** Clear specific cache entries (useful after playback state changes) */
     fun invalidateCache(vararg patterns: String) {
         patterns.forEach { pattern ->
@@ -147,56 +168,59 @@ class JellyfinClient(
         }
     }
 
-    fun configure(serverUrl: String, accessToken: String, userId: String, deviceId: String) {
+    fun configure(
+        serverUrl: String,
+        accessToken: String,
+        userId: String,
+        deviceId: String
+    ) {
         this.serverUrl = serverUrl
         this.accessToken = accessToken
         this.userId = userId
         this.deviceId = deviceId
     }
 
-    fun logout() { 
+    fun logout() {
         serverUrl = null
         accessToken = null
         userId = null
-        clearCache() 
+        clearCache()
     }
 
-    private val baseUrl: String get() = serverUrl ?: throw IllegalStateException("Server URL not set")
-    
+    private val baseUrl: String get() = serverUrl ?: error("Server URL not set")
+
     private fun authHeader(token: String? = accessToken): String {
-        val base = "MediaBrowser Client=\"MyFlix\", Device=\"Android TV\", DeviceId=\"$deviceId\", Version=\"1.0.0\""
-        return if (token != null) "$base, Token=\"$token\"" else base
+        val base = """MediaBrowser Client="MyFlix", Device="Android TV", DeviceId="$deviceId", Version="1.0.0""""
+        return if (token != null) """$base, Token="$token"""" else base
     }
-    
+
     // ==================== Field Constants ====================
     // Only request fields we actually need to minimize data transfer
-    
+
     private object Fields {
         // Minimal fields for card display (home screen rows)
         const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating"
-        
+
         // Fields for episode cards (need series info)
         const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,OfficialRating,CriticRating"
-        
+
         // Full fields for detail screens
         const val DETAIL = "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People,ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CriticRating"
-        
-        // Fields for series detail (need child count)
-        const val SERIES_DETAIL = "Overview,ImageTags,BackdropImageTags,UserData,ChildCount,RecursiveItemCount,Genres,Studios,People,ExternalUrls,OfficialRating,CriticRating"
-        
+
         // Fields for episode listing
         const val EPISODE_LIST = "Overview,ImageTags,UserData,MediaSources"
     }
 
     // ==================== Server Discovery ====================
-    
+
     /**
      * Discover Jellyfin servers using UDP broadcast to port 7359.
      * Returns a Flow that emits servers as they're discovered.
      */
+    @Suppress("NestedBlockDepth", "CognitiveComplexMethod")
     fun discoverServersFlow(timeoutMs: Long = 5000): Flow<DiscoveredServer> = channelFlow {
         val seen = mutableSetOf<String>()
-        
+
         withContext(Dispatchers.IO) {
             var socket: DatagramSocket? = null
             try {
@@ -205,33 +229,33 @@ class JellyfinClient(
                     soTimeout = 1000
                     reuseAddress = true
                 }
-                
+
                 // Jellyfin discovery message
                 val message = "who is JellyfinServer?"
                 val sendData = message.toByteArray(Charsets.UTF_8)
-                
+
                 // Send broadcast
                 try {
                     val address = InetAddress.getByName("255.255.255.255")
                     val packet = DatagramPacket(sendData, sendData.size, address, 7359)
                     socket.send(packet)
                     android.util.Log.d("JellyfinClient", "Sent UDP discovery broadcast")
-                } catch (e: Exception) {
-                    android.util.Log.e("JellyfinClient", "Failed to send discovery: ${e.message}")
+                } catch (_: Exception) {
+                    android.util.Log.e("JellyfinClient", "Failed to send discovery")
                 }
-                
+
                 // Receive responses
                 val receiveBuffer = ByteArray(4096)
                 val endTime = System.currentTimeMillis() + timeoutMs
-                
+
                 while (System.currentTimeMillis() < endTime && !isClosedForSend) {
                     try {
                         val receivePacket = DatagramPacket(receiveBuffer, receiveBuffer.size)
                         socket.receive(receivePacket)
-                        
+
                         val response = String(receivePacket.data, 0, receivePacket.length, Charsets.UTF_8)
                         android.util.Log.d("JellyfinClient", "UDP response: $response")
-                        
+
                         parseDiscoveryResponse(response, receivePacket.address.hostAddress)?.let { server ->
                             if (server.id !in seen) {
                                 seen.add(server.id)
@@ -239,11 +263,11 @@ class JellyfinClient(
                                 android.util.Log.i("JellyfinClient", "Discovered: ${server.name} at ${server.address}")
                             }
                         }
-                    } catch (e: java.net.SocketTimeoutException) {
+                    } catch (_: java.net.SocketTimeoutException) {
                         // Normal - continue listening
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         if (!isClosedForSend) {
-                            android.util.Log.w("JellyfinClient", "Receive error: ${e.message}")
+                            android.util.Log.w("JellyfinClient", "Receive error during discovery")
                         }
                     }
                 }
@@ -254,33 +278,33 @@ class JellyfinClient(
             }
         }
     }
-    
+
     /**
      * Simple blocking discovery that returns all found servers
      */
     suspend fun discoverServers(timeoutMs: Long = 5000): List<DiscoveredServer> {
         val servers = mutableListOf<DiscoveredServer>()
-        
+
         try {
             withTimeout(timeoutMs + 1000) {
                 discoverServersFlow(timeoutMs).collect { server ->
                     servers.add(server)
                 }
             }
-        } catch (e: TimeoutCancellationException) {
+        } catch (_: TimeoutCancellationException) {
             // Expected - discovery timeout
         } catch (e: Exception) {
             android.util.Log.e("JellyfinClient", "Discovery error", e)
         }
-        
+
         android.util.Log.i("JellyfinClient", "Discovery complete: found ${servers.size} servers")
         return servers
     }
-    
+
     private fun parseDiscoveryResponse(response: String, senderIp: String?): DiscoveredServer? {
         return try {
             json.decodeFromString<DiscoveredServer>(response)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             try {
                 val parts = response.split("|")
                 if (parts.size >= 3) {
@@ -288,24 +312,26 @@ class JellyfinClient(
                         id = parts[0],
                         name = parts[1],
                         address = parts[2],
-                        endpointAddress = senderIp
+                        endpointAddress = senderIp,
                     )
-                } else null
-            } catch (e: Exception) {
+                } else {
+                    null
+                }
+            } catch (_: Exception) {
                 android.util.Log.w("JellyfinClient", "Failed to parse: $response")
                 null
             }
         }
     }
-    
+
     // ==================== Server Validation ====================
-    
+
     suspend fun getServerInfo(serverUrl: String): Result<ServerInfo> = runCatching {
         httpClient.get("${serverUrl.trimEnd('/')}/System/Info/Public") {
             timeout { requestTimeoutMillis = 10_000 }
         }.body()
     }
-    
+
     /**
      * Try to connect to a server using just the host.
      * Automatically tries common URL combinations:
@@ -316,6 +342,7 @@ class JellyfinClient(
      *
      * Includes retry logic for transient DNS/network errors.
      */
+    @Suppress("CyclomaticComplexMethod", "NestedBlockDepth", "CognitiveComplexMethod")
     suspend fun connectToServer(host: String): Result<ValidatedServer> {
         val cleanHost = host.trim()
             .removePrefix("http://")
@@ -374,7 +401,7 @@ class JellyfinClient(
                             // HTTPS works - use it as the canonical URL
                             finalUrl = httpsUrl
                             android.util.Log.d("JellyfinClient", "HTTP worked but HTTPS also works - using $finalUrl")
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             // HTTPS doesn't work, stick with HTTP
                             android.util.Log.d("JellyfinClient", "HTTPS not available, using HTTP: $url")
                         }
@@ -386,25 +413,27 @@ class JellyfinClient(
                             timeout { requestTimeoutMillis = 3_000 }
                         }
                         qcResponse.bodyAsText().trim().lowercase() == "true"
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         false
                     }
 
                     android.util.Log.i("JellyfinClient", "Connected to $finalUrl (Quick Connect: $quickConnectEnabled)")
 
-                    return Result.success(ValidatedServer(
-                        url = finalUrl,
-                        serverInfo = serverInfo,
-                        quickConnectEnabled = quickConnectEnabled
-                    ))
+                    return Result.success(
+                        ValidatedServer(
+                            url = finalUrl,
+                            serverInfo = serverInfo,
+                            quickConnectEnabled = quickConnectEnabled,
+                        ),
+                    )
                 } catch (e: Exception) {
                     android.util.Log.d("JellyfinClient", "Failed $url: ${e.message}")
                     lastException = e
 
                     // Check if this is a DNS resolution error - worth retrying
                     val isDnsError = e.message?.contains("resolve", ignoreCase = true) == true ||
-                                     e.message?.contains("unknown host", ignoreCase = true) == true ||
-                                     e.message?.contains("no address", ignoreCase = true) == true
+                        e.message?.contains("unknown host", ignoreCase = true) == true ||
+                        e.message?.contains("no address", ignoreCase = true) == true
 
                     if (isDnsError && attempt < maxRetries) {
                         android.util.Log.w("JellyfinClient", "DNS error on attempt $attempt, will retry after delay")
@@ -424,14 +453,23 @@ class JellyfinClient(
         }
 
         val errorMsg = lastException?.message ?: "Unknown error"
-        return Result.failure(Exception("Could not connect to server after $maxRetries attempts. Error: $errorMsg\nTried:\n${urlsToTry.joinToString("\n")}"))
+        val triedUrls = urlsToTry.joinToString(separator = "\n")
+        return Result.failure(
+            Exception(
+                """
+                    |Could not connect to server after $maxRetries attempts. Error: $errorMsg
+                    |Tried:
+                    |$triedUrls
+                """.trimMargin(),
+            ),
+        )
     }
-    
+
     @Deprecated("Use connectToServer instead", ReplaceWith("connectToServer(inputUrl)"))
     suspend fun validateServer(inputUrl: String): Result<ValidatedServer> = connectToServer(inputUrl)
-    
+
     // ==================== Quick Connect ====================
-    
+
     suspend fun isQuickConnectAvailable(serverUrl: String): Boolean {
         val checkUrl = "${serverUrl.trimEnd('/')}/QuickConnect/Enabled"
         android.util.Log.d("JellyfinClient", "isQuickConnectAvailable checking: $checkUrl")
@@ -441,21 +479,27 @@ class JellyfinClient(
             }
             val body = response.bodyAsText().trim().lowercase()
             val isAvailable = response.status.isSuccess() && body == "true"
-            android.util.Log.d("JellyfinClient", "isQuickConnectAvailable result: status=${response.status}, body=$body, available=$isAvailable")
+            android.util.Log.d(
+                "JellyfinClient",
+                "isQuickConnectAvailable result: status=${response.status}, body=$body, available=$isAvailable",
+            )
             isAvailable
         } catch (e: Exception) {
-            android.util.Log.w("JellyfinClient", "Quick Connect check failed for $checkUrl: ${e.javaClass.simpleName}: ${e.message}")
+            android.util.Log.w(
+                "JellyfinClient",
+                "Quick Connect check failed for $checkUrl: ${e.javaClass.simpleName}: ${e.message}",
+            )
             false
         }
     }
-    
+
     suspend fun initiateQuickConnect(serverUrl: String): Result<QuickConnectState> = runCatching {
         val url = serverUrl.trimEnd('/')
         httpClient.post("$url/QuickConnect/Initiate") {
             header("Authorization", authHeader(null))
         }.body()
     }
-    
+
     suspend fun checkQuickConnectStatus(serverUrl: String, secret: String): Result<QuickConnectState> {
         val url = serverUrl.trimEnd('/')
         val maxRetries = 3
@@ -477,10 +521,10 @@ class JellyfinClient(
 
                 // Check if retryable (timeout, network errors)
                 val isRetryable = e.message?.contains("timeout", ignoreCase = true) == true ||
-                                  e.message?.contains("resolve", ignoreCase = true) == true ||
-                                  e.message?.contains("unknown host", ignoreCase = true) == true ||
-                                  e.message?.contains("no address", ignoreCase = true) == true ||
-                                  e.message?.contains("connect", ignoreCase = true) == true
+                    e.message?.contains("resolve", ignoreCase = true) == true ||
+                    e.message?.contains("unknown host", ignoreCase = true) == true ||
+                    e.message?.contains("no address", ignoreCase = true) == true ||
+                    e.message?.contains("connect", ignoreCase = true) == true
 
                 if (isRetryable && attempt < maxRetries) {
                     android.util.Log.d("JellyfinClient", "Retrying status check in 1 second...")
@@ -494,14 +538,17 @@ class JellyfinClient(
 
         return Result.failure(Exception("Failed to check status after $maxRetries attempts"))
     }
-    
+
     suspend fun authenticateWithQuickConnect(serverUrl: String, secret: String): Result<AuthResponse> {
         val url = serverUrl.trimEnd('/')
         val maxRetries = 3
 
         for (attempt in 1..maxRetries) {
             try {
-                android.util.Log.d("JellyfinClient", "authenticateWithQuickConnect attempt $attempt/$maxRetries to $url")
+                android.util.Log.d(
+                    "JellyfinClient",
+                    "authenticateWithQuickConnect attempt $attempt/$maxRetries to $url",
+                )
                 val response = httpClient.post("$url/Users/AuthenticateWithQuickConnect") {
                     header("Authorization", authHeader(null))
                     setBody(mapOf("Secret" to secret))
@@ -516,9 +563,9 @@ class JellyfinClient(
 
                 // Check if DNS/network error worth retrying
                 val isRetryable = e.message?.contains("resolve", ignoreCase = true) == true ||
-                                  e.message?.contains("unknown host", ignoreCase = true) == true ||
-                                  e.message?.contains("no address", ignoreCase = true) == true ||
-                                  e.message?.contains("timeout", ignoreCase = true) == true
+                    e.message?.contains("unknown host", ignoreCase = true) == true ||
+                    e.message?.contains("no address", ignoreCase = true) == true ||
+                    e.message?.contains("timeout", ignoreCase = true) == true
 
                 if (isRetryable && attempt < maxRetries) {
                     val delayMs = 1000L * attempt
@@ -533,7 +580,8 @@ class JellyfinClient(
 
         return Result.failure(Exception("Failed after $maxRetries attempts"))
     }
-    
+
+    @Suppress("NestedBlockDepth", "LabeledExpression")
     fun quickConnectFlow(serverUrl: String): Flow<QuickConnectFlowState> = flow {
         android.util.Log.d("JellyfinClient", "quickConnectFlow started with serverUrl: $serverUrl")
         emit(QuickConnectFlowState.Initializing)
@@ -547,7 +595,10 @@ class JellyfinClient(
         android.util.Log.d("JellyfinClient", "Initiating Quick Connect on $serverUrl...")
         val initResult = initiateQuickConnect(serverUrl)
         if (initResult.isFailure) {
-            android.util.Log.e("JellyfinClient", "Quick Connect initiate failed: ${initResult.exceptionOrNull()?.message}")
+            android.util.Log.e(
+                "JellyfinClient",
+                "Quick Connect initiate failed: ${initResult.exceptionOrNull()?.message}",
+            )
             emit(QuickConnectFlowState.Error(initResult.exceptionOrNull()?.message ?: "Failed to initiate"))
             return@flow
         }
@@ -561,7 +612,10 @@ class JellyfinClient(
 
             val statusResult = checkQuickConnectStatus(serverUrl, state.secret)
             if (statusResult.isFailure) {
-                android.util.Log.e("JellyfinClient", "Quick Connect status check failed: ${statusResult.exceptionOrNull()?.message}")
+                android.util.Log.e(
+                    "JellyfinClient",
+                    "Quick Connect status check failed: ${statusResult.exceptionOrNull()?.message}",
+                )
                 emit(QuickConnectFlowState.Error(statusResult.exceptionOrNull()?.message ?: "Status check failed"))
                 return@flow
             }
@@ -596,7 +650,7 @@ class JellyfinClient(
             setBody(mapOf("Username" to username, "Pw" to password))
         }.body()
     }
-    
+
     suspend fun getPublicUsers(serverUrl: String): Result<List<PublicUser>> = runCatching {
         val url = serverUrl.trimEnd('/')
         httpClient.get("$url/Users/Public").body()
@@ -607,19 +661,19 @@ class JellyfinClient(
     suspend fun getLibraries(): Result<List<JellyfinItem>> {
         getCached<List<JellyfinItem>>("libraries", CacheTtl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
-            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Views") { 
-                header("Authorization", authHeader()) 
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Views") {
+                header("Authorization", authHeader())
             }.body()
             r.items.also { putCache("libraries", it) }
         }
     }
 
     suspend fun getLibraryItems(
-        libraryId: String, 
+        libraryId: String,
         limit: Int = 100,
         startIndex: Int = 0,
         sortBy: String = "SortName",
-        sortOrder: String = "Ascending"
+        sortOrder: String = "Ascending",
     ): Result<ItemsResponse> {
         val key = "library:$libraryId:$limit:$startIndex:$sortBy"
         getCached<ItemsResponse>(key)?.let { return Result.success(it) }
@@ -670,10 +724,7 @@ class JellyfinClient(
      * Get next episodes to watch in series the user is following.
      * Supports rewatching completed series.
      */
-    suspend fun getNextUp(
-        limit: Int = 20,
-        enableRewatching: Boolean = false
-    ): Result<List<JellyfinItem>> {
+    suspend fun getNextUp(limit: Int = 20, enableRewatching: Boolean = false,): Result<List<JellyfinItem>> {
         val key = "nextup:$limit:$enableRewatching"
         getCached<List<JellyfinItem>>(key, CacheTtl.NEXT_UP)?.let { return Result.success(it) }
         return runCatching {
@@ -708,7 +759,7 @@ class JellyfinClient(
             }.body<List<JellyfinItem>>().also { putCache(key, it) }
         }
     }
-    
+
     /**
      * Get latest Movies added to a library.
      * Excludes collections (BoxSets).
@@ -735,7 +786,7 @@ class JellyfinClient(
                 .also { putCache(key, it) }
         }
     }
-    
+
     /**
      * Get latest Series (new shows) added to a TV library.
      * Excludes unaired shows (no premiered episodes) and collections.
@@ -764,7 +815,7 @@ class JellyfinClient(
                 .also { putCache(key, it) }
         }
     }
-    
+
     /**
      * Get latest Episodes added to a TV library.
      * Returns episode items with series context.
@@ -791,7 +842,7 @@ class JellyfinClient(
     suspend fun search(
         query: String,
         limit: Int = 50,
-        includeItemTypes: String = "Movie,Series,Episode"
+        includeItemTypes: String = "Movie,Series,Episode",
     ): Result<List<JellyfinItem>> {
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
@@ -827,7 +878,7 @@ class JellyfinClient(
                 parameter("sortBy", "PremiereDate")
                 parameter("sortOrder", "Ascending")
                 parameter("recursive", true)
-                parameter("limit", limit * 2)  // Fetch extra to account for filtering
+                parameter("limit", limit * 2) // Fetch extra to account for filtering
                 parameter("fields", Fields.EPISODE_CARD)
                 parameter("enableImageTypes", "Primary,Thumb")
             }.body()
@@ -863,7 +914,7 @@ class JellyfinClient(
         genreName: String,
         libraryId: String? = null,
         limit: Int = 20,
-        includeItemTypes: String = "Movie,Series"
+        includeItemTypes: String = "Movie,Series",
     ): Result<List<JellyfinItem>> {
         val key = "genre:$genreName:${libraryId ?: "all"}:$limit"
         getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
@@ -973,7 +1024,7 @@ class JellyfinClient(
             r.items.also { putCache(key, it) }
         }
     }
-    
+
     /**
      * Get similar items for recommendations.
      */
@@ -990,14 +1041,11 @@ class JellyfinClient(
             r.items.also { putCache(key, it) }
         }
     }
-    
+
     /**
      * Get user's favorite items.
      */
-    suspend fun getFavorites(
-        limit: Int = 50,
-        includeItemTypes: String? = null
-    ): Result<List<JellyfinItem>> {
+    suspend fun getFavorites(limit: Int = 50, includeItemTypes: String? = null,): Result<List<JellyfinItem>> {
         val key = "favorites:$limit:$includeItemTypes"
         getCached<List<JellyfinItem>>(key)?.let { return Result.success(it) }
         return runCatching {
@@ -1013,7 +1061,7 @@ class JellyfinClient(
             r.items.also { putCache(key, it) }
         }
     }
-    
+
     /**
      * Toggle favorite status for an item.
      */
@@ -1030,7 +1078,7 @@ class JellyfinClient(
         // Invalidate relevant caches
         invalidateCache("favorites", "item:$itemId")
     }
-    
+
     /**
      * Mark item as played/unplayed.
      * Uses /UserPlayedItems/{itemId} endpoint per API spec.
@@ -1053,42 +1101,38 @@ class JellyfinClient(
     }
 
     // ==================== URL Helpers ====================
-    
-    fun getStreamUrl(itemId: String): String = 
-        "$baseUrl/Videos/$itemId/stream?Static=true&api_key=$accessToken"
-    
+
+    fun getStreamUrl(itemId: String): String = "$baseUrl/Videos/$itemId/stream?Static=true&api_key=$accessToken"
+
     /**
      * Get primary image URL (posters for movies/series, thumbnails for episodes).
      * Uses WebP format for smaller file sizes.
      */
-    fun getPrimaryImageUrl(itemId: String, tag: String?, maxWidth: Int = 400): String {
-        return buildImageUrl(itemId, "Primary", tag, maxWidth)
-    }
-    
+    fun getPrimaryImageUrl(itemId: String, tag: String?, maxWidth: Int = 400): String =
+        buildImageUrl(itemId, "Primary", tag, maxWidth)
+
     /**
      * Get backdrop image URL for backgrounds.
      */
-    fun getBackdropUrl(itemId: String, tag: String?, maxWidth: Int = 1920): String {
-        return buildImageUrl(itemId, "Backdrop", tag, maxWidth)
-    }
-    
+    fun getBackdropUrl(itemId: String, tag: String?, maxWidth: Int = 1920): String =
+        buildImageUrl(itemId, "Backdrop", tag, maxWidth)
+
     /**
      * Get thumb image URL (landscape thumbnails).
      */
-    fun getThumbUrl(itemId: String, tag: String?, maxWidth: Int = 600): String {
-        return buildImageUrl(itemId, "Thumb", tag, maxWidth)
-    }
-    
+    fun getThumbUrl(itemId: String, tag: String?, maxWidth: Int = 600): String =
+        buildImageUrl(itemId, "Thumb", tag, maxWidth)
+
     /**
      * Build image URL with consistent parameters.
      * Uses WebP format for better compression.
      */
     private fun buildImageUrl(
-        itemId: String, 
-        imageType: String, 
-        tag: String?, 
+        itemId: String,
+        imageType: String,
+        tag: String?,
         maxWidth: Int,
-        quality: Int = 90
+        quality: Int = 90,
     ): String {
         val params = buildString {
             append("maxWidth=$maxWidth")
@@ -1098,7 +1142,7 @@ class JellyfinClient(
         }
         return "$baseUrl/Items/$itemId/Images/$imageType?$params"
     }
-    
+
     /**
      * Get blurred backdrop for background use.
      */
@@ -1112,7 +1156,7 @@ class JellyfinClient(
         }
         return "$baseUrl/Items/$itemId/Images/Backdrop?$params"
     }
-    
+
     fun getUserImageUrl(userId: String) = "$baseUrl/Users/$userId/Images/Primary?quality=90&format=Webp"
 
     // ==================== Playback Reporting ====================
@@ -1122,7 +1166,7 @@ class JellyfinClient(
     suspend fun reportPlaybackStart(
         itemId: String,
         mediaSourceId: String? = null,
-        positionTicks: Long = 0
+        positionTicks: Long = 0,
     ): Result<Unit> = runCatching {
         currentPlaySessionId = "${itemId}_${System.currentTimeMillis()}"
         val body = PlaybackStartInfo(
@@ -1133,7 +1177,7 @@ class JellyfinClient(
             playSessionId = currentPlaySessionId!!,
             canSeek = true,
             isPaused = false,
-            isMuted = false
+            isMuted = false,
         )
         android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing itemId=$itemId")
         val response = httpClient.post("$baseUrl/Sessions/Playing") {
@@ -1153,7 +1197,7 @@ class JellyfinClient(
         itemId: String,
         positionTicks: Long,
         isPaused: Boolean = false,
-        mediaSourceId: String? = null
+        mediaSourceId: String? = null,
     ): Result<Unit> = runCatching {
         val body = PlaybackProgressInfo(
             itemId = itemId,
@@ -1163,13 +1207,16 @@ class JellyfinClient(
             isMuted = false,
             playMethod = "DirectPlay",
             playSessionId = currentPlaySessionId,
-            canSeek = true
+            canSeek = true,
         )
         val response = httpClient.post("$baseUrl/Sessions/Playing/Progress") {
             header("Authorization", authHeader())
             setBody(body)
         }
-        android.util.Log.d("JellyfinClient", "reportPlaybackProgress: pos=${positionTicks/10_000}ms paused=$isPaused status=${response.status}")
+        android.util.Log.d(
+            "JellyfinClient",
+            "reportPlaybackProgress: pos=${positionTicks / 10_000}ms paused=$isPaused status=${response.status}",
+        )
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
             android.util.Log.e("JellyfinClient", "reportPlaybackProgress failed: $errorBody")
@@ -1179,20 +1226,26 @@ class JellyfinClient(
     suspend fun reportPlaybackStopped(
         itemId: String,
         positionTicks: Long,
-        mediaSourceId: String? = null
+        mediaSourceId: String? = null,
     ): Result<Unit> = runCatching {
         val body = PlaybackStopInfo(
             itemId = itemId,
             mediaSourceId = mediaSourceId ?: itemId,
             positionTicks = positionTicks,
-            playSessionId = currentPlaySessionId
+            playSessionId = currentPlaySessionId,
         )
-        android.util.Log.d("JellyfinClient", "reportPlaybackStopped: POST $baseUrl/Sessions/Playing/Stopped itemId=$itemId")
+        android.util.Log.d(
+            "JellyfinClient",
+            "reportPlaybackStopped: POST $baseUrl/Sessions/Playing/Stopped itemId=$itemId",
+        )
         val response = httpClient.post("$baseUrl/Sessions/Playing/Stopped") {
             header("Authorization", authHeader())
             setBody(body)
         }
-        android.util.Log.d("JellyfinClient", "reportPlaybackStopped: pos=${positionTicks/10_000}ms status=${response.status}")
+        android.util.Log.d(
+            "JellyfinClient",
+            "reportPlaybackStopped: pos=${positionTicks / 10_000}ms status=${response.status}",
+        )
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
             android.util.Log.e("JellyfinClient", "reportPlaybackStopped failed: $errorBody")
@@ -1214,7 +1267,7 @@ private data class PlaybackStartInfo(
     @SerialName("PlaySessionId") val playSessionId: String,
     @SerialName("CanSeek") val canSeek: Boolean,
     @SerialName("IsPaused") val isPaused: Boolean,
-    @SerialName("IsMuted") val isMuted: Boolean
+    @SerialName("IsMuted") val isMuted: Boolean,
 )
 
 @Serializable
@@ -1226,7 +1279,7 @@ private data class PlaybackProgressInfo(
     @SerialName("IsMuted") val isMuted: Boolean,
     @SerialName("PlayMethod") val playMethod: String,
     @SerialName("PlaySessionId") val playSessionId: String?,
-    @SerialName("CanSeek") val canSeek: Boolean
+    @SerialName("CanSeek") val canSeek: Boolean,
 )
 
 @Serializable
@@ -1234,7 +1287,7 @@ private data class PlaybackStopInfo(
     @SerialName("ItemId") val itemId: String,
     @SerialName("MediaSourceId") val mediaSourceId: String,
     @SerialName("PositionTicks") val positionTicks: Long,
-    @SerialName("PlaySessionId") val playSessionId: String?
+    @SerialName("PlaySessionId") val playSessionId: String?,
 )
 
 // ==================== Supporting Types ====================
@@ -1243,7 +1296,7 @@ private data class PlaybackStopInfo(
 data class ValidatedServer(
     val url: String,
     val serverInfo: ServerInfo,
-    val quickConnectEnabled: Boolean
+    val quickConnectEnabled: Boolean,
 )
 
 @Serializable
@@ -1252,13 +1305,13 @@ data class PublicUser(
     @SerialName("Name") val name: String,
     @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
     @SerialName("HasPassword") val hasPassword: Boolean = true,
-    @SerialName("HasConfiguredPassword") val hasConfiguredPassword: Boolean = true
+    @SerialName("HasConfiguredPassword") val hasConfiguredPassword: Boolean = true,
 )
 
 @Serializable
 data class GenresResponse(
     @SerialName("Items") val items: List<JellyfinGenre>,
-    @SerialName("TotalRecordCount") val totalRecordCount: Int
+    @SerialName("TotalRecordCount") val totalRecordCount: Int,
 )
 
 sealed class QuickConnectFlowState {

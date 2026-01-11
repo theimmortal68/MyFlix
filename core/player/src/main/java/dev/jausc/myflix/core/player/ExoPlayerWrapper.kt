@@ -19,64 +19,33 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /**
  * ExoPlayer wrapper implementing UnifiedPlayer interface
  * Supports DTS/DTS-HD/DTS:X/TrueHD via Jellyfin's FFmpeg extension
- * 
+ *
  * TODO: Add Audio Passthrough option in settings for users with AVR/soundbar
  *       that can decode DTS natively. When enabled, skip FFmpeg decoding and
  *       pass raw bitstream to audio output.
  */
+@Suppress("TooManyFunctions")
 class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
-    
-    companion object {
-        private const val TAG = "ExoPlayerWrapper"
-        
-        /**
-         * Check if FFmpeg audio decoder is available
-         */
-        fun isFfmpegAvailable(): Boolean {
-            return try {
-                val ffmpegLib = Class.forName("androidx.media3.decoder.ffmpeg.FfmpegLibrary")
-                val isAvailable = ffmpegLib.getMethod("isAvailable").invoke(null) as Boolean
-                Log.d(TAG, "FFmpeg library available: $isAvailable")
-                isAvailable
-            } catch (e: Exception) {
-                Log.w(TAG, "FFmpeg library not found: ${e.message}")
-                false
-            }
-        }
-        
-        /**
-         * Get supported audio passthrough formats on this device
-         * TODO: Use this for passthrough settings option
-         */
-        fun getPassthroughCapabilities(context: Context): String {
-            val capabilities = AudioCapabilities.getCapabilities(context)
-            val formats = mutableListOf<String>()
-            
-            if (capabilities.supportsEncoding(C.ENCODING_AC3)) formats.add("AC3")
-            if (capabilities.supportsEncoding(C.ENCODING_E_AC3)) formats.add("E-AC3")
-            if (capabilities.supportsEncoding(C.ENCODING_E_AC3_JOC)) formats.add("Atmos")
-            if (capabilities.supportsEncoding(C.ENCODING_DTS)) formats.add("DTS")
-            if (capabilities.supportsEncoding(C.ENCODING_DTS_HD)) formats.add("DTS-HD")
-            if (capabilities.supportsEncoding(C.ENCODING_DOLBY_TRUEHD)) formats.add("TrueHD")
-            
-            return if (formats.isEmpty()) "None" else formats.joinToString(", ")
-        }
-    }
-    
     /**
      * Custom RenderersFactory that uses FFmpeg for audio and video decoding
      * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, HEVC, etc.
      */
     private class FfmpegRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
-
         init {
             // Enable decoder fallback for when hardware decoders fail
             setEnableDecoderFallback(true)
@@ -92,7 +61,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
             audioSink: AudioSink,
             eventHandler: Handler,
             eventListener: AudioRendererEventListener,
-            out: ArrayList<Renderer>
+            out: ArrayList<Renderer>,
         ) {
             // Add FFmpeg audio renderer FIRST for DTS/TrueHD support
             // This decodes to PCM which any device can play
@@ -112,35 +81,36 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                 audioSink,
                 eventHandler,
                 eventListener,
-                out
+                out,
             )
         }
     }
-    
+
     private val _state = MutableStateFlow(PlaybackState(playerType = "ExoPlayer"))
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
-    
+
     private var player: ExoPlayer? = null
     private var initialized = false
     private var trackingJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    
+
     private var pendingUrl: String? = null
     private var pendingStartPosition: Long = 0
-    
+
     val exoPlayer: ExoPlayer?
         get() = player
-    
+
+    @Suppress("CyclomaticComplexMethod")
     override fun initialize(): Boolean {
         if (initialized) return true
-        
+
         return try {
             // Log capabilities
             val ffmpegAvailable = isFfmpegAvailable()
             val passthroughFormats = getPassthroughCapabilities(context)
             Log.d(TAG, "FFmpeg available: $ffmpegAvailable")
             Log.d(TAG, "Passthrough capabilities: $passthroughFormats")
-            
+
             // Configure track selector with fallback options
             val trackSelector = DefaultTrackSelector(context).apply {
                 parameters = buildUponParameters()
@@ -152,7 +122,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                     .setExceedRendererCapabilitiesIfNecessary(true)
                     .build()
             }
-            
+
             // Use FFmpeg renderers factory for DTS/TrueHD/HEVC software decode
             // TODO: Add option to use DefaultRenderersFactory with passthrough
             //       for users with AVR that can decode DTS natively
@@ -164,7 +134,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                     .setEnableDecoderFallback(true)
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             }
-            
+
             player = ExoPlayer.Builder(context, renderersFactory)
                 .setTrackSelector(trackSelector)
                 .setAudioAttributes(
@@ -172,57 +142,16 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                         .setUsage(C.USAGE_MEDIA)
                         .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                         .build(),
-                    /* handleAudioFocus= */ true
+                    // handleAudioFocus=
+                    true,
                 )
-                .build().apply {
-                playWhenReady = true
-                
-                addListener(object : Player.Listener {
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        _state.value = _state.value.copy(
-                            isPlaying = isPlaying,
-                            isPaused = !isPlaying && _state.value.duration > 0
-                        )
-                    }
-                    
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        when (playbackState) {
-                            Player.STATE_IDLE -> {
-                                _state.value = _state.value.copy(isIdle = true, isBuffering = false)
-                            }
-                            Player.STATE_BUFFERING -> {
-                                _state.value = _state.value.copy(isBuffering = true, isIdle = false)
-                            }
-                            Player.STATE_READY -> {
-                                _state.value = _state.value.copy(
-                                    isBuffering = false,
-                                    isIdle = false,
-                                    duration = player?.duration ?: 0
-                                )
-                            }
-                            Player.STATE_ENDED -> {
-                                _state.value = _state.value.copy(
-                                    isPlaying = false,
-                                    isIdle = true
-                                )
-                            }
-                        }
-                    }
-                    
-                    override fun onPlayerError(error: PlaybackException) {
-                        Log.e(TAG, "Playback error", error)
-                        _state.value = _state.value.copy(
-                            error = error.message ?: "Playback error",
-                            isPlaying = false
-                        )
-                    }
-                    
-                    override fun onVideoSizeChanged(videoSize: VideoSize) {
-                        Log.d(TAG, "Video size: ${videoSize.width}x${videoSize.height}")
-                    }
-                })
-            }
-            
+                .build()
+                .apply {
+                    playWhenReady = true
+
+                    addListener(createPlayerListener())
+                }
+
             initialized = true
             Log.d(TAG, "ExoPlayer initialized")
             true
@@ -232,11 +161,56 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
             false
         }
     }
-    
+
+    private fun createPlayerListener() = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _state.value = _state.value.copy(
+                isPlaying = isPlaying,
+                isPaused = !isPlaying && _state.value.duration > 0,
+            )
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            when (playbackState) {
+                Player.STATE_IDLE -> {
+                    _state.value = _state.value.copy(isIdle = true, isBuffering = false)
+                }
+                Player.STATE_BUFFERING -> {
+                    _state.value = _state.value.copy(isBuffering = true, isIdle = false)
+                }
+                Player.STATE_READY -> {
+                    _state.value = _state.value.copy(
+                        isBuffering = false,
+                        isIdle = false,
+                        duration = player?.duration ?: 0,
+                    )
+                }
+                Player.STATE_ENDED -> {
+                    _state.value = _state.value.copy(
+                        isPlaying = false,
+                        isIdle = true,
+                    )
+                }
+            }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            Log.e(TAG, "Playback error", error)
+            _state.value = _state.value.copy(
+                error = error.message ?: "Playback error",
+                isPlaying = false,
+            )
+        }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            Log.d(TAG, "Video size: ${videoSize.width}x${videoSize.height}")
+        }
+    }
+
     override fun attachSurface(surface: Surface) {
         player?.setVideoSurface(surface)
         Log.d(TAG, "Surface attached")
-        
+
         // If we have a pending URL, start playback now
         pendingUrl?.let { url ->
             playInternal(url, pendingStartPosition)
@@ -244,43 +218,43 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
             pendingStartPosition = 0
         }
     }
-    
+
     override fun detachSurface() {
         player?.setVideoSurface(null)
         Log.d(TAG, "Surface detached")
     }
-    
+
     override fun play(url: String, startPositionMs: Long) {
         if (!initialized) {
             _state.value = _state.value.copy(error = "Player not initialized")
             return
         }
-        
+
         Log.d(TAG, "Play requested: $url, startPosition: ${startPositionMs}ms")
         playInternal(url, startPositionMs)
     }
-    
+
     private fun playInternal(url: String, startPositionMs: Long) {
         player?.apply {
             setMediaItem(MediaItem.fromUri(url))
             prepare()
-            
+
             if (startPositionMs > 0) {
                 seekTo(startPositionMs)
             }
-            
+
             playWhenReady = true
         }
-        
+
         _state.value = _state.value.copy(
             isBuffering = true,
             isIdle = false,
-            error = null
+            error = null,
         )
-        
+
         startPositionTracking()
     }
-    
+
     private fun startPositionTracking() {
         trackingJob?.cancel()
         trackingJob = scope.launch {
@@ -288,57 +262,57 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                 player?.let { p ->
                     _state.value = _state.value.copy(
                         position = p.currentPosition,
-                        duration = p.duration.coerceAtLeast(0)
+                        duration = p.duration.coerceAtLeast(0),
                     )
                 }
                 delay(500)
             }
         }
     }
-    
+
     private fun stopPositionTracking() {
         trackingJob?.cancel()
         trackingJob = null
     }
-    
+
     override fun pause() {
         player?.pause()
         _state.value = _state.value.copy(isPaused = true, isPlaying = false)
     }
-    
+
     override fun resume() {
         player?.play()
         _state.value = _state.value.copy(isPaused = false, isPlaying = true)
     }
-    
+
     override fun togglePause() {
         player?.let {
             if (it.isPlaying) pause() else resume()
         }
     }
-    
+
     override fun stop() {
         stopPositionTracking()
         player?.stop()
         _state.value = _state.value.copy(isPlaying = false, isIdle = true, position = 0)
     }
-    
+
     override fun seekTo(positionMs: Long) {
         player?.seekTo(positionMs)
     }
-    
+
     override fun seekRelative(offsetMs: Long) {
         player?.let {
             val newPosition = (it.currentPosition + offsetMs).coerceIn(0, it.duration)
             it.seekTo(newPosition)
         }
     }
-    
+
     override fun setSpeed(speed: Float) {
         player?.setPlaybackSpeed(speed)
         _state.value = _state.value.copy(speed = speed)
     }
-    
+
     override fun release() {
         stopPositionTracking()
         scope.cancel()
@@ -346,5 +320,42 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
         player = null
         initialized = false
         Log.d(TAG, "ExoPlayer released")
+    }
+
+    companion object {
+        private const val TAG = "ExoPlayerWrapper"
+
+        /**
+         * Check if FFmpeg audio decoder is available
+         */
+        fun isFfmpegAvailable(): Boolean {
+            return try {
+                val ffmpegLib = Class.forName("androidx.media3.decoder.ffmpeg.FfmpegLibrary")
+                val isAvailable = ffmpegLib.getMethod("isAvailable").invoke(null) as Boolean
+                Log.d(TAG, "FFmpeg library available: $isAvailable")
+                isAvailable
+            } catch (e: Exception) {
+                Log.w(TAG, "FFmpeg library not found: ${e.message}")
+                false
+            }
+        }
+
+        /**
+         * Get supported audio passthrough formats on this device
+         * TODO: Use this for passthrough settings option
+         */
+        fun getPassthroughCapabilities(context: Context): String {
+            val capabilities = AudioCapabilities.getCapabilities(context)
+            val formats = mutableListOf<String>()
+
+            if (capabilities.supportsEncoding(C.ENCODING_AC3)) formats.add("AC3")
+            if (capabilities.supportsEncoding(C.ENCODING_E_AC3)) formats.add("E-AC3")
+            if (capabilities.supportsEncoding(C.ENCODING_E_AC3_JOC)) formats.add("Atmos")
+            if (capabilities.supportsEncoding(C.ENCODING_DTS)) formats.add("DTS")
+            if (capabilities.supportsEncoding(C.ENCODING_DTS_HD)) formats.add("DTS-HD")
+            if (capabilities.supportsEncoding(C.ENCODING_DOLBY_TRUEHD)) formats.add("TrueHD")
+
+            return if (formats.isEmpty()) "None" else formats.joinToString(", ")
+        }
     }
 }

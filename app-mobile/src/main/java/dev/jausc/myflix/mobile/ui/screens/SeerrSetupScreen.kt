@@ -1,3 +1,14 @@
+@file:Suppress(
+    "LongMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "ModifierMissing",
+    "ParameterNaming",
+    "ComposableParamOrder",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.background
@@ -62,6 +73,7 @@ import kotlinx.coroutines.launch
  * 2. Authenticate - Use Jellyfin credentials
  * 3. Done - Success confirmation
  */
+@Suppress("CyclomaticComplexMethod", "CognitiveComplexMethod")
 @Composable
 fun SeerrSetupScreen(
     seerrClient: SeerrClient,
@@ -70,7 +82,7 @@ fun SeerrSetupScreen(
     jellyfinPassword: String?,
     jellyfinHost: String? = null,
     onSetupComplete: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     var currentStep by remember { mutableIntStateOf(1) }
     var serverUrl by remember { mutableStateOf("") }
@@ -150,7 +162,7 @@ fun SeerrSetupScreen(
 
             seerrClient.loginWithJellyfin(username, password, jellyfinHost)
                 .onSuccess { user ->
-                    preferences.setSeerrUrl(serverUrl)  // Save URL (may have been set by auto-detection)
+                    preferences.setSeerrUrl(serverUrl) // Save URL (may have been set by auto-detection)
                     preferences.setSeerrEnabled(true)
                     // Save credentials for persistent auth
                     user.apiKey?.let { preferences.setSeerrApiKey(it) }
@@ -169,17 +181,17 @@ fun SeerrSetupScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
         // Top bar
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -187,14 +199,14 @@ fun SeerrSetupScreen(
                 imageVector = Icons.Outlined.Explore,
                 contentDescription = null,
                 tint = Color(0xFF8B5CF6),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Connect to Seerr",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
@@ -216,7 +228,7 @@ fun SeerrSetupScreen(
                         "Searching for Seerr on your network..."
                     } else {
                         "Enter your Jellyseerr/Overseerr server URL"
-                    }
+                    },
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -224,7 +236,7 @@ fun SeerrSetupScreen(
                 if (isAutoDetecting) {
                     Box(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator(color = Color(0xFF8B5CF6))
                     }
@@ -238,15 +250,15 @@ fun SeerrSetupScreen(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Uri,
-                            imeAction = ImeAction.Go
+                            imeAction = ImeAction.Go,
                         ),
                         keyboardActions = KeyboardActions(
-                            onGo = { connectToServer() }
+                            onGo = { connectToServer() },
                         ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF8B5CF6),
-                            cursorColor = Color(0xFF8B5CF6)
-                        )
+                            cursorColor = Color(0xFF8B5CF6),
+                        ),
                     )
 
                     connectionError?.let { error ->
@@ -254,7 +266,7 @@ fun SeerrSetupScreen(
                         Text(
                             text = error,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
 
@@ -265,14 +277,14 @@ fun SeerrSetupScreen(
                         enabled = serverUrl.isNotBlank() && !isConnecting,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF8B5CF6)
-                        )
+                            containerColor = Color(0xFF8B5CF6),
+                        ),
                     ) {
                         if (isConnecting) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 color = Color.White,
-                                strokeWidth = 2.dp
+                                strokeWidth = 2.dp,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
@@ -300,12 +312,12 @@ fun SeerrSetupScreen(
                                     isAutoDetecting = false
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Wifi,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(18.dp),
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Auto-Detect")
@@ -319,7 +331,7 @@ fun SeerrSetupScreen(
                 MobileSeerrSetupStep(
                     icon = Icons.Outlined.Person,
                     title = "Authentication",
-                    description = "Sign in with your Jellyfin credentials"
+                    description = "Sign in with your Jellyfin credentials",
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -332,12 +344,12 @@ fun SeerrSetupScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
+                        imeAction = ImeAction.Next,
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF8B5CF6),
-                        cursorColor = Color(0xFF8B5CF6)
-                    )
+                        cursorColor = Color(0xFF8B5CF6),
+                    ),
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -351,15 +363,15 @@ fun SeerrSetupScreen(
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Go
+                        imeAction = ImeAction.Go,
                     ),
                     keyboardActions = KeyboardActions(
-                        onGo = { authenticateWithCredentials() }
+                        onGo = { authenticateWithCredentials() },
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF8B5CF6),
-                        cursorColor = Color(0xFF8B5CF6)
-                    )
+                        cursorColor = Color(0xFF8B5CF6),
+                    ),
                 )
 
                 authError?.let { error ->
@@ -367,7 +379,7 @@ fun SeerrSetupScreen(
                     Text(
                         text = error,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
 
@@ -378,14 +390,14 @@ fun SeerrSetupScreen(
                     enabled = !isAuthenticating && username.isNotBlank() && password.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF8B5CF6)
-                    )
+                        containerColor = Color(0xFF8B5CF6),
+                    ),
                 ) {
                     if (isAuthenticating) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             color = Color.White,
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -397,7 +409,7 @@ fun SeerrSetupScreen(
                 // Step 3: Done
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(modifier = Modifier.height(48.dp))
 
@@ -405,13 +417,13 @@ fun SeerrSetupScreen(
                         modifier = Modifier
                             .size(80.dp)
                             .background(Color(0xFF22C55E).copy(alpha = 0.15f), RoundedCornerShape(40.dp)),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Check,
                             contentDescription = null,
                             modifier = Modifier.size(40.dp),
-                            tint = Color(0xFF22C55E)
+                            tint = Color(0xFF22C55E),
                         )
                     }
 
@@ -421,7 +433,7 @@ fun SeerrSetupScreen(
                         text = "Connected!",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -429,7 +441,7 @@ fun SeerrSetupScreen(
                     Text(
                         text = "You can now discover and request media",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -438,8 +450,8 @@ fun SeerrSetupScreen(
                         onClick = onSetupComplete,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF8B5CF6)
-                        )
+                            containerColor = Color(0xFF8B5CF6),
+                        ),
                     ) {
                         Text("Start Discovering")
                     }
@@ -453,7 +465,7 @@ fun SeerrSetupScreen(
 private fun MobileSeerrSetupProgress(currentStep: Int) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         listOf("Connect", "Login", "Done").forEachIndexed { index, label ->
             val step = index + 1
@@ -462,30 +474,30 @@ private fun MobileSeerrSetupProgress(currentStep: Int) {
 
             Column(
                 modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .background(
                             if (isActive) Color(0xFF8B5CF6) else MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(16.dp)
+                            RoundedCornerShape(16.dp),
                         ),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     if (isComplete) {
                         Icon(
                             imageVector = Icons.Outlined.Check,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
-                            tint = Color.White
+                            tint = Color.White,
                         )
                     } else {
                         Text(
                             text = step.toString(),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (isActive) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isActive) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -495,7 +507,7 @@ private fun MobileSeerrSetupProgress(currentStep: Int) {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isActive) Color(0xFF8B5CF6) else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isActive) Color(0xFF8B5CF6) else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -503,29 +515,25 @@ private fun MobileSeerrSetupProgress(currentStep: Int) {
 }
 
 @Composable
-private fun MobileSeerrSetupStep(
-    icon: ImageVector,
-    title: String,
-    description: String
-) {
+private fun MobileSeerrSetupStep(icon: ImageVector, title: String, description: String) {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = Color(0xFF8B5CF6)
+                tint = Color(0xFF8B5CF6),
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
@@ -534,7 +542,7 @@ private fun MobileSeerrSetupStep(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

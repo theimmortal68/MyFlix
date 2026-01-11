@@ -38,7 +38,7 @@ data class MenuItem(
     val text: String,
     val icon: ImageVector,
     val iconTint: Color = Color.Unspecified,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
 ) : MenuItemEntry
 
 /**
@@ -52,44 +52,41 @@ data object MenuItemDivider : MenuItemEntry
 data class BottomSheetParams(
     val title: String,
     val subtitle: String? = null,
-    val items: List<MenuItemEntry>
+    val items: List<MenuItemEntry>,
 )
 
 /**
  * Floating dialog menu for long-press context actions.
  */
 @Composable
-fun PopupMenu(
-    params: BottomSheetParams,
-    onDismiss: () -> Unit
-) {
+fun PopupMenu(params: BottomSheetParams, onDismiss: () -> Unit,) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
-            modifier = Modifier.widthIn(min = 280.dp, max = 360.dp)
+            modifier = Modifier.widthIn(min = 280.dp, max = 360.dp),
         ) {
             Column(
-                modifier = Modifier.padding(vertical = 16.dp)
+                modifier = Modifier.padding(vertical = 16.dp),
             ) {
                 // Header
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
                 ) {
                     Text(
                         text = params.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     params.subtitle?.let { subtitle ->
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -109,29 +106,30 @@ fun PopupMenu(
                                     }
                                     .padding(horizontal = 24.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Start
+                                horizontalArrangement = Arrangement.Start,
                             ) {
                                 Icon(
                                     imageVector = entry.icon,
                                     contentDescription = null,
                                     modifier = Modifier.size(24.dp),
-                                    tint = if (entry.iconTint != Color.Unspecified)
+                                    tint = if (entry.iconTint != Color.Unspecified) {
                                         entry.iconTint
-                                    else
+                                    } else {
                                         MaterialTheme.colorScheme.onSurface
+                                    },
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = entry.text,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
                                 )
                             }
                         }
                         is MenuItemDivider -> {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant
+                                color = MaterialTheme.colorScheme.outlineVariant,
                             )
                         }
                     }

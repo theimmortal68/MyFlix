@@ -1,3 +1,14 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "StringLiteralDuplication",
+)
+
 package dev.jausc.myflix.mobile
 
 import android.os.Bundle
@@ -24,16 +35,16 @@ import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Enable edge-to-edge display so content can draw behind system bars
         // This allows us to handle status bar insets manually for the overlay effect
         enableEdgeToEdge()
-        
+
         setContent {
             MyFlixMobileTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     MyFlixMobileApp()
                 }
@@ -80,7 +91,10 @@ fun MyFlixMobileApp() {
         // Skip if already authenticated in this session (e.g., from setup screen)
         if (isSeerrAuthenticated) return@LaunchedEffect
 
-        android.util.Log.d("MyFlixSeerr", "LaunchedEffect: init=$isInitialized, logged=$isLoggedIn, enabled=$seerrEnabled, url=$seerrUrl, hasCookie=${!seerrSessionCookie.isNullOrBlank()}")
+        android.util.Log.d(
+            "MyFlixSeerr",
+            "LaunchedEffect: init=$isInitialized, logged=$isLoggedIn, enabled=$seerrEnabled, url=$seerrUrl, hasCookie=${!seerrSessionCookie.isNullOrBlank()}",
+        )
         if (isInitialized && isLoggedIn && seerrEnabled && !seerrUrl.isNullOrBlank()) {
             android.util.Log.d("MyFlixSeerr", "Connecting to Seerr at $seerrUrl")
             seerrClient.connectToServer(seerrUrl!!)
@@ -117,7 +131,10 @@ fun MyFlixMobileApp() {
                                 isSeerrAuthenticated = true
                             }
                             .onFailure { e ->
-                                android.util.Log.w("MyFlixSeerr", "Session cookie auth FAILED: ${e.message}, trying credentials")
+                                android.util.Log.w(
+                                    "MyFlixSeerr",
+                                    "Session cookie auth FAILED: ${e.message}, trying credentials",
+                                )
                                 tryCredentials()
                             }
                     } else {
@@ -135,7 +152,7 @@ fun MyFlixMobileApp() {
     }
 
     val navController = rememberNavController()
-    
+
     // Navigate when BOTH splash animation completes AND initialization is done
     LaunchedEffect(splashFinished, isInitialized) {
         if (splashFinished && isInitialized) {
@@ -148,14 +165,14 @@ fun MyFlixMobileApp() {
 
     NavHost(
         navController = navController,
-        startDestination = "splash"
+        startDestination = "splash",
     ) {
         composable("splash") {
             SplashScreen(
-                onFinished = { splashFinished = true }
+                onFinished = { splashFinished = true },
             )
         }
-        
+
         composable("login") {
             LoginScreen(
                 appState = appState,
@@ -165,7 +182,7 @@ fun MyFlixMobileApp() {
                     navController.navigate("home") {
                         popUpTo("login") { inclusive = true }
                     }
-                }
+                },
             )
         }
 
@@ -195,7 +212,7 @@ fun MyFlixMobileApp() {
                 },
                 onSettingsClick = {
                     navController.navigate("settings")
-                }
+                },
             )
         }
 
@@ -205,7 +222,7 @@ fun MyFlixMobileApp() {
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -213,7 +230,7 @@ fun MyFlixMobileApp() {
             SettingsScreen(
                 preferences = mobilePreferences,
                 jellyfinClient = jellyfinClient,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -221,8 +238,8 @@ fun MyFlixMobileApp() {
             route = "library/{libraryId}/{libraryName}",
             arguments = listOf(
                 navArgument("libraryId") { type = NavType.StringType },
-                navArgument("libraryName") { type = NavType.StringType }
-            )
+                navArgument("libraryName") { type = NavType.StringType },
+            ),
         ) { backStackEntry ->
             val libraryId = backStackEntry.arguments?.getString("libraryId") ?: return@composable
             val libraryName = backStackEntry.arguments?.getString("libraryName") ?: ""
@@ -233,13 +250,13 @@ fun MyFlixMobileApp() {
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
 
         composable(
             route = "detail/{itemId}",
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+            arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
             DetailScreen(
@@ -249,20 +266,20 @@ fun MyFlixMobileApp() {
                 onEpisodeClick = { episodeId ->
                     navController.navigate("player/$episodeId")
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
 
         composable(
             route = "player/{itemId}",
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+            arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
             PlayerScreen(
                 itemId = itemId,
                 jellyfinClient = jellyfinClient,
                 useMpvPlayer = useMpvPlayer,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -280,7 +297,7 @@ fun MyFlixMobileApp() {
                         // Just set authenticated - recomposition will show SeerrHomeScreen
                         isSeerrAuthenticated = true
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             } else {
                 SeerrHomeScreen(
@@ -288,7 +305,7 @@ fun MyFlixMobileApp() {
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
         }
@@ -305,7 +322,7 @@ fun MyFlixMobileApp() {
                         popUpTo("seerr/setup") { inclusive = true }
                     }
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -313,8 +330,8 @@ fun MyFlixMobileApp() {
             route = "seerr/{mediaType}/{tmdbId}",
             arguments = listOf(
                 navArgument("mediaType") { type = NavType.StringType },
-                navArgument("tmdbId") { type = NavType.IntType }
-            )
+                navArgument("tmdbId") { type = NavType.IntType },
+            ),
         ) { backStackEntry ->
             val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
             val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: return@composable
@@ -322,7 +339,7 @@ fun MyFlixMobileApp() {
                 mediaType = mediaType,
                 tmdbId = tmdbId,
                 seerrClient = seerrClient,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
             )
         }
     }

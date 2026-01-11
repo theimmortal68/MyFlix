@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.background
@@ -16,13 +26,14 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
 
+@Suppress("UnusedParameter")
 @Composable
 fun LibraryScreen(
     libraryId: String,
     libraryName: String,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -41,30 +52,30 @@ fun LibraryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
+            .background(TvColors.Background),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 48.dp, vertical = 24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = libraryName,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = TvColors.TextPrimary
+                    color = TvColors.TextPrimary,
                 )
             }
 
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "Loading...",
-                        color = TvColors.TextPrimary
+                        color = TvColors.TextPrimary,
                     )
                 }
             } else {
@@ -73,13 +84,13 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 48.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     items(items, key = { it.id }) { item ->
                         MediaCard(
                             item = item,
                             imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
-                            onClick = { onItemClick(item.id) }
+                            onClick = { onItemClick(item.id) },
                         )
                     }
                 }

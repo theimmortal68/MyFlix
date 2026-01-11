@@ -1,3 +1,12 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.background
@@ -47,7 +56,6 @@ import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.launch
 
 /**
  * Preferences/Settings screen with toggle options.
@@ -61,8 +69,9 @@ fun PreferencesScreen(
     onNavigateSearch: () -> Unit,
     onNavigateMovies: () -> Unit,
     onNavigateShows: () -> Unit,
-    onNavigateDiscover: () -> Unit = {}
+    onNavigateDiscover: () -> Unit = {},
 ) {
+    @Suppress("UnusedPrivateProperty")
     val scope = rememberCoroutineScope()
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
 
@@ -104,24 +113,24 @@ fun PreferencesScreen(
             NavItem.SETTINGS -> { /* Already here */ }
         }
     }
-    
+
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
+            .background(TvColors.Background),
     ) {
         // Left Navigation Rail
         NavigationRail(
             selectedItem = selectedNavItem,
-            onItemSelected = handleNavSelection
+            onItemSelected = handleNavSelection,
         )
-        
+
         // Main Content Area
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(horizontal = 32.dp, vertical = 24.dp)
+                .padding(horizontal = 32.dp, vertical = 24.dp),
         ) {
             PreferencesContent(
                 hideWatched = hideWatched,
@@ -140,7 +149,7 @@ fun PreferencesScreen(
                 availableCollections = availableCollections,
                 onEditCollections = { showCollectionDialog = true },
                 showSuggestions = showSuggestions,
-                onShowSuggestionsChanged = { preferences.setShowSuggestions(it) }
+                onShowSuggestionsChanged = { preferences.setShowSuggestions(it) },
             )
         }
     }
@@ -155,7 +164,7 @@ fun PreferencesScreen(
             onConfirm = { newSelection ->
                 preferences.setEnabledGenres(newSelection)
                 showGenreDialog = false
-            }
+            },
         )
     }
 
@@ -170,7 +179,7 @@ fun PreferencesScreen(
             onConfirm = { newSelection ->
                 preferences.setPinnedCollections(newSelection)
                 showCollectionDialog = false
-            }
+            },
         )
     }
 }
@@ -193,20 +202,20 @@ private fun PreferencesContent(
     availableCollections: List<JellyfinItem>,
     onEditCollections: () -> Unit,
     showSuggestions: Boolean,
-    onShowSuggestionsChanged: (Boolean) -> Unit
+    onShowSuggestionsChanged: (Boolean) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Header
         item {
             Column(
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 24.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     // Pink accent bar (matches Settings nav item color)
                     Box(
@@ -215,15 +224,15 @@ private fun PreferencesContent(
                             .height(32.dp)
                             .background(
                                 Color(0xFFF472B6),
-                                shape = RoundedCornerShape(2.dp)
-                            )
+                                shape = RoundedCornerShape(2.dp),
+                            ),
                     )
 
                     Text(
                         text = "Settings",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TvColors.TextPrimary
+                        color = TvColors.TextPrimary,
                     )
                 }
             }
@@ -239,7 +248,7 @@ private fun PreferencesContent(
                         icon = Icons.Outlined.CalendarMonth,
                         iconTint = if (showSeasonPremieres) Color(0xFF60A5FA) else TvColors.TextSecondary,
                         checked = showSeasonPremieres,
-                        onCheckedChange = onShowSeasonPremieresChanged
+                        onCheckedChange = onShowSeasonPremieresChanged,
                     )
                     PreferenceDivider()
                     ToggleWithEditItem(
@@ -250,7 +259,7 @@ private fun PreferencesContent(
                         checked = showGenreRows,
                         onCheckedChange = onShowGenreRowsChanged,
                         showEditButton = showGenreRows,
-                        onEditClick = onEditGenres
+                        onEditClick = onEditGenres,
                     )
                     PreferenceDivider()
                     ToggleWithEditItem(
@@ -261,7 +270,7 @@ private fun PreferencesContent(
                         checked = showCollections,
                         onCheckedChange = onShowCollectionsChanged,
                         showEditButton = showCollections && availableCollections.isNotEmpty(),
-                        onEditClick = onEditCollections
+                        onEditClick = onEditCollections,
                     )
                     PreferenceDivider()
                     TogglePreferenceItem(
@@ -270,7 +279,7 @@ private fun PreferencesContent(
                         icon = Icons.Outlined.Lightbulb,
                         iconTint = if (showSuggestions) Color(0xFFF472B6) else TvColors.TextSecondary,
                         checked = showSuggestions,
-                        onCheckedChange = onShowSuggestionsChanged
+                        onCheckedChange = onShowSuggestionsChanged,
                     )
                 }
             }
@@ -285,7 +294,7 @@ private fun PreferencesContent(
                     icon = if (hideWatched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                     iconTint = if (hideWatched) Color(0xFF34D399) else TvColors.TextSecondary,
                     checked = hideWatched,
-                    onCheckedChange = onHideWatchedChanged
+                    onCheckedChange = onHideWatchedChanged,
                 )
             }
         }
@@ -299,7 +308,7 @@ private fun PreferencesContent(
                     icon = Icons.Outlined.PlayCircle,
                     iconTint = if (useMpvPlayer) Color(0xFF9C27B0) else TvColors.TextSecondary,
                     checked = useMpvPlayer,
-                    onCheckedChange = onUseMpvPlayerChanged
+                    onCheckedChange = onUseMpvPlayerChanged,
                 )
             }
         }
@@ -310,12 +319,12 @@ private fun PreferencesContent(
             Text(
                 text = "MyFlix for Android TV",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TvColors.TextSecondary
+                color = TvColors.TextSecondary,
             )
             Text(
                 text = "Version 1.0.0",
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary.copy(alpha = 0.7f)
+                color = TvColors.TextSecondary.copy(alpha = 0.7f),
             )
         }
     }
@@ -328,32 +337,29 @@ private fun PreferenceDivider() {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .height(1.dp)
-            .background(TvColors.SurfaceLight.copy(alpha = 0.3f))
+            .background(TvColors.SurfaceLight.copy(alpha = 0.3f)),
     )
 }
 
 @Composable
-private fun PreferencesSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
+private fun PreferencesSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
             text = title.uppercase(),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = TvColors.TextSecondary,
-            modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+            modifier = Modifier.padding(bottom = 12.dp, start = 4.dp),
         )
-        
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(TvColors.Surface),
-            content = content
+            content = content,
         )
     }
 }
@@ -365,15 +371,15 @@ private fun TogglePreferenceItem(
     icon: ImageVector,
     iconTint: Color,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (isFocused) TvColors.FocusedSurface else Color.Transparent
+                if (isFocused) TvColors.FocusedSurface else Color.Transparent,
             )
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
@@ -389,34 +395,34 @@ private fun TogglePreferenceItem(
             }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Icon
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(28.dp),
-            tint = iconTint
+            tint = iconTint,
         )
-        
+
         // Text content
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = if (isFocused) TvColors.TextPrimary else TvColors.TextPrimary.copy(alpha = 0.9f)
+                color = if (isFocused) TvColors.TextPrimary else TvColors.TextPrimary.copy(alpha = 0.9f),
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextSecondary,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
-        
+
         // Toggle switch
         Switch(
             checked = checked,
@@ -425,8 +431,8 @@ private fun TogglePreferenceItem(
                 checkedThumbColor = Color(0xFF34D399),
                 checkedTrackColor = Color(0xFF34D399).copy(alpha = 0.5f),
                 uncheckedThumbColor = TvColors.TextSecondary,
-                uncheckedTrackColor = TvColors.TextSecondary.copy(alpha = 0.3f)
-            )
+                uncheckedTrackColor = TvColors.TextSecondary.copy(alpha = 0.3f),
+            ),
         )
     }
 }
@@ -440,7 +446,7 @@ private fun ToggleWithEditItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     showEditButton: Boolean,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
 ) {
     var isToggleFocused by remember { mutableStateOf(false) }
     var isEditFocused by remember { mutableStateOf(false) }
@@ -450,7 +456,7 @@ private fun ToggleWithEditItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Main toggle area (icon + text + switch)
         Row(
@@ -458,7 +464,7 @@ private fun ToggleWithEditItem(
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
                 .background(
-                    if (isToggleFocused) TvColors.FocusedSurface else Color.Transparent
+                    if (isToggleFocused) TvColors.FocusedSurface else Color.Transparent,
                 )
                 .onFocusChanged { isToggleFocused = it.isFocused }
                 .focusable()
@@ -474,31 +480,31 @@ private fun ToggleWithEditItem(
                 }
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Icon
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = iconTint
+                tint = iconTint,
             )
 
             // Text content
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = if (isToggleFocused) TvColors.TextPrimary else TvColors.TextPrimary.copy(alpha = 0.9f)
+                    color = if (isToggleFocused) TvColors.TextPrimary else TvColors.TextPrimary.copy(alpha = 0.9f),
                 )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = TvColors.TextSecondary,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
 
@@ -510,8 +516,8 @@ private fun ToggleWithEditItem(
                     checkedThumbColor = Color(0xFF34D399),
                     checkedTrackColor = Color(0xFF34D399).copy(alpha = 0.5f),
                     uncheckedThumbColor = TvColors.TextSecondary,
-                    uncheckedTrackColor = TvColors.TextSecondary.copy(alpha = 0.3f)
-                )
+                    uncheckedTrackColor = TvColors.TextSecondary.copy(alpha = 0.3f),
+                ),
             )
         }
 
@@ -522,7 +528,7 @@ private fun ToggleWithEditItem(
                     .size(44.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (isEditFocused) TvColors.FocusedSurface else TvColors.SurfaceLight.copy(alpha = 0.5f)
+                        if (isEditFocused) TvColors.FocusedSurface else TvColors.SurfaceLight.copy(alpha = 0.5f),
                     )
                     .onFocusChanged { isEditFocused = it.isFocused }
                     .focusable()
@@ -536,13 +542,13 @@ private fun ToggleWithEditItem(
                             false
                         }
                     },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Edit,
                     contentDescription = "Edit",
                     tint = if (isEditFocused) TvColors.TextPrimary else TvColors.TextSecondary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }
@@ -556,7 +562,7 @@ private fun SelectionDialog(
     selectedItems: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (List<String>) -> Unit,
-    availableItemLabels: Map<String, String> = emptyMap()
+    availableItemLabels: Map<String, String> = emptyMap(),
 ) {
     // Local state for the selection (ordered list)
     var localSelection by remember(selectedItems) { mutableStateOf(selectedItems.toMutableList()) }
@@ -573,7 +579,7 @@ private fun SelectionDialog(
                 .fillMaxWidth(0.85f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
-                .padding(24.dp)
+                .padding(24.dp),
         ) {
             // Title
             Text(
@@ -581,7 +587,7 @@ private fun SelectionDialog(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             // Scrollable list of items
@@ -589,7 +595,7 @@ private fun SelectionDialog(
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(availableItems.size) { index ->
                     val itemId = availableItems[index]
@@ -626,7 +632,7 @@ private fun SelectionDialog(
                                 }
                             }
                         },
-                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
                     )
                 }
             }
@@ -637,15 +643,15 @@ private fun SelectionDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(
                     onClick = onDismiss,
                     colors = ButtonDefaults.colors(
                         containerColor = TvColors.SurfaceLight,
-                        contentColor = TvColors.TextPrimary
+                        contentColor = TvColors.TextPrimary,
                     ),
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier.padding(end = 8.dp),
                 ) {
                     Text("Cancel")
                 }
@@ -654,8 +660,8 @@ private fun SelectionDialog(
                     onClick = { onConfirm(localSelection) },
                     colors = ButtonDefaults.colors(
                         containerColor = Color(0xFF34D399),
-                        contentColor = Color.White
-                    )
+                        contentColor = Color.White,
+                    ),
                 ) {
                     Text("Save")
                 }
@@ -674,7 +680,7 @@ private fun SelectionItem(
     onToggle: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -687,7 +693,7 @@ private fun SelectionItem(
                     isFocused -> TvColors.FocusedSurface
                     isSelected -> TvColors.SurfaceLight.copy(alpha = 0.5f)
                     else -> Color.Transparent
-                }
+                },
             )
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
@@ -703,7 +709,7 @@ private fun SelectionItem(
             }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Checkbox
         Checkbox(
@@ -711,8 +717,8 @@ private fun SelectionItem(
             onCheckedChange = null,
             colors = CheckboxDefaults.colors(
                 checkedColor = Color(0xFF34D399),
-                uncheckedColor = TvColors.TextSecondary
-            )
+                uncheckedColor = TvColors.TextSecondary,
+            ),
         )
 
         // Selection order number (if selected)
@@ -721,13 +727,13 @@ private fun SelectionItem(
                 modifier = Modifier
                     .size(24.dp)
                     .background(Color(0xFF34D399).copy(alpha = 0.2f), RoundedCornerShape(4.dp)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = "$selectionIndex",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF34D399)
+                    color = Color(0xFF34D399),
                 )
             }
         }
@@ -737,37 +743,37 @@ private fun SelectionItem(
             text = name,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) TvColors.TextPrimary else TvColors.TextSecondary,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         )
 
         // Reorder buttons (only when selected)
         if (isSelected) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(
                     onClick = onMoveUp,
                     enabled = canMoveUp,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ArrowUpward,
                         contentDescription = "Move up",
                         tint = if (canMoveUp) TvColors.TextPrimary else TvColors.TextSecondary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                 }
 
                 IconButton(
                     onClick = onMoveDown,
                     enabled = canMoveDown,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ArrowDownward,
                         contentDescription = "Move down",
                         tint = if (canMoveDown) TvColors.TextPrimary else TvColors.TextSecondary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

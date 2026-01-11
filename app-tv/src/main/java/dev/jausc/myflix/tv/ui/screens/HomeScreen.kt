@@ -1,3 +1,16 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "LabeledExpression",
+    "LambdaParameterInRestartableEffect",
+    "ModifierMissing",
+    "ParameterNaming",
+    "ComposableParamOrder",
+    "MutableStateAutoboxing",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -16,11 +29,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -89,7 +108,7 @@ fun HomeScreen(
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit = {},
     onDiscoverClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
 
@@ -114,7 +133,7 @@ fun HomeScreen(
 
     // Refresh trigger - increment to force reload
     var refreshTrigger by remember { mutableStateOf(0) }
-    
+
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
 
@@ -139,7 +158,7 @@ fun HomeScreen(
                     refreshTrigger++
                 }
             },
-            onGoToSeries = { seriesId -> onItemClick(seriesId) }
+            onGoToSeries = { seriesId -> onItemClick(seriesId) },
         )
     }
 
@@ -270,21 +289,21 @@ fun HomeScreen(
             nextUp = nextUp,
             recentMovies = recentMovies,
             recentShows = recentShows,
-            config = HeroContentBuilder.defaultConfig
+            config = HeroContentBuilder.defaultConfig,
         )
         isLoading = false
     }
-    
+
     // Initial load and refresh on screen revisit
     LaunchedEffect(refreshTrigger) {
         loadContent(showLoading = refreshTrigger == 0)
     }
-    
+
     // Refresh when screen becomes active
     LaunchedEffect(Unit) {
         refreshTrigger++
     }
-    
+
     // Background polling for updates
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -292,45 +311,43 @@ fun HomeScreen(
             loadContent(showLoading = false)
         }
     }
-    
+
     // Handle nav item selection
     val handleNavSelection: (NavItem) -> Unit = { item ->
         selectedNavItem = item
         when (item) {
-            NavItem.HOME -> { /* Already on home */ }
+            NavItem.HOME -> Unit // Already on home
             NavItem.SEARCH -> onSearchClick()
-            NavItem.MOVIES -> {
+            NavItem.MOVIES ->
                 LibraryFinder.findMoviesLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
-            }
-            NavItem.SHOWS -> {
+            NavItem.SHOWS ->
                 LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
-            }
             NavItem.DISCOVER -> onDiscoverClick()
-            NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
-            NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }
+            NavItem.COLLECTIONS -> Unit // TODO: Navigate to collections
+            NavItem.UNIVERSES -> Unit // TODO: Placeholder for future feature
             NavItem.SETTINGS -> onSettingsClick()
         }
     }
-    
+
     // Focus requesters
     val heroPlayFocusRequester = remember { FocusRequester() }
     val firstRowFocusRequester = remember { FocusRequester() }
     val topNavFocusRequester = remember { FocusRequester() }
     val homeButtonFocusRequester = remember { FocusRequester() }
-    
+
     // Track current backdrop URL for dynamic background colors
     var currentBackdropUrl by remember { mutableStateOf<String?>(null) }
-    
+
     // Extract gradient colors from current backdrop image
     val gradientColors = rememberGradientColors(currentBackdropUrl)
-    
+
     // Track if we've focused the hero
     val contentId = featuredItems.firstOrNull()?.id
     var heroFocused by remember(contentId) { mutableStateOf(false) }
-    
+
     // Content is ready when we have featured items
     val contentReady = !isLoading && featuredItems.isNotEmpty()
-    
+
     // Request focus on hero when content becomes ready
     LaunchedEffect(contentReady) {
         if (contentReady && !heroFocused) {
@@ -343,27 +360,28 @@ fun HomeScreen(
                 try {
                     heroPlayFocusRequester.requestFocus()
                     heroFocused = true
-                } catch (_: Exception) { }
+                } catch (_: Exception) {
+                }
             }
         }
     }
-    
+
     // Use Box to layer DynamicBackground behind everything
     Box(modifier = Modifier.fillMaxSize()) {
         // Dynamic gradient background (behind everything)
         DynamicBackground(
             gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
-        
+
         // Main Content (full screen, nav bar overlays on top)
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             // Show loading until we have hero content
             if (!contentReady && errorMessage == null) {
                 TvLoadingIndicator(
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.Center),
                 )
             } else if (errorMessage != null && featuredItems.isEmpty()) {
                 // Error state with retry
@@ -372,18 +390,18 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(32.dp)
+                        .padding(32.dp),
                 ) {
                     Text(
                         text = errorMessage ?: "Something went wrong",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TvColors.Error
+                        color = TvColors.Error,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = {
                             scope.launch { loadContent(showLoading = true) }
-                        }
+                        },
                     ) {
                         Text("Retry")
                     }
@@ -413,7 +431,7 @@ fun HomeScreen(
                             dialogParams = DialogParams(
                                 title = item.name,
                                 items = buildHomeDialogItems(item, dialogActions),
-                                fromLongClick = true
+                                fromLongClick = true,
                             )
                         },
                         hideWatchedFromRecent = hideWatchedFromRecent,
@@ -425,7 +443,7 @@ fun HomeScreen(
                         onItemFocused = { },
                         // Top navigation config
                         selectedNavItem = selectedNavItem,
-                        onNavItemSelected = handleNavSelection
+                        onNavItemSelected = handleNavSelection,
                     )
                 }
             }
@@ -436,7 +454,7 @@ fun HomeScreen(
     dialogParams?.let { params ->
         DialogPopup(
             params = params,
-            onDismissRequest = { dialogParams = null }
+            onDismissRequest = { dialogParams = null },
         )
     }
 }
@@ -449,7 +467,7 @@ private data class RowData(
     val title: String,
     val items: List<JellyfinItem>,
     val isWideCard: Boolean,
-    val accentColor: Color
+    val accentColor: Color,
 )
 
 /**
@@ -486,37 +504,45 @@ private fun HomeContent(
     onItemFocused: (JellyfinItem?) -> Unit = {},
     // Top navigation
     selectedNavItem: NavItem = NavItem.HOME,
-    onNavItemSelected: (NavItem) -> Unit = {}
+    onNavItemSelected: (NavItem) -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Filter watched items from Recently Added rows
     val filteredRecentEpisodes = if (hideWatchedFromRecent) {
         recentEpisodes.filter { it.userData?.played != true }
-    } else recentEpisodes
-    
+    } else {
+        recentEpisodes
+    }
+
     val filteredRecentShows = if (hideWatchedFromRecent) {
         recentShows.filter { it.userData?.played != true }
-    } else recentShows
-    
+    } else {
+        recentShows
+    }
+
     val filteredRecentMovies = if (hideWatchedFromRecent) {
         recentMovies.filter { it.userData?.played != true }
-    } else recentMovies
-    
+    } else {
+        recentMovies
+    }
+
     val filteredFeaturedItems = if (hideWatchedFromRecent) {
         featuredItems.filter { it.userData?.played != true }
-    } else featuredItems
-    
+    } else {
+        featuredItems
+    }
+
     // Get IDs of items in Continue Watching to filter from Next Up
     val continueWatchingIds = remember(continueWatching) {
         continueWatching.map { it.id }.toSet()
     }
-    
+
     // Filter Next Up to exclude items already in Continue Watching
     val filteredNextUp = remember(nextUp, continueWatchingIds) {
         nextUp.filter { it.id !in continueWatchingIds }
     }
-    
+
     // Genre row colors for variety
     val genreColors = listOf(
         Color(0xFF9C27B0), // Purple
@@ -540,21 +566,41 @@ private fun HomeContent(
     val rows = remember(
         filteredNextUp, continueWatching, filteredRecentEpisodes, filteredRecentShows, filteredRecentMovies,
         seasonPremieres, pinnedCollectionData, suggestions, genreRowsData,
-        showSeasonPremieres, showGenreRows, showCollections, showSuggestions
+        showSeasonPremieres, showGenreRows, showCollections, showSuggestions,
     ) {
         buildList {
-            if (continueWatching.isNotEmpty()) add(RowData("continue", "Continue Watching", continueWatching, false, TvColors.BluePrimary))
-            if (filteredNextUp.isNotEmpty()) add(RowData("next_up", "Next Up", filteredNextUp, false, TvColors.BlueAccent))
+            if (continueWatching.isNotEmpty()) {
+                add(
+                    RowData("continue", "Continue Watching", continueWatching, false, TvColors.BluePrimary),
+                )
+            }
+            if (filteredNextUp.isNotEmpty()) {
+                add(
+                    RowData("next_up", "Next Up", filteredNextUp, false, TvColors.BlueAccent),
+                )
+            }
 
-            if (filteredRecentEpisodes.isNotEmpty()) add(RowData("recent_ep", "Recently Added Episodes", filteredRecentEpisodes, false, TvColors.Success))
-            if (filteredRecentShows.isNotEmpty()) add(RowData("recent_shows", "Recently Added Shows", filteredRecentShows, false, Color(0xFFFBBF24)))
+            if (filteredRecentEpisodes.isNotEmpty()) {
+                add(
+                    RowData("recent_ep", "Recently Added Episodes", filteredRecentEpisodes, false, TvColors.Success),
+                )
+            }
+            if (filteredRecentShows.isNotEmpty()) {
+                add(
+                    RowData("recent_shows", "Recently Added Shows", filteredRecentShows, false, Color(0xFFFBBF24)),
+                )
+            }
 
             // Upcoming Episodes (after Recently Added Shows)
             if (showSeasonPremieres && seasonPremieres.isNotEmpty()) {
                 add(RowData("premieres", "Upcoming Episodes", seasonPremieres, false, Color(0xFF60A5FA)))
             }
 
-            if (filteredRecentMovies.isNotEmpty()) add(RowData("recent_movies", "Recently Added Movies", filteredRecentMovies, false, TvColors.BluePrimary))
+            if (filteredRecentMovies.isNotEmpty()) {
+                add(
+                    RowData("recent_movies", "Recently Added Movies", filteredRecentMovies, false, TvColors.BluePrimary),
+                )
+            }
 
             // Suggestions (above pinned collections and genres)
             if (showSuggestions && suggestions.isNotEmpty()) {
@@ -583,25 +629,25 @@ private fun HomeContent(
             }
         }
     }
-    
+
     // Position tracking (row and column)
     var position by remember { mutableStateOf(RowColumn(0, 0)) }
-    
+
     // Currently focused/previewed item from content rows
     var previewItem by remember { mutableStateOf<JellyfinItem?>(null) }
-    
+
     // Notify parent when preview item changes
     LaunchedEffect(previewItem) {
         onItemFocused(previewItem)
     }
-    
+
     // LazyColumn state and FocusRequesters for each row (exact Wholphin pattern)
     val listState = rememberLazyListState()
     val rowFocusRequesters = remember(rows.size) { List(rows.size) { FocusRequester() } }
-    
+
     // Track if first focus has happened
     var firstFocused by remember { mutableStateOf(false) }
-    
+
     // Function to clear preview and scroll back to top
     val clearPreviewAndScrollToTop: () -> Unit = {
         previewItem = null
@@ -609,20 +655,21 @@ private fun HomeContent(
             listState.animateScrollToItem(0)
         }
     }
-    
+
     // Initial focus when rows first load (exact Wholphin pattern)
     LaunchedEffect(rows) {
         if (!firstFocused && rows.isNotEmpty()) {
             val index = rows.indexOfFirst { it.items.isNotEmpty() }.coerceAtLeast(0)
             try {
                 rowFocusRequesters.getOrNull(index)?.requestFocus()
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
             delay(50)
             listState.scrollToItem(index)
             firstFocused = true
         }
     }
-    
+
     // KEY PATTERN: Restore focus and scroll on EVERY recomposition (e.g., returning from nav bar)
     // This runs BEFORE Compose's automatic bring-into-view can cause the shift
     LaunchedEffect(Unit) {
@@ -630,22 +677,23 @@ private fun HomeContent(
             val index = position.row.coerceIn(0, rows.size - 1)
             try {
                 rowFocusRequesters.getOrNull(index)?.requestFocus()
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
             delay(50)
             listState.scrollToItem(index)
         }
     }
-    
+
     // Animate scroll when position changes (exact Wholphin pattern)
     LaunchedEffect(position) {
         if (position.row >= 0 && position.row < rows.size) {
             listState.animateScrollToItem(position.row)
         }
     }
-    
+
     // Track the current hero display item for the backdrop layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
-    
+
     // Layered UI architecture:
     // Layer 1 (back): Hero backdrop - 90% of screen with edge fading
     // Layer 2 (middle): Hero info (37%) + Content rows (63%)
@@ -658,9 +706,9 @@ private fun HomeContent(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd)
+                .align(Alignment.TopEnd),
         )
-        
+
         // Layer 2: Hero info + Content rows
         Column(modifier = Modifier.fillMaxSize()) {
             // Hero Section - media info only (backdrop is in layer 1)
@@ -681,10 +729,10 @@ private fun HomeContent(
                         heroDisplayItem = item
                         onBackdropUrlChanged(backdropUrl)
                     },
-                    onPreviewClear = clearPreviewAndScrollToTop
+                    onPreviewClear = clearPreviewAndScrollToTop,
                 )
             }
-            
+
             // Content rows with focusRestorer
             LazyColumn(
                 state = listState,
@@ -695,15 +743,17 @@ private fun HomeContent(
                     .focusRestorer()
                     .onPreviewKeyEvent { keyEvent ->
                         // Intercept UP on first row to go to hero
-                        if (keyEvent.type == KeyEventType.KeyDown && 
+                        if (keyEvent.type == KeyEventType.KeyDown &&
                             keyEvent.key == Key.DirectionUp &&
-                            position.row == 0) {
+                            position.row == 0
+                        ) {
                             previewItem = null
                             coroutineScope.launch {
                                 listState.scrollToItem(0)
                                 try {
                                     heroPlayFocusRequester.requestFocus()
-                                } catch (_: Exception) { }
+                                } catch (_: Exception) {
+                                }
                             }
                             true
                         } else {
@@ -712,35 +762,35 @@ private fun HomeContent(
                     }
                     .focusProperties {
                         up = heroPlayFocusRequester
-                    }
-            ) {
-            itemsIndexed(rows, key = { _, row -> row.key }) { rowIndex, rowData ->
-                // Each row gets a focusRequester from the list (exact Wholphin pattern)
-                ItemRow(
-                    title = rowData.title,
-                    items = rowData.items,
-                    isWideCard = rowData.isWideCard,
-                    accentColor = rowData.accentColor,
-                    jellyfinClient = jellyfinClient,
-                    onItemClick = onItemClick,
-                    onItemLongClick = onItemLongClick,
-                    onCardFocused = { cardIndex, item ->
-                        previewItem = item
-                        position = RowColumn(rowIndex, cardIndex)
-                        // Mark as focused if this is the first card interaction
-                        if (!firstFocused) firstFocused = true
                     },
-                    firstCardFocusRequester = if (rowIndex == 0) firstRowFocusRequester else null,
-                    upFocusRequester = if (rowIndex == 0) heroPlayFocusRequester else null, // First row UP -> hero
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(rowFocusRequesters[rowIndex])
-                        .animateItem()
-                )
+            ) {
+                itemsIndexed(rows, key = { _, row -> row.key }) { rowIndex, rowData ->
+                    // Each row gets a focusRequester from the list (exact Wholphin pattern)
+                    ItemRow(
+                        title = rowData.title,
+                        items = rowData.items,
+                        isWideCard = rowData.isWideCard,
+                        accentColor = rowData.accentColor,
+                        jellyfinClient = jellyfinClient,
+                        onItemClick = onItemClick,
+                        onItemLongClick = onItemLongClick,
+                        onCardFocused = { cardIndex, item ->
+                            previewItem = item
+                            position = RowColumn(rowIndex, cardIndex)
+                            // Mark as focused if this is the first card interaction
+                            if (!firstFocused) firstFocused = true
+                        },
+                        firstCardFocusRequester = if (rowIndex == 0) firstRowFocusRequester else null,
+                        upFocusRequester = if (rowIndex == 0) heroPlayFocusRequester else null, // First row UP -> hero
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(rowFocusRequesters[rowIndex])
+                            .animateItem(),
+                    )
+                }
             }
-        }
         } // End Column
-        
+
         // Layer 3: Top Navigation Bar (with gradient overlay)
         TopNavigationBar(
             selectedItem = selectedNavItem,
@@ -748,7 +798,7 @@ private fun HomeContent(
             firstItemFocusRequester = topNavFocusRequester,
             homeButtonFocusRequester = homeButtonFocusRequester,
             downFocusRequester = heroPlayFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter),
         )
     }
 }
@@ -770,40 +820,40 @@ private fun ItemRow(
     onCardFocused: (Int, JellyfinItem) -> Unit,
     firstCardFocusRequester: FocusRequester?,
     upFocusRequester: FocusRequester? = null, // For first row: UP goes to hero
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
     // Single FocusRequester for focus restoration (exact Wholphin pattern)
     val firstFocus = remember { FocusRequester() }
-    
+
     // focusGroup makes LazyColumn see this row as ONE focus target
     // This prevents bring-into-view from scrolling to individual cards
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
             .padding(vertical = 8.dp)
-            .focusGroup()
+            .focusGroup(),
     ) {
         // Row header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(start = 10.dp, end = 32.dp)
+            modifier = Modifier.padding(start = 10.dp, end = 32.dp),
         ) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .height(24.dp)
-                    .background(accentColor, shape = MaterialTheme.shapes.small)
+                    .background(accentColor, shape = MaterialTheme.shapes.small),
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = TvColors.TextPrimary
+                color = TvColors.TextPrimary,
             )
         }
-        
+
         // LazyRow with focusRestorer (exact Wholphin pattern)
         LazyRow(
             state = lazyRowState,
@@ -811,7 +861,7 @@ private fun ItemRow(
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRestorer(firstFocus)
+                .focusRestorer(firstFocus),
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 // First card gets focusRequester (exact Wholphin pattern)
@@ -821,32 +871,38 @@ private fun ItemRow(
                         .then(
                             if (firstCardFocusRequester != null) {
                                 Modifier.focusRequester(firstCardFocusRequester)
-                            } else Modifier
+                            } else {
+                                Modifier
+                            },
                         )
                 } else {
                     Modifier
                 }
-                
+
                 // Apply upFocusRequester to ALL cards in this row (for first row -> hero)
                 val focusPropertiesModifier = if (upFocusRequester != null) {
                     cardModifier.focusProperties { up = upFocusRequester }
                 } else {
                     cardModifier
                 }
-                
+
                 val focusModifier = focusPropertiesModifier.onFocusChanged { state ->
                     if (state.isFocused) {
                         onCardFocused(index, item)
                     }
                 }
-                
+
                 if (isWideCard) {
                     val imageUrl = when {
                         item.type == "Episode" -> {
                             jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
                         }
                         !item.backdropImageTags.isNullOrEmpty() -> {
-                            jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull(), maxWidth = 600)
+                            jellyfinClient.getBackdropUrl(
+                                item.id,
+                                item.backdropImageTags?.firstOrNull(),
+                                maxWidth = 600,
+                            )
                         }
                         else -> {
                             jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
@@ -858,7 +914,7 @@ private fun ItemRow(
                         onClick = { onItemClick(item.id) },
                         showLabel = false,
                         onLongClick = { onItemLongClick(item) },
-                        modifier = focusModifier
+                        modifier = focusModifier,
                     )
                 } else {
                     // For portrait cards: use series poster for episodes, otherwise use item poster
@@ -874,7 +930,7 @@ private fun ItemRow(
                         onClick = { onItemClick(item.id) },
                         showLabel = false,
                         onLongClick = { onItemLongClick(item) },
-                        modifier = focusModifier
+                        modifier = focusModifier,
                     )
                 }
             }

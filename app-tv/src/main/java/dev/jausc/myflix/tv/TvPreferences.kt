@@ -11,77 +11,76 @@ import kotlinx.coroutines.flow.asStateFlow
  * Uses SharedPreferences for persistence.
  */
 class TvPreferences(context: Context) {
-
     private val prefs: SharedPreferences = context.getSharedPreferences(
         PREFS_NAME,
-        Context.MODE_PRIVATE
+        Context.MODE_PRIVATE,
     )
 
     // State flows for reactive updates
     private val _hideWatchedFromRecent = MutableStateFlow(
-        prefs.getBoolean(KEY_HIDE_WATCHED_FROM_RECENT, false)
+        prefs.getBoolean(KEY_HIDE_WATCHED_FROM_RECENT, false),
     )
     val hideWatchedFromRecent: StateFlow<Boolean> = _hideWatchedFromRecent.asStateFlow()
 
     private val _useMpvPlayer = MutableStateFlow(
-        prefs.getBoolean(KEY_USE_MPV_PLAYER, false)
+        prefs.getBoolean(KEY_USE_MPV_PLAYER, false),
     )
     val useMpvPlayer: StateFlow<Boolean> = _useMpvPlayer.asStateFlow()
 
     // Home Screen Row Preferences
     private val _showSeasonPremieres = MutableStateFlow(
-        prefs.getBoolean(KEY_SHOW_SEASON_PREMIERES, true)
+        prefs.getBoolean(KEY_SHOW_SEASON_PREMIERES, true),
     )
     val showSeasonPremieres: StateFlow<Boolean> = _showSeasonPremieres.asStateFlow()
 
     private val _showGenreRows = MutableStateFlow(
-        prefs.getBoolean(KEY_SHOW_GENRE_ROWS, false)
+        prefs.getBoolean(KEY_SHOW_GENRE_ROWS, false),
     )
     val showGenreRows: StateFlow<Boolean> = _showGenreRows.asStateFlow()
 
     private val _enabledGenres = MutableStateFlow(
-        loadEnabledGenres()
+        loadEnabledGenres(),
     )
     val enabledGenres: StateFlow<List<String>> = _enabledGenres.asStateFlow()
 
     private val _showCollections = MutableStateFlow(
-        prefs.getBoolean(KEY_SHOW_COLLECTIONS, true)
+        prefs.getBoolean(KEY_SHOW_COLLECTIONS, true),
     )
     val showCollections: StateFlow<Boolean> = _showCollections.asStateFlow()
 
     private val _pinnedCollections = MutableStateFlow(
-        loadPinnedCollections()
+        loadPinnedCollections(),
     )
     val pinnedCollections: StateFlow<List<String>> = _pinnedCollections.asStateFlow()
 
     private val _showSuggestions = MutableStateFlow(
-        prefs.getBoolean(KEY_SHOW_SUGGESTIONS, true)
+        prefs.getBoolean(KEY_SHOW_SUGGESTIONS, true),
     )
     val showSuggestions: StateFlow<Boolean> = _showSuggestions.asStateFlow()
 
     // Seerr Integration Preferences
     private val _seerrEnabled = MutableStateFlow(
-        prefs.getBoolean(KEY_SEERR_ENABLED, false)
+        prefs.getBoolean(KEY_SEERR_ENABLED, false),
     )
     val seerrEnabled: StateFlow<Boolean> = _seerrEnabled.asStateFlow()
 
     private val _seerrUrl = MutableStateFlow(
-        prefs.getString(KEY_SEERR_URL, null)
+        prefs.getString(KEY_SEERR_URL, null),
     )
     val seerrUrl: StateFlow<String?> = _seerrUrl.asStateFlow()
 
     private val _seerrAutoDetected = MutableStateFlow(
-        prefs.getBoolean(KEY_SEERR_AUTO_DETECTED, false)
+        prefs.getBoolean(KEY_SEERR_AUTO_DETECTED, false),
     )
     val seerrAutoDetected: StateFlow<Boolean> = _seerrAutoDetected.asStateFlow()
 
     private val _seerrApiKey = MutableStateFlow(
-        prefs.getString(KEY_SEERR_API_KEY, null)
+        prefs.getString(KEY_SEERR_API_KEY, null),
     )
     val seerrApiKey: StateFlow<String?> = _seerrApiKey.asStateFlow()
 
     private val _seerrSessionCookie = MutableStateFlow(
-        prefs.getString(KEY_SEERR_SESSION_COOKIE, null)
+        prefs.getString(KEY_SEERR_SESSION_COOKIE, null),
     )
     val seerrSessionCookie: StateFlow<String?> = _seerrSessionCookie.asStateFlow()
 

@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -26,7 +36,7 @@ fun DetailScreen(
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onEpisodeClick: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -77,9 +87,9 @@ fun DetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         val currentItem = item
         if (isLoading || currentItem == null) {
@@ -87,59 +97,62 @@ fun DetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
         } else {
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         AsyncImage(
-                            model = jellyfinClient.getPrimaryImageUrl(currentItem.id, currentItem.imageTags?.primary, 300),
+                            model = jellyfinClient.getPrimaryImageUrl(
+                                currentItem.id,
+                                currentItem.imageTags?.primary,
+                                300,
+                            ),
                             contentDescription = currentItem.name,
                             modifier = Modifier
                                 .width(150.dp)
                                 .aspectRatio(2f / 3f)
                                 .clip(MaterialTheme.shapes.medium),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
                         )
 
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
                                 text = currentItem.name,
-                                style = MaterialTheme.typography.headlineSmall
+                                style = MaterialTheme.typography.headlineSmall,
                             )
 
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 currentItem.productionYear?.let { year ->
                                     Text(
                                         text = year.toString(),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 currentItem.runtimeMinutes?.let { runtime ->
                                     Text(
-                                        text = "${runtime} min",
+                                        text = "$runtime min",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -148,13 +161,13 @@ fun DetailScreen(
                                 Text(
                                     text = "★ %.1f".format(rating),
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
                                 )
                             }
 
                             Button(
                                 onClick = onPlayClick,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = "Play")
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -169,7 +182,7 @@ fun DetailScreen(
                         Text(
                             text = overview,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -178,20 +191,20 @@ fun DetailScreen(
                     item {
                         Text(
                             text = "Seasons",
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
                         )
                     }
 
                     item {
                         LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(seasons, key = { it.id }) { season ->
                                 val isSelected = selectedSeason?.id == season.id
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = { selectedSeason = season },
-                                    label = { Text(season.name) }
+                                    label = { Text(season.name) },
                                 )
                             }
                         }
@@ -201,7 +214,7 @@ fun DetailScreen(
                         item {
                             Text(
                                 text = "Episodes",
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
                             )
                         }
 
@@ -209,7 +222,7 @@ fun DetailScreen(
                             EpisodeCard(
                                 episode = episode,
                                 imageUrl = jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary),
-                                onClick = { onEpisodeClick(episode.id) }
+                                onClick = { onEpisodeClick(episode.id) },
                             )
                         }
                     }
@@ -220,19 +233,15 @@ fun DetailScreen(
 }
 
 @Composable
-private fun EpisodeCard(
-    episode: JellyfinItem,
-    imageUrl: String,
-    onClick: () -> Unit
-) {
+private fun EpisodeCard(episode: JellyfinItem, imageUrl: String, onClick: () -> Unit) {
     ElevatedCard(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             AsyncImage(
                 model = imageUrl,
@@ -241,27 +250,27 @@ private fun EpisodeCard(
                     .width(120.dp)
                     .aspectRatio(16f / 9f)
                     .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
             )
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = "Episode ${episode.indexNumber ?: ""}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
                     text = episode.name,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 episode.runtimeMinutes?.let { runtime ->
                     Text(
-                        text = "${runtime} min",
+                        text = "$runtime min",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

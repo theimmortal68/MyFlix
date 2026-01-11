@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.background
@@ -69,18 +79,21 @@ import kotlinx.coroutines.launch
  * - Season selection for TV shows
  * - Play button if available in Jellyfin
  */
+@Suppress("UnusedParameter")
 @Composable
 fun SeerrDetailScreen(
     mediaType: String,
     tmdbId: Int,
     seerrClient: SeerrClient,
-    onPlayInJellyfin: ((String) -> Unit)? = null,  // Jellyfin item ID if available
-    onBack: () -> Unit
+    onPlayInJellyfin: ((String) -> Unit)? = null, // Jellyfin item ID if available
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
     var isLoading by remember { mutableStateOf(true) }
     var media by remember { mutableStateOf<SeerrMedia?>(null) }
+
+    @Suppress("UnusedPrivateProperty")
     var seasons by remember { mutableStateOf<List<SeerrSeason>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isRequesting by remember { mutableStateOf(false) }
@@ -125,7 +138,7 @@ fun SeerrDetailScreen(
                 val seasonsToRequest = if (selectedSeasons.isNotEmpty()) {
                     selectedSeasons.toList()
                 } else {
-                    null  // Request all seasons
+                    null // Request all seasons
                 }
                 seerrClient.requestTVShow(tmdbId, seasonsToRequest)
             }
@@ -158,13 +171,13 @@ fun SeerrDetailScreen(
                 } else {
                     false
                 }
-            }
+            },
     ) {
         when {
             isLoading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     TvLoadingIndicator(modifier = Modifier.size(48.dp))
                 }
@@ -173,11 +186,11 @@ fun SeerrDetailScreen(
             errorMessage != null && media == null -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = errorMessage ?: "Failed to load media",
-                        color = TvColors.Error
+                        color = TvColors.Error,
                     )
                 }
             }
@@ -187,21 +200,21 @@ fun SeerrDetailScreen(
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 32.dp)
+                    contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
                     // Hero section with backdrop
                     item {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(450.dp)
+                                .height(450.dp),
                         ) {
                             // Backdrop
                             AsyncImage(
                                 model = seerrClient.getBackdropUrl(currentMedia.backdropPath),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
                             )
 
                             // Gradient overlay
@@ -213,10 +226,10 @@ fun SeerrDetailScreen(
                                             colors = listOf(
                                                 Color.Transparent,
                                                 TvColors.Background.copy(alpha = 0.8f),
-                                                TvColors.Background
-                                            )
-                                        )
-                                    )
+                                                TvColors.Background,
+                                            ),
+                                        ),
+                                    ),
                             )
 
                             // Back button
@@ -226,13 +239,13 @@ fun SeerrDetailScreen(
                                     .align(Alignment.TopStart)
                                     .padding(24.dp),
                                 colors = ButtonDefaults.colors(
-                                    containerColor = TvColors.Surface.copy(alpha = 0.7f)
-                                )
+                                    containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                                ),
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                     contentDescription = "Back",
-                                    tint = TvColors.TextPrimary
+                                    tint = TvColors.TextPrimary,
                                 )
                             }
 
@@ -240,7 +253,7 @@ fun SeerrDetailScreen(
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
-                                    .padding(horizontal = 48.dp, vertical = 24.dp)
+                                    .padding(horizontal = 48.dp, vertical = 24.dp),
                             ) {
                                 // Poster
                                 AsyncImage(
@@ -250,7 +263,7 @@ fun SeerrDetailScreen(
                                         .width(150.dp)
                                         .height(225.dp)
                                         .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Crop,
                                 )
 
                                 Spacer(modifier = Modifier.width(24.dp))
@@ -261,7 +274,7 @@ fun SeerrDetailScreen(
                                         text = currentMedia.displayTitle,
                                         style = MaterialTheme.typography.headlineLarge,
                                         fontWeight = FontWeight.Bold,
-                                        color = TvColors.TextPrimary
+                                        color = TvColors.TextPrimary,
                                     )
 
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -269,13 +282,13 @@ fun SeerrDetailScreen(
                                     // Metadata row
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         currentMedia.year?.let { year ->
                                             Text(
                                                 text = year.toString(),
                                                 style = MaterialTheme.typography.bodyLarge,
-                                                color = TvColors.TextSecondary
+                                                color = TvColors.TextSecondary,
                                             )
                                         }
 
@@ -283,7 +296,7 @@ fun SeerrDetailScreen(
                                             Text(
                                                 text = "${runtime}m",
                                                 style = MaterialTheme.typography.bodyLarge,
-                                                color = TvColors.TextSecondary
+                                                color = TvColors.TextSecondary,
                                             )
                                         }
 
@@ -293,12 +306,12 @@ fun SeerrDetailScreen(
                                                     text = "%.1f".format(rating),
                                                     style = MaterialTheme.typography.bodyLarge,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFFFBBF24)
+                                                    color = Color(0xFFFBBF24),
                                                 )
                                                 Text(
                                                     text = "/10",
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = TvColors.TextSecondary
+                                                    color = TvColors.TextSecondary,
                                                 )
                                             }
                                         }
@@ -313,7 +326,7 @@ fun SeerrDetailScreen(
                                         Text(
                                             text = genres.joinToString(" • ") { it.name },
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = TvColors.TextSecondary
+                                            color = TvColors.TextSecondary,
                                         )
                                     }
 
@@ -327,13 +340,13 @@ fun SeerrDetailScreen(
                                                 Button(
                                                     onClick = { /* Play in Jellyfin */ },
                                                     colors = ButtonDefaults.colors(
-                                                        containerColor = Color(0xFF22C55E)
-                                                    )
+                                                        containerColor = Color(0xFF22C55E),
+                                                    ),
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Outlined.PlayArrow,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(20.dp)
+                                                        modifier = Modifier.size(20.dp),
                                                     )
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text("Play")
@@ -346,13 +359,13 @@ fun SeerrDetailScreen(
                                                     enabled = false,
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
-                                                        disabledContainerColor = Color(0xFFFBBF24).copy(alpha = 0.3f)
-                                                    )
+                                                        disabledContainerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
+                                                    ),
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Outlined.Schedule,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(20.dp)
+                                                        modifier = Modifier.size(20.dp),
                                                     )
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text("Requested")
@@ -364,20 +377,20 @@ fun SeerrDetailScreen(
                                                     onClick = { handleRequest() },
                                                     enabled = !isRequesting,
                                                     colors = ButtonDefaults.colors(
-                                                        containerColor = Color(0xFF8B5CF6)
-                                                    )
+                                                        containerColor = Color(0xFF8B5CF6),
+                                                    ),
                                                 ) {
                                                     if (isRequesting) {
                                                         TvLoadingIndicator(
                                                             modifier = Modifier.size(20.dp),
                                                             color = TvColors.TextPrimary,
-                                                            strokeWidth = 2.dp
+                                                            strokeWidth = 2.dp,
                                                         )
                                                     } else {
                                                         Icon(
                                                             imageVector = Icons.Outlined.Add,
                                                             contentDescription = null,
-                                                            modifier = Modifier.size(20.dp)
+                                                            modifier = Modifier.size(20.dp),
                                                         )
                                                     }
                                                     Spacer(modifier = Modifier.width(8.dp))
@@ -399,13 +412,13 @@ fun SeerrDetailScreen(
                                     text = "Overview",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TvColors.TextPrimary
+                                    color = TvColors.TextPrimary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = overview,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = TvColors.TextSecondary
+                                    color = TvColors.TextSecondary,
                                 )
                             }
                         }
@@ -419,13 +432,13 @@ fun SeerrDetailScreen(
                                     text = "Seasons",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TvColors.TextPrimary
+                                    color = TvColors.TextPrimary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "${currentMedia.numberOfSeasons} seasons • ${currentMedia.numberOfEpisodes ?: "?"} episodes",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = TvColors.TextSecondary
+                                    color = TvColors.TextSecondary,
                                 )
                             }
                         }
@@ -441,17 +454,17 @@ fun SeerrDetailScreen(
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = TvColors.TextPrimary,
-                                        modifier = Modifier.padding(horizontal = 48.dp)
+                                        modifier = Modifier.padding(horizontal = 48.dp),
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     LazyRow(
                                         contentPadding = PaddingValues(horizontal = 48.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
                                         items(cast.take(10)) { member ->
                                             CastCard(
                                                 member = member,
-                                                seerrClient = seerrClient
+                                                seerrClient = seerrClient,
                                             )
                                         }
                                     }
@@ -468,18 +481,18 @@ fun SeerrDetailScreen(
                             .align(Alignment.BottomCenter)
                             .padding(32.dp)
                             .background(Color(0xFF22C55E), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 24.dp, vertical = 12.dp)
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Outlined.Check,
                                 contentDescription = null,
-                                tint = Color.White
+                                tint = Color.White,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Request submitted successfully!",
-                                color = Color.White
+                                color = Color.White,
                             )
                         }
                     }
@@ -495,50 +508,47 @@ private fun StatusBadge(status: Int?) {
         SeerrMediaStatus.AVAILABLE -> Triple(
             Color(0xFF22C55E),
             Icons.Outlined.Check,
-            "Available"
+            "Available",
         )
         SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Triple(
             Color(0xFFFBBF24),
             Icons.Outlined.Schedule,
-            "Requested"
+            "Requested",
         )
         SeerrMediaStatus.PARTIALLY_AVAILABLE -> Triple(
             Color(0xFF60A5FA),
             Icons.Outlined.Check,
-            "Partial"
+            "Partial",
         )
-        else -> return  // Don't show badge for unknown/not requested
+        else -> return // Don't show badge for unknown/not requested
     }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .background(color.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = color
+            tint = color,
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = color
+            color = color,
         )
     }
 }
 
 @Composable
-private fun CastCard(
-    member: SeerrCastMember,
-    seerrClient: SeerrClient
-) {
+private fun CastCard(member: SeerrCastMember, seerrClient: SeerrClient,) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
+        modifier = Modifier.width(80.dp),
     ) {
         AsyncImage(
             model = seerrClient.getProfileUrl(member.profilePath),
@@ -546,21 +556,21 @@ private fun CastCard(
             modifier = Modifier
                 .size(80.dp)
                 .clip(CircleShape),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = member.name,
             style = MaterialTheme.typography.bodySmall,
             color = TvColors.TextPrimary,
-            maxLines = 1
+            maxLines = 1,
         )
         member.character?.let { character ->
             Text(
                 text = character,
                 style = MaterialTheme.typography.labelSmall,
                 color = TvColors.TextSecondary,
-                maxLines = 1
+                maxLines = 1,
             )
         }
     }

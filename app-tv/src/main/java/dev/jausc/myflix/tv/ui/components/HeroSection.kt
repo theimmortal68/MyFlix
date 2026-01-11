@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.animation.AnimatedContent
@@ -72,7 +82,7 @@ private val HERO_HEIGHT = 220.dp
 /**
  * Standalone hero backdrop layer for use behind content.
  * Placed at the HomeScreen level to extend behind content rows.
- * 
+ *
  * Features edge fading on left and bottom to blend with the UI.
  * The image fills 90% of the screen (matching 16:9 aspect ratio)
  * and fades to transparent at the edges.
@@ -82,13 +92,9 @@ private val HERO_HEIGHT = 220.dp
  * @param modifier Modifier for positioning and sizing
  */
 @Composable
-fun HeroBackdropLayer(
-    item: JellyfinItem?,
-    jellyfinClient: JellyfinClient,
-    modifier: Modifier = Modifier
-) {
+fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modifier: Modifier = Modifier,) {
     if (item == null) return
-    
+
     Box(modifier = modifier) {
         AnimatedContent(
             targetState = item,
@@ -97,10 +103,10 @@ fun HeroBackdropLayer(
                     fadeOut(animationSpec = tween(800))
             },
             label = "hero_backdrop_layer",
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) { currentItem ->
             val backdropUrl = buildBackdropUrl(currentItem, jellyfinClient)
-            
+
             AsyncImage(
                 model = backdropUrl,
                 contentDescription = currentItem.name,
@@ -136,7 +142,7 @@ fun HeroBackdropLayer(
                             ),
                             blendMode = BlendMode.DstIn,
                         )
-                    }
+                    },
             )
         }
     }
@@ -144,7 +150,7 @@ fun HeroBackdropLayer(
 
 /**
  * Hero section displaying featured media info (no backdrop - backdrop is separate layer).
- * 
+ *
  * When previewItem is set, displays that item instead of auto-rotating (preview mode).
  * Preview mode hides action buttons but keeps them focusable for navigation.
  *
@@ -173,23 +179,23 @@ fun HeroSection(
     downFocusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
     onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null,
-    onPreviewClear: (() -> Unit)? = null
+    onPreviewClear: (() -> Unit)? = null,
 ) {
     if (featuredItems.isEmpty() && previewItem == null) return
 
     var currentIndex by remember { mutableIntStateOf(0) }
     // Track if play button should have focus (to restore after rotation)
     var playButtonShouldHaveFocus by remember { mutableStateOf(false) }
-    
+
     // Use previewItem if set, otherwise use the rotating featured item
     val displayItem = previewItem ?: featuredItems.getOrNull(currentIndex) ?: return
     val isPreviewMode = previewItem != null
-    
+
     // Build backdrop URL for current item and notify parent
     val backdropUrl = remember(displayItem.id) {
         buildBackdropUrl(displayItem, jellyfinClient)
     }
-    
+
     // Notify parent when current item changes (for dynamic background colors)
     LaunchedEffect(displayItem.id) {
         onCurrentItemChanged?.invoke(displayItem, backdropUrl)
@@ -207,7 +213,7 @@ fun HeroSection(
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxWidth(),
     ) {
         // Content overlay (left side) - backdrop is in HeroBackdropLayer
         AnimatedContent(
@@ -216,7 +222,7 @@ fun HeroSection(
                 fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
                     fadeOut(animationSpec = tween(300))
             },
-            label = "hero_content"
+            label = "hero_content",
         ) { item ->
             // Always render content overlay with buttons - buttons are invisible in preview mode
             // but still focusable so up navigation works
@@ -233,7 +239,7 @@ fun HeroSection(
                     playButtonShouldHaveFocus = true
                     onPreviewClear?.invoke()
                 },
-                shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode
+                shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode,
             )
         }
     }
@@ -244,17 +250,20 @@ fun HeroSection(
  */
 private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient): String {
     // For episodes, use series backdrop if available
-    val backdropId = when {
-        !item.backdropImageTags.isNullOrEmpty() -> item.id
-        item.isEpisode && item.seriesId != null -> item.seriesId!!
-        else -> item.id
+    val backdropId = if (!item.backdropImageTags.isNullOrEmpty()) {
+        item.id
+    } else if (item.isEpisode && item.seriesId != null) {
+        item.seriesId!!
+    } else {
+        item.id
     }
-    
-    val tag = when {
-        !item.backdropImageTags.isNullOrEmpty() -> item.backdropImageTags!!.firstOrNull()
-        else -> null
+
+    val tag = if (!item.backdropImageTags.isNullOrEmpty()) {
+        item.backdropImageTags!!.firstOrNull()
+    } else {
+        null
     }
-    
+
     return jellyfinClient.getBackdropUrl(backdropId, tag, maxWidth = 1920)
 }
 
@@ -271,14 +280,14 @@ private fun HeroContentOverlay(
     upFocusRequester: FocusRequester? = null,
     isPreviewMode: Boolean = false,
     onButtonFocused: (() -> Unit)? = null,
-    shouldRestoreFocus: Boolean = false
+    shouldRestoreFocus: Boolean = false,
 ) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
             .fillMaxWidth(0.5f)
             .padding(start = 48.dp, top = 36.dp, bottom = 0.dp), // Adjusted for nav bar
-        verticalArrangement = Arrangement.Top
+        verticalArrangement = Arrangement.Top,
     ) {
         // Title and subtitle
         HeroTitleSection(item)
@@ -304,7 +313,7 @@ private fun HeroContentOverlay(
             upFocusRequester = upFocusRequester,
             isPreviewMode = isPreviewMode,
             onButtonFocused = onButtonFocused,
-            shouldRestoreFocus = shouldRestoreFocus
+            shouldRestoreFocus = shouldRestoreFocus,
         )
     }
 }
@@ -322,22 +331,22 @@ private fun HeroTitleSection(item: JellyfinItem) {
                 text = item.seriesName!!,
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
+                    fontSize = 24.sp,
                 ),
                 color = TvColors.TextPrimary,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
             // Episode name as subtitle (bumped up 1 from titleSmall)
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.titleSmall.copy(
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
                 ),
                 color = TvColors.TextPrimary,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         } else {
             // Non-episodes: just show the name as main title
@@ -345,11 +354,11 @@ private fun HeroTitleSection(item: JellyfinItem) {
                 text = item.name,
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
+                    fontSize = 24.sp,
                 ),
                 color = TvColors.TextPrimary,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -362,7 +371,7 @@ private fun HeroTitleSection(item: JellyfinItem) {
 private fun HeroRatingRow(item: JellyfinItem) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // Official rating badge (PG-13, TV-MA, etc.)
         item.officialRating?.let { rating ->
@@ -374,7 +383,7 @@ private fun HeroRatingRow(item: JellyfinItem) {
             Text(
                 text = year.toString(),
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary.copy(alpha = 0.9f) // Bright white
+                color = TvColors.TextPrimary.copy(alpha = 0.9f), // Bright white
             )
         }
 
@@ -414,15 +423,15 @@ private fun PremiereDateBadge(date: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f))
+            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f)),
     ) {
         Text(
             text = date,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             ),
             color = TvColors.TextPrimary,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
@@ -440,7 +449,7 @@ private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) 
             maxLines = if (isPreviewMode) 4 else 3,
             overflow = TextOverflow.Ellipsis,
             lineHeight = 18.sp,
-            modifier = Modifier.fillMaxWidth(0.8f)
+            modifier = Modifier.fillMaxWidth(0.8f),
         )
     }
 }
@@ -458,23 +467,24 @@ private fun HeroActionButtons(
     upFocusRequester: FocusRequester? = null,
     isPreviewMode: Boolean = false,
     onButtonFocused: (() -> Unit)? = null,
-    shouldRestoreFocus: Boolean = false
+    shouldRestoreFocus: Boolean = false,
 ) {
     // Alpha is 0 in preview mode (invisible but focusable)
     val buttonsAlpha = if (isPreviewMode) 0f else 1f
-    
+
     // Restore focus immediately when button is composed (if needed)
     LaunchedEffect(shouldRestoreFocus) {
         if (shouldRestoreFocus) {
             try {
                 playButtonFocusRequester.requestFocus()
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
         }
     }
-    
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.alpha(buttonsAlpha)
+        modifier = Modifier.alpha(buttonsAlpha),
     ) {
         // Play button - receives initial focus
         // Same colors as nav buttons: SurfaceElevated unfocused, BluePrimary focused
@@ -499,24 +509,24 @@ private fun HeroActionButtons(
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
             scale = ButtonDefaults.scale(
                 scale = 1f,
-                focusedScale = 1f // No scale change on focus
+                focusedScale = 1f, // No scale change on focus
             ),
             colors = ButtonDefaults.colors(
                 containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
                 contentColor = TvColors.TextPrimary,
                 focusedContainerColor = TvColors.BluePrimary,
-                focusedContentColor = Color.White
-            )
+                focusedContentColor = Color.White,
+            ),
         ) {
             Icon(
                 imageVector = Icons.Outlined.PlayArrow,
                 contentDescription = null,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(14.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "Play",
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
             )
         }
 
@@ -541,18 +551,18 @@ private fun HeroActionButtons(
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
             scale = ButtonDefaults.scale(
                 scale = 1f,
-                focusedScale = 1f // No scale change on focus
+                focusedScale = 1f, // No scale change on focus
             ),
             colors = ButtonDefaults.colors(
                 containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
                 contentColor = TvColors.TextPrimary,
                 focusedContainerColor = TvColors.BluePrimary,
-                focusedContentColor = Color.White
-            )
+                focusedContentColor = Color.White,
+            ),
         ) {
             Text(
                 text = "More Info",
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
@@ -568,15 +578,15 @@ private fun RatingBadge(text: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f))
+            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f)),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             ),
             color = TvColors.TextPrimary,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
@@ -588,20 +598,20 @@ private fun RatingBadge(text: String) {
 private fun StarRating(rating: Float) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Icon(
             imageVector = Icons.Outlined.Star,
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = Color(0xFFFFD700) // Gold color
+            tint = Color(0xFFFFD700), // Gold color
         )
         Text(
-            text = String.format("%.1f", rating),
+            text = String.format(java.util.Locale.US, "%.1f", rating),
             style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             ),
-            color = TvColors.TextPrimary
+            color = TvColors.TextPrimary,
         )
     }
 }
@@ -615,26 +625,26 @@ private fun StarRating(rating: Float) {
 private fun CriticRatingBadge(rating: Float) {
     val percentage = rating.roundToInt()
     val isFresh = percentage >= 60
-    
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // Tomato/Splat icon
         Icon(
             painter = painterResource(
-                id = if (isFresh) R.drawable.ic_rotten_tomatoes_fresh else R.drawable.ic_rotten_tomatoes_rotten
+                id = if (isFresh) R.drawable.ic_rotten_tomatoes_fresh else R.drawable.ic_rotten_tomatoes_rotten,
             ),
             contentDescription = if (isFresh) "Fresh" else "Rotten",
             modifier = Modifier.size(16.dp),
-            tint = Color.Unspecified // Use original icon colors
+            tint = Color.Unspecified, // Use original icon colors
         )
         Text(
             text = "$percentage%",
             style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             ),
-            color = TvColors.TextPrimary
+            color = TvColors.TextPrimary,
         )
     }
 }
@@ -651,11 +661,11 @@ private fun RuntimeDisplay(minutes: Int) {
         hours > 0 -> "${hours}h"
         else -> "${mins}m"
     }
-    
+
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall,
-        color = TvColors.TextPrimary.copy(alpha = 0.9f) // Bright white
+        color = TvColors.TextPrimary.copy(alpha = 0.9f), // Bright white
     )
 }
 
@@ -665,14 +675,12 @@ private fun RuntimeDisplay(minutes: Int) {
  * Shimmer loading placeholder for the hero section.
  */
 @Composable
-fun HeroSectionShimmer(
-    modifier: Modifier = Modifier
-) {
+fun HeroSectionShimmer(modifier: Modifier = Modifier,) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(HERO_HEIGHT)
-            .background(TvColors.SurfaceElevated)
+            .background(TvColors.SurfaceElevated),
     ) {
         // Placeholder content on left side
         Column(
@@ -680,7 +688,7 @@ fun HeroSectionShimmer(
                 .fillMaxHeight()
                 .fillMaxWidth(0.5f)
                 .padding(start = 48.dp, top = 32.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.Top
+            verticalArrangement = Arrangement.Top,
         ) {
             // Title placeholder
             Box(
@@ -688,14 +696,14 @@ fun HeroSectionShimmer(
                     .fillMaxWidth(0.7f)
                     .height(28.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(TvColors.TextSecondary.copy(alpha = 0.2f))
+                    .background(TvColors.TextSecondary.copy(alpha = 0.2f)),
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Rating row placeholder
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 repeat(4) {
                     Box(
@@ -703,30 +711,30 @@ fun HeroSectionShimmer(
                             .width(50.dp)
                             .height(16.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(TvColors.TextSecondary.copy(alpha = 0.15f))
+                            .background(TvColors.TextSecondary.copy(alpha = 0.15f)),
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Description placeholder
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .height(14.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(TvColors.TextSecondary.copy(alpha = 0.15f))
+                    .background(TvColors.TextSecondary.copy(alpha = 0.15f)),
             )
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
                     .height(14.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(TvColors.TextSecondary.copy(alpha = 0.15f))
+                    .background(TvColors.TextSecondary.copy(alpha = 0.15f)),
             )
         }
     }

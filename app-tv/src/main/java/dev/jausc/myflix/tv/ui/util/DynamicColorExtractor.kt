@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.util
 
 import android.content.Context
@@ -35,12 +45,12 @@ data class DynamicColors(
     val darkMutedColor: Color = TvColors.Background,
     val lightVibrantColor: Color = TvColors.BlueAccent,
     val lightMutedColor: Color = TvColors.SurfaceLight,
-    val isExtracted: Boolean = false
+    val isExtracted: Boolean = false,
 ) {
     companion object {
         val Default = DynamicColors()
     }
-    
+
     /**
      * Returns a darkened version of the dominant color suitable for backgrounds.
      * Ensures readability by maintaining a minimum darkness level.
@@ -51,7 +61,7 @@ data class DynamicColors(
         } else {
             TvColors.Background
         }
-    
+
     /**
      * Returns an accent color derived from the palette for buttons/highlights.
      */
@@ -61,7 +71,7 @@ data class DynamicColors(
         } else {
             TvColors.BluePrimary
         }
-    
+
     /**
      * Returns a surface color that's lighter than the background tint.
      */
@@ -75,7 +85,7 @@ data class DynamicColors(
 
 /**
  * Colors optimized for gradient backgrounds, extracted from backdrop images.
- * 
+ *
  * Layout of gradients:
  * ```
  * ┌────────────────────────────────────┐
@@ -96,17 +106,17 @@ data class GradientColors(
     /** Top-Right: vibrant -> lightVibrant (under backdrop image) */
     val tertiary: Color = Color.Unspecified,
     /** Whether colors were successfully extracted */
-    val isExtracted: Boolean = false
+    val isExtracted: Boolean = false,
 ) {
     companion object {
         val Default = GradientColors()
     }
-    
+
     /** True if any color was successfully extracted */
     val hasColors: Boolean
-        get() = primary != Color.Unspecified || 
-                secondary != Color.Unspecified || 
-                tertiary != Color.Unspecified
+        get() = primary != Color.Unspecified ||
+            secondary != Color.Unspecified ||
+            tertiary != Color.Unspecified
 }
 
 // Cache for extracted gradient colors to avoid re-extracting for the same images
@@ -120,35 +130,32 @@ private fun darkenColor(color: Color, factor: Float): Color {
         red = color.red * factor,
         green = color.green * factor,
         blue = color.blue * factor,
-        alpha = color.alpha
+        alpha = color.alpha,
     )
 }
 
 /**
  * Extracts colors from an image URL using Android's Palette API.
- * 
+ *
  * @param imageUrl URL of the image to extract colors from
  * @return DynamicColors with extracted palette or defaults if extraction fails
  */
-suspend fun extractColorsFromUrl(
-    context: Context,
-    imageUrl: String?
-): DynamicColors {
+suspend fun extractColorsFromUrl(context: Context, imageUrl: String?): DynamicColors {
     if (imageUrl.isNullOrBlank()) {
         return DynamicColors.Default
     }
-    
+
     return withContext(Dispatchers.IO) {
         try {
-            val loader = context.imageLoader  // Use Coil singleton
+            val loader = context.imageLoader // Use Coil singleton
             val request = ImageRequest.Builder(context)
                 .data(imageUrl)
                 .allowHardware(false)
                 .bitmapConfig(Bitmap.Config.ARGB_8888)
                 .build()
-            
+
             val result = loader.execute(request)
-            
+
             if (result is SuccessResult) {
                 // Coil 3: Convert Image -> Drawable -> Bitmap
                 val drawable = result.image.asDrawable(context.resources)
@@ -157,7 +164,7 @@ suspend fun extractColorsFromUrl(
             } else {
                 DynamicColors.Default
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             DynamicColors.Default
         }
     }
@@ -170,7 +177,7 @@ private fun extractColorsFromBitmap(bitmap: Bitmap): DynamicColors {
     val palette = Palette.from(bitmap)
         .maximumColorCount(16)
         .generate()
-    
+
     return DynamicColors(
         dominantColor = palette.getDominantColor(TvColors.Background.toArgb()).toComposeColor(),
         vibrantColor = palette.getVibrantColor(TvColors.BluePrimary.toArgb()).toComposeColor(),
@@ -179,7 +186,7 @@ private fun extractColorsFromBitmap(bitmap: Bitmap): DynamicColors {
         darkMutedColor = palette.getDarkMutedColor(TvColors.Background.toArgb()).toComposeColor(),
         lightVibrantColor = palette.getLightVibrantColor(TvColors.BlueAccent.toArgb()).toComposeColor(),
         lightMutedColor = palette.getLightMutedColor(TvColors.SurfaceLight.toArgb()).toComposeColor(),
-        isExtracted = true
+        isExtracted = true,
     )
 }
 
@@ -191,21 +198,19 @@ private fun Color.toArgb(): Int {
         (alpha * 255).toInt(),
         (red * 255).toInt(),
         (green * 255).toInt(),
-        (blue * 255).toInt()
+        (blue * 255).toInt(),
     )
 }
 
 /**
  * Converts ARGB int to Compose Color.
  */
-private fun Int.toComposeColor(): Color {
-    return Color(this)
-}
+private fun Int.toComposeColor(): Color = Color(this)
 
 /**
  * Composable that extracts dynamic colors from an image URL.
  * Returns a state that updates when the image changes.
- * 
+ *
  * Usage:
  * ```
  * val dynamicColors by rememberDynamicColors(backdropUrl)
@@ -216,7 +221,7 @@ private fun Int.toComposeColor(): Color {
 fun rememberDynamicColors(imageUrl: String?): DynamicColors {
     val context = LocalContext.current
     var colors by remember { mutableStateOf(DynamicColors.Default) }
-    
+
     LaunchedEffect(imageUrl) {
         colors = if (imageUrl != null) {
             extractColorsFromUrl(context, imageUrl)
@@ -224,14 +229,14 @@ fun rememberDynamicColors(imageUrl: String?): DynamicColors {
             DynamicColors.Default
         }
     }
-    
+
     return colors
 }
 
 /**
  * Composable that extracts gradient-optimized colors from an image URL.
  * Returns colors suitable for creating animated gradient backgrounds.
- * 
+ *
  * Usage:
  * ```
  * val gradientColors = rememberGradientColors(backdropUrl)
@@ -242,7 +247,7 @@ fun rememberDynamicColors(imageUrl: String?): DynamicColors {
 fun rememberGradientColors(imageUrl: String?): GradientColors {
     val context = LocalContext.current
     var colors by remember { mutableStateOf(GradientColors.Default) }
-    
+
     LaunchedEffect(imageUrl) {
         colors = if (imageUrl != null) {
             extractGradientColorsFromUrl(context, imageUrl)
@@ -250,7 +255,7 @@ fun rememberGradientColors(imageUrl: String?): GradientColors {
             GradientColors.Default
         }
     }
-    
+
     return colors
 }
 
@@ -258,33 +263,30 @@ fun rememberGradientColors(imageUrl: String?): GradientColors {
  * Extracts gradient-optimized colors from an image URL.
  * Uses caching to avoid re-extracting for the same images.
  */
-private suspend fun extractGradientColorsFromUrl(
-    context: Context,
-    imageUrl: String?
-): GradientColors {
+private suspend fun extractGradientColorsFromUrl(context: Context, imageUrl: String?): GradientColors {
     if (imageUrl.isNullOrBlank()) {
         return GradientColors.Default
     }
-    
+
     // Check cache first
     gradientColorCache.get(imageUrl)?.let { return it }
-    
+
     return withContext(Dispatchers.IO) {
         try {
-            val loader = context.imageLoader  // Use Coil singleton
+            val loader = context.imageLoader // Use Coil singleton
             val request = ImageRequest.Builder(context)
                 .data(imageUrl)
                 .allowHardware(false)
                 .bitmapConfig(Bitmap.Config.ARGB_8888)
                 .build()
-            
+
             val result = loader.execute(request)
-            
+
             if (result is SuccessResult) {
                 // Coil 3: Convert Image -> Drawable -> Bitmap
                 val drawable = result.image.asDrawable(context.resources)
                 val bitmap = drawable.toBitmap(config = Bitmap.Config.ARGB_8888)
-                
+
                 extractGradientColorsFromBitmap(bitmap).also {
                     // Cache the result
                     gradientColorCache.put(imageUrl, it)
@@ -292,7 +294,7 @@ private suspend fun extractGradientColorsFromUrl(
             } else {
                 GradientColors.Default
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             GradientColors.Default
         }
     }
@@ -301,7 +303,7 @@ private suspend fun extractGradientColorsFromUrl(
 /**
  * Extracts gradient-optimized colors from a bitmap.
  * Returns full opacity colors - alpha is applied when rendering.
- * 
+ *
  * - Primary (Bottom-Right): darkVibrant -> darkMuted (deep, rich colors)
  * - Secondary (Top-Left): Smart selection preferring cool tones (blue/purple/green)
  * - Tertiary (Top-Right): vibrant -> lightVibrant (bright accent)
@@ -310,18 +312,18 @@ private fun extractGradientColorsFromBitmap(bitmap: Bitmap): GradientColors {
     val palette = Palette.from(bitmap)
         .maximumColorCount(16)
         .generate()
-    
+
     val vibrant = palette.vibrantSwatch
     val darkVibrant = palette.darkVibrantSwatch
     val lightVibrant = palette.lightVibrantSwatch
     val muted = palette.mutedSwatch
     val darkMuted = palette.darkMutedSwatch
-    
+
     // Primary (Bottom-Right): Deep anchor color - full opacity
-    val primaryColor = (darkVibrant ?: darkMuted)?.let { 
+    val primaryColor = (darkVibrant ?: darkMuted)?.let {
         Color(it.rgb)
     } ?: Color.Unspecified
-    
+
     // Secondary (Top-Left): Smart selection preferring cool tones
     val secondarySwatch = when {
         vibrant != null && isCoolColor(vibrant) -> vibrant
@@ -330,20 +332,20 @@ private fun extractGradientColorsFromBitmap(bitmap: Bitmap): GradientColors {
         muted != null -> muted
         else -> null
     }
-    val secondaryColor = secondarySwatch?.let { 
+    val secondaryColor = secondarySwatch?.let {
         Color(it.rgb)
     } ?: Color.Unspecified
-    
+
     // Tertiary (Top-Right): Bright accent color
-    val tertiaryColor = (vibrant ?: lightVibrant)?.let { 
+    val tertiaryColor = (vibrant ?: lightVibrant)?.let {
         Color(it.rgb)
     } ?: Color.Unspecified
-    
+
     return GradientColors(
         primary = primaryColor,
         secondary = secondaryColor,
         tertiary = tertiaryColor,
-        isExtracted = true
+        isExtracted = true,
     )
 }
 
@@ -355,5 +357,5 @@ private fun isCoolColor(swatch: Palette.Swatch): Boolean {
     val r = (rgb shr 16) and 0xFF
     val g = (rgb shr 8) and 0xFF
     val b = rgb and 0xFF
-    return b > r && (b + g) > (r * 1.5f)
+    return b > r && b + g > r * 1.5f
 }

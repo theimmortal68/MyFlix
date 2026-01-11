@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.foundation.BorderStroke
@@ -15,18 +25,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.Color
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.formattedPremiereDate
-import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Standard card sizes used throughout the app.
  * These should be used consistently unless specifically overridden.
- * 
+ *
  * Sizing is calculated to fit exact number of cards on screen:
  * - Portrait cards (140dp): 7 cards fit across with 8dp padding
  * - Landscape cards (210dp): 4 cards fit across with 16dp spacing
@@ -34,7 +40,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 object CardSizes {
     /** Portrait card width (2:3 aspect ratio) - sized for 7 cards across screen */
     val MediaCardWidth = 120.dp
-    
+
     /** Landscape card width (16:9 aspect ratio) - for episode thumbnails */
     val WideMediaCardWidth = 210.dp
 }
@@ -51,7 +57,7 @@ fun MediaCard(
     modifier: Modifier = Modifier,
     showLabel: Boolean = true,
     onLongClick: (() -> Unit)? = null,
-    onItemFocused: ((JellyfinItem) -> Unit)? = null
+    onItemFocused: ((JellyfinItem) -> Unit)? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -67,27 +73,27 @@ fun MediaCard(
                 }
             },
         shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
         ),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface
+            focusedContainerColor = TvColors.FocusedSurface,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = MaterialTheme.shapes.medium
-            )
+                shape = MaterialTheme.shapes.medium,
+            ),
         ),
         scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f
-        )
+            focusedScale = 1f,
+        ),
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(2f / 3f)
+                    .aspectRatio(2f / 3f),
             ) {
                 AsyncImage(
                     model = imageUrl,
@@ -95,7 +101,7 @@ fun MediaCard(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
                 )
 
                 if (item.progressPercent > 0f && item.progressPercent < 1f) {
@@ -103,18 +109,18 @@ fun MediaCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(4.dp)
-                            .align(Alignment.BottomCenter)
+                            .align(Alignment.BottomCenter),
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(TvColors.Surface.copy(alpha = 0.7f))
+                                .background(TvColors.Surface.copy(alpha = 0.7f)),
                         )
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(item.progressPercent)
-                                .background(TvColors.BluePrimary)
+                                .background(TvColors.BluePrimary),
                         )
                     }
                 }
@@ -124,7 +130,7 @@ fun MediaCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp)
+                        .padding(12.dp),
                 ) {
                     Text(
                         text = item.name,
@@ -132,13 +138,13 @@ fun MediaCard(
                         color = TvColors.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = if (isFocused) Modifier.basicMarquee() else Modifier
+                        modifier = if (isFocused) Modifier.basicMarquee() else Modifier,
                     )
                     item.productionYear?.let { year ->
                         Text(
                             text = year.toString(),
                             style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary
+                            color = TvColors.TextSecondary,
                         )
                     }
                 }
@@ -160,7 +166,7 @@ fun WideMediaCard(
     modifier: Modifier = Modifier,
     showLabel: Boolean = true,
     onLongClick: (() -> Unit)? = null,
-    onItemFocused: ((JellyfinItem) -> Unit)? = null
+    onItemFocused: ((JellyfinItem) -> Unit)? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -176,27 +182,27 @@ fun WideMediaCard(
                 }
             },
         shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
         ),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface
+            focusedContainerColor = TvColors.FocusedSurface,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = MaterialTheme.shapes.medium
-            )
+                shape = MaterialTheme.shapes.medium,
+            ),
         ),
         scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f
-        )
+            focusedScale = 1f,
+        ),
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(16f / 9f),
             ) {
                 AsyncImage(
                     model = imageUrl,
@@ -204,7 +210,7 @@ fun WideMediaCard(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
                 )
 
                 // Progress bar at bottom
@@ -213,18 +219,18 @@ fun WideMediaCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(4.dp)
-                            .align(Alignment.BottomCenter)
+                            .align(Alignment.BottomCenter),
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(TvColors.Surface.copy(alpha = 0.7f))
+                                .background(TvColors.Surface.copy(alpha = 0.7f)),
                         )
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(item.progressPercent)
-                                .background(TvColors.BluePrimary)
+                                .background(TvColors.BluePrimary),
                         )
                     }
                 }
@@ -234,7 +240,7 @@ fun WideMediaCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp)
+                        .padding(12.dp),
                 ) {
                     // Series name (if episode) - scrolls when focused
                     item.seriesName?.let { seriesName ->
@@ -245,7 +251,7 @@ fun WideMediaCard(
                             color = TvColors.BlueAccent,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = if (isFocused) Modifier.basicMarquee() else Modifier
+                            modifier = if (isFocused) Modifier.basicMarquee() else Modifier,
                         )
                     }
 
@@ -256,7 +262,7 @@ fun WideMediaCard(
                         color = TvColors.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = if (isFocused) Modifier.basicMarquee() else Modifier
+                        modifier = if (isFocused) Modifier.basicMarquee() else Modifier,
                     )
                 }
             }

@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -23,11 +33,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(
-    jellyfinClient: JellyfinClient,
-    onItemClick: (String) -> Unit,
-    onBack: () -> Unit
-) {
+fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, onBack: () -> Unit,) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
@@ -50,25 +56,29 @@ fun SearchScreen(
                         },
                         trailingIcon = {
                             if (query.isNotEmpty()) {
-                                IconButton(onClick = { query = ""; results = emptyList(); hasSearched = false }) {
+                                IconButton(onClick = {
+                                    query = ""
+                                    results = emptyList()
+                                    hasSearched = false
+                                }) {
                                     Icon(Icons.Default.Clear, contentDescription = "Clear")
                                 }
                             }
-                        }
+                        },
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
         ) {
             Button(
                 onClick = {
@@ -86,12 +96,12 @@ fun SearchScreen(
                 enabled = query.isNotBlank() && !isSearching,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(16.dp),
             ) {
                 if (isSearching) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
                     Text("Search")
@@ -102,7 +112,7 @@ fun SearchScreen(
                 isSearching -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
@@ -110,12 +120,12 @@ fun SearchScreen(
                 hasSearched && results.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "No results found",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -125,11 +135,11 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(results, key = { it.id }) { item ->
                             ElevatedCard(
-                                onClick = { onItemClick(item.id) }
+                                onClick = { onItemClick(item.id) },
                             ) {
                                 Column {
                                     AsyncImage(
@@ -139,20 +149,20 @@ fun SearchScreen(
                                             .fillMaxWidth()
                                             .aspectRatio(2f / 3f)
                                             .clip(MaterialTheme.shapes.medium),
-                                        contentScale = ContentScale.Crop
+                                        contentScale = ContentScale.Crop,
                                     )
                                     Column(modifier = Modifier.padding(8.dp)) {
                                         Text(
                                             text = item.name,
                                             style = MaterialTheme.typography.bodyMedium,
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                         item.productionYear?.let { year ->
                                             Text(
                                                 text = year.toString(),
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     }
@@ -164,12 +174,12 @@ fun SearchScreen(
                 else -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "Enter a search term",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.background
@@ -31,19 +41,19 @@ import androidx.compose.ui.zIndex
 import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import kotlinx.coroutines.isActive
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
-import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.MobileContentRow
 import dev.jausc.myflix.mobile.ui.components.MobileHeroSection
 import dev.jausc.myflix.mobile.ui.components.MobileNavItem
 import dev.jausc.myflix.mobile.ui.components.MobileRowColors
 import dev.jausc.myflix.mobile.ui.components.MobileRowData
 import dev.jausc.myflix.mobile.ui.components.MobileTopBar
+import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.buildHomeMenuItems
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Background polling interval in milliseconds */
@@ -74,7 +84,7 @@ fun HomeScreen(
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit,
     onDiscoverClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
 
@@ -96,7 +106,7 @@ fun HomeScreen(
                     jellyfinClient.setFavorite(itemId, favorite)
                 }
             },
-            onGoToSeries = { seriesId -> onItemClick(seriesId) }
+            onGoToSeries = { seriesId -> onItemClick(seriesId) },
         )
     }
 
@@ -111,15 +121,15 @@ fun HomeScreen(
         popupMenuParams = BottomSheetParams(
             title = item.name,
             subtitle = subtitle,
-            items = buildHomeMenuItems(item, menuActions)
+            items = buildHomeMenuItems(item, menuActions),
         )
     }
-    
+
     // Track configuration changes for responsive layout
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
     val screenHeightDp = configuration.screenHeightDp
-    
+
     // Use configuration as key to trigger recomposition on screen changes
     val configKey = remember(screenWidthDp, screenHeightDp) {
         "$screenWidthDp-$screenHeightDp"
@@ -279,7 +289,7 @@ fun HomeScreen(
             nextUp = nextUp,
             recentMovies = recentMovies,
             recentShows = recentShows,
-            config = HeroContentBuilder.mobileConfig
+            config = HeroContentBuilder.mobileConfig,
         )
 
         isLoading = false
@@ -291,7 +301,7 @@ fun HomeScreen(
             loadContent(showLoading = true)
         }
     }
-    
+
     // Background polling for updates
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -299,19 +309,17 @@ fun HomeScreen(
             loadContent(showLoading = false)
         }
     }
-    
+
     // Handle navigation selection
     val handleNavSelection: (MobileNavItem) -> Unit = { item ->
         selectedNavItem = item
         when (item) {
-            MobileNavItem.HOME -> { /* Already on home */ }
+            MobileNavItem.HOME -> Unit // Already on home
             MobileNavItem.SEARCH -> onSearchClick()
-            MobileNavItem.MOVIES -> {
+            MobileNavItem.MOVIES ->
                 LibraryFinder.findMoviesLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
-            }
-            MobileNavItem.SHOWS -> {
+            MobileNavItem.SHOWS ->
                 LibraryFinder.findShowsLibrary(libraries)?.let { onLibraryClick(it.id, it.name) }
-            }
             MobileNavItem.DISCOVER -> onDiscoverClick()
             MobileNavItem.SETTINGS -> onSettingsClick()
         }
@@ -321,78 +329,92 @@ fun HomeScreen(
     val rows = remember(
         continueWatching, nextUp, recentEpisodes, recentShows, recentMovies,
         seasonPremieres, collections, suggestions, genreRowsData, pinnedCollectionsData,
-        showSeasonPremieres, showGenreRows, showCollections, showSuggestions, pinnedCollections
+        showSeasonPremieres, showGenreRows, showCollections, showSuggestions, pinnedCollections,
     ) {
         buildList {
             if (continueWatching.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "continue",
-                    title = "Continue Watching",
-                    items = continueWatching,
-                    isWideCard = true,
-                    accentColor = MobileRowColors.ContinueWatching
-                ))
+                add(
+                    MobileRowData(
+                        key = "continue",
+                        title = "Continue Watching",
+                        items = continueWatching,
+                        isWideCard = true,
+                        accentColor = MobileRowColors.ContinueWatching,
+                    ),
+                )
             }
             if (nextUp.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "nextup",
-                    title = "Next Up",
-                    items = nextUp,
-                    isWideCard = true,
-                    accentColor = MobileRowColors.NextUp
-                ))
+                add(
+                    MobileRowData(
+                        key = "nextup",
+                        title = "Next Up",
+                        items = nextUp,
+                        isWideCard = true,
+                        accentColor = MobileRowColors.NextUp,
+                    ),
+                )
             }
 
             if (recentEpisodes.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "episodes",
-                    title = "Recently Added Episodes",
-                    items = recentEpisodes,
-                    isWideCard = true,
-                    accentColor = MobileRowColors.RecentlyAdded
-                ))
+                add(
+                    MobileRowData(
+                        key = "episodes",
+                        title = "Recently Added Episodes",
+                        items = recentEpisodes,
+                        isWideCard = true,
+                        accentColor = MobileRowColors.RecentlyAdded,
+                    ),
+                )
             }
             if (recentShows.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "shows",
-                    title = "Recently Added Shows",
-                    items = recentShows,
-                    isWideCard = false,
-                    accentColor = MobileRowColors.Shows
-                ))
+                add(
+                    MobileRowData(
+                        key = "shows",
+                        title = "Recently Added Shows",
+                        items = recentShows,
+                        isWideCard = false,
+                        accentColor = MobileRowColors.Shows,
+                    ),
+                )
             }
 
             // Upcoming Episodes (season premieres) - show series poster with episode badge and air date
             if (showSeasonPremieres && seasonPremieres.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "premieres",
-                    title = "Upcoming Episodes",
-                    items = seasonPremieres,
-                    isWideCard = false,  // Use series poster instead of episode thumb
-                    accentColor = MobileRowColors.Premieres,
-                    isUpcomingEpisodes = true
-                ))
+                add(
+                    MobileRowData(
+                        key = "premieres",
+                        title = "Upcoming Episodes",
+                        items = seasonPremieres,
+                        isWideCard = false, // Use series poster instead of episode thumb
+                        accentColor = MobileRowColors.Premieres,
+                        isUpcomingEpisodes = true,
+                    ),
+                )
             }
 
             if (recentMovies.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "movies",
-                    title = "Recently Added Movies",
-                    items = recentMovies,
-                    isWideCard = false,
-                    accentColor = MobileRowColors.Movies
-                ))
+                add(
+                    MobileRowData(
+                        key = "movies",
+                        title = "Recently Added Movies",
+                        items = recentMovies,
+                        isWideCard = false,
+                        accentColor = MobileRowColors.Movies,
+                    ),
+                )
             }
 
             // Suggestions (before collections and genres)
             if (showSuggestions && suggestions.isNotEmpty()) {
-                add(MobileRowData(
-                    key = "suggestions",
-                    title = "You Might Like",
-                    items = suggestions,
-                    isWideCard = false,
-                    accentColor = MobileRowColors.Suggestions
-                ))
+                add(
+                    MobileRowData(
+                        key = "suggestions",
+                        title = "You Might Like",
+                        items = suggestions,
+                        isWideCard = false,
+                        accentColor = MobileRowColors.Suggestions,
+                    ),
+                )
             }
 
             // Pinned collection rows (each pinned collection shows its items)
@@ -401,13 +423,15 @@ fun HomeScreen(
                     val (collectionName, items) = pair
                     if (items.isNotEmpty()) {
                         val color = MobileRowColors.pinnedCollectionColors[index % MobileRowColors.pinnedCollectionColors.size]
-                        add(MobileRowData(
-                            key = "pinned_$collectionId",
-                            title = collectionName,
-                            items = items,
-                            isWideCard = false,
-                            accentColor = color
-                        ))
+                        add(
+                            MobileRowData(
+                                key = "pinned_$collectionId",
+                                title = collectionName,
+                                items = items,
+                                isWideCard = false,
+                                accentColor = color,
+                            ),
+                        )
                     }
                 }
             }
@@ -417,13 +441,15 @@ fun HomeScreen(
                 genreRowsData.entries.forEachIndexed { index, (genreName, items) ->
                     if (items.isNotEmpty()) {
                         val color = MobileRowColors.genreColors[index % MobileRowColors.genreColors.size]
-                        add(MobileRowData(
-                            key = "genre_$genreName",
-                            title = genreName,
-                            items = items,
-                            isWideCard = false,
-                            accentColor = color
-                        ))
+                        add(
+                            MobileRowData(
+                                key = "genre_$genreName",
+                                title = genreName,
+                                items = items,
+                                isWideCard = false,
+                                accentColor = color,
+                            ),
+                        )
                     }
                 }
             }
@@ -435,13 +461,13 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.background),
         ) {
             if (isLoading) {
                 // Loading state
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
                 }
@@ -449,23 +475,23 @@ fun HomeScreen(
                 // Error state with retry
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(32.dp)
+                        modifier = Modifier.padding(32.dp),
                     ) {
                         Text(
                             text = errorMessage ?: "Something went wrong",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = {
                                 scope.launch { loadContent(showLoading = true) }
-                            }
+                            },
                         ) {
                             Text("Retry")
                         }
@@ -475,7 +501,7 @@ fun HomeScreen(
                 // Main content - keyed to configuration for responsive updates
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 32.dp)
+                    contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
                     // Hero section
                     item(key = "hero") {
@@ -483,10 +509,10 @@ fun HomeScreen(
                             featuredItems = featuredItems,
                             jellyfinClient = jellyfinClient,
                             onItemClick = onItemClick,
-                            onPlayClick = onPlayClick  // Now goes to player
+                            onPlayClick = onPlayClick, // Now goes to player
                         )
                     }
-                    
+
                     // Content rows
                     items(rows, key = { it.key }) { rowData ->
                         MobileContentRow(
@@ -497,7 +523,7 @@ fun HomeScreen(
                             onItemLongClick = handleItemLongClick,
                             accentColor = rowData.accentColor,
                             isWideCard = rowData.isWideCard,
-                            isUpcomingEpisodes = rowData.isUpcomingEpisodes
+                            isUpcomingEpisodes = rowData.isUpcomingEpisodes,
                         )
                     }
                 }
@@ -506,18 +532,18 @@ fun HomeScreen(
                 popupMenuParams?.let { params ->
                     PopupMenu(
                         params = params,
-                        onDismiss = { popupMenuParams = null }
+                        onDismiss = { popupMenuParams = null },
                     )
                 }
             }
-            
+
             // Top bar overlay (always visible over hero) - zIndex ensures touch events work
             MobileTopBar(
                 selectedItem = selectedNavItem,
                 onItemSelected = handleNavSelection,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(1f)
+                    .zIndex(1f),
             )
         }
     }

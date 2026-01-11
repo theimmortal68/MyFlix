@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.components
 
 import android.content.Context
@@ -16,7 +26,7 @@ class VoiceSpeechHelper(
     private val context: Context,
     private val onResult: (String) -> Unit,
     private val onListening: (Boolean) -> Unit,
-    private val onError: (String) -> Unit
+    private val onError: (String) -> Unit,
 ) {
     companion object {
         private const val TAG = "VoiceSpeechHelper"
@@ -28,9 +38,7 @@ class VoiceSpeechHelper(
     /**
      * Check if speech recognition is available on this device.
      */
-    fun isAvailable(): Boolean {
-        return SpeechRecognizer.isRecognitionAvailable(context)
-    }
+    fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
     /**
      * Start listening for speech input.

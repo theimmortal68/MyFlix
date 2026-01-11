@@ -6,14 +6,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AuthResponse(
     @SerialName("AccessToken") val accessToken: String,
-    @SerialName("User") val user: JellyfinUser
+    @SerialName("User") val user: JellyfinUser,
 )
 
 @Serializable
 data class JellyfinUser(
     @SerialName("Id") val id: String,
     @SerialName("Name") val name: String,
-    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null
+    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
 )
 
 @Serializable
@@ -21,13 +21,13 @@ data class ServerInfo(
     @SerialName("ServerName") val serverName: String,
     @SerialName("Version") val version: String? = null,
     @SerialName("Id") val id: String? = null,
-    @SerialName("LocalAddress") val localAddress: String? = null
+    @SerialName("LocalAddress") val localAddress: String? = null,
 )
 
 @Serializable
 data class ItemsResponse(
     @SerialName("Items") val items: List<JellyfinItem>,
-    @SerialName("TotalRecordCount") val totalRecordCount: Int
+    @SerialName("TotalRecordCount") val totalRecordCount: Int,
 )
 
 @Serializable
@@ -53,14 +53,14 @@ data class JellyfinItem(
     // CollectionType is returned for library views (e.g., "movies", "tvshows")
     @SerialName("CollectionType") val collectionType: String? = null,
     // PremiereDate for upcoming episodes (ISO 8601 format)
-    @SerialName("PremiereDate") val premiereDate: String? = null
+    @SerialName("PremiereDate") val premiereDate: String? = null,
 )
 
 @Serializable
 data class ImageTags(
     @SerialName("Primary") val primary: String? = null,
     @SerialName("Thumb") val thumb: String? = null,
-    @SerialName("Backdrop") val backdrop: String? = null
+    @SerialName("Backdrop") val backdrop: String? = null,
 )
 
 @Serializable
@@ -68,7 +68,7 @@ data class UserData(
     @SerialName("PlaybackPositionTicks") val playbackPositionTicks: Long = 0,
     @SerialName("PlayCount") val playCount: Int = 0,
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
-    @SerialName("Played") val played: Boolean = false
+    @SerialName("Played") val played: Boolean = false,
 )
 
 @Serializable
@@ -76,7 +76,7 @@ data class MediaSource(
     @SerialName("Id") val id: String,
     @SerialName("Path") val path: String? = null,
     @SerialName("Container") val container: String? = null,
-    @SerialName("MediaStreams") val mediaStreams: List<MediaStream>? = null
+    @SerialName("MediaStreams") val mediaStreams: List<MediaStream>? = null,
 )
 
 @Serializable
@@ -96,13 +96,13 @@ data class MediaStream(
     @SerialName("BitRate") val bitRate: Long? = null,
     @SerialName("DisplayTitle") val displayTitle: String? = null,
     // Audio-specific fields
-    @SerialName("Channels") val channels: Int? = null
+    @SerialName("Channels") val channels: Int? = null,
 )
 
 @Serializable
 data class PlaybackInfoResponse(
     @SerialName("MediaSources") val mediaSources: List<MediaSource>,
-    @SerialName("PlaySessionId") val playSessionId: String? = null
+    @SerialName("PlaySessionId") val playSessionId: String? = null,
 )
 
 val JellyfinItem.isMovie: Boolean get() = type == "Movie"
@@ -121,7 +121,7 @@ val JellyfinItem.isUpcomingEpisode: Boolean
             val instant = java.time.Instant.parse(dateStr)
             val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
             localDate.isAfter(java.time.LocalDate.now()) || localDate.isEqual(java.time.LocalDate.now())
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -137,7 +137,7 @@ val JellyfinItem.formattedPremiereDate: String?
             val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
             val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d")
             localDate.format(formatter)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -164,40 +164,42 @@ val JellyfinItem.videoStream: MediaStream?
 val JellyfinItem.isDolbyVision: Boolean
     get() {
         val video = videoStream ?: return false
-        
+
         // Check VideoRangeType (most reliable - Jellyfin provides this)
         val rangeType = video.videoRangeType?.lowercase() ?: ""
         if (rangeType.contains("dolby") || rangeType.contains("dovi") || rangeType == "dv") {
             return true
         }
-        
+
         // Check VideoRange
         val range = video.videoRange?.lowercase() ?: ""
         if (range.contains("dolby") || range.contains("dovi")) {
             return true
         }
-        
+
         // Check DoVi title field
         if (!video.videoDoViTitle.isNullOrBlank()) {
             return true
         }
-        
+
         // Check profile for DV indicators
         val profile = video.profile?.lowercase() ?: ""
-        if (profile.contains("dvhe") ||    // Dolby Vision HEVC
-            profile.contains("dvh1") ||    // Dolby Vision HEVC (alternate)
-            profile.contains("dav1") ||    // Dolby Vision AV1
-            profile.contains("dolby")) {
+        if (profile.contains("dvhe") || // Dolby Vision HEVC
+            profile.contains("dvh1") || // Dolby Vision HEVC (alternate)
+            profile.contains("dav1") || // Dolby Vision AV1
+            profile.contains("dolby")
+        ) {
             return true
         }
-        
+
         // Check display title (often contains "Dolby Vision" or "DV")
         val displayTitle = video.displayTitle?.lowercase() ?: ""
         if (displayTitle.contains("dolby vision") || displayTitle.contains(" dv ") ||
-            displayTitle.contains("/dv/") || displayTitle.contains("dovi")) {
+            displayTitle.contains("/dv/") || displayTitle.contains("dovi")
+        ) {
             return true
         }
-        
+
         return false
     }
 
@@ -209,15 +211,15 @@ val JellyfinItem.isHdr: Boolean
         val video = videoStream ?: return false
         val rangeType = video.videoRangeType?.lowercase() ?: ""
         val range = video.videoRange?.lowercase() ?: ""
-        
+
         return rangeType.contains("hdr") ||
-               rangeType.contains("dolby") ||
-               rangeType.contains("dovi") ||
-               rangeType.contains("hlg") ||
-               rangeType.contains("pq") ||
-               range.contains("hdr") ||
-               range.contains("hlg") ||
-               isDolbyVision
+            rangeType.contains("dolby") ||
+            rangeType.contains("dovi") ||
+            rangeType.contains("hlg") ||
+            rangeType.contains("pq") ||
+            range.contains("hdr") ||
+            range.contains("hlg") ||
+            isDolbyVision
     }
 
 /**
@@ -236,8 +238,9 @@ val JellyfinItem.videoQualityLabel: String
     get() {
         val parts = mutableListOf<String>()
 
-        if (is4K) parts.add("4K")
-        else {
+        if (is4K) {
+            parts.add("4K")
+        } else {
             val height = videoStream?.height
             if (height != null) {
                 when {
@@ -248,8 +251,11 @@ val JellyfinItem.videoQualityLabel: String
             }
         }
 
-        if (isDolbyVision) parts.add("Dolby Vision")
-        else if (isHdr) parts.add("HDR")
+        if (isDolbyVision) {
+            parts.add("Dolby Vision")
+        } else if (isHdr) {
+            parts.add("HDR")
+        }
 
         return parts.joinToString(" · ")
     }
@@ -260,5 +266,5 @@ val JellyfinItem.videoQualityLabel: String
 @Serializable
 data class JellyfinGenre(
     @SerialName("Id") val id: String,
-    @SerialName("Name") val name: String
+    @SerialName("Name") val name: String,
 )

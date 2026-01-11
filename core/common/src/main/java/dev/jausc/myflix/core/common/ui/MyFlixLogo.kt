@@ -1,7 +1,8 @@
+@file:Suppress("UnusedParameter")
+
 package dev.jausc.myflix.core.common.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -18,22 +19,18 @@ import dev.jausc.myflix.core.common.R
 /**
  * MyFlix logo image.
  * Displays the marquee-style logo with glowing letters.
- * 
+ *
  * @param height Height of the logo (width scales proportionally). If null, uses FillWidth scaling.
  * @param tint Optional color tint (null for original colors)
  */
 @Composable
-fun MyFlixLogo(
-    modifier: Modifier = Modifier,
-    height: Dp? = 80.dp,
-    tint: Color? = null
-) {
+fun MyFlixLogo(modifier: Modifier = Modifier, height: Dp? = 80.dp, tint: Color? = null) {
     Image(
         painter = painterResource(R.drawable.myflix_logo),
         contentDescription = "MyFlix",
         modifier = if (height != null) modifier.height(height) else modifier,
         contentScale = if (height != null) ContentScale.FillHeight else ContentScale.FillWidth,
-        colorFilter = tint?.let { ColorFilter.tint(it) }
+        colorFilter = tint?.let { ColorFilter.tint(it) },
     )
 }
 
@@ -47,13 +44,13 @@ fun MyFlixLogo(
     fontSize: TextUnit,
     color: Color = Color(0xFF2563EB),
     letterSpacing: TextUnit = 2.sp,
-    emphasisScale: Float = 1.35f
+    emphasisScale: Float = 1.35f,
 ) {
     // Convert sp to dp (approximate) - logo height is roughly fontSize
     val heightDp = (fontSize.value * 0.8f).dp
     MyFlixLogo(
         modifier = modifier,
         height = heightDp,
-        tint = null  // Use original logo colors
+        tint = null, // Use original logo colors
     )
 }

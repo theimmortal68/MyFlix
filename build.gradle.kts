@@ -4,6 +4,28 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.3.0" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.0" apply false
+    id("io.gitlab.arturbosch.detekt") version "1.23.7"
+}
+
+// Configure Detekt
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom("$rootDir/detekt.yml")
+    source.setFrom(
+        "app-tv/src/main/java",
+        "app-mobile/src/main/java",
+        "core/common/src/main/java",
+        "core/network/src/main/java",
+        "core/data/src/main/java",
+        "core/player/src/main/java",
+        "core/seerr/src/main/java",
+    )
+}
+
+dependencies {
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.7")
+    detektPlugins("io.nlopez.compose.rules:detekt:0.4.22")
 }
 
 // Shared versions

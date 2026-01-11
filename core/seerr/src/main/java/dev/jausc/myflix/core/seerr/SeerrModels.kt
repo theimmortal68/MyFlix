@@ -1,6 +1,5 @@
 package dev.jausc.myflix.core.seerr
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -18,20 +17,20 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SeerrMedia(
     val id: Int,
-    val mediaType: String = "",  // "movie" or "tv" - may be empty from detail endpoints
+    val mediaType: String = "", // "movie" or "tv" - may be empty from detail endpoints
     val tmdbId: Int? = null,
     val tvdbId: Int? = null,
     val imdbId: String? = null,
-    val status: String? = null,  // Production status: "Released", "In Production", "Ended", etc.
+    val status: String? = null, // Production status: "Released", "In Production", "Ended", etc.
     val title: String? = null,
-    val name: String? = null,  // TV shows use 'name' instead of 'title'
+    val name: String? = null, // TV shows use 'name' instead of 'title'
     val originalTitle: String? = null,
     val originalName: String? = null,
     val posterPath: String? = null,
     val backdropPath: String? = null,
     val overview: String? = null,
     val releaseDate: String? = null,
-    val firstAirDate: String? = null,  // For TV shows
+    val firstAirDate: String? = null, // For TV shows
     val voteAverage: Double? = null,
     val voteCount: Int? = null,
     val popularity: Double? = null,
@@ -45,7 +44,7 @@ data class SeerrMedia(
     val credits: SeerrCredits? = null,
     val externalIds: SeerrExternalIds? = null,
     val keywords: List<SeerrKeyword>? = null,
-    val relatedVideos: List<SeerrVideo>? = null
+    val relatedVideos: List<SeerrVideo>? = null,
 ) {
     /** Display title (handles movie vs TV naming) */
     val displayTitle: String
@@ -92,7 +91,7 @@ data class SeerrMediaInfo(
     val createdAt: String? = null,
     val updatedAt: String? = null,
     val requests: List<SeerrRequest>? = null,
-    val seasons: List<SeerrSeasonStatus>? = null
+    val seasons: List<SeerrSeasonStatus>? = null,
 )
 
 /**
@@ -102,7 +101,7 @@ data class SeerrMediaInfo(
 data class SeerrSeasonStatus(
     val id: Int,
     val seasonNumber: Int,
-    val status: Int  // Same status codes as media
+    val status: Int, // Same status codes as media
 )
 
 // ============================================================================
@@ -115,7 +114,7 @@ data class SeerrSeasonStatus(
 @Serializable
 data class SeerrRequest(
     val id: Int,
-    val status: Int,  // 1=pending_approval, 2=approved, 3=declined
+    val status: Int, // 1=pending_approval, 2=approved, 3=declined
     val media: SeerrRequestMedia? = null,
     val requestedBy: SeerrUser? = null,
     val modifiedBy: SeerrUser? = null,
@@ -124,7 +123,7 @@ data class SeerrRequest(
     val seasons: List<SeerrSeasonRequest>? = null,
     val is4k: Boolean = false,
     val serverId: Int? = null,
-    val profileId: Int? = null
+    val profileId: Int? = null,
 ) {
     /** Whether the request is pending approval */
     val isPendingApproval: Boolean
@@ -159,7 +158,7 @@ data class SeerrRequestMedia(
     val status: Int? = null,
     val mediaType: String? = null,
     val createdAt: String? = null,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
 )
 
 /**
@@ -169,7 +168,7 @@ data class SeerrRequestMedia(
 data class SeerrSeasonRequest(
     val id: Int,
     val seasonNumber: Int,
-    val status: Int  // Same as request status
+    val status: Int, // Same as request status
 )
 
 /**
@@ -180,10 +179,10 @@ data class CreateMediaRequest(
     val mediaType: String,
     val mediaId: Int,
     val tvdbId: Int? = null,
-    val seasons: List<Int>? = null,  // For TV shows - which seasons to request
+    val seasons: List<Int>? = null, // For TV shows - which seasons to request
     val is4k: Boolean = false,
     val serverId: Int? = null,
-    val profileId: Int? = null
+    val profileId: Int? = null,
 )
 
 // ============================================================================
@@ -208,10 +207,10 @@ data class SeerrUser(
     val tvQuotaLimit: Int? = null,
     val tvQuotaDays: Int? = null,
     val permissions: Int? = null,
-    val userType: Int? = null,  // 1=plex, 2=local, 3=jellyfin
-    val apiKey: String? = null,  // API key for persistent authentication
+    val userType: Int? = null, // 1=plex, 2=local, 3=jellyfin
+    val apiKey: String? = null, // API key for persistent authentication
     val createdAt: String? = null,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
 ) {
     /** Display name for UI */
     val name: String
@@ -225,13 +224,17 @@ data class SeerrUser(
     val movieQuotaRemaining: Int?
         get() = if (movieQuotaLimit != null && requestCount != null) {
             (movieQuotaLimit - requestCount).coerceAtLeast(0)
-        } else null
+        } else {
+            null
+        }
 
     /** Remaining TV quota (null if unlimited) */
     val tvQuotaRemaining: Int?
         get() = if (tvQuotaLimit != null && requestCount != null) {
             (tvQuotaLimit - requestCount).coerceAtLeast(0)
-        } else null
+        } else {
+            null
+        }
 }
 
 /**
@@ -240,7 +243,7 @@ data class SeerrUser(
 @Serializable
 data class SeerrUserQuota(
     val movie: SeerrQuotaDetails? = null,
-    val tv: SeerrQuotaDetails? = null
+    val tv: SeerrQuotaDetails? = null,
 )
 
 @Serializable
@@ -248,7 +251,7 @@ data class SeerrQuotaDetails(
     val limit: Int? = null,
     val days: Int? = null,
     val used: Int = 0,
-    val remaining: Int? = null
+    val remaining: Int? = null,
 )
 
 // ============================================================================
@@ -263,7 +266,7 @@ data class SeerrDiscoverResult(
     val page: Int,
     val totalPages: Int,
     val totalResults: Int,
-    val results: List<SeerrMedia>
+    val results: List<SeerrMedia>,
 )
 
 /**
@@ -272,7 +275,7 @@ data class SeerrDiscoverResult(
 @Serializable
 data class SeerrRequestResult(
     val pageInfo: SeerrPageInfo,
-    val results: List<SeerrRequest>
+    val results: List<SeerrRequest>,
 )
 
 @Serializable
@@ -280,7 +283,7 @@ data class SeerrPageInfo(
     val pages: Int,
     val pageSize: Int,
     val results: Int,
-    val page: Int
+    val page: Int,
 )
 
 /**
@@ -289,7 +292,7 @@ data class SeerrPageInfo(
 @Serializable
 data class SeerrGenre(
     val id: Int,
-    val name: String
+    val name: String,
 )
 
 /**
@@ -298,7 +301,7 @@ data class SeerrGenre(
 @Serializable
 data class SeerrKeyword(
     val id: Int,
-    val name: String
+    val name: String,
 )
 
 // ============================================================================
@@ -317,7 +320,7 @@ data class SeerrSeason(
     val posterPath: String? = null,
     val airDate: String? = null,
     val episodeCount: Int? = null,
-    val episodes: List<SeerrEpisode>? = null
+    val episodes: List<SeerrEpisode>? = null,
 )
 
 /**
@@ -333,7 +336,7 @@ data class SeerrEpisode(
     val stillPath: String? = null,
     val airDate: String? = null,
     val runtime: Int? = null,
-    val voteAverage: Double? = null
+    val voteAverage: Double? = null,
 )
 
 // ============================================================================
@@ -346,7 +349,7 @@ data class SeerrEpisode(
 @Serializable
 data class SeerrCredits(
     val cast: List<SeerrCastMember>? = null,
-    val crew: List<SeerrCrewMember>? = null
+    val crew: List<SeerrCrewMember>? = null,
 )
 
 @Serializable
@@ -355,7 +358,7 @@ data class SeerrCastMember(
     val name: String,
     val character: String? = null,
     val profilePath: String? = null,
-    val order: Int? = null
+    val order: Int? = null,
 )
 
 @Serializable
@@ -364,7 +367,7 @@ data class SeerrCrewMember(
     val name: String,
     val job: String? = null,
     val department: String? = null,
-    val profilePath: String? = null
+    val profilePath: String? = null,
 )
 
 // ============================================================================
@@ -376,7 +379,7 @@ data class SeerrExternalIds(
     val imdbId: String? = null,
     val facebookId: String? = null,
     val instagramId: String? = null,
-    val twitterId: String? = null
+    val twitterId: String? = null,
 )
 
 @Serializable
@@ -384,9 +387,9 @@ data class SeerrVideo(
     val id: String? = null,
     val key: String? = null,
     val name: String? = null,
-    val site: String? = null,  // Usually "YouTube"
-    val type: String? = null,  // "Trailer", "Teaser", etc.
-    val size: Int? = null
+    val site: String? = null, // Usually "YouTube"
+    val type: String? = null, // "Trailer", "Teaser", etc.
+    val size: Int? = null,
 )
 
 // ============================================================================
@@ -401,7 +404,7 @@ data class SeerrStatus(
     val version: String,
     val commitTag: String? = null,
     val updateAvailable: Boolean = false,
-    val commitsBehind: Int = 0
+    val commitsBehind: Int = 0,
 )
 
 /**
@@ -413,7 +416,7 @@ data class SeerrSettings(
     val applicationTitle: String? = null,
     val applicationUrl: String? = null,
     val localLogin: Boolean = true,
-    val defaultPermissions: Int? = null
+    val defaultPermissions: Int? = null,
 )
 
 // ============================================================================
@@ -427,7 +430,7 @@ data class SeerrSettings(
 data class SeerrJellyfinAuthRequest(
     val username: String,
     val password: String,
-    val hostname: String? = null
+    val hostname: String? = null,
 )
 
 /**
@@ -436,7 +439,7 @@ data class SeerrJellyfinAuthRequest(
 @Serializable
 data class SeerrLocalAuthRequest(
     val email: String,
-    val password: String
+    val password: String,
 )
 
 /**
@@ -447,7 +450,7 @@ data class SeerrLocalAuthRequest(
 data class SeerrQuickConnectState(
     val code: String,
     val secret: String,
-    val authenticated: Boolean = false
+    val authenticated: Boolean = false,
 )
 
 /**

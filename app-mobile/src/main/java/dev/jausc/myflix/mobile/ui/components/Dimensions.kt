@@ -11,9 +11,9 @@ import androidx.compose.ui.unit.dp
  * Based on Material Design 3 window size classes.
  */
 enum class ScreenSizeClass {
-    COMPACT,    // Standard phones (< 600dp)
-    MEDIUM,     // Large phones, small tablets, foldables (600-840dp)
-    EXPANDED    // Tablets, foldables unfolded (> 840dp)
+    COMPACT, // Standard phones (< 600dp)
+    MEDIUM, // Large phones, small tablets, foldables (600-840dp)
+    EXPANDED, // Tablets, foldables unfolded (> 840dp)
 }
 
 /**

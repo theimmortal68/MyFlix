@@ -1,10 +1,20 @@
+@file:Suppress(
+    "LongMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "ModifierMissing",
+    "ParameterNaming",
+    "ComposableParamOrder",
+)
+
 package dev.jausc.myflix.tv.ui.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,7 +71,7 @@ data class DialogItem(
     val icon: ImageVector? = null,
     val iconTint: Color = Color.White,
     val enabled: Boolean = true,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
 ) : DialogItemEntry
 
 /**
@@ -75,7 +85,7 @@ data class DialogItem(
 data class DialogParams(
     val title: String,
     val items: List<DialogItemEntry>,
-    val fromLongClick: Boolean = false
+    val fromLongClick: Boolean = false,
 )
 
 /**
@@ -89,25 +99,21 @@ data class DialogParams(
  * - Semi-transparent backdrop
  */
 @Composable
-fun DialogPopup(
-    params: DialogParams,
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun DialogPopup(params: DialogParams, onDismissRequest: () -> Unit, modifier: Modifier = Modifier) {
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
+            usePlatformDefaultWidth = false,
+        ),
     ) {
         DialogPopupContent(
             title = params.title,
             items = params.items,
             waitToLoad = params.fromLongClick,
             onDismissRequest = onDismissRequest,
-            modifier = modifier
+            modifier = modifier,
         )
     }
 }
@@ -118,7 +124,7 @@ private fun DialogPopupContent(
     items: List<DialogItemEntry>,
     waitToLoad: Boolean,
     onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // Anti-propagation: 1-second delay after long-press dialog appears
     // This prevents the long-press release from selecting the first item
@@ -143,24 +149,24 @@ private fun DialogPopupContent(
                     code in setOf(
                         KeyEvent.KEYCODE_ENTER,
                         KeyEvent.KEYCODE_DPAD_CENTER,
-                        KeyEvent.KEYCODE_NUMPAD_ENTER
+                        KeyEvent.KEYCODE_NUMPAD_ENTER,
                     )
                 ) {
                     waiting = false
                 }
                 false
             },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = modifier
                 .widthIn(min = 300.dp, max = 400.dp)
                 .background(
                     TvColors.Surface,
-                    RoundedCornerShape(16.dp)
+                    RoundedCornerShape(16.dp),
                 )
                 .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // Title
             Text(
@@ -168,12 +174,12 @@ private fun DialogPopupContent(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             // Items list
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(items) { item ->
                     when (item) {
@@ -183,7 +189,7 @@ private fun DialogPopupContent(
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp)
                                     .background(TvColors.TextSecondary.copy(alpha = 0.2f))
-                                    .padding(vertical = 0.5.dp)
+                                    .padding(vertical = 0.5.dp),
                             )
                         }
                         is DialogItem -> {
@@ -193,7 +199,7 @@ private fun DialogPopupContent(
                                 onClick = {
                                     item.onClick()
                                     onDismissRequest()
-                                }
+                                },
                             )
                         }
                     }
@@ -204,11 +210,7 @@ private fun DialogPopupContent(
 }
 
 @Composable
-private fun DialogListItem(
-    item: DialogItem,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
+private fun DialogListItem(item: DialogItem, enabled: Boolean, onClick: () -> Unit) {
     ListItem(
         selected = false,
         onClick = onClick,
@@ -217,7 +219,7 @@ private fun DialogListItem(
             Text(
                 text = item.text,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) TvColors.TextPrimary else TvColors.TextSecondary
+                color = if (enabled) TvColors.TextPrimary else TvColors.TextSecondary,
             )
         },
         leadingContent = item.icon?.let { icon ->
@@ -225,7 +227,7 @@ private fun DialogListItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (enabled) item.iconTint else TvColors.TextSecondary
+                    tint = if (enabled) item.iconTint else TvColors.TextSecondary,
                 )
             }
         },
@@ -233,11 +235,11 @@ private fun DialogListItem(
             containerColor = Color.Transparent,
             focusedContainerColor = TvColors.FocusedSurface,
             selectedContainerColor = Color.Transparent,
-            disabledContainerColor = Color.Transparent
+            disabledContainerColor = Color.Transparent,
         ),
         shape = ListItemDefaults.shape(
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     )
 }

@@ -16,15 +16,13 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = TvColors.SurfaceLight,
     onSurfaceVariant = TvColors.TextSecondary,
     error = TvColors.Error,
-    onError = TvColors.TextPrimary
+    onError = TvColors.TextPrimary,
 )
 
 @Composable
-fun MyFlixTvTheme(
-    content: @Composable () -> Unit
-) {
+fun MyFlixTvTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
-        content = content
+        content = content,
     )
 }

@@ -10,14 +10,23 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * MPV Player implementation using libmpv native libraries.
- * 
+ *
  * Uses prebuilt libraries from mpv-android project.
  */
+@Suppress("TooManyFunctions", "StringLiteralDuplication")
 class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObserver {
-    
+    private val _state = MutableStateFlow(PlaybackState(playerType = "MPV"))
+    override val state: StateFlow<PlaybackState> = _state.asStateFlow()
+
+    private var initialized = false
+    private var mpvCreated = false
+    private var currentSurface: Surface? = null
+    private var pendingUrl: String? = null
+    private var pendingStartPosition: Long = 0
+
     companion object {
         private const val TAG = "MpvPlayer"
-        
+
         /**
          * Check if MPV native libraries are available
          */
@@ -32,40 +41,29 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
         }
     }
-    
-    private val _state = MutableStateFlow(PlaybackState(playerType = "MPV"))
-    override val state: StateFlow<PlaybackState> = _state.asStateFlow()
-    
-    private var initialized = false
-    private var mpvCreated = false
-    private var currentSurface: Surface? = null
-    private var pendingUrl: String? = null
-    private var pendingStartPosition: Long = 0
-    
-    override fun initialize(): Boolean {
-        // Just mark as ready - actual init happens when surface is attached
-        // This allows mediacodec_embed to work properly
-        return true
-    }
-    
+
+    // Just mark as ready - actual init happens when surface is attached
+    // This allows mediacodec_embed to work properly
+    override fun initialize(): Boolean = true
+
     private fun initializeMpv(surface: Surface): Boolean {
         if (initialized) return true
-        
+
         return try {
             if (!mpvCreated) {
                 MPVLib.create(context)
                 mpvCreated = true
             }
-            
+
             // Video output - mediacodec_embed for direct hardware rendering
             // Must set wid (surface) before init for mediacodec_embed to work
             MPVLib.setOptionString("vo", "mediacodec_embed,gpu")
             MPVLib.setOptionString("gpu-context", "android")
-            
+
             // Set the surface as window ID - critical for mediacodec_embed
             val surfaceId = System.identityHashCode(surface).toLong()
             MPVLib.setOptionString("wid", surfaceId.toString())
-            
+
             // Hardware decoding - direct rendering
             MPVLib.setOptionString("hwdec", "mediacodec")
             MPVLib.setOptionString("hwdec-codecs", "all")
@@ -77,7 +75,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
 
             // Audio output
             MPVLib.setOptionString("ao", "audiotrack,opensles")
-            
+
             // Network/streaming - larger buffers for 4K
             MPVLib.setOptionString("tls-verify", "no")
             MPVLib.setOptionString("cache", "yes")
@@ -85,14 +83,14 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             MPVLib.setOptionString("demuxer-max-bytes", "150MiB")
             MPVLib.setOptionString("demuxer-max-back-bytes", "75MiB")
             MPVLib.setOptionString("demuxer-readahead-secs", "20")
-            
+
             // Initialization
             MPVLib.setOptionString("force-window", "yes")
             MPVLib.setOptionString("idle", "yes")
-            
+
             MPVLib.init()
             MPVLib.addObserver(this)
-            
+
             // Observe properties for state updates
             MPVLib.observeProperty("time-pos", MPVLib.MpvFormat.MPV_FORMAT_INT64)
             MPVLib.observeProperty("duration", MPVLib.MpvFormat.MPV_FORMAT_INT64)
@@ -104,10 +102,10 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             MPVLib.observeProperty("video-params/w", MPVLib.MpvFormat.MPV_FORMAT_INT64)
             MPVLib.observeProperty("video-params/h", MPVLib.MpvFormat.MPV_FORMAT_INT64)
             MPVLib.observeProperty("video-params/aspect", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
-            
+
             // Attach surface after init
             MPVLib.attachSurface(surface)
-            
+
             initialized = true
             Log.d(TAG, "MPV initialized successfully with mediacodec_embed")
             true
@@ -117,10 +115,10 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             false
         }
     }
-    
+
     override fun attachSurface(surface: Surface) {
         currentSurface = surface
-        
+
         if (!initialized) {
             // Initialize MPV now that we have a surface
             if (initializeMpv(surface)) {
@@ -140,7 +138,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
         }
     }
-    
+
     override fun detachSurface() {
         currentSurface = null
         if (!initialized) return
@@ -152,7 +150,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             Log.e(TAG, "Failed to detach surface", e)
         }
     }
-    
+
     override fun play(url: String, startPositionMs: Long) {
         if (!initialized) {
             // Queue the play request until surface is ready
@@ -161,89 +159,89 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             Log.d(TAG, "Play queued, waiting for surface")
             return
         }
-        
+
         Log.d(TAG, "Playing: $url, startPosition: ${startPositionMs}ms")
-        
+
         try {
             // Set start position if resuming
             if (startPositionMs > 0) {
                 val startSeconds = startPositionMs / 1000.0
                 MPVLib.setOptionString("start", startSeconds.toString())
             }
-            
+
             MPVLib.command(arrayOf("loadfile", url))
-            
+
             _state.value = _state.value.copy(
                 isBuffering = true,
                 isIdle = false,
-                error = null
+                error = null,
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to play", e)
             _state.value = _state.value.copy(error = "Playback failed: ${e.message}")
         }
     }
-    
+
     override fun pause() {
         if (!initialized) return
         MPVLib.setPropertyBoolean("pause", true)
     }
-    
+
     override fun resume() {
         if (!initialized) return
         MPVLib.setPropertyBoolean("pause", false)
     }
-    
+
     override fun togglePause() {
         if (!initialized) return
         val paused = MPVLib.getPropertyBoolean("pause") ?: false
         MPVLib.setPropertyBoolean("pause", !paused)
     }
-    
+
     override fun stop() {
         if (!initialized) return
         MPVLib.command(arrayOf("stop"))
         _state.value = _state.value.copy(isPlaying = false, isIdle = true, position = 0)
     }
-    
+
     override fun seekTo(positionMs: Long) {
         if (!initialized) return
         val positionSec = positionMs / 1000.0
         MPVLib.command(arrayOf("seek", positionSec.toString(), "absolute"))
     }
-    
+
     override fun seekRelative(offsetMs: Long) {
         if (!initialized) return
         val offsetSec = offsetMs / 1000.0
         MPVLib.command(arrayOf("seek", offsetSec.toString(), "relative"))
     }
-    
+
     override fun setSpeed(speed: Float) {
         if (!initialized) return
         MPVLib.setPropertyDouble("speed", speed.toDouble())
         _state.value = _state.value.copy(speed = speed)
     }
-    
+
     override fun cycleAudio() {
         if (!initialized) return
         MPVLib.command(arrayOf("cycle", "audio"))
     }
-    
+
     override fun cycleSubtitles() {
         if (!initialized) return
         MPVLib.command(arrayOf("cycle", "sub"))
     }
-    
+
     override fun setAudioTrack(trackId: Int) {
         if (!initialized) return
         MPVLib.setPropertyInt("aid", trackId)
     }
-    
+
     override fun setSubtitleTrack(trackId: Int) {
         if (!initialized) return
         MPVLib.setPropertyInt("sid", trackId)
     }
-    
+
     override fun release() {
         if (initialized) {
             MPVLib.removeObserver(this)
@@ -252,13 +250,13 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             Log.d(TAG, "MPV destroyed")
         }
     }
-    
+
     // MPVLib.EventObserver implementation
-    
+
     override fun eventProperty(property: String) {
         // Property changed but no value provided
     }
-    
+
     override fun eventProperty(property: String, value: Long) {
         when (property) {
             "time-pos" -> {
@@ -277,13 +275,13 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
         }
     }
-    
+
     override fun eventProperty(property: String, value: Boolean) {
         when (property) {
             "pause" -> {
                 _state.value = _state.value.copy(
                     isPaused = value,
-                    isPlaying = !value && !_state.value.isIdle
+                    isPlaying = !value && !_state.value.isIdle,
                 )
             }
             "paused-for-cache" -> {
@@ -299,7 +297,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
         }
     }
-    
+
     override fun eventProperty(property: String, value: String) {
         when (property) {
             "media-title" -> {
@@ -307,7 +305,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
         }
     }
-    
+
     override fun eventProperty(property: String, value: Double) {
         when (property) {
             "speed" -> {
@@ -325,7 +323,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             }
         }
     }
-    
+
     override fun event(eventId: Int) {
         when (eventId) {
             MPVLib.MpvEvent.MPV_EVENT_START_FILE -> {

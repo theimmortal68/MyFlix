@@ -12,15 +12,6 @@ import kotlinx.coroutines.flow.first
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "myflix_prefs")
 
 class AppState(private val context: Context, val jellyfinClient: JellyfinClient) {
-    companion object {
-        private val KEY_SERVER_URL = stringPreferencesKey("server_url")
-        private val KEY_ACCESS_TOKEN = stringPreferencesKey("access_token")
-        private val KEY_USER_ID = stringPreferencesKey("user_id")
-        private val KEY_DEVICE_ID = stringPreferencesKey("device_id")
-        private val KEY_USERNAME = stringPreferencesKey("username")
-        private val KEY_PASSWORD = stringPreferencesKey("password")
-    }
-
     val isLoggedIn: Boolean get() = jellyfinClient.isAuthenticated
 
     // Stored credentials for Seerr integration
@@ -51,7 +42,7 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         accessToken: String,
         userId: String,
         username: String? = null,
-        password: String? = null
+        password: String? = null,
     ) {
         jellyfinClient.configure(serverUrl, accessToken, userId, jellyfinClient.deviceId)
         this.username = username
@@ -78,6 +69,18 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         }
     }
 
-    private suspend fun saveDeviceId(id: String) { context.dataStore.edit { it[KEY_DEVICE_ID] = id } }
+    private suspend fun saveDeviceId(id: String) {
+        context.dataStore.edit { it[KEY_DEVICE_ID] = id }
+    }
+
     private fun generateDeviceId(): String = "myflix_${java.util.UUID.randomUUID().toString().take(8)}"
+
+    companion object {
+        private val KEY_SERVER_URL = stringPreferencesKey("server_url")
+        private val KEY_ACCESS_TOKEN = stringPreferencesKey("access_token")
+        private val KEY_USER_ID = stringPreferencesKey("user_id")
+        private val KEY_DEVICE_ID = stringPreferencesKey("device_id")
+        private val KEY_USERNAME = stringPreferencesKey("username")
+        private val KEY_PASSWORD = stringPreferencesKey("password")
+    }
 }

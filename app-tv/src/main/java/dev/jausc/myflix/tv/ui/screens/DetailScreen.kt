@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.BorderStroke
@@ -10,8 +20,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
@@ -24,13 +34,14 @@ import dev.jausc.myflix.tv.ui.components.buildDetailDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
 
+@Suppress("UnusedParameter")
 @Composable
 fun DetailScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onEpisodeClick: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -75,7 +86,7 @@ fun DetailScreen(
                 }
             },
             onShowMediaInfo = { episode -> mediaInfoItem = episode },
-            onGoToSeries = null // Already on series page
+            onGoToSeries = null, // Already on series page
         )
     }
 
@@ -115,16 +126,16 @@ fun DetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
+            .background(TvColors.Background),
     ) {
         if (isLoading || item == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = "Loading...",
-                    color = TvColors.TextPrimary
+                    color = TvColors.TextPrimary,
                 )
             }
         } else {
@@ -136,7 +147,7 @@ fun DetailScreen(
                         .weight(0.4f)
                         .fillMaxHeight()
                         .padding(48.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     AsyncImage(
                         model = jellyfinClient.getPrimaryImageUrl(currentItem.id, currentItem.imageTags?.primary, 400),
@@ -145,12 +156,12 @@ fun DetailScreen(
                             .fillMaxWidth()
                             .aspectRatio(2f / 3f)
                             .clip(MaterialTheme.shapes.medium),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
                     )
 
                     Button(
                         onClick = onPlayClick,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("▶ Play")
                     }
@@ -161,40 +172,40 @@ fun DetailScreen(
                         .weight(0.6f)
                         .fillMaxHeight()
                         .padding(end = 48.dp, top = 48.dp, bottom = 48.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     item {
                         Text(
                             text = currentItem.name,
                             style = MaterialTheme.typography.headlineLarge,
-                            color = TvColors.TextPrimary
+                            color = TvColors.TextPrimary,
                         )
                     }
 
                     item {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             currentItem.productionYear?.let { year ->
                                 Text(
                                     text = year.toString(),
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = TvColors.TextSecondary
+                                    color = TvColors.TextSecondary,
                                 )
                             }
                             currentItem.runtimeMinutes?.let { runtime ->
                                 Text(
-                                    text = "${runtime} min",
+                                    text = "$runtime min",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = TvColors.TextSecondary
+                                    color = TvColors.TextSecondary,
                                 )
                             }
                             currentItem.communityRating?.let { rating ->
                                 Text(
                                     text = "★ %.1f".format(rating),
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = TvColors.BluePrimary
+                                    color = TvColors.BluePrimary,
                                 )
                             }
                         }
@@ -205,7 +216,7 @@ fun DetailScreen(
                             Text(
                                 text = overview,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                         }
                     }
@@ -215,31 +226,31 @@ fun DetailScreen(
                             Text(
                                 text = "Seasons",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
                         }
 
                         item {
                             LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(seasons, key = { it.id }) { season ->
                                     val isSelected = selectedSeason?.id == season.id
                                     Surface(
                                         onClick = { selectedSeason = season },
                                         shape = ClickableSurfaceDefaults.shape(
-                                            shape = MaterialTheme.shapes.small
+                                            shape = MaterialTheme.shapes.small,
                                         ),
                                         colors = ClickableSurfaceDefaults.colors(
                                             containerColor = if (isSelected) TvColors.BluePrimary else TvColors.Surface,
-                                            focusedContainerColor = TvColors.FocusedSurface
-                                        )
+                                            focusedContainerColor = TvColors.FocusedSurface,
+                                        ),
                                     ) {
                                         Text(
                                             text = season.name,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = TvColors.TextPrimary,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                         )
                                     }
                                 }
@@ -251,22 +262,25 @@ fun DetailScreen(
                                 Text(
                                     text = "Episodes",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = TvColors.TextPrimary
+                                    color = TvColors.TextPrimary,
                                 )
                             }
 
                             items(episodes, key = { it.id }) { episode ->
                                 EpisodeCard(
                                     episode = episode,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary),
+                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
+                                        episode.id,
+                                        episode.imageTags?.primary,
+                                    ),
                                     onClick = { onEpisodeClick(episode.id) },
                                     onLongClick = {
                                         dialogParams = DialogParams(
                                             title = episode.name,
                                             items = buildDetailDialogItems(episode, dialogActions),
-                                            fromLongClick = true
+                                            fromLongClick = true,
                                         )
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -280,7 +294,7 @@ fun DetailScreen(
     dialogParams?.let { params ->
         DialogPopup(
             params = params,
-            onDismissRequest = { dialogParams = null }
+            onDismissRequest = { dialogParams = null },
         )
     }
 
@@ -289,17 +303,14 @@ fun DetailScreen(
         MediaInfoDialog(
             item = episode,
             jellyfinClient = jellyfinClient,
-            onDismiss = { mediaInfoItem = null }
+            onDismiss = { mediaInfoItem = null },
         )
     }
 }
 
+@Suppress("UnusedParameter")
 @Composable
-private fun MediaInfoDialog(
-    item: JellyfinItem,
-    jellyfinClient: JellyfinClient,
-    onDismiss: () -> Unit
-) {
+private fun MediaInfoDialog(item: JellyfinItem, jellyfinClient: JellyfinClient, onDismiss: () -> Unit) {
     // Get media source info
     val mediaSource = item.mediaSources?.firstOrNull()
     val mediaStreams = mediaSource?.mediaStreams ?: emptyList()
@@ -310,14 +321,14 @@ private fun MediaInfoDialog(
         properties = androidx.compose.ui.window.DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
+            usePlatformDefaultWidth = false,
+        ),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.8f)),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Surface(
                 modifier = Modifier
@@ -325,23 +336,23 @@ private fun MediaInfoDialog(
                     .padding(32.dp),
                 shape = MaterialTheme.shapes.large,
                 colors = SurfaceDefaults.colors(
-                    containerColor = TvColors.Surface
-                )
+                    containerColor = TvColors.Surface,
+                ),
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text(
                         text = "Media Information",
                         style = MaterialTheme.typography.titleLarge,
-                        color = TvColors.TextPrimary
+                        color = TvColors.TextPrimary,
                     )
 
                     Text(
                         text = item.name,
                         style = MaterialTheme.typography.titleMedium,
-                        color = TvColors.BluePrimary
+                        color = TvColors.BluePrimary,
                     )
 
                     // Video stream info
@@ -350,16 +361,16 @@ private fun MediaInfoDialog(
                             Text(
                                 text = "VIDEO",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                             Text(
                                 text = buildString {
                                     append(video.codec?.uppercase() ?: "Unknown")
-                                    video.width?.let { w -> video.height?.let { h -> append(" • ${w}x${h}") } }
+                                    video.width?.let { w -> video.height?.let { h -> append(" • ${w}x$h") } }
                                     video.videoRangeType?.let { append(" • $it") }
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
                         }
                     }
@@ -371,7 +382,7 @@ private fun MediaInfoDialog(
                             Text(
                                 text = "AUDIO (${audioStreams.size} tracks)",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                             audioStreams.take(3).forEach { audio ->
                                 Text(
@@ -381,14 +392,14 @@ private fun MediaInfoDialog(
                                         audio.language?.let { append(" • $it") }
                                     },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TvColors.TextPrimary
+                                    color = TvColors.TextPrimary,
                                 )
                             }
                             if (audioStreams.size > 3) {
                                 Text(
                                     text = "... and ${audioStreams.size - 3} more",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TvColors.TextSecondary
+                                    color = TvColors.TextSecondary,
                                 )
                             }
                         }
@@ -401,12 +412,12 @@ private fun MediaInfoDialog(
                             Text(
                                 text = "SUBTITLES (${subtitleStreams.size} tracks)",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                             Text(
                                 text = subtitleStreams.take(5).mapNotNull { it.language }.joinToString(", "),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
                         }
                     }
@@ -417,12 +428,12 @@ private fun MediaInfoDialog(
                             Text(
                                 text = "CONTAINER",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary
+                                color = TvColors.TextSecondary,
                             )
                             Text(
                                 text = cont.uppercase(),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextPrimary
+                                color = TvColors.TextPrimary,
                             )
                         }
                     }
@@ -431,7 +442,7 @@ private fun MediaInfoDialog(
 
                     Button(
                         onClick = onDismiss,
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier.align(Alignment.End),
                     ) {
                         Text("Close")
                     }
@@ -446,30 +457,30 @@ private fun EpisodeCard(
     episode: JellyfinItem,
     imageUrl: String,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
 ) {
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = Modifier.fillMaxWidth(),
         shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
         ),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface
+            focusedContainerColor = TvColors.FocusedSurface,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = MaterialTheme.shapes.medium
-            )
-        )
+                shape = MaterialTheme.shapes.medium,
+            ),
+        ),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AsyncImage(
                 model = imageUrl,
@@ -478,28 +489,28 @@ private fun EpisodeCard(
                     .width(160.dp)
                     .aspectRatio(16f / 9f)
                     .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
             )
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = "Episode ${episode.indexNumber ?: ""}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = TvColors.BluePrimary
+                    color = TvColors.BluePrimary,
                 )
                 Text(
                     text = episode.name,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = TvColors.TextPrimary
+                    color = TvColors.TextPrimary,
                 )
                 episode.runtimeMinutes?.let { runtime ->
                     Text(
-                        text = "${runtime} min",
+                        text = "$runtime min",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TvColors.TextSecondary
+                        color = TvColors.TextSecondary,
                     )
                 }
             }

@@ -14,22 +14,22 @@ object MyFlixFonts {
      * Netflix-style tall condensed font
      */
     val BebasNeue = FontFamily(
-        Font(R.font.bebas_neue_regular, FontWeight.Normal)
+        Font(R.font.bebas_neue_regular, FontWeight.Normal),
     )
-    
+
     /**
      * Anton - used for headers, section titles, branding moments
      * Bold, impactful display font
      */
     val Anton = FontFamily(
-        Font(R.font.anton_regular, FontWeight.Normal)
+        Font(R.font.anton_regular, FontWeight.Normal),
     )
-    
+
     /**
      * Logo font alias
      */
     val Logo = BebasNeue
-    
+
     /**
      * Header font alias
      */

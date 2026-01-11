@@ -1,3 +1,14 @@
+@file:Suppress(
+    "LongMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "ModifierMissing",
+    "ParameterNaming",
+    "ComposableParamOrder",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.background
@@ -65,7 +76,7 @@ import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 fun SeerrHomeScreen(
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -125,20 +136,20 @@ fun SeerrHomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
+            .statusBarsPadding(),
     ) {
         // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -146,14 +157,14 @@ fun SeerrHomeScreen(
                 imageVector = Icons.Outlined.Explore,
                 contentDescription = null,
                 tint = Color(0xFF8B5CF6),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Discover",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
@@ -161,7 +172,7 @@ fun SeerrHomeScreen(
             isLoading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(color = Color(0xFF8B5CF6))
                 }
@@ -170,26 +181,26 @@ fun SeerrHomeScreen(
             errorMessage != null -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Outlined.Explore,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = errorMessage ?: "Failed to load content",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Check Seerr settings",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         )
                     }
                 }
@@ -198,7 +209,7 @@ fun SeerrHomeScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 32.dp)
+                    contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
                     // Hero section
                     item {
@@ -206,7 +217,7 @@ fun SeerrHomeScreen(
                             MobileSeerrHero(
                                 media = media,
                                 seerrClient = seerrClient,
-                                onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) }
+                                onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
                             )
                         }
                     }
@@ -221,7 +232,7 @@ fun SeerrHomeScreen(
                                 accentColor = Color(0xFF8B5CF6),
                                 onItemClick = { media ->
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                }
+                                },
                             )
                         }
                     }
@@ -236,7 +247,7 @@ fun SeerrHomeScreen(
                                 accentColor = Color(0xFFFBBF24),
                                 onItemClick = { media ->
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                }
+                                },
                             )
                         }
                     }
@@ -251,7 +262,7 @@ fun SeerrHomeScreen(
                                 accentColor = Color(0xFF34D399),
                                 onItemClick = { media ->
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                }
+                                },
                             )
                         }
                     }
@@ -266,7 +277,7 @@ fun SeerrHomeScreen(
                                 accentColor = Color(0xFF60A5FA),
                                 onItemClick = { media ->
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                }
+                                },
                             )
                         }
                     }
@@ -277,23 +288,19 @@ fun SeerrHomeScreen(
 }
 
 @Composable
-private fun MobileSeerrHero(
-    media: SeerrMedia,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit
-) {
+private fun MobileSeerrHero(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(280.dp)
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
     ) {
         // Backdrop
         AsyncImage(
             model = seerrClient.getBackdropUrl(media.backdropPath),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
         )
 
         // Gradient overlay
@@ -305,17 +312,17 @@ private fun MobileSeerrHero(
                         colors = listOf(
                             Color.Transparent,
                             MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
-                )
+                            MaterialTheme.colorScheme.background,
+                        ),
+                    ),
+                ),
         )
 
         // Content
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(16.dp)
+                .padding(16.dp),
         ) {
             // Status badge (uses mediaInfo.status for availability)
             MobileSeerrStatusBadge(status = media.availabilityStatus)
@@ -327,32 +334,32 @@ private fun MobileSeerrHero(
                 text = media.displayTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
 
             // Year and type
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 media.year?.let { year ->
                     Text(
                         text = year.toString(),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
                     text = if (media.isMovie) "Movie" else "TV Show",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 media.voteAverage?.let { rating ->
                     Text(
                         text = "%.1f".format(rating),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFBBF24)
+                        color = Color(0xFFFBBF24),
                     )
                 }
             }
@@ -366,22 +373,22 @@ private fun MobileSeerrStatusBadge(status: Int?) {
         SeerrMediaStatus.AVAILABLE -> Triple(
             Color(0xFF22C55E),
             Icons.Outlined.Check,
-            "Available"
+            "Available",
         )
         SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Triple(
             Color(0xFFFBBF24),
             Icons.Outlined.Schedule,
-            "Requested"
+            "Requested",
         )
         SeerrMediaStatus.PARTIALLY_AVAILABLE -> Triple(
             Color(0xFF60A5FA),
             Icons.Outlined.Check,
-            "Partial"
+            "Partial",
         )
         else -> Triple(
             Color(0xFF8B5CF6),
             Icons.Outlined.Add,
-            "Not Requested"
+            "Not Requested",
         )
     }
 
@@ -389,19 +396,19 @@ private fun MobileSeerrStatusBadge(status: Int?) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .background(color.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = color
+            tint = color,
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = color
+            color = color,
         )
     }
 }
@@ -412,39 +419,39 @@ private fun MobileSeerrRow(
     items: List<SeerrMedia>,
     seerrClient: SeerrClient,
     accentColor: Color,
-    onItemClick: (SeerrMedia) -> Unit
+    onItemClick: (SeerrMedia) -> Unit,
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         // Row header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
                     .height(20.dp)
-                    .background(accentColor, RoundedCornerShape(2.dp))
+                    .background(accentColor, RoundedCornerShape(2.dp)),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
         // Cards
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(items, key = { "${it.mediaType}_${it.id}" }) { media ->
                 MobileSeerrCard(
                     media = media,
                     seerrClient = seerrClient,
-                    onClick = { onItemClick(media) }
+                    onClick = { onItemClick(media) },
                 )
             }
         }
@@ -452,25 +459,21 @@ private fun MobileSeerrRow(
 }
 
 @Composable
-private fun MobileSeerrCard(
-    media: SeerrMedia,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit
-) {
+private fun MobileSeerrCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
     Card(
         onClick = onClick,
         modifier = Modifier.width(120.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
     ) {
         Box {
             Column {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(2f / 3f)
+                        .aspectRatio(2f / 3f),
                 ) {
                     AsyncImage(
                         model = seerrClient.getPosterUrl(media.posterPath),
@@ -478,7 +481,7 @@ private fun MobileSeerrCard(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
                     )
 
                     // Availability badge (uses mediaInfo.status for availability)
@@ -496,7 +499,7 @@ private fun MobileSeerrCard(
                                 .padding(6.dp)
                                 .size(10.dp)
                                 .clip(RoundedCornerShape(5.dp))
-                                .background(color)
+                                .background(color),
                         )
                     }
                 }
@@ -507,7 +510,7 @@ private fun MobileSeerrCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
 
                 // Year
@@ -516,7 +519,7 @@ private fun MobileSeerrCard(
                         text = year.toString(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
             }

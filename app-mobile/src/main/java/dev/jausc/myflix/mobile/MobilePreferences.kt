@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile
 
 import android.content.Context
@@ -11,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
  * Uses SharedPreferences for persistence and StateFlow for reactive updates.
  */
 class MobilePreferences private constructor(context: Context) {
-
     companion object {
         private const val PREFS_NAME = "myflix_mobile_prefs"
         private const val KEY_HIDE_WATCHED = "hide_watched_from_recent"

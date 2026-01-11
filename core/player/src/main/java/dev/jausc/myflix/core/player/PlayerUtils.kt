@@ -4,17 +4,16 @@ package dev.jausc.myflix.core.player
  * Shared player utility functions
  */
 object PlayerUtils {
-    
     /**
      * Format milliseconds to human-readable time string
      * e.g., 125000 -> "2:05" or 3725000 -> "1:02:05"
      */
     fun formatTime(ms: Long): String {
         if (ms <= 0) return "0:00"
-        
+
         val totalSeconds = ms / 1000
         val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
+        val minutes = totalSeconds % 3600 / 60
         val seconds = totalSeconds % 60
 
         return if (hours > 0) {
@@ -23,17 +22,17 @@ object PlayerUtils {
             "%d:%02d".format(minutes, seconds)
         }
     }
-    
+
     /**
      * Format milliseconds to compact time string with units
      * e.g., 125000 -> "2m 5s" or 3725000 -> "1h 2m"
      */
     fun formatTimeCompact(ms: Long): String {
         if (ms <= 0) return "0s"
-        
+
         val totalSeconds = ms / 1000
         val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
+        val minutes = totalSeconds % 3600 / 60
         val seconds = totalSeconds % 60
 
         return when {
@@ -42,18 +41,18 @@ object PlayerUtils {
             else -> "${seconds}s"
         }
     }
-    
+
     /**
      * Convert Jellyfin ticks to milliseconds
      * Jellyfin uses 10,000 ticks per millisecond
      */
     fun ticksToMs(ticks: Long): Long = ticks / 10_000
-    
+
     /**
      * Convert milliseconds to Jellyfin ticks
      */
     fun msToTicks(ms: Long): Long = ms * 10_000
-    
+
     /**
      * Calculate progress percentage (0.0 to 1.0)
      */

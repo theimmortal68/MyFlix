@@ -1,3 +1,14 @@
+@file:Suppress(
+    "LongMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+    "ModifierMissing",
+    "ParameterNaming",
+    "ComposableParamOrder",
+)
+
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.foundation.background
@@ -16,8 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -34,7 +45,7 @@ fun TopNavigationBar(
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester? = null,
     homeButtonFocusRequester: FocusRequester? = null,
-    downFocusRequester: FocusRequester? = null
+    downFocusRequester: FocusRequester? = null,
 ) {
     Box(
         modifier = modifier
@@ -44,11 +55,11 @@ fun TopNavigationBar(
                     colors = listOf(
                         Color.Black.copy(alpha = 0.7f),
                         Color.Black.copy(alpha = 0.3f),
-                        Color.Transparent
-                    )
-                )
+                        Color.Transparent,
+                    ),
+                ),
             )
-            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 8.dp)
+            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
     ) {
         // Left: Settings icon button
         NavIconButton(
@@ -58,14 +69,14 @@ fun TopNavigationBar(
             onClick = { onItemSelected(NavItem.SETTINGS) },
             focusRequester = firstItemFocusRequester,
             downFocusRequester = downFocusRequester,
-            modifier = Modifier.align(Alignment.CenterStart)
+            modifier = Modifier.align(Alignment.CenterStart),
         )
 
         // Center: Home, TV Shows, Movies, Collections, Universes, Discover
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.align(Alignment.Center)
+            modifier = Modifier.align(Alignment.Center),
         ) {
             listOf(
                 NavItem.HOME,
@@ -73,14 +84,14 @@ fun TopNavigationBar(
                 NavItem.MOVIES,
                 NavItem.COLLECTIONS,
                 NavItem.UNIVERSES,
-                NavItem.DISCOVER
+                NavItem.DISCOVER,
             ).forEach { item ->
                 NavTabButton(
                     item = item,
                     isSelected = selectedItem == item,
                     onClick = { onItemSelected(item) },
                     focusRequester = if (item == NavItem.HOME) homeButtonFocusRequester else null,
-                    downFocusRequester = downFocusRequester
+                    downFocusRequester = downFocusRequester,
                 )
             }
         }
@@ -92,11 +103,12 @@ fun TopNavigationBar(
             isSelected = selectedItem == NavItem.SEARCH,
             onClick = { onItemSelected(NavItem.SEARCH) },
             downFocusRequester = downFocusRequester,
-            modifier = Modifier.align(Alignment.CenterEnd)
+            modifier = Modifier.align(Alignment.CenterEnd),
         )
     }
 }
 
+@Suppress("UnusedParameter")
 @Composable
 private fun NavIconButton(
     icon: ImageVector,
@@ -105,7 +117,7 @@ private fun NavIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
-    downFocusRequester: FocusRequester? = null
+    downFocusRequester: FocusRequester? = null,
 ) {
     // Circular icon button - 20dp size, no scale on focus
     Button(
@@ -115,7 +127,9 @@ private fun NavIconButton(
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
-                } else Modifier
+                } else {
+                    Modifier
+                },
             )
             .focusProperties {
                 if (downFocusRequester != null) {
@@ -126,19 +140,19 @@ private fun NavIconButton(
         contentPadding = PaddingValues(0.dp),
         scale = ButtonDefaults.scale(
             scale = 1f,
-            focusedScale = 1f // No scale change on focus
+            focusedScale = 1f, // No scale change on focus
         ),
         colors = ButtonDefaults.colors(
             containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
             contentColor = TvColors.TextPrimary,
             focusedContainerColor = TvColors.BluePrimary,
-            focusedContentColor = Color.White
-        )
+            focusedContentColor = Color.White,
+        ),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            modifier = Modifier.size(12.dp)
+            modifier = Modifier.size(12.dp),
         )
     }
 }
@@ -149,7 +163,7 @@ private fun NavTabButton(
     isSelected: Boolean,
     onClick: () -> Unit,
     focusRequester: FocusRequester? = null,
-    downFocusRequester: FocusRequester? = null
+    downFocusRequester: FocusRequester? = null,
 ) {
     // 20dp height, no scale on focus
     Button(
@@ -159,7 +173,9 @@ private fun NavTabButton(
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
-                } else Modifier
+                } else {
+                    Modifier
+                },
             )
             .focusProperties {
                 if (downFocusRequester != null) {
@@ -170,14 +186,14 @@ private fun NavTabButton(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
         scale = ButtonDefaults.scale(
             scale = 1f,
-            focusedScale = 1f // No scale change on focus
+            focusedScale = 1f, // No scale change on focus
         ),
         colors = ButtonDefaults.colors(
             containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
             contentColor = TvColors.TextPrimary,
             focusedContainerColor = TvColors.BluePrimary,
-            focusedContentColor = Color.White
-        )
+            focusedContentColor = Color.White,
+        ),
     ) {
         Text(
             text = when (item) {
@@ -191,7 +207,7 @@ private fun NavTabButton(
                 NavItem.UNIVERSES -> "Universes"
             },
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
 }

@@ -1,3 +1,13 @@
+@file:Suppress(
+    "LongMethod",
+    "CognitiveComplexMethod",
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "WildcardImport",
+    "NoWildcardImports",
+    "LabeledExpression",
+)
+
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.border
@@ -41,37 +51,33 @@ enum class LoginStep {
     CONNECTING,
     AUTH_CHOICE,
     QUICK_CONNECT,
-    MANUAL_LOGIN
+    MANUAL_LOGIN,
 }
 
 @Composable
-fun LoginScreen(
-    appState: AppState,
-    jellyfinClient: JellyfinClient,
-    onLoginSuccess: () -> Unit
-) {
+fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSuccess: () -> Unit,) {
     var currentStep by remember { mutableStateOf(LoginStep.SERVER_DISCOVERY) }
     var connectedServer by remember { mutableStateOf<ValidatedServer?>(null) }
     var connectionError by remember { mutableStateOf<String?>(null) }
     var discoveredServers by remember { mutableStateOf<List<DiscoveredServer>>(emptyList()) }
     var isSearching by remember { mutableStateOf(true) }
-    
+
     // Use scope at this level so it survives screen transitions
     val scope = rememberCoroutineScope()
-    
+
     // Auto-discover on launch
     LaunchedEffect(Unit) {
         isSearching = true
         discoveredServers = jellyfinClient.discoverServers(timeoutMs = 5000)
         isSearching = false
     }
-    
+
     // Connection function that survives screen transitions
     fun connectToServer(address: String) {
         scope.launch {
             currentStep = LoginStep.CONNECTING
             connectionError = null
-            
+
             jellyfinClient.connectToServer(address)
                 .onSuccess { server ->
                     connectedServer = server
@@ -94,7 +100,7 @@ fun LoginScreen(
                 TextButton(onClick = { connectionError = null }) {
                     Text("OK")
                 }
-            }
+            },
         )
     }
 
@@ -110,7 +116,7 @@ fun LoginScreen(
                         isSearching = false
                     }
                 },
-                onConnect = { address -> connectToServer(address) }
+                onConnect = { address -> connectToServer(address) },
             )
         }
 
@@ -135,7 +141,7 @@ fun LoginScreen(
                     onChangeServer = {
                         connectedServer = null
                         currentStep = LoginStep.SERVER_DISCOVERY
-                    }
+                    },
                 )
             }
         }
@@ -155,7 +161,7 @@ fun LoginScreen(
                     },
                     onBack = {
                         currentStep = LoginStep.AUTH_CHOICE
-                    }
+                    },
                 )
             }
         }
@@ -172,7 +178,7 @@ fun LoginScreen(
                     onLoginSuccess = onLoginSuccess,
                     onBack = {
                         currentStep = LoginStep.AUTH_CHOICE
-                    }
+                    },
                 )
             }
         }
@@ -185,7 +191,7 @@ private fun ServerDiscoveryScreen(
     discoveredServers: List<DiscoveredServer>,
     isSearching: Boolean,
     onRefresh: () -> Unit,
-    onConnect: (String) -> Unit
+    onConnect: (String) -> Unit,
 ) {
     var serverAddress by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
@@ -200,21 +206,21 @@ private fun ServerDiscoveryScreen(
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "Connect to Server",
                 style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 24.dp),
             )
 
             // Server address input
@@ -227,14 +233,14 @@ private fun ServerDiscoveryScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Go
+                    imeAction = ImeAction.Go,
                 ),
                 keyboardActions = KeyboardActions(
-                    onGo = { 
+                    onGo = {
                         focusManager.clearFocus()
                         if (serverAddress.isNotBlank()) onConnect(serverAddress)
-                    }
-                )
+                    },
+                ),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -243,7 +249,7 @@ private fun ServerDiscoveryScreen(
             Button(
                 onClick = { if (serverAddress.isNotBlank()) onConnect(serverAddress) },
                 enabled = serverAddress.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Connect")
             }
@@ -254,7 +260,7 @@ private fun ServerDiscoveryScreen(
             OutlinedButton(
                 onClick = onRefresh,
                 enabled = !isSearching,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Choose server")
             }
@@ -265,13 +271,13 @@ private fun ServerDiscoveryScreen(
             if (isSearching) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     Text(
                         text = "Searching for servers...",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             } else if (discoveredServers.isNotEmpty()) {
@@ -279,7 +285,7 @@ private fun ServerDiscoveryScreen(
                     text = "Found ${discoveredServers.size} server(s):",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 discoveredServers.forEach { server ->
@@ -287,14 +293,14 @@ private fun ServerDiscoveryScreen(
                         onClick = { onConnect(server.address) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 4.dp),
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(server.name, style = MaterialTheme.typography.titleMedium)
                             Text(
                                 server.address,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -308,11 +314,11 @@ private fun ServerDiscoveryScreen(
 private fun ConnectingScreen() {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             CircularProgressIndicator()
             Text("Connecting...")
@@ -326,40 +332,40 @@ private fun AuthChoiceScreen(
     server: ValidatedServer,
     onQuickConnect: () -> Unit,
     onManualLogin: () -> Unit,
-    onChangeServer: () -> Unit
+    onChangeServer: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("MyFlix") }
+                title = { Text("MyFlix") },
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
                 text = "Please sign in",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
             )
 
             Text(
                 text = server.serverInfo.serverName,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 32.dp),
             )
 
             // Sign In (manual) - Primary
             Button(
                 onClick = onManualLogin,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Sign In")
             }
@@ -370,7 +376,7 @@ private fun AuthChoiceScreen(
             if (server.quickConnectEnabled) {
                 OutlinedButton(
                     onClick = onQuickConnect,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Use Quick Connect")
                 }
@@ -381,7 +387,7 @@ private fun AuthChoiceScreen(
             // Change Server
             OutlinedButton(
                 onClick = onChangeServer,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Change Server")
             }
@@ -397,7 +403,7 @@ private fun QuickConnectScreen(
     appState: AppState,
     onLoginSuccess: () -> Unit,
     onUsePassword: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     var quickConnectState by remember { mutableStateOf<QuickConnectFlowState>(QuickConnectFlowState.Initializing) }
     var quickConnectJob by remember { mutableStateOf<Job?>(null) }
@@ -416,7 +422,7 @@ private fun QuickConnectScreen(
                         serverUrl = server.url,
                         accessToken = response.accessToken,
                         userId = response.user.id,
-                        deviceId = jellyfinClient.deviceId
+                        deviceId = jellyfinClient.deviceId,
                     )
                     appState.login(server.url, response.accessToken, response.user.id)
                     onLoginSuccess()
@@ -440,21 +446,21 @@ private fun QuickConnectScreen(
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = server.serverInfo.serverName,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -470,14 +476,14 @@ private fun QuickConnectScreen(
                     Text(
                         text = "Quick Connect is not available on this server",
                         color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
 
                 is QuickConnectFlowState.WaitingForApproval -> {
                     Text(
                         text = "Enter this code in Jellyfin:",
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -488,15 +494,15 @@ private fun QuickConnectScreen(
                         modifier = Modifier.border(
                             2.dp,
                             MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(12.dp)
-                        )
+                            RoundedCornerShape(12.dp),
+                        ),
                     ) {
                         Text(
                             text = state.code,
                             style = MaterialTheme.typography.displayMedium,
                             color = MaterialTheme.colorScheme.primary,
                             letterSpacing = 8.sp,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
                         )
                     }
 
@@ -504,7 +510,7 @@ private fun QuickConnectScreen(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Text("Waiting for approval...")
@@ -527,7 +533,7 @@ private fun QuickConnectScreen(
                     Text(
                         text = state.message,
                         color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -539,7 +545,7 @@ private fun QuickConnectScreen(
                     quickConnectJob?.cancel()
                     onUsePassword()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Sign in with Password")
             }
@@ -554,7 +560,7 @@ private fun ManualLoginScreen(
     jellyfinClient: JellyfinClient,
     appState: AppState,
     onLoginSuccess: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -572,22 +578,22 @@ private fun ManualLoginScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = server.serverInfo.serverName,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 24.dp),
             )
 
             OutlinedTextField(
@@ -602,8 +608,8 @@ private fun ManualLoginScreen(
                 enabled = !isLoading,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                ),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -621,11 +627,11 @@ private fun ManualLoginScreen(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
-                )
+                    onDone = { focusManager.clearFocus() },
+                ),
             )
 
             errorMessage?.let { error ->
@@ -633,7 +639,7 @@ private fun ManualLoginScreen(
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
 
@@ -652,16 +658,17 @@ private fun ManualLoginScreen(
                                     serverUrl = server.url,
                                     accessToken = response.accessToken,
                                     userId = response.user.id,
-                                    deviceId = jellyfinClient.deviceId
+                                    deviceId = jellyfinClient.deviceId,
                                 )
                                 // Store username/password for Seerr integration
                                 appState.login(server.url, response.accessToken, response.user.id, username, password)
                                 onLoginSuccess()
                             }
                             .onFailure { e ->
-                                errorMessage = when {
-                                    e.message?.contains("401") == true -> "Invalid username or password"
-                                    else -> e.message ?: "Login failed"
+                                errorMessage = if (e.message?.contains("401") == true) {
+                                    "Invalid username or password"
+                                } else {
+                                    e.message ?: "Login failed"
                                 }
                             }
 
@@ -669,13 +676,13 @@ private fun ManualLoginScreen(
                     }
                 },
                 enabled = !isLoading && username.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
                     )
                 } else {
                     Text("Sign In")
@@ -687,7 +694,7 @@ private fun ManualLoginScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = onBack,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Use Quick Connect")
                 }
@@ -697,7 +704,7 @@ private fun ManualLoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(
                 onClick = onBack,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Change Server")
             }
