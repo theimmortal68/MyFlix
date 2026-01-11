@@ -209,6 +209,7 @@ class PlaybackService : MediaSessionService() {
      * MediaSession callback for handling media button events
      */
     private inner class MediaSessionCallback : MediaSession.Callback {
+        @Deprecated("Deprecated in MediaSession.Callback")
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,

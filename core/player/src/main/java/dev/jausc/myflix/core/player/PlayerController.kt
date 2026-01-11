@@ -268,6 +268,7 @@ class PlayerController(
                 }
 
                 val hdrCapabilities = display?.hdrCapabilities
+                @Suppress("DEPRECATION")
                 val supportedTypes = hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
 
                 val hasDV = supportedTypes.contains(HDR_TYPE_DOLBY_VISION)

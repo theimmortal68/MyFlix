@@ -218,6 +218,7 @@ class JellyfinClient(
      * Returns a Flow that emits servers as they're discovered.
      */
     @Suppress("NestedBlockDepth", "CognitiveComplexMethod")
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlinx.coroutines.DelicateCoroutinesApi::class)
     fun discoverServersFlow(timeoutMs: Long = 5000): Flow<DiscoveredServer> = channelFlow {
         val seen = mutableSetOf<String>()
 

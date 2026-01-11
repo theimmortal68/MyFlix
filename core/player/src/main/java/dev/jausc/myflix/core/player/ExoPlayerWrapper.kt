@@ -344,6 +344,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
          * Get supported audio passthrough formats on this device
          * TODO: Use this for passthrough settings option
          */
+        @Suppress("DEPRECATION")
         fun getPassthroughCapabilities(context: Context): String {
             val capabilities = AudioCapabilities.getCapabilities(context)
             val formats = mutableListOf<String>()

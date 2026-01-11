@@ -157,7 +157,7 @@ fun SeerrSetupScreen(
                 statusMessage = "Logging in as $jellyfinUsername..."
                 currentStep = 2
 
-                seerrClient.loginWithJellyfin(jellyfinUsername!!, jellyfinPassword!!)
+                seerrClient.loginWithJellyfin(jellyfinUsername.orEmpty(), jellyfinPassword.orEmpty())
                     .onSuccess { user ->
                         preferences.setSeerrUrl(foundUrl)
                         preferences.setSeerrEnabled(true)
@@ -192,7 +192,7 @@ fun SeerrSetupScreen(
                 null
             }
         } else if (hasCredentials) {
-            Pair(jellyfinUsername!!, jellyfinPassword!!)
+            Pair(jellyfinUsername.orEmpty(), jellyfinPassword.orEmpty())
         } else {
             null
         }
