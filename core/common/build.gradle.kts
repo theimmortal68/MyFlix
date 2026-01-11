@@ -46,4 +46,10 @@ dependencies {
     // Material Icons - for ActionMenuBuilder
     api("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:${rootProject.extra["kotlinVersion"]}")
+    testImplementation("io.mockk:mockk:1.13.10")
 }
