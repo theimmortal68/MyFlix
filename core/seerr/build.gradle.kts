@@ -19,18 +19,23 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":core:common"))
+    // Exposed to consumers
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
+
+    // Ktor
     val ktorVersion = rootProject.extra["ktorVersion"] as String
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-client-logging:$ktorVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation("io.ktor:ktor-http:$ktorVersion")
+    implementation("io.ktor:ktor-serialization:$ktorVersion")
+    implementation("io.ktor:ktor-utils:$ktorVersion")
 
-    // Testing
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
-    testImplementation("org.jetbrains.kotlin:kotlin-test:${rootProject.extra["kotlinVersion"]}")
+    // OkHttp
+    implementation("com.squareup.okhttp3:okhttp:5.1.0")
+
+    // Serialization JSON
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 }

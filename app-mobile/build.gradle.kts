@@ -50,16 +50,28 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}")
     implementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.17.0")
+    // Core Android
+    implementation("androidx.activity:activity:1.10.1")
     implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
+
+    // Compose UI
+    implementation("androidx.compose.animation:animation-core")
+    implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.foundation:foundation-layout")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.runtime:runtime")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-geometry")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-text")
+    implementation("androidx.compose.ui:ui-unit")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-common:2.9.6")
+    implementation("androidx.navigation:navigation-runtime:2.9.6")
     implementation("androidx.navigation:navigation-compose:2.9.6")
 
     // Coil 3 for image loading
@@ -68,9 +80,16 @@ dependencies {
 
     // Media3 ExoPlayer
     val media3Version = rootProject.extra["media3Version"] as String
+    implementation("androidx.media3:media3-common:$media3Version")
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
+    // Guava (used by Media3)
+    implementation("com.google.guava:guava:33.3.1-android")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

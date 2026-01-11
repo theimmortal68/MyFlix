@@ -23,12 +23,20 @@ kotlin {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
-    
-    // Compose UI for fonts and logo
+    // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    implementation("androidx.compose.ui:ui")
+
+    // Serialization - exposed to consumers
+    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.0")
+
+    // Compose UI - exposed to consumers
+    api("androidx.compose.runtime:runtime")
+    api("androidx.compose.ui:ui-graphics")
+    api("androidx.compose.ui:ui-text")
+    api("androidx.compose.ui:ui-unit")
+
+    // Compose UI - internal use (for MyFlixLogo)
     implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.foundation:foundation-layout")
+    implementation("androidx.compose.ui:ui")
 }

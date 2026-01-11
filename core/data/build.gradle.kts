@@ -18,8 +18,12 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":core:common"))
-    implementation(project(":core:network"))
+    // Exposed to consumers
+    api(project(":core:network"))
+
+    // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.2")
+
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
 }
