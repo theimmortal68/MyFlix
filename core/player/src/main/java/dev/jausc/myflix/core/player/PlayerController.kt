@@ -285,9 +285,7 @@ class PlayerController(
         }
 
         @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-        private fun getHdrTypesApi34(context: Context): IntArray {
-            return context.display.mode.supportedHdrTypes
-        }
+        private fun getHdrTypesApi34(context: Context): IntArray = context.display.mode.supportedHdrTypes
 
         @RequiresApi(Build.VERSION_CODES.R)
         private fun getHdrTypesApi30(context: Context): IntArray {
@@ -299,10 +297,12 @@ class PlayerController(
 
         private fun getHdrTypesLegacy(context: Context): IntArray {
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
             // defaultDisplay and supportedHdrTypes are deprecated in API 30+ but there's
             // no alternative for API 24-29 (our min SDK is 25)
             @Suppress("DEPRECATION")
             val display = windowManager.defaultDisplay ?: return intArrayOf()
+
             @Suppress("DEPRECATION")
             return display.hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
         }
