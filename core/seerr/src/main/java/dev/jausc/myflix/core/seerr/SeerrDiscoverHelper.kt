@@ -285,6 +285,49 @@ object SeerrDiscoverHelper {
             networks = PopularNetworks.networks,
         )
     }
+
+    /**
+     * Load recent requests row for the current user.
+     *
+     * @param seerrClient The Seerr API client
+     * @return A row of recent requests, or null if no requests exist
+     */
+    suspend fun loadRecentRequestsRow(seerrClient: SeerrClient): SeerrRequestRow? {
+        return seerrClient.getMyRequests(page = 1, pageSize = MAX_ITEMS_PER_ROW)
+            .getOrNull()
+            ?.results
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { requests ->
+                SeerrRequestRow(
+                    key = "recent_requests",
+                    title = "My Requests",
+                    items = requests,
+                    accentColorValue = SeerrColors.GREEN,
+                )
+            }
+    }
+
+    /**
+     * Load all recent requests row (not filtered by user).
+     * Shows all requests from all users, sorted by most recent.
+     *
+     * @param seerrClient The Seerr API client
+     * @return A row of all recent requests, or null if no requests exist
+     */
+    suspend fun loadAllRequestsRow(seerrClient: SeerrClient): SeerrRequestRow? {
+        return seerrClient.getAllRequests(page = 1, pageSize = MAX_ITEMS_PER_ROW)
+            .getOrNull()
+            ?.results
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { requests ->
+                SeerrRequestRow(
+                    key = "all_requests",
+                    title = "Recent Requests",
+                    items = requests,
+                    accentColorValue = SeerrColors.GREEN,
+                )
+            }
+    }
 }
 
 /**
@@ -324,6 +367,16 @@ data class SeerrNetworkRow(
     val key: String,
     val title: String,
     val networks: List<SeerrNetwork>,
+)
+
+/**
+ * Represents a row of user request cards for browsing.
+ */
+data class SeerrRequestRow(
+    val key: String,
+    val title: String,
+    val items: List<SeerrRequest>,
+    val accentColorValue: Long = SeerrColors.GREEN,
 )
 
 /**

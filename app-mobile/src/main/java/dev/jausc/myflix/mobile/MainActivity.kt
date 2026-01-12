@@ -205,6 +205,7 @@ fun MyFlixMobileContent() {
             HomeScreen(
                 jellyfinClient = jellyfinClient,
                 preferences = mobilePreferences,
+                seerrClient = if (isSeerrAuthenticated) seerrClient else null,
                 onLibraryClick = { libraryId, libraryName ->
                     navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
                 },
@@ -222,6 +223,9 @@ fun MyFlixMobileContent() {
                 },
                 onSettingsClick = {
                     navController.navigate("settings")
+                },
+                onSeerrMediaClick = { mediaType, tmdbId ->
+                    navController.navigate("seerr/$mediaType/$tmdbId")
                 },
             )
         }

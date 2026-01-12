@@ -32,11 +32,11 @@ import androidx.compose.ui.window.Dialog
 sealed interface MenuItemEntry
 
 /**
- * A clickable menu item with icon and text.
+ * A clickable menu item with optional icon and text.
  */
 data class MenuItem(
     val text: String,
-    val icon: ImageVector,
+    val icon: ImageVector? = null,
     val iconTint: Color = Color.Unspecified,
     val onClick: () -> Unit,
 ) : MenuItemEntry
@@ -108,17 +108,19 @@ fun PopupMenu(params: BottomSheetParams, onDismiss: () -> Unit,) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Start,
                             ) {
-                                Icon(
-                                    imageVector = entry.icon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = if (entry.iconTint != Color.Unspecified) {
-                                        entry.iconTint
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    },
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
+                                if (entry.icon != null) {
+                                    Icon(
+                                        imageVector = entry.icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                        tint = if (entry.iconTint != Color.Unspecified) {
+                                            entry.iconTint
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                }
                                 Text(
                                     text = entry.text,
                                     style = MaterialTheme.typography.bodyLarge,

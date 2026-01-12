@@ -66,6 +66,11 @@ abstract class AppPreferences(context: Context) {
     }
     val showSuggestions: StateFlow<Boolean> by lazy { _showSuggestions.asStateFlow() }
 
+    private val _showSeerrRecentRequests: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_SEERR_RECENT_REQUESTS, PreferenceKeys.Defaults.SHOW_SEERR_RECENT_REQUESTS))
+    }
+    val showSeerrRecentRequests: StateFlow<Boolean> by lazy { _showSeerrRecentRequests.asStateFlow() }
+
     // Seerr Integration Preferences
     private val _seerrEnabled: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, PreferenceKeys.Defaults.SEERR_ENABLED))
@@ -169,6 +174,14 @@ abstract class AppPreferences(context: Context) {
     fun setShowSuggestions(show: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_SUGGESTIONS, show).apply()
         _showSuggestions.value = show
+    }
+
+    /**
+     * Set whether to show recent requests row on Seerr home (Discover).
+     */
+    fun setShowSeerrRecentRequests(show: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_SEERR_RECENT_REQUESTS, show).apply()
+        _showSeerrRecentRequests.value = show
     }
 
     // Seerr setters

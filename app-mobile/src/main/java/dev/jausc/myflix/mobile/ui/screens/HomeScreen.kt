@@ -15,16 +15,30 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +60,9 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
+import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrColors
+import dev.jausc.myflix.core.seerr.SeerrRequest
 import kotlinx.coroutines.launch
 import dev.jausc.myflix.mobile.MobilePreferences
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
@@ -75,16 +92,18 @@ import dev.jausc.myflix.mobile.ui.components.buildHomeMenuItems
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
     preferences: MobilePreferences,
+    seerrClient: SeerrClient? = null,
     onLibraryClick: (String, String) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit,
     onDiscoverClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
 ) {
     // ViewModel with manual DI
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(jellyfinClient, preferences),
+        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrClient),
     )
 
     // Collect UI state from ViewModel
@@ -96,6 +115,7 @@ fun HomeScreen(
     val showCollections by viewModel.showCollections.collectAsState()
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val pinnedCollections by viewModel.pinnedCollections.collectAsState()
+    val showSeerrRecentRequests by viewModel.showSeerrRecentRequests.collectAsState()
 
     // Scope for async menu actions
     val scope = rememberCoroutineScope()
@@ -401,6 +421,23 @@ fun HomeScreen(
                             isUpcomingEpisodes = rowData.isUpcomingEpisodes,
                         )
                     }
+
+                    // Recent Requests row (from Seerr)
+                    if (showSeerrRecentRequests && state.recentRequests.isNotEmpty() && seerrClient != null) {
+                        item(key = "recent_requests") {
+                            MobileSeerrRequestRow(
+                                title = "Recent Requests",
+                                requests = state.recentRequests,
+                                seerrClient = seerrClient,
+                                accentColor = androidx.compose.ui.graphics.Color(SeerrColors.GREEN),
+                                onRequestClick = { request ->
+                                    request.media?.let { media ->
+                                        onSeerrMediaClick(media.mediaType ?: "movie", media.tmdbId ?: 0)
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
 
                 // Popup menu for long-press
@@ -428,6 +465,146 @@ fun HomeScreen(
                     .align(Alignment.TopCenter)
                     .zIndex(1f),
             )
+        }
+    }
+}
+
+/**
+ * Row displaying recent Seerr requests with poster cards and status badges.
+ */
+@Composable
+private fun MobileSeerrRequestRow(
+    title: String,
+    requests: List<SeerrRequest>,
+    seerrClient: SeerrClient,
+    accentColor: Color,
+    onRequestClick: (SeerrRequest) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.padding(vertical = 8.dp),
+    ) {
+        // Row header
+        Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(20.dp)
+                    .background(accentColor, shape = RoundedCornerShape(2.dp)),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+
+        // LazyRow of request cards
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(requests, key = { it.id }) { request ->
+                MobileSeerrRequestCard(
+                    request = request,
+                    seerrClient = seerrClient,
+                    onClick = { onRequestClick(request) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Card displaying a Seerr request with poster image and status badge.
+ * Lazily fetches media details to get the poster path.
+ */
+@Composable
+private fun MobileSeerrRequestCard(
+    request: SeerrRequest,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val mediaType = request.media?.mediaType
+    val tmdbId = request.media?.tmdbId
+
+    // Lazily fetch media details to get poster path
+    var mediaDetails by remember { mutableStateOf<SeerrMedia?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(tmdbId, mediaType) {
+        if (tmdbId != null && mediaType != null) {
+            val result = if (mediaType == "tv") {
+                seerrClient.getTVShow(tmdbId)
+            } else {
+                seerrClient.getMovie(tmdbId)
+            }
+            result.onSuccess { mediaDetails = it }
+        }
+    }
+
+    val posterUrl = mediaDetails?.posterPath?.let { seerrClient.getPosterUrl(it) }
+    val statusColor = when (request.status) {
+        SeerrRequestStatus.PENDING_APPROVAL -> Color(SeerrColors.YELLOW)
+        SeerrRequestStatus.APPROVED -> Color(SeerrColors.GREEN)
+        SeerrRequestStatus.DECLINED -> Color(0xFFEF4444)
+        else -> Color(0xFF6B7280)
+    }
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.size(width = 110.dp, height = 165.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Poster image
+            if (posterUrl != null) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = mediaDetails?.displayTitle,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+            } else {
+                // Placeholder while loading
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Text(
+                        text = mediaDetails?.displayTitle?.take(1) ?: "?",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Status badge overlay
+            Box(
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.TopEnd)
+                    .padding(4.dp)
+                    .background(statusColor, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = request.statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
         }
     }
 }

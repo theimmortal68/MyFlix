@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
+import dev.jausc.myflix.core.seerr.SeerrRequest
 import dev.jausc.myflix.tv.TvPreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +33,7 @@ data class HomeUiState(
     val seasonPremieres: List<JellyfinItem> = emptyList(),
     val collections: List<JellyfinItem> = emptyList(),
     val suggestions: List<JellyfinItem> = emptyList(),
+    val recentRequests: List<SeerrRequest> = emptyList(),
     val pinnedCollectionsData: Map<String, Pair<String, List<JellyfinItem>>> = emptyMap(),
     val genreRowsData: Map<String, List<JellyfinItem>> = emptyMap(),
     val availableGenres: List<String> = emptyList(),
@@ -57,6 +61,7 @@ data class HomeUiState(
 class HomeViewModel(
     private val jellyfinClient: JellyfinClient,
     private val preferences: TvPreferences,
+    private val seerrClient: SeerrClient? = null,
 ) : ViewModel() {
 
     /**
@@ -65,10 +70,11 @@ class HomeViewModel(
     class Factory(
         private val jellyfinClient: JellyfinClient,
         private val preferences: TvPreferences,
+        private val seerrClient: SeerrClient? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(jellyfinClient, preferences) as T
+            HomeViewModel(jellyfinClient, preferences, seerrClient) as T
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -82,6 +88,7 @@ class HomeViewModel(
     val showCollections = preferences.showCollections
     val pinnedCollections = preferences.pinnedCollections
     val showSuggestions = preferences.showSuggestions
+    val showSeerrRecentRequests = preferences.showSeerrRecentRequests
 
     init {
         loadContent()
@@ -177,6 +184,11 @@ class HomeViewModel(
             // Load Genre Rows
             if (showGenreRows.value) {
                 loadGenreRows()
+            }
+
+            // Load Recent Requests from Seerr
+            if (showSeerrRecentRequests.value && seerrClient != null) {
+                loadRecentRequests()
             }
 
             // Build featured items
@@ -315,6 +327,13 @@ class HomeViewModel(
             items.filter { it.userData?.played != true }
         } else {
             items
+        }
+    }
+
+    private suspend fun loadRecentRequests() {
+        val client = seerrClient ?: return
+        SeerrDiscoverHelper.loadAllRequestsRow(client)?.let { row ->
+            _uiState.update { it.copy(recentRequests = row.items) }
         }
     }
 }

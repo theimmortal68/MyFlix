@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -84,6 +85,7 @@ fun SettingsScreen(preferences: MobilePreferences, jellyfinClient: JellyfinClien
     val showCollections by preferences.showCollections.collectAsState()
     val pinnedCollections by preferences.pinnedCollections.collectAsState()
     val showSuggestions by preferences.showSuggestions.collectAsState()
+    val showSeerrRecentRequests by preferences.showSeerrRecentRequests.collectAsState()
 
     // Available genres and collections from server
     var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -246,6 +248,19 @@ fun SettingsScreen(preferences: MobilePreferences, jellyfinClient: JellyfinClien
                             },
                             checked = showSuggestions,
                             onCheckedChange = { preferences.setShowSuggestions(it) },
+                        )
+                        SettingsDivider()
+                        ToggleSettingItem(
+                            title = "Recent Requests",
+                            description = "Show recent Seerr requests on home page (requires Seerr)",
+                            icon = Icons.Outlined.Schedule,
+                            iconTint = if (showSeerrRecentRequests) {
+                                Color(0xFF22C55E)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            checked = showSeerrRecentRequests,
+                            onCheckedChange = { preferences.setShowSeerrRecentRequests(it) },
                         )
                     }
                 }

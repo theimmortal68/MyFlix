@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
@@ -88,6 +89,7 @@ fun PreferencesScreen(
     val showCollections by preferences.showCollections.collectAsState()
     val pinnedCollections by preferences.pinnedCollections.collectAsState()
     val showSuggestions by preferences.showSuggestions.collectAsState()
+    val showSeerrRecentRequests by preferences.showSeerrRecentRequests.collectAsState()
 
     // Available genres and collections for selection dialogs
     var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -178,6 +180,8 @@ fun PreferencesScreen(
                 onEditCollections = { showCollectionDialog = true },
                 showSuggestions = showSuggestions,
                 onShowSuggestionsChanged = { preferences.setShowSuggestions(it) },
+                showSeerrRecentRequests = showSeerrRecentRequests,
+                onShowSeerrRecentRequestsChanged = { preferences.setShowSeerrRecentRequests(it) },
                 contentFocusRequester = contentFocusRequester,
                 onShowNavBar = {
                     navBarState.show()
@@ -258,6 +262,8 @@ private fun PreferencesContent(
     onEditCollections: () -> Unit,
     showSuggestions: Boolean,
     onShowSuggestionsChanged: (Boolean) -> Unit,
+    showSeerrRecentRequests: Boolean,
+    onShowSeerrRecentRequestsChanged: (Boolean) -> Unit,
     contentFocusRequester: FocusRequester,
     onShowNavBar: () -> Unit,
 ) {
@@ -343,6 +349,15 @@ private fun PreferencesContent(
                         iconTint = if (showSuggestions) Color(0xFFF472B6) else TvColors.TextSecondary,
                         checked = showSuggestions,
                         onCheckedChange = onShowSuggestionsChanged,
+                    )
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "Recent Requests",
+                        description = "Show recent Seerr requests on home page (requires Seerr)",
+                        icon = Icons.Outlined.Schedule,
+                        iconTint = if (showSeerrRecentRequests) Color(0xFF22C55E) else TvColors.TextSecondary,
+                        checked = showSeerrRecentRequests,
+                        onCheckedChange = onShowSeerrRecentRequestsChanged,
                     )
                 }
             }

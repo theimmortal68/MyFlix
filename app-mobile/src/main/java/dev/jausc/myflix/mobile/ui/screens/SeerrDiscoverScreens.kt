@@ -100,6 +100,17 @@ enum class MobileReleaseStatusFilter(val label: String) {
     UPCOMING("Upcoming"),
 }
 
+enum class MobileSortFilter(val label: String, val movieValue: String, val tvValue: String) {
+    POPULARITY_DESC("Most Popular", "popularity.desc", "popularity.desc"),
+    POPULARITY_ASC("Least Popular", "popularity.asc", "popularity.asc"),
+    RATING_DESC("Highest Rated", "vote_average.desc", "vote_average.desc"),
+    RATING_ASC("Lowest Rated", "vote_average.asc", "vote_average.asc"),
+    RELEASE_DESC("Newest First", "primary_release_date.desc", "first_air_date.desc"),
+    RELEASE_ASC("Oldest First", "primary_release_date.asc", "first_air_date.asc"),
+    TITLE_ASC("Title A-Z", "title.asc", "name.asc"),
+    TITLE_DESC("Title Z-A", "title.desc", "name.desc"),
+}
+
 @Composable
 fun SeerrDiscoverTrendingScreen(
     seerrClient: SeerrClient,
@@ -116,7 +127,7 @@ fun SeerrDiscoverTrendingScreen(
             showGenreFilter = true,
             showReleaseStatusFilter = true,
         ),
-        loadItems = { page, mediaType, genreIds, releaseStatus ->
+        loadItems = { page, mediaType, genreIds, releaseStatus, _, _, _, _ ->
             loadMobileTrendingWithFilters(seerrClient, page, mediaType, genreIds, releaseStatus)
         },
     )
@@ -138,8 +149,8 @@ fun SeerrDiscoverMoviesScreen(
             showReleaseStatusFilter = true,
             defaultMediaType = MobileMediaTypeFilter.MOVIES,
         ),
-        loadItems = { page, _, genreIds, releaseStatus ->
-            loadMobileMoviesWithFilters(seerrClient, page, genreIds, releaseStatus)
+        loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
+            loadMobileMoviesWithFilters(seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
         },
         genreMediaType = "movie",
     )
@@ -161,8 +172,8 @@ fun SeerrDiscoverTvScreen(
             showReleaseStatusFilter = true,
             defaultMediaType = MobileMediaTypeFilter.TV_SHOWS,
         ),
-        loadItems = { page, _, genreIds, releaseStatus ->
-            loadMobileTvWithFilters(seerrClient, page, genreIds, releaseStatus)
+        loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
+            loadMobileTvWithFilters(seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
         },
         genreMediaType = "tv",
     )
@@ -183,7 +194,7 @@ fun SeerrDiscoverUpcomingMoviesScreen(
             showGenreFilter = true,
             defaultMediaType = MobileMediaTypeFilter.MOVIES,
         ),
-        loadItems = { page, _, genreIds, _ ->
+        loadItems = { page, _, genreIds, _, _, _, _, _ ->
             loadMobileUpcomingWithFilters(seerrClient, page, MobileMediaTypeFilter.MOVIES, genreIds)
         },
         genreMediaType = "movie",
@@ -205,7 +216,7 @@ fun SeerrDiscoverUpcomingTvScreen(
             showGenreFilter = true,
             defaultMediaType = MobileMediaTypeFilter.TV_SHOWS,
         ),
-        loadItems = { page, _, genreIds, _ ->
+        loadItems = { page, _, genreIds, _, _, _, _, _ ->
             loadMobileUpcomingWithFilters(seerrClient, page, MobileMediaTypeFilter.TV_SHOWS, genreIds)
         },
         genreMediaType = "tv",
@@ -231,11 +242,11 @@ fun SeerrDiscoverByGenreScreen(
             defaultMediaType = if (mediaType == "movie") MobileMediaTypeFilter.MOVIES
                 else MobileMediaTypeFilter.TV_SHOWS,
         ),
-        loadItems = { page, _, _, releaseStatus ->
+        loadItems = { page, _, _, releaseStatus, sort, rating, fromYear, toYear ->
             if (mediaType == "movie") {
-                loadMobileMoviesWithFilters(seerrClient, page, setOf(genreId), releaseStatus)
+                loadMobileMoviesWithFilters(seerrClient, page, setOf(genreId), releaseStatus, sort, rating, fromYear, toYear)
             } else {
-                loadMobileTvWithFilters(seerrClient, page, setOf(genreId), releaseStatus)
+                loadMobileTvWithFilters(seerrClient, page, setOf(genreId), releaseStatus, sort, rating, fromYear, toYear)
             }
         },
         genreMediaType = mediaType,
@@ -563,6 +574,10 @@ private fun SeerrFilterableMediaListScreen(
         mediaType: MobileMediaTypeFilter,
         genreIds: Set<Int>,
         releaseStatus: MobileReleaseStatusFilter,
+        sortFilter: MobileSortFilter,
+        minRating: Float?,
+        yearFrom: Int?,
+        yearTo: Int?,
     ) -> Result<SeerrDiscoverResult>,
     genreMediaType: String? = null,
 ) {
@@ -583,6 +598,17 @@ private fun SeerrFilterableMediaListScreen(
     var selectedGenreIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var genres by remember { mutableStateOf<List<SeerrGenre>>(emptyList()) }
     var filterTrigger by remember { mutableIntStateOf(0) }
+
+    // Advanced filter state
+    var sortFilter by remember { mutableStateOf(MobileSortFilter.POPULARITY_DESC) }
+    var minRating by remember { mutableStateOf<Float?>(null) }
+    var yearFrom by remember { mutableStateOf<Int?>(null) }
+    var yearTo by remember { mutableStateOf<Int?>(null) }
+
+    // Bottom sheet state for advanced filters
+    var showSortSheet by remember { mutableStateOf(false) }
+    var showRatingSheet by remember { mutableStateOf(false) }
+    var showYearSheet by remember { mutableStateOf(false) }
 
     // Menu state for long-press context menu
     var menuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
@@ -633,7 +659,16 @@ private fun SeerrFilterableMediaListScreen(
         }
         errorMessage = null
 
-        loadItems(pageToLoad, mediaTypeFilter, selectedGenreIds, releaseStatusFilter)
+        loadItems(
+            pageToLoad,
+            mediaTypeFilter,
+            selectedGenreIds,
+            releaseStatusFilter,
+            sortFilter,
+            minRating,
+            yearFrom,
+            yearTo,
+        )
             .onSuccess { result ->
                 val filtered = result.results.filterDiscoverable()
                 items = if (append) {
@@ -796,6 +831,87 @@ private fun SeerrFilterableMediaListScreen(
                         )
                     }
                 }
+
+                // Sort filter chip
+                item {
+                    FilterChip(
+                        selected = sortFilter != MobileSortFilter.POPULARITY_DESC,
+                        onClick = { showSortSheet = true },
+                        label = { Text("Sort: ${sortFilter.label}") },
+                        leadingIcon = if (sortFilter != MobileSortFilter.POPULARITY_DESC) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF3B82F6).copy(alpha = 0.2f),
+                            selectedLabelColor = Color(0xFF3B82F6),
+                            selectedLeadingIconColor = Color(0xFF3B82F6),
+                        ),
+                    )
+                }
+
+                // Rating filter chip
+                item {
+                    FilterChip(
+                        selected = minRating != null,
+                        onClick = { showRatingSheet = true },
+                        label = { Text(minRating?.let { "Rating: ${it.toInt()}+" } ?: "Rating") },
+                        leadingIcon = if (minRating != null) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFFBBF24).copy(alpha = 0.2f),
+                            selectedLabelColor = Color(0xFFFBBF24),
+                            selectedLeadingIconColor = Color(0xFFFBBF24),
+                        ),
+                    )
+                }
+
+                // Year filter chip
+                item {
+                    val yearLabel = when {
+                        yearFrom != null && yearTo != null -> "Year: $yearFrom-$yearTo"
+                        yearFrom != null -> "Year: $yearFrom+"
+                        yearTo != null -> "Year: -$yearTo"
+                        else -> "Year"
+                    }
+                    FilterChip(
+                        selected = yearFrom != null || yearTo != null,
+                        onClick = { showYearSheet = true },
+                        label = { Text(yearLabel) },
+                        leadingIcon = if (yearFrom != null || yearTo != null) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF34D399).copy(alpha = 0.2f),
+                            selectedLabelColor = Color(0xFF34D399),
+                            selectedLeadingIconColor = Color(0xFF34D399),
+                        ),
+                    )
+                }
             }
         }
 
@@ -878,6 +994,155 @@ private fun SeerrFilterableMediaListScreen(
                 onDismiss = { menuParams = null },
             )
         }
+
+        // Sort selection bottom sheet
+        if (showSortSheet) {
+            PopupMenu(
+                params = BottomSheetParams(
+                    title = "Sort By",
+                    items = MobileSortFilter.entries.map { option ->
+                        MenuItem(
+                            text = option.label,
+                            icon = if (sortFilter == option) Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF3B82F6),
+                            onClick = {
+                                sortFilter = option
+                                filterTrigger++
+                                showSortSheet = false
+                            },
+                        )
+                    },
+                ),
+                onDismiss = { showSortSheet = false },
+            )
+        }
+
+        // Rating selection bottom sheet
+        if (showRatingSheet) {
+            val ratingOptions = listOf(
+                null to "Any",
+                5f to "5+",
+                6f to "6+",
+                7f to "7+",
+                8f to "8+",
+                9f to "9+",
+            )
+            PopupMenu(
+                params = BottomSheetParams(
+                    title = "Minimum Rating",
+                    items = ratingOptions.map { (rating, label) ->
+                        MenuItem(
+                            text = label,
+                            icon = if (minRating == rating) Icons.Outlined.Check else null,
+                            iconTint = Color(0xFFFBBF24),
+                            onClick = {
+                                minRating = rating
+                                filterTrigger++
+                                showRatingSheet = false
+                            },
+                        )
+                    },
+                ),
+                onDismiss = { showRatingSheet = false },
+            )
+        }
+
+        // Year selection bottom sheet
+        if (showYearSheet) {
+            val currentYear = java.time.Year.now().value
+            val yearOptions = listOf("Any") + (currentYear downTo 1990).map { it.toString() }
+            PopupMenu(
+                params = BottomSheetParams(
+                    title = "Year Range",
+                    items = listOf(
+                        MenuItem(
+                            text = "Clear Year Filter",
+                            onClick = {
+                                yearFrom = null
+                                yearTo = null
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                        MenuItemDivider,
+                    ) + listOf(
+                        MenuItem(
+                            text = "Last 5 Years (${currentYear - 5}-$currentYear)",
+                            icon = if (yearFrom == currentYear - 5 && yearTo == currentYear)
+                                Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF34D399),
+                            onClick = {
+                                yearFrom = currentYear - 5
+                                yearTo = currentYear
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                        MenuItem(
+                            text = "Last 10 Years (${currentYear - 10}-$currentYear)",
+                            icon = if (yearFrom == currentYear - 10 && yearTo == currentYear)
+                                Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF34D399),
+                            onClick = {
+                                yearFrom = currentYear - 10
+                                yearTo = currentYear
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                        MenuItem(
+                            text = "2020s (2020-$currentYear)",
+                            icon = if (yearFrom == 2020 && yearTo == currentYear)
+                                Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF34D399),
+                            onClick = {
+                                yearFrom = 2020
+                                yearTo = currentYear
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                        MenuItem(
+                            text = "2010s (2010-2019)",
+                            icon = if (yearFrom == 2010 && yearTo == 2019)
+                                Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF34D399),
+                            onClick = {
+                                yearFrom = 2010
+                                yearTo = 2019
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                        MenuItem(
+                            text = "2000s (2000-2009)",
+                            icon = if (yearFrom == 2000 && yearTo == 2009)
+                                Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF34D399),
+                            onClick = {
+                                yearFrom = 2000
+                                yearTo = 2009
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                        MenuItem(
+                            text = "Classic (Before 2000)",
+                            icon = if (yearFrom == null && yearTo == 1999)
+                                Icons.Outlined.Check else null,
+                            iconTint = Color(0xFF34D399),
+                            onClick = {
+                                yearFrom = null
+                                yearTo = 1999
+                                filterTrigger++
+                                showYearSheet = false
+                            },
+                        ),
+                    ),
+                ),
+                onDismiss = { showYearSheet = false },
+            )
+        }
     }
 }
 
@@ -912,15 +1177,31 @@ private suspend fun loadMobileMoviesWithFilters(
     page: Int,
     genreIds: Set<Int>,
     releaseStatus: MobileReleaseStatusFilter,
+    sortFilter: MobileSortFilter,
+    minRating: Float?,
+    yearFrom: Int?,
+    yearTo: Int?,
 ): Result<SeerrDiscoverResult> {
     val params = mutableMapOf<String, String>()
+
+    // Add sort filter
+    if (sortFilter != MobileSortFilter.POPULARITY_DESC) {
+        params["sortBy"] = sortFilter.movieValue
+    }
 
     // Add genre filter
     if (genreIds.isNotEmpty()) {
         params["genre"] = genreIds.joinToString(",")
     }
 
-    // Add release status filter
+    // Add minimum rating filter
+    minRating?.let { params["voteAverageGte"] = it.toString() }
+
+    // Add year range filter
+    yearFrom?.let { params["primaryReleaseDateGte"] = "$it-01-01" }
+    yearTo?.let { params["primaryReleaseDateLte"] = "$it-12-31" }
+
+    // Add release status filter (may override year filters for upcoming)
     val today = java.time.LocalDate.now().toString()
     when (releaseStatus) {
         MobileReleaseStatusFilter.RELEASED -> {
@@ -944,15 +1225,31 @@ private suspend fun loadMobileTvWithFilters(
     page: Int,
     genreIds: Set<Int>,
     releaseStatus: MobileReleaseStatusFilter,
+    sortFilter: MobileSortFilter,
+    minRating: Float?,
+    yearFrom: Int?,
+    yearTo: Int?,
 ): Result<SeerrDiscoverResult> {
     val params = mutableMapOf<String, String>()
+
+    // Add sort filter
+    if (sortFilter != MobileSortFilter.POPULARITY_DESC) {
+        params["sortBy"] = sortFilter.tvValue
+    }
 
     // Add genre filter
     if (genreIds.isNotEmpty()) {
         params["genre"] = genreIds.joinToString(",")
     }
 
-    // Add release status filter
+    // Add minimum rating filter
+    minRating?.let { params["voteAverageGte"] = it.toString() }
+
+    // Add year range filter
+    yearFrom?.let { params["firstAirDateGte"] = "$it-01-01" }
+    yearTo?.let { params["firstAirDateLte"] = "$it-12-31" }
+
+    // Add release status filter (may override year filters for upcoming)
     val today = java.time.LocalDate.now().toString()
     when (releaseStatus) {
         MobileReleaseStatusFilter.RELEASED -> {

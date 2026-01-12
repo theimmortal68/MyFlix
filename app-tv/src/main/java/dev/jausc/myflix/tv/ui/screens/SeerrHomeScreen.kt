@@ -103,8 +103,11 @@ import dev.jausc.myflix.core.seerr.SeerrStudioRow
 import dev.jausc.myflix.core.seerr.getColor
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrRequest
+import dev.jausc.myflix.core.seerr.SeerrRequestRow
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrRowType
+import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry

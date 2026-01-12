@@ -27,10 +27,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,8 +53,10 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -59,8 +64,11 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.PlayAllData
@@ -68,6 +76,11 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
+import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrColors
+import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SeerrRequest
+import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -107,12 +120,14 @@ fun HomeScreen(
     onSearchClick: () -> Unit = {},
     onDiscoverClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    seerrClient: SeerrClient? = null,
+    onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
 
     // ViewModel with manual DI
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(jellyfinClient, preferences),
+        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrClient),
     )
 
     // Collect UI state from ViewModel
@@ -124,6 +139,7 @@ fun HomeScreen(
     val showGenreRows by viewModel.showGenreRows.collectAsState()
     val showCollections by viewModel.showCollections.collectAsState()
     val showSuggestions by viewModel.showSuggestions.collectAsState()
+    val showSeerrRecentRequests by viewModel.showSeerrRecentRequests.collectAsState()
 
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
@@ -289,11 +305,14 @@ fun HomeScreen(
                         pinnedCollectionData = state.pinnedCollectionsData,
                         suggestions = state.suggestions,
                         genreRowsData = state.genreRowsData,
+                        recentRequests = state.recentRequests,
                         showSeasonPremieres = showSeasonPremieres,
                         showGenreRows = showGenreRows,
                         showCollections = showCollections,
                         showSuggestions = showSuggestions,
+                        showSeerrRecentRequests = showSeerrRecentRequests,
                         jellyfinClient = jellyfinClient,
+                        seerrClient = seerrClient,
                         onItemClick = onItemClick,
                         onPlayClick = onPlayClick,
                         onItemLongClick = { item ->
@@ -303,6 +322,7 @@ fun HomeScreen(
                                 fromLongClick = true,
                             )
                         },
+                        onSeerrMediaClick = onSeerrMediaClick,
                         hideWatchedFromRecent = hideWatchedFromRecent,
                         heroPlayFocusRequester = heroPlayFocusRequester,
                         firstRowFocusRequester = firstRowFocusRequester,
@@ -363,14 +383,18 @@ private fun HomeContent(
     pinnedCollectionData: Map<String, Pair<String, List<JellyfinItem>>>,
     suggestions: List<JellyfinItem>,
     genreRowsData: Map<String, List<JellyfinItem>>,
+    recentRequests: List<SeerrRequest>,
     showSeasonPremieres: Boolean,
     showGenreRows: Boolean,
     showCollections: Boolean,
     showSuggestions: Boolean,
+    showSeerrRecentRequests: Boolean,
     jellyfinClient: JellyfinClient,
+    seerrClient: SeerrClient?,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
+    onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     firstRowFocusRequester: FocusRequester = remember { FocusRequester() },
@@ -677,6 +701,23 @@ private fun HomeContent(
                             .animateItem(),
                     )
                 }
+
+                // Recent Requests row (from Seerr)
+                if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrClient != null) {
+                    item(key = "recent_requests") {
+                        SeerrRequestRow(
+                            title = "Recent Requests",
+                            requests = recentRequests,
+                            seerrClient = seerrClient,
+                            accentColor = Color(SeerrColors.GREEN),
+                            onRequestClick = { request ->
+                                request.media?.let { media ->
+                                    onSeerrMediaClick(media.mediaType ?: "movie", media.tmdbId ?: 0)
+                                }
+                            },
+                        )
+                    }
+                }
             }
         } // End Column
 
@@ -828,6 +869,147 @@ private fun ItemRow(
                         modifier = focusModifier,
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Row displaying recent Seerr requests with poster cards and status badges.
+ */
+@Composable
+private fun SeerrRequestRow(
+    title: String,
+    requests: List<SeerrRequest>,
+    seerrClient: SeerrClient,
+    accentColor: Color,
+    onRequestClick: (SeerrRequest) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .padding(vertical = 8.dp)
+            .focusGroup(),
+    ) {
+        // Row header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(start = 10.dp, end = 32.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(24.dp)
+                    .background(accentColor, shape = MaterialTheme.shapes.small),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TvColors.TextPrimary,
+            )
+        }
+
+        // LazyRow of request cards
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(requests, key = { it.id }) { request ->
+                SeerrRequestCard(
+                    request = request,
+                    seerrClient = seerrClient,
+                    onClick = { onRequestClick(request) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Card displaying a Seerr request with poster image and status badge.
+ * Lazily fetches media details to get the poster path.
+ */
+@Composable
+private fun SeerrRequestCard(
+    request: SeerrRequest,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val mediaType = request.media?.mediaType
+    val tmdbId = request.media?.tmdbId
+
+    // Lazily fetch media details to get poster path
+    var mediaDetails by remember { mutableStateOf<SeerrMedia?>(null) }
+
+    LaunchedEffect(tmdbId, mediaType) {
+        if (tmdbId != null && mediaType != null) {
+            val result = if (mediaType == "tv") {
+                seerrClient.getTVShow(tmdbId)
+            } else {
+                seerrClient.getMovie(tmdbId)
+            }
+            result.onSuccess { mediaDetails = it }
+        }
+    }
+
+    val posterUrl = mediaDetails?.posterPath?.let { seerrClient.getPosterUrl(it) }
+    val statusColor = when (request.status) {
+        SeerrRequestStatus.PENDING_APPROVAL -> Color(SeerrColors.YELLOW)
+        SeerrRequestStatus.APPROVED -> Color(SeerrColors.GREEN)
+        SeerrRequestStatus.DECLINED -> Color(0xFFEF4444)
+        else -> Color(0xFF6B7280)
+    }
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.size(width = 140.dp, height = 210.dp),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Poster image
+            if (posterUrl != null) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = mediaDetails?.displayTitle,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+            } else {
+                // Placeholder while loading
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(TvColors.SurfaceElevated, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = mediaDetails?.displayTitle?.take(1) ?: "?",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = TvColors.TextSecondary,
+                    )
+                }
+            }
+
+            // Status badge overlay
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .background(statusColor, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = request.statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
             }
         }
     }
