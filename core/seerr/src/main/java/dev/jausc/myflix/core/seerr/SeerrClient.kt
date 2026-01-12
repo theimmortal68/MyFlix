@@ -727,6 +727,32 @@ class SeerrClient(
     }
 
     // ========================================================================
+    // Person/Actor
+    // ========================================================================
+
+    /**
+     * Get person (actor/crew) details.
+     *
+     * @param personId TMDB person ID
+     */
+    suspend fun getPerson(personId: Int): Result<SeerrPerson> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/person/$personId")
+        response.body()
+    }
+
+    /**
+     * Get person's combined credits (movies and TV shows).
+     *
+     * @param personId TMDB person ID
+     */
+    suspend fun getPersonCombinedCredits(personId: Int): Result<SeerrPersonCredits> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/person/$personId/combined_credits")
+        response.body()
+    }
+
+    // ========================================================================
     // Requests
     // ========================================================================
 

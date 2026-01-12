@@ -72,6 +72,9 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrVideo
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 /**
@@ -92,6 +95,7 @@ fun SeerrDetailScreen(
     tmdbId: Int,
     seerrClient: SeerrClient,
     onBack: () -> Unit,
+    onActorClick: ((Int) -> Unit)? = null,
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var media by remember { mutableStateOf<SeerrMedia?>(null) }
@@ -261,21 +265,32 @@ fun SeerrDetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                // Year
-                                currentMedia.year?.let { year ->
+                                // Full release date formatted
+                                currentMedia.displayReleaseDate?.let { dateStr ->
+                                    val formattedDate = try {
+                                        val date = LocalDate.parse(dateStr)
+                                        date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US))
+                                    } catch (_: Exception) {
+                                        currentMedia.year?.toString() ?: dateStr
+                                    }
                                     Text(
-                                        text = year.toString(),
+                                        text = formattedDate,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
 
-                                // Rating
+                                // TMDb Rating with label
                                 currentMedia.voteAverage?.let { rating ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
+                                        Text(
+                                            text = "TMDb",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFF01D277),
+                                        )
                                         Icon(
                                             imageVector = Icons.Outlined.Star,
                                             contentDescription = null,
@@ -393,6 +408,7 @@ fun SeerrDetailScreen(
                                     MobileSeerrCastCard(
                                         castMember = member,
                                         seerrClient = seerrClient,
+                                        onClick = { onActorClick?.invoke(member.id) },
                                     )
                                 }
                             }
@@ -575,14 +591,20 @@ private fun MobileSeerrRequestSection(
 }
 
 @Composable
-private fun MobileSeerrCastCard(castMember: SeerrCastMember, seerrClient: SeerrClient,) {
+private fun MobileSeerrCastCard(
+    castMember: SeerrCastMember,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit = {},
+) {
     Column(
-        modifier = Modifier.width(80.dp),
+        modifier = Modifier
+            .width(100.dp)
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(80.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
@@ -601,7 +623,7 @@ private fun MobileSeerrCastCard(castMember: SeerrCastMember, seerrClient: SeerrC
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
 

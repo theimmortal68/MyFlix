@@ -38,6 +38,7 @@ import dev.jausc.myflix.tv.ui.screens.LoginScreen
 import dev.jausc.myflix.tv.ui.screens.PlayerScreen
 import dev.jausc.myflix.tv.ui.screens.PreferencesScreen
 import dev.jausc.myflix.tv.ui.screens.SearchScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrActorDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
@@ -366,6 +367,26 @@ fun MyFlixTvApp() {
                     tmdbId = tmdbId,
                     seerrClient = seerrClient,
                     onBack = { navController.popBackStack() },
+                    onActorClick = { personId ->
+                        navController.navigate("seerr/person/$personId")
+                    },
+                )
+            }
+
+            composable(
+                route = "seerr/person/{personId}",
+                arguments = listOf(
+                    navArgument("personId") { type = NavType.IntType },
+                ),
+            ) { backStackEntry ->
+                val personId = backStackEntry.arguments?.getInt("personId") ?: return@composable
+                SeerrActorDetailScreen(
+                    personId = personId,
+                    seerrClient = seerrClient,
+                    onBack = { navController.popBackStack() },
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
                 )
             }
 

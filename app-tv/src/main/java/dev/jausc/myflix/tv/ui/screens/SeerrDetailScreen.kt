@@ -10,8 +10,10 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,15 +47,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -61,6 +62,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import dev.jausc.myflix.core.seerr.SeerrCastMember
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
@@ -87,8 +91,13 @@ fun SeerrDetailScreen(
     seerrClient: SeerrClient,
     onPlayInJellyfin: ((String) -> Unit)? = null, // Jellyfin item ID if available
     onBack: () -> Unit,
+    onActorClick: ((Int) -> Unit)? = null, // Person ID
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Focus requester for the main action button
+    val actionButtonFocusRequester = remember { FocusRequester() }
 
     var isLoading by remember { mutableStateOf(true) }
     var media by remember { mutableStateOf<SeerrMedia?>(null) }
@@ -99,6 +108,17 @@ fun SeerrDetailScreen(
     var isRequesting by remember { mutableStateOf(false) }
     var requestSuccess by remember { mutableStateOf(false) }
     var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    // Request focus on action button when content loads
+    LaunchedEffect(media) {
+        if (media != null) {
+            kotlinx.coroutines.delay(100)
+            try {
+                actionButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     // Load media details
     LaunchedEffect(mediaType, tmdbId) {
@@ -162,16 +182,7 @@ fun SeerrDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
-            .focusable()
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.Back) {
-                    onBack()
-                    true
-                } else {
-                    false
-                }
-            },
+            .background(TvColors.Background),
     ) {
         when {
             isLoading -> {
@@ -284,9 +295,16 @@ fun SeerrDetailScreen(
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        currentMedia.year?.let { year ->
+                                        // Full release date formatted
+                                        currentMedia.displayReleaseDate?.let { dateStr ->
+                                            val formattedDate = try {
+                                                val date = LocalDate.parse(dateStr)
+                                                date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US))
+                                            } catch (_: Exception) {
+                                                dateStr
+                                            }
                                             Text(
-                                                text = year.toString(),
+                                                text = formattedDate,
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 color = TvColors.TextSecondary,
                                             )
@@ -300,18 +318,22 @@ fun SeerrDetailScreen(
                                             )
                                         }
 
+                                        // TMDb rating with label
                                         currentMedia.voteAverage?.let { rating ->
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            ) {
+                                                Text(
+                                                    text = "TMDb",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color(0xFF01D277),
+                                                )
                                                 Text(
                                                     text = "%.1f".format(rating),
                                                     style = MaterialTheme.typography.bodyLarge,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color(0xFFFBBF24),
-                                                )
-                                                Text(
-                                                    text = "/10",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = TvColors.TextSecondary,
                                                 )
                                             }
                                         }
@@ -339,6 +361,7 @@ fun SeerrDetailScreen(
                                             SeerrMediaStatus.AVAILABLE -> {
                                                 Button(
                                                     onClick = { /* Play in Jellyfin */ },
+                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFF22C55E),
                                                     ),
@@ -356,6 +379,7 @@ fun SeerrDetailScreen(
                                             SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> {
                                                 Button(
                                                     onClick = { },
+                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
                                                     enabled = false,
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
@@ -375,6 +399,7 @@ fun SeerrDetailScreen(
                                             else -> {
                                                 Button(
                                                     onClick = { handleRequest() },
+                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
                                                     enabled = !isRequesting,
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFF8B5CF6),
@@ -396,6 +421,33 @@ fun SeerrDetailScreen(
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text(if (isRequesting) "Requesting..." else "Request")
                                                 }
+                                            }
+                                        }
+
+                                        // Trailer button (if available)
+                                        val trailer = currentMedia.relatedVideos?.find {
+                                            it.type == "Trailer" && it.site == "YouTube"
+                                        }
+                                        trailer?.key?.let { videoKey ->
+                                            Button(
+                                                onClick = {
+                                                    val intent = Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse("https://www.youtube.com/watch?v=$videoKey"),
+                                                    )
+                                                    context.startActivity(intent)
+                                                },
+                                                colors = ButtonDefaults.colors(
+                                                    containerColor = Color(0xFFFF0000),
+                                                ),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.PlayArrow,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Trailer")
                                             }
                                         }
                                     }
@@ -465,6 +517,9 @@ fun SeerrDetailScreen(
                                             CastCard(
                                                 member = member,
                                                 seerrClient = seerrClient,
+                                                onClick = {
+                                                    onActorClick?.invoke(member.id)
+                                                },
                                             )
                                         }
                                     }
@@ -545,33 +600,59 @@ private fun StatusBadge(status: Int?) {
 }
 
 @Composable
-private fun CastCard(member: SeerrCastMember, seerrClient: SeerrClient,) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp),
+private fun CastCard(
+    member: SeerrCastMember,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit = {},
+) {
+    androidx.tv.material3.Surface(
+        onClick = onClick,
+        modifier = Modifier.width(120.dp),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
+            shape = RoundedCornerShape(8.dp),
+        ),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = TvColors.Surface,
+        ),
+        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = RoundedCornerShape(8.dp),
+            ),
+        ),
+        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(
+            focusedScale = 1f,
+        ),
     ) {
-        AsyncImage(
-            model = seerrClient.getProfileUrl(member.profilePath),
-            contentDescription = member.name,
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = member.name,
-            style = MaterialTheme.typography.bodySmall,
-            color = TvColors.TextPrimary,
-            maxLines = 1,
-        )
-        member.character?.let { character ->
-            Text(
-                text = character,
-                style = MaterialTheme.typography.labelSmall,
-                color = TvColors.TextSecondary,
-                maxLines = 1,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(8.dp),
+        ) {
+            AsyncImage(
+                model = seerrClient.getProfileUrl(member.profilePath),
+                contentDescription = member.name,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = member.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
+            )
+            member.character?.let { character ->
+                Text(
+                    text = character,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TvColors.TextSecondary,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

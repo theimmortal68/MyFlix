@@ -371,6 +371,78 @@ data class SeerrCrewMember(
 )
 
 // ============================================================================
+// Person Types
+// ============================================================================
+
+/**
+ * Person (actor/crew) details from Seerr.
+ */
+@Serializable
+data class SeerrPerson(
+    val id: Int,
+    val name: String,
+    val biography: String? = null,
+    val birthday: String? = null,
+    val deathday: String? = null,
+    val placeOfBirth: String? = null,
+    val profilePath: String? = null,
+    val knownForDepartment: String? = null,
+    val alsoKnownAs: List<String>? = null,
+    val combinedCredits: SeerrPersonCredits? = null,
+)
+
+/**
+ * Person's combined credits (movies and TV shows they appeared in).
+ */
+@Serializable
+data class SeerrPersonCredits(
+    val cast: List<SeerrPersonCastCredit>? = null,
+    val crew: List<SeerrPersonCrewCredit>? = null,
+)
+
+/**
+ * A cast credit for a person (a movie/show they acted in).
+ */
+@Serializable
+data class SeerrPersonCastCredit(
+    val id: Int,
+    val mediaType: String? = null,
+    val title: String? = null,
+    val name: String? = null,
+    val character: String? = null,
+    val posterPath: String? = null,
+    val releaseDate: String? = null,
+    val firstAirDate: String? = null,
+    val voteAverage: Double? = null,
+) {
+    val displayTitle: String
+        get() = title ?: name ?: "Unknown"
+    val displayDate: String?
+        get() = releaseDate ?: firstAirDate
+    val year: Int?
+        get() = displayDate?.take(4)?.toIntOrNull()
+}
+
+/**
+ * A crew credit for a person (a movie/show they worked on).
+ */
+@Serializable
+data class SeerrPersonCrewCredit(
+    val id: Int,
+    val mediaType: String? = null,
+    val title: String? = null,
+    val name: String? = null,
+    val job: String? = null,
+    val department: String? = null,
+    val posterPath: String? = null,
+    val releaseDate: String? = null,
+    val firstAirDate: String? = null,
+) {
+    val displayTitle: String
+        get() = title ?: name ?: "Unknown"
+}
+
+// ============================================================================
 // External IDs and Videos
 // ============================================================================
 

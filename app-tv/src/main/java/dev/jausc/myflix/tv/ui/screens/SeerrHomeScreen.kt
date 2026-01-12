@@ -10,9 +10,13 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +36,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
@@ -51,16 +59,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.LibraryFinder
@@ -76,6 +82,9 @@ import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Seerr home/discover screen for TV.
@@ -119,6 +128,12 @@ fun SeerrHomeScreen(
     var upcomingMovies by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
     var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
     var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
+
+    // Preview item - shows focused card's media in hero section
+    var previewItem by remember { mutableStateOf<SeerrMedia?>(null) }
+
+    // The item to display in hero - preview takes precedence
+    val heroDisplayItem = previewItem ?: featuredItem
 
     // Filter out items already in library, partially available, or already requested
     fun List<SeerrMedia>.filterDiscoverable() = filter {
@@ -248,110 +263,115 @@ fun SeerrHomeScreen(
 
             else -> {
                 val lazyListState = rememberLazyListState()
-                
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .focusRequester(contentFocusRequester),
-                    contentPadding = PaddingValues(top = 48.dp, bottom = 32.dp),
-                ) {
-                    // Hero section
-                    item {
-                        featuredItem?.let { media ->
-                            SeerrHeroSection(
-                                media = media,
-                                seerrClient = seerrClient,
-                                onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
-                            )
+
+                // Callback for showing nav bar when UP is pressed on first content row
+                val showNavBarOnUp: () -> Unit = {
+                    navBarState.show()
+                    scope.launch {
+                        delay(150)
+                        try {
+                            homeButtonFocusRequester.requestFocus()
+                        } catch (_: Exception) {
                         }
                     }
+                }
 
-                    // Callback for showing nav bar when UP is pressed on first content row
-                    val showNavBarOnUp: () -> Unit = {
-                        navBarState.show()
-                        scope.launch {
-                            delay(150)
-                            try {
-                                homeButtonFocusRequester.requestFocus()
-                            } catch (_: Exception) {
+                // Layer 1: Backdrop image (90% of screen, fades at edges)
+                SeerrBackdropLayer(
+                    media = heroDisplayItem,
+                    seerrClient = seerrClient,
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .fillMaxHeight(0.9f)
+                        .align(Alignment.TopEnd),
+                )
+
+                // Layer 2: Hero info (fixed) + Content rows (scrolling)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Fixed Hero Section (50% height to fully hide row above)
+                    heroDisplayItem?.let { media ->
+                        SeerrHeroSection(
+                            media = media,
+                            seerrClient = seerrClient,
+                            onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
+                            onUpPressed = showNavBarOnUp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.50f),
+                        )
+                    }
+
+                    // Scrolling content rows
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .focusRequester(contentFocusRequester),
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 300.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+                        // Trending row
+                        if (trending.isNotEmpty()) {
+                            item {
+                                SeerrContentRow(
+                                    title = "Trending",
+                                    items = trending,
+                                    seerrClient = seerrClient,
+                                    accentColor = Color(0xFF8B5CF6),
+                                    onItemClick = { media ->
+                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                    },
+                                    onItemFocused = { media -> previewItem = media },
+                                )
                             }
                         }
-                    }
 
-                    // Track which row is first (to pass onUpPressed callback)
-                    var isFirstContentRow = true
-
-                    // Trending row
-                    if (trending.isNotEmpty()) {
-                        val isFirst = isFirstContentRow
-                        isFirstContentRow = false
-                        item {
-                            SeerrContentRow(
-                                title = "Trending",
-                                items = trending,
-                                seerrClient = seerrClient,
-                                accentColor = Color(0xFF8B5CF6),
-                                onItemClick = { media ->
-                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                },
-                                onUpPressed = if (isFirst) showNavBarOnUp else null,
-                            )
+                        // Popular Movies row
+                        if (popularMovies.isNotEmpty()) {
+                            item {
+                                SeerrContentRow(
+                                    title = "Popular Movies",
+                                    items = popularMovies,
+                                    seerrClient = seerrClient,
+                                    accentColor = Color(0xFFFBBF24),
+                                    onItemClick = { media ->
+                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                    },
+                                    onItemFocused = { media -> previewItem = media },
+                                )
+                            }
                         }
-                    }
 
-                    // Popular Movies row
-                    if (popularMovies.isNotEmpty()) {
-                        val isFirst = isFirstContentRow
-                        isFirstContentRow = false
-                        item {
-                            SeerrContentRow(
-                                title = "Popular Movies",
-                                items = popularMovies,
-                                seerrClient = seerrClient,
-                                accentColor = Color(0xFFFBBF24),
-                                onItemClick = { media ->
-                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                },
-                                onUpPressed = if (isFirst) showNavBarOnUp else null,
-                            )
+                        // Popular TV row
+                        if (popularTV.isNotEmpty()) {
+                            item {
+                                SeerrContentRow(
+                                    title = "Popular TV Shows",
+                                    items = popularTV,
+                                    seerrClient = seerrClient,
+                                    accentColor = Color(0xFF34D399),
+                                    onItemClick = { media ->
+                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                    },
+                                    onItemFocused = { media -> previewItem = media },
+                                )
+                            }
                         }
-                    }
 
-                    // Popular TV row
-                    if (popularTV.isNotEmpty()) {
-                        val isFirst = isFirstContentRow
-                        isFirstContentRow = false
-                        item {
-                            SeerrContentRow(
-                                title = "Popular TV Shows",
-                                items = popularTV,
-                                seerrClient = seerrClient,
-                                accentColor = Color(0xFF34D399),
-                                onItemClick = { media ->
-                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                },
-                                onUpPressed = if (isFirst) showNavBarOnUp else null,
-                            )
-                        }
-                    }
-
-                    // Upcoming row
-                    if (upcomingMovies.isNotEmpty()) {
-                        val isFirst = isFirstContentRow
-                        @Suppress("UNUSED_VALUE")
-                        isFirstContentRow = false
-                        item {
-                            SeerrContentRow(
-                                title = "Coming Soon",
-                                items = upcomingMovies,
-                                seerrClient = seerrClient,
-                                accentColor = Color(0xFF60A5FA),
-                                onItemClick = { media ->
-                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                },
-                                onUpPressed = if (isFirst) showNavBarOnUp else null,
-                            )
+                        // Upcoming row
+                        if (upcomingMovies.isNotEmpty()) {
+                            item {
+                                SeerrContentRow(
+                                    title = "Coming Soon",
+                                    items = upcomingMovies,
+                                    seerrClient = seerrClient,
+                                    accentColor = Color(0xFF60A5FA),
+                                    onItemClick = { media ->
+                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                    },
+                                    onItemFocused = { media -> previewItem = media },
+                                )
+                            }
                         }
                     }
                 }
@@ -376,58 +396,109 @@ fun SeerrHomeScreen(
     }
 }
 
-@Suppress("UnusedParameter")
+/**
+ * Backdrop layer for Seerr media - displays behind content with edge fading.
+ */
 @Composable
-private fun SeerrHeroSection(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp),
-    ) {
-        // Backdrop
-        AsyncImage(
-            model = seerrClient.getBackdropUrl(media.backdropPath),
-            contentDescription = null,
+private fun SeerrBackdropLayer(
+    media: SeerrMedia?,
+    seerrClient: SeerrClient,
+    modifier: Modifier = Modifier,
+) {
+    if (media == null) return
+
+    Box(modifier = modifier) {
+        AnimatedContent(
+            targetState = media,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(800)) togetherWith
+                    fadeOut(animationSpec = tween(800))
+            },
+            label = "seerr_backdrop_layer",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
+        ) { currentMedia ->
+            AsyncImage(
+                model = seerrClient.getBackdropUrl(currentMedia.backdropPath),
+                contentDescription = currentMedia.displayTitle,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.9f)
+                    .drawWithContent {
+                        drawContent()
+                        // Left edge fade - subtle fade for text readability
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent,
+                                    0.08f to Color.Black.copy(alpha = 0.5f),
+                                    0.2f to Color.Black.copy(alpha = 0.85f),
+                                    0.35f to Color.Black,
+                                ),
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                        // Bottom edge fade - stronger fade for content row blending
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Black,
+                                    0.5f to Color.Black.copy(alpha = 0.85f),
+                                    0.7f to Color.Black.copy(alpha = 0.4f),
+                                    0.85f to Color.Black.copy(alpha = 0.15f),
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    },
+            )
+        }
+    }
+}
 
-        // Gradient overlay
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            TvColors.Background.copy(alpha = 0.7f),
-                            TvColors.Background,
-                        ),
-                        startY = 0f,
-                        endY = 1000f,
-                    ),
-                ),
-        )
-
-        // Content
+/**
+ * Hero section displaying Seerr media info (no backdrop - backdrop is separate layer).
+ */
+@Composable
+private fun SeerrHeroSection(
+    media: SeerrMedia,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit,
+    onUpPressed: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    // Content overlay (left side)
+    AnimatedContent(
+        targetState = media,
+        transitionSpec = {
+            fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
+                fadeOut(animationSpec = tween(300))
+        },
+        label = "seerr_hero_content",
+        modifier = modifier,
+    ) { currentMedia ->
         Column(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 48.dp, bottom = 32.dp),
+                .fillMaxHeight()
+                .fillMaxWidth(0.5f)
+                .padding(start = 48.dp, top = 36.dp, bottom = 0.dp),
+            verticalArrangement = Arrangement.Top,
         ) {
-            // Status badge (uses mediaInfo.status for availability)
-            val statusColor = when (media.availabilityStatus) {
+            // Status badge
+            val statusColor = when (currentMedia.availabilityStatus) {
                 SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
                 SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
                 SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
                 else -> Color(0xFF8B5CF6)
             }
-            val statusIcon = when (media.availabilityStatus) {
+            val statusIcon = when (currentMedia.availabilityStatus) {
                 SeerrMediaStatus.AVAILABLE -> Icons.Outlined.Check
                 SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Icons.Outlined.Schedule
                 else -> Icons.Outlined.Add
             }
-            val statusText = SeerrMediaStatus.toDisplayString(media.availabilityStatus)
+            val statusText = SeerrMediaStatus.toDisplayString(currentMedia.availabilityStatus)
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -449,50 +520,74 @@ private fun SeerrHeroSection(media: SeerrMedia, seerrClient: SeerrClient, onClic
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Title
             Text(
-                text = media.displayTitle,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
+                text = currentMedia.displayTitle,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                ),
                 color = TvColors.TextPrimary,
+                maxLines = 2,
             )
 
-            // Year and type
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Rating row with release date
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                media.year?.let { year ->
+                // Full release date formatted (e.g., "November 14, 2025")
+                currentMedia.displayReleaseDate?.let { dateStr ->
+                    val formattedDate = try {
+                        val date = LocalDate.parse(dateStr)
+                        date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US))
+                    } catch (_: Exception) {
+                        dateStr
+                    }
                     Text(
-                        text = year.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TvColors.TextSecondary,
+                        text = formattedDate,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     )
                 }
                 Text(
-                    text = if (media.isMovie) "Movie" else "TV Show",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TvColors.TextSecondary,
+                    text = if (currentMedia.isMovie) "Movie" else "TV Show",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
                 )
-                media.voteAverage?.let { rating ->
-                    Text(
-                        text = "%.1f".format(rating),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFBBF24),
-                    )
+                // TMDb rating
+                currentMedia.voteAverage?.let { rating ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "TMDb",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF01D277),
+                        )
+                        Text(
+                            text = "%.1f".format(rating),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFBBF24),
+                        )
+                    }
                 }
             }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
             // Overview
-            media.overview?.let { overview ->
-                Spacer(modifier = Modifier.height(8.dp))
+            currentMedia.overview?.let { overview ->
                 Text(
-                    text = overview.take(200) + if (overview.length > 200) "..." else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TvColors.TextSecondary,
+                    text = overview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     maxLines = 3,
+                    modifier = Modifier.fillMaxWidth(0.8f),
                 )
             }
         }
@@ -506,23 +601,10 @@ private fun SeerrContentRow(
     seerrClient: SeerrClient,
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
-    onUpPressed: (() -> Unit)? = null,
+    onItemFocused: ((SeerrMedia) -> Unit)? = null,
 ) {
     Column(
-        modifier = Modifier
-            .padding(vertical = 8.dp)
-            .onPreviewKeyEvent { event ->
-                // Intercept UP key to show nav bar (only for first row)
-                if (onUpPressed != null &&
-                    event.type == KeyEventType.KeyDown &&
-                    event.key == Key.DirectionUp
-                ) {
-                    onUpPressed()
-                    true
-                } else {
-                    false
-                }
-            },
+        modifier = Modifier.padding(vertical = 8.dp),
     ) {
         // Row header
         Row(
@@ -554,6 +636,7 @@ private fun SeerrContentRow(
                     media = media,
                     seerrClient = seerrClient,
                     onClick = { onItemClick(media) },
+                    onItemFocused = onItemFocused,
                 )
             }
         }
@@ -561,83 +644,66 @@ private fun SeerrContentRow(
 }
 
 @Composable
-private fun SeerrMediaCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit) {
-    var isFocused by remember { mutableStateOf(false) }
+private fun SeerrMediaCard(
+    media: SeerrMedia,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit,
+    onItemFocused: ((SeerrMedia) -> Unit)? = null,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .width(120.dp)
+            .aspectRatio(2f / 3f)
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused) {
+                    onItemFocused?.invoke(media)
+                }
+            },
+        shape = ClickableSurfaceDefaults.shape(
+            shape = MaterialTheme.shapes.medium,
+        ),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.FocusedSurface,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = MaterialTheme.shapes.medium,
+            ),
+        ),
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1f,
+        ),
+    ) {
+        Box {
+            AsyncImage(
+                model = seerrClient.getPosterUrl(media.posterPath),
+                contentDescription = media.displayTitle,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.medium),
+                contentScale = ContentScale.Crop,
+            )
 
-    Box {
-        androidx.tv.material3.Surface(
-            onClick = onClick,
-            modifier = Modifier
-                .width(120.dp)
-                .focusable()
-                .onFocusChanged { isFocused = it.isFocused },
-            shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
-                shape = RoundedCornerShape(8.dp),
-            ),
-            colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-                containerColor = TvColors.Surface,
-                focusedContainerColor = TvColors.FocusedSurface,
-            ),
-            border = androidx.tv.material3.ClickableSurfaceDefaults.border(
-                focusedBorder = androidx.tv.material3.Border(
-                    border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF8B5CF6)),
-                    shape = RoundedCornerShape(8.dp),
-                ),
-            ),
-        ) {
-            Column {
+            // Availability badge
+            val badgeColor = when (media.availabilityStatus) {
+                SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
+                SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
+                SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
+                else -> null
+            }
+
+            badgeColor?.let { color ->
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(2f / 3f),
-                ) {
-                    AsyncImage(
-                        model = seerrClient.getPosterUrl(media.posterPath),
-                        contentDescription = media.displayTitle,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-
-                    // Availability badge (uses mediaInfo.status for availability)
-                    val badgeColor = when (media.availabilityStatus) {
-                        SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
-                        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
-                        SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
-                        else -> null
-                    }
-
-                    badgeColor?.let { color ->
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .size(12.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(color),
-                        )
-                    }
-                }
-
-                // Title
-                Text(
-                    text = media.displayTitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TvColors.TextPrimary,
-                    maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(color),
                 )
-
-                // Year
-                media.year?.let { year ->
-                    Text(
-                        text = year.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TvColors.TextSecondary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    )
-                }
             }
         }
     }
