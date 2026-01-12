@@ -72,9 +72,7 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrVideo
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import dev.jausc.myflix.core.common.util.DateFormatter
 import kotlinx.coroutines.launch
 
 /**
@@ -267,12 +265,9 @@ fun SeerrDetailScreen(
                             ) {
                                 // Full release date formatted
                                 currentMedia.displayReleaseDate?.let { dateStr ->
-                                    val formattedDate = try {
-                                        val date = LocalDate.parse(dateStr)
-                                        date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US))
-                                    } catch (_: Exception) {
-                                        currentMedia.year?.toString() ?: dateStr
-                                    }
+                                    val formattedDate = DateFormatter.formatFull(dateStr)
+                                        ?: currentMedia.year?.toString()
+                                        ?: dateStr
                                     Text(
                                         text = formattedDate,
                                         style = MaterialTheme.typography.bodyMedium,
