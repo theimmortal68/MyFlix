@@ -534,4 +534,175 @@ class SeerrClientTest {
         assertTrue(url.contains("image.tmdb.org"))
         assertTrue(url.contains("profile.jpg"))
     }
+
+    // ==================== Server Detection Tests ====================
+
+    @Test
+    fun `detectServer tries subdomain substitution for FQDN with multiple dots`() = runTest {
+        var requestedUrls = mutableListOf<String>()
+        val client = createMockClient { request ->
+            requestedUrls.add(request.url.toString())
+            when {
+                request.url.host == "seerr.myflix.media" -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("https://jellyfin.myflix.media")
+
+        assertTrue(result.isSuccess)
+        assertEquals("https://seerr.myflix.media", result.getOrNull())
+        // Verify it tried subdomain substitution
+        assertTrue(requestedUrls.any { it.contains("seerr.myflix.media") })
+    }
+
+    @Test
+    fun `detectServer tries subdomain substitution for simple FQDN`() = runTest {
+        var requestedUrls = mutableListOf<String>()
+        val client = createMockClient { request ->
+            requestedUrls.add(request.url.toString())
+            when {
+                request.url.host == "jellyseerr.local" -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("http://jellyfin.local")
+
+        assertTrue(result.isSuccess)
+        assertEquals("http://jellyseerr.local", result.getOrNull())
+        // Verify it tried seerr.local first, then jellyseerr.local
+        assertTrue(requestedUrls.any { it.contains("seerr.local") })
+        assertTrue(requestedUrls.any { it.contains("jellyseerr.local") })
+    }
+
+    @Test
+    fun `detectServer tries overseerr subdomain`() = runTest {
+        val client = createMockClient { request ->
+            when {
+                request.url.host == "overseerr.domain.com" -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("https://jellyfin.domain.com")
+
+        assertTrue(result.isSuccess)
+        assertEquals("https://overseerr.domain.com", result.getOrNull())
+    }
+
+    @Test
+    fun `detectServer uses port detection for IP address`() = runTest {
+        var requestedUrls = mutableListOf<String>()
+        val client = createMockClient { request ->
+            requestedUrls.add(request.url.toString())
+            when {
+                request.url.host == "192.168.1.100" && request.url.port == 5055 -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("http://192.168.1.100:8096")
+
+        assertTrue(result.isSuccess)
+        assertEquals("http://192.168.1.100:5055", result.getOrNull())
+        // Should NOT try subdomain substitution for IP addresses
+        assertFalse(requestedUrls.any { it.contains("seerr.") || it.contains("jellyseerr.") })
+    }
+
+    @Test
+    fun `detectServer tries port 5056 for IP address`() = runTest {
+        val client = createMockClient { request ->
+            when {
+                request.url.host == "10.0.0.50" && request.url.port == 5056 -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("http://10.0.0.50:8096")
+
+        assertTrue(result.isSuccess)
+        assertEquals("http://10.0.0.50:5056", result.getOrNull())
+    }
+
+    @Test
+    fun `detectServer fails when no server found`() = runTest {
+        val client = createMockClient { _ ->
+            respondError(HttpStatusCode.NotFound)
+        }
+
+        val result = client.detectServer("https://jellyfin.example.com")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("not found") == true)
+    }
+
+    @Test
+    fun `detectServer preserves https scheme`() = runTest {
+        val client = createMockClient { request ->
+            when {
+                request.url.protocol.name == "https" && request.url.host == "seerr.secure.com" -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("https://jellyfin.secure.com")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrNull()?.startsWith("https://") == true)
+    }
+
+    @Test
+    fun `detectServer preserves http scheme`() = runTest {
+        val client = createMockClient { request ->
+            when {
+                request.url.protocol.name == "http" && request.url.host == "seerr.local" -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("http://jellyfin.local")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrNull()?.startsWith("http://") == true)
+    }
+
+    @Test
+    fun `detectServer handles URL with port in FQDN`() = runTest {
+        val client = createMockClient { request ->
+            when {
+                request.url.host == "seerr.myflix.media" -> respond(
+                    content = """{"version": "1.0.0", "commitTag": "abc123"}""",
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+                else -> respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val result = client.detectServer("https://jellyfin.myflix.media:8096")
+
+        assertTrue(result.isSuccess)
+        assertEquals("https://seerr.myflix.media", result.getOrNull())
+    }
 }

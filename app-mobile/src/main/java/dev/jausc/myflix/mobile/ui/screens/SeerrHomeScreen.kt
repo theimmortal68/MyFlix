@@ -12,7 +12,6 @@
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -92,7 +90,6 @@ fun SeerrHomeScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var rows by remember { mutableStateOf<List<SeerrDiscoverRow>>(emptyList()) }
-    var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
 
     // Collect auth state as Compose state for proper recomposition
     val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
@@ -121,8 +118,6 @@ fun SeerrHomeScreen(
         }
 
         rows = discoverRows
-        featuredItem = discoverRows.firstOrNull()?.items?.firstOrNull()
-
         isLoading = false
     }
 
@@ -226,17 +221,6 @@ fun SeerrHomeScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
-                    // Hero section
-                    item {
-                        featuredItem?.let { media ->
-                            MobileSeerrHero(
-                                media = media,
-                                seerrClient = seerrClient,
-                                onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
-                            )
-                        }
-                    }
-
                     rows.forEach { row ->
                         item(key = row.key) {
                             MobileSeerrRow(
@@ -272,86 +256,6 @@ private fun SeerrQuickActionChip(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
-    }
-}
-
-@Composable
-private fun MobileSeerrHero(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(280.dp)
-            .clickable(onClick = onClick),
-    ) {
-        // Backdrop
-        AsyncImage(
-            model = seerrClient.getBackdropUrl(media.backdropPath),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
-
-        // Gradient overlay
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                            MaterialTheme.colorScheme.background,
-                        ),
-                    ),
-                ),
-        )
-
-        // Content
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp),
-        ) {
-            // Status badge (uses mediaInfo.status for availability)
-            MobileSeerrStatusBadge(status = media.availabilityStatus)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Title
-            Text(
-                text = media.displayTitle,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-
-            // Year and type
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                media.year?.let { year ->
-                    Text(
-                        text = year.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = if (media.isMovie) "Movie" else "TV Show",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                media.voteAverage?.let { rating ->
-                    Text(
-                        text = "%.1f".format(rating),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFBBF24),
-                    )
-                }
-            }
-        }
     }
 }
 

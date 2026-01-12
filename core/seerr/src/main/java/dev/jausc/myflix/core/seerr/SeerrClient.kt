@@ -108,11 +108,10 @@ class SeerrClient(
      * Attempt to detect Seerr server based on Jellyfin URL.
      *
      * Detection strategy:
-     * 1. For FQDNs (e.g., jellyfin.myflix.media): Try subdomain substitution
-     *    - seerr.myflix.media
-     *    - jellyseerr.myflix.media
-     *    - overseerr.myflix.media
-     * 2. For IP addresses or localhost: Try common ports (5055, 5056)
+     * 1. For FQDNs (e.g., jellyfin.myflix.media or jellyfin.local): Try subdomain substitution
+     *    - seerr.myflix.media, jellyseerr.myflix.media, overseerr.myflix.media
+     *    - seerr.local, jellyseerr.local, overseerr.local
+     * 2. For IP addresses: Try common ports (5055, 5056)
      *
      * @param jellyfinHost The Jellyfin server URL
      * @return Result containing the detected Seerr URL, or failure if not found
@@ -120,54 +119,59 @@ class SeerrClient(
     suspend fun detectServer(jellyfinHost: String): Result<String> = runCatching {
         val host = extractHost(jellyfinHost)
         val scheme = if (jellyfinHost.startsWith("https")) "https" else "http"
+        val isIp = isIpAddress(host)
 
-        // Check if this is an FQDN (has subdomain structure like jellyfin.domain.tld)
-        // and not an IP address
-        val isFqdn = host.contains(".") && !isIpAddress(host) && host.count { it == '.' } >= 2
-
-        if (isFqdn) {
-            // Try subdomain substitution for FQDNs
-            // Extract base domain (e.g., "myflix.media" from "jellyfin.myflix.media")
+        // For FQDNs (any hostname with dots that isn't an IP), try subdomain substitution
+        // This works for both jellyfin.domain.tld and jellyfin.local
+        if (!isIp && host.contains(".")) {
+            // Extract base domain (e.g., "myflix.media" from "jellyfin.myflix.media"
+            // or "local" from "jellyfin.local")
             val parts = host.split(".")
             val baseDomain = parts.drop(1).joinToString(".")
 
             for (subdomain in SEERR_SUBDOMAINS) {
                 val testUrl = "$scheme://$subdomain.$baseDomain"
-                try {
-                    val response = httpClient.get("$testUrl/api/v1/status") {
-                        timeout { requestTimeoutMillis = 5_000 }
-                    }
-                    if (response.status.isSuccess()) {
-                        val status: SeerrStatus = response.body()
-                        // Valid Seerr server found
-                        baseUrl = testUrl
-                        return@runCatching testUrl
-                    }
-                } catch (_: Exception) {
-                    // Try next subdomain
+                if (tryConnectToSeerr(testUrl)) {
+                    return@runCatching testUrl
                 }
             }
         }
 
-        // Fall back to port-based detection (for IPs or if subdomain detection failed)
-        for (port in COMMON_PORTS) {
-            val testUrl = "$scheme://$host:$port"
-            try {
-                val response = httpClient.get("$testUrl/api/v1/status") {
-                    timeout { requestTimeoutMillis = 5_000 }
-                }
-                if (response.status.isSuccess()) {
-                    val status: SeerrStatus = response.body()
-                    // Valid Seerr server found
-                    baseUrl = testUrl
+        // For IP addresses: Try common Seerr ports
+        if (isIp) {
+            // Strip any existing port from IP-based host
+            val baseHost = host.substringBefore(":")
+            for (port in COMMON_PORTS) {
+                val testUrl = "$scheme://$baseHost:$port"
+                if (tryConnectToSeerr(testUrl)) {
                     return@runCatching testUrl
                 }
-            } catch (_: Exception) {
-                // Try next port
             }
         }
 
         throw Exception("Seerr server not found")
+    }
+
+    /**
+     * Try to connect to a Seerr server at the given URL.
+     * Returns true if successful and sets baseUrl.
+     */
+    private suspend fun tryConnectToSeerr(testUrl: String): Boolean {
+        return try {
+            val response = httpClient.get("$testUrl/api/v1/status") {
+                timeout { requestTimeoutMillis = 5_000 }
+            }
+            if (response.status.isSuccess()) {
+                @Suppress("UNUSED_VARIABLE")
+                val status: SeerrStatus = response.body()
+                baseUrl = testUrl
+                true
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**

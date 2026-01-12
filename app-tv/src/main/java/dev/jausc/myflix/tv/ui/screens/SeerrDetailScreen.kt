@@ -686,43 +686,6 @@ fun SeerrDetailScreen(
                         }
                     }
 
-                    val tmdbUrl = "https://www.themoviedb.org/${if (currentMedia.isMovie) "movie" else "tv"}/$tmdbId"
-                    val imdbUrl = currentMedia.imdbId?.let { "https://www.imdb.com/title/$it" }
-
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 48.dp, vertical = 16.dp)) {
-                            Text(
-                                text = "External Links",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TvColors.TextPrimary,
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(
-                                    onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tmdbUrl))
-                                        context.startActivity(intent)
-                                    },
-                                    colors = ButtonDefaults.colors(containerColor = TvColors.Surface),
-                                ) {
-                                    Text("TMDb")
-                                }
-                                imdbUrl?.let { url ->
-                                    Button(
-                                        onClick = {
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                            context.startActivity(intent)
-                                        },
-                                        colors = ButtonDefaults.colors(containerColor = TvColors.Surface),
-                                    ) {
-                                        Text("IMDb")
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // TV Show seasons
                     if (currentMedia.isTvShow && currentMedia.numberOfSeasons != null) {
                         item {
