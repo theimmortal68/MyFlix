@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Explore
@@ -65,6 +66,7 @@ import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrRowType
 
 /**
  * Mobile Seerr home/discover screen.
@@ -223,6 +225,13 @@ fun SeerrHomeScreen(
                 ) {
                     rows.forEach { row ->
                         item(key = row.key) {
+                            val onViewAll: (() -> Unit)? = when (row.rowType) {
+                                SeerrRowType.TRENDING -> onNavigateDiscoverTrending
+                                SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
+                                SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
+                                SeerrRowType.WATCHLIST -> onNavigateWatchlist
+                                SeerrRowType.OTHER -> null
+                            }
                             MobileSeerrRow(
                                 title = row.title,
                                 items = row.items,
@@ -231,6 +240,7 @@ fun SeerrHomeScreen(
                                 onItemClick = { media ->
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                                 },
+                                onViewAll = onViewAll,
                             )
                         }
                     }
@@ -312,6 +322,7 @@ private fun MobileSeerrRow(
     seerrClient: SeerrClient,
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
+    onViewAll: (() -> Unit)? = null,
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         // Row header
@@ -345,6 +356,12 @@ private fun MobileSeerrRow(
                     seerrClient = seerrClient,
                     onClick = { onItemClick(media) },
                 )
+            }
+            // View All card at the end of the row
+            if (onViewAll != null) {
+                item(key = "view_all_$title") {
+                    MobileViewAllCard(onClick = onViewAll)
+                }
             }
         }
     }
@@ -414,6 +431,44 @@ private fun MobileSeerrCard(media: SeerrMedia, seerrClient: SeerrClient, onClick
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MobileViewAllCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(120.dp)
+            .aspectRatio(2f / 3f),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = Color(0xFF8B5CF6),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "View All",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF8B5CF6),
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }

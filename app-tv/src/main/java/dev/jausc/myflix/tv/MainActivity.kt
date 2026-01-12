@@ -319,6 +319,18 @@ fun MyFlixTvApp() {
                         onNavigateLibrary = { libraryId, libraryName ->
                             navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
                         },
+                        onNavigateDiscoverTrending = {
+                            navController.navigate("seerr/trending")
+                        },
+                        onNavigateDiscoverMovies = {
+                            navController.navigate("seerr/movies")
+                        },
+                        onNavigateDiscoverTv = {
+                            navController.navigate("seerr/tv")
+                        },
+                        onNavigateWatchlist = {
+                            navController.navigate("seerr/watchlist")
+                        },
                     )
                 }
             }
@@ -334,6 +346,47 @@ fun MyFlixTvApp() {
                         navController.navigate("seerr") {
                             popUpTo("seerr/setup") { inclusive = true }
                         }
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            // Seerr discover screens with pagination
+            composable("seerr/trending") {
+                SeerrDiscoverTrendingScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable("seerr/movies") {
+                SeerrDiscoverMoviesScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable("seerr/tv") {
+                SeerrDiscoverTvScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable("seerr/watchlist") {
+                SeerrDiscoverWatchlistScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
                     },
                     onBack = { navController.popBackStack() },
                 )

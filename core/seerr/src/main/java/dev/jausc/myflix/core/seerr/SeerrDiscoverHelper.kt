@@ -100,12 +100,14 @@ object SeerrDiscoverHelper {
 
             val filtered = items.filterDiscoverable().take(MAX_ITEMS_PER_ROW)
             if (filtered.isNotEmpty()) {
+                val rowType = sliderTypeToRowType(slider.type)
                 rows.add(
                     SeerrDiscoverRow(
                         key = "discover_${slider.type.name.lowercase(Locale.US)}_${slider.id}",
                         title = title,
                         items = filtered,
                         accentColorValue = colorValue,
+                        rowType = rowType,
                     ),
                 )
             }
@@ -131,20 +133,28 @@ object SeerrDiscoverHelper {
         val popularTv = seerrClient.getPopularTV().map { it.results }.getOrDefault(emptyList())
         val upcoming = seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
 
+        data class FallbackRowData(
+            val title: String,
+            val colorValue: Long,
+            val items: List<SeerrMedia>,
+            val rowType: SeerrRowType,
+        )
+
         listOf(
-            Triple("Trending", SeerrColors.PURPLE, trending),
-            Triple("Popular Movies", SeerrColors.YELLOW, popularMovies),
-            Triple("Popular TV Shows", SeerrColors.TEAL, popularTv),
-            Triple("Coming Soon", SeerrColors.BLUE, upcoming),
-        ).forEach { (title, colorValue, data) ->
-            val filtered = data.filterDiscoverable().take(MAX_ITEMS_PER_ROW)
+            FallbackRowData("Trending", SeerrColors.PURPLE, trending, SeerrRowType.TRENDING),
+            FallbackRowData("Popular Movies", SeerrColors.YELLOW, popularMovies, SeerrRowType.POPULAR_MOVIES),
+            FallbackRowData("Popular TV Shows", SeerrColors.TEAL, popularTv, SeerrRowType.POPULAR_TV),
+            FallbackRowData("Coming Soon", SeerrColors.BLUE, upcoming, SeerrRowType.OTHER),
+        ).forEach { rowData ->
+            val filtered = rowData.items.filterDiscoverable().take(MAX_ITEMS_PER_ROW)
             if (filtered.isNotEmpty()) {
                 rows.add(
                     SeerrDiscoverRow(
-                        key = "fallback_${title.lowercase(Locale.US).replace(" ", "_")}",
-                        title = title,
+                        key = "fallback_${rowData.title.lowercase(Locale.US).replace(" ", "_")}",
+                        title = rowData.title,
                         items = filtered,
-                        accentColorValue = colorValue,
+                        accentColorValue = rowData.colorValue,
+                        rowType = rowData.rowType,
                     ),
                 )
             }
@@ -194,6 +204,19 @@ object SeerrDiscoverHelper {
         return defaultTitle to accentColor
     }
 
+    /**
+     * Map slider type to row type for navigation purposes.
+     */
+    private fun sliderTypeToRowType(sliderType: SeerrDiscoverSliderType): SeerrRowType {
+        return when (sliderType) {
+            SeerrDiscoverSliderType.TRENDING -> SeerrRowType.TRENDING
+            SeerrDiscoverSliderType.POPULAR_MOVIES -> SeerrRowType.POPULAR_MOVIES
+            SeerrDiscoverSliderType.POPULAR_TV -> SeerrRowType.POPULAR_TV
+            SeerrDiscoverSliderType.PLEX_WATCHLIST -> SeerrRowType.WATCHLIST
+            else -> SeerrRowType.OTHER
+        }
+    }
+
     private const val MAX_ITEMS_PER_ROW = 12
 }
 
@@ -205,7 +228,19 @@ data class SeerrDiscoverRow(
     val title: String,
     val items: List<SeerrMedia>,
     val accentColorValue: Long,
+    val rowType: SeerrRowType = SeerrRowType.OTHER,
 )
+
+/**
+ * Type of discover row - used to determine "View All" navigation target.
+ */
+enum class SeerrRowType {
+    TRENDING,
+    POPULAR_MOVIES,
+    POPULAR_TV,
+    WATCHLIST,
+    OTHER,
+}
 
 /**
  * Seerr color constants as Long values for platform-independent storage.

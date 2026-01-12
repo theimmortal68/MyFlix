@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Explore
@@ -86,6 +87,7 @@ import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
@@ -118,6 +120,10 @@ fun SeerrHomeScreen(
     onNavigateLibrary: (String, String) -> Unit = { _, _ -> },
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrSearch: () -> Unit = {},
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrRequests: () -> Unit = {},
+    onNavigateDiscoverTrending: () -> Unit = {},
+    onNavigateDiscoverMovies: () -> Unit = {},
+    onNavigateDiscoverTv: () -> Unit = {},
+    onNavigateWatchlist: () -> Unit = {},
 ) {
     // Coroutine scope for navigation actions
     val coroutineScope = rememberCoroutineScope()
@@ -310,6 +316,13 @@ fun SeerrHomeScreen(
                     ) {
                         rows.forEach { row ->
                             item(key = row.key) {
+                                val onViewAll: (() -> Unit)? = when (row.rowType) {
+                                    SeerrRowType.TRENDING -> onNavigateDiscoverTrending
+                                    SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
+                                    SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
+                                    SeerrRowType.WATCHLIST -> onNavigateWatchlist
+                                    SeerrRowType.OTHER -> null
+                                }
                                 SeerrContentRow(
                                     title = row.title,
                                     items = row.items,
@@ -319,6 +332,7 @@ fun SeerrHomeScreen(
                                         onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                                     },
                                     onItemFocused = { media -> previewItem = media },
+                                    onViewAll = onViewAll,
                                 )
                             }
                         }
@@ -548,6 +562,7 @@ private fun SeerrContentRow(
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
+    onViewAll: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.padding(vertical = 8.dp),
@@ -584,6 +599,12 @@ private fun SeerrContentRow(
                     onClick = { onItemClick(media) },
                     onItemFocused = onItemFocused,
                 )
+            }
+            // View All card at the end of the row
+            if (onViewAll != null) {
+                item(key = "view_all_$title") {
+                    TvViewAllCard(onClick = onViewAll)
+                }
             }
         }
     }
@@ -649,6 +670,56 @@ private fun SeerrMediaCard(
                         .size(12.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(color),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvViewAllCard(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .width(120.dp)
+            .aspectRatio(2f / 3f),
+        shape = ClickableSurfaceDefaults.shape(
+            shape = MaterialTheme.shapes.medium,
+        ),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.FocusedSurface,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = MaterialTheme.shapes.medium,
+            ),
+        ),
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1f,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = TvColors.BluePrimary,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "View All",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TvColors.BluePrimary,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }

@@ -326,6 +326,7 @@ fun SeerrDetailScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                     contentDescription = "Back",
+                                    modifier = Modifier.size(24.dp),
                                     tint = TvColors.TextPrimary,
                                 )
                             }
