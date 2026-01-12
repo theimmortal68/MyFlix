@@ -144,7 +144,7 @@ object SeerrDiscoverHelper {
             FallbackRowData("Trending", SeerrColors.PURPLE, trending, SeerrRowType.TRENDING),
             FallbackRowData("Popular Movies", SeerrColors.YELLOW, popularMovies, SeerrRowType.POPULAR_MOVIES),
             FallbackRowData("Popular TV Shows", SeerrColors.TEAL, popularTv, SeerrRowType.POPULAR_TV),
-            FallbackRowData("Coming Soon", SeerrColors.BLUE, upcoming, SeerrRowType.OTHER),
+            FallbackRowData("Coming Soon", SeerrColors.BLUE, upcoming, SeerrRowType.UPCOMING_MOVIES),
         ).forEach { rowData ->
             val filtered = rowData.items.filterDiscoverable().take(MAX_ITEMS_PER_ROW)
             if (filtered.isNotEmpty()) {
@@ -212,6 +212,8 @@ object SeerrDiscoverHelper {
             SeerrDiscoverSliderType.TRENDING -> SeerrRowType.TRENDING
             SeerrDiscoverSliderType.POPULAR_MOVIES -> SeerrRowType.POPULAR_MOVIES
             SeerrDiscoverSliderType.POPULAR_TV -> SeerrRowType.POPULAR_TV
+            SeerrDiscoverSliderType.UPCOMING_MOVIES -> SeerrRowType.UPCOMING_MOVIES
+            SeerrDiscoverSliderType.UPCOMING_TV -> SeerrRowType.UPCOMING_TV
             else -> SeerrRowType.OTHER
         }
     }
@@ -237,6 +239,8 @@ enum class SeerrRowType {
     TRENDING,
     POPULAR_MOVIES,
     POPULAR_TV,
+    UPCOMING_MOVIES,
+    UPCOMING_TV,
     OTHER,
 }
 

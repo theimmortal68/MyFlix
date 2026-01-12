@@ -100,6 +100,7 @@ fun SeerrHomeScreen(
     onNavigateDiscoverTrending: () -> Unit = {},
     onNavigateDiscoverMovies: () -> Unit = {},
     onNavigateDiscoverTv: () -> Unit = {},
+    onNavigateDiscoverUpcoming: () -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -267,6 +268,8 @@ fun SeerrHomeScreen(
                                 SeerrRowType.TRENDING -> onNavigateDiscoverTrending
                                 SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
                                 SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
+                                SeerrRowType.UPCOMING_MOVIES,
+                                SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcoming
                                 else -> null
                             }
                             MobileSeerrRow(

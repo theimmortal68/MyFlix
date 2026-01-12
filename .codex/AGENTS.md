@@ -786,148 +786,6 @@ JellyfinClient                    Screen                         UI
 | `TvColors.Success` | `#22C55E` (Green) | Success states |
 | `TvColors.TextPrimary` | `#F8FAFC` (White) | Text on error/success backgrounds |
 
-## Standardized UI Sizes
-
-All UI components should use these standardized sizes for consistency across the app.
-
-### TV App (app-tv)
-
-#### Card Sizes
-
-| Type | Width | Height | Aspect Ratio | Usage |
-|------|-------|--------|--------------|-------|
-| Portrait Poster | `120.dp` | Auto | `2:3` | Movies, TV shows, Seerr media, search results |
-| Wide Thumbnail | `210.dp` | Auto | `16:9` | Episodes, continue watching, next up |
-
-**Implementation:**
-```kotlin
-// Portrait poster card
-Modifier
-    .width(120.dp)
-    .aspectRatio(2f / 3f)
-
-// Wide thumbnail card
-Modifier
-    .width(210.dp)
-    .aspectRatio(16f / 9f)
-```
-
-#### Button Sizes
-
-All TV buttons use a standardized 20dp height to match the hero section style.
-
-| Type | Height | Icon Size | Content Padding | Usage |
-|------|--------|-----------|-----------------|-------|
-| Back Button | `20.dp` | `14.dp` | `horizontal: 8.dp` | Screen back navigation |
-| Action Button | `20.dp` | `14.dp` | `horizontal: 14.dp` | Play, Request, More Info |
-| Text Button | `20.dp` | `14.dp` | `horizontal: 12.dp` | Text with optional icon, filters |
-
-**Implementation:**
-```kotlin
-// Back button - 20dp height, icon only
-Button(
-    onClick = onBack,
-    modifier = Modifier.height(20.dp),
-    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-    scale = ButtonDefaults.scale(focusedScale = 1f),
-    colors = ButtonDefaults.colors(
-        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-        contentColor = TvColors.TextPrimary,
-        focusedContainerColor = TvColors.BluePrimary,
-        focusedContentColor = Color.White,
-    ),
-) {
-    Icon(
-        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-        contentDescription = "Back",
-        modifier = Modifier.size(14.dp),
-    )
-}
-
-// Action button (hero-style) - 20dp height
-Button(
-    onClick = onPlayClick,
-    modifier = Modifier.height(20.dp),
-    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-    scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
-    colors = ButtonDefaults.colors(
-        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-        contentColor = TvColors.TextPrimary,
-        focusedContainerColor = TvColors.BluePrimary,
-        focusedContentColor = Color.White,
-    ),
-) {
-    Icon(
-        imageVector = Icons.Outlined.PlayArrow,
-        contentDescription = null,
-        modifier = Modifier.size(14.dp),
-    )
-    Spacer(modifier = Modifier.width(4.dp))
-    Text("Play", style = MaterialTheme.typography.labelSmall)
-}
-```
-
-#### Grid Layout (Standard TV View)
-
-| Type | Columns | Usage |
-|------|---------|-------|
-| Discover Grid | `GridCells.Fixed(7)` | Seerr discover, search results, genre grids |
-| Home Rows | Horizontal scroll | Jellyfin home content rows |
-
-**Implementation:**
-```kotlin
-// Standard TV grid - 7 columns (standard view style for TV)
-LazyVerticalGrid(
-    columns = GridCells.Fixed(7),
-    horizontalArrangement = Arrangement.spacedBy(16.dp),
-    verticalArrangement = Arrangement.spacedBy(16.dp),
-) {
-    items(mediaList) { media ->
-        PosterCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(2f / 3f)
-        )
-    }
-}
-```
-
-#### Spacing
-
-| Type | Value | Usage |
-|------|-------|-------|
-| Card Gap | `16.dp` | Between cards in grids and rows |
-| Row Gap | `24.dp` | Between content rows |
-| Screen Padding | `24.dp` | Screen edge padding |
-| Section Padding | `24.dp` | Top/bottom of sections |
-
-### Mobile App (app-mobile)
-
-#### Card Sizes
-
-| Type | Width | Height | Aspect Ratio | Usage |
-|------|-------|--------|--------------|-------|
-| List Thumbnail | `72.dp` | `72.dp` | `1:1` | Discover list items |
-| Poster Card | `120.dp` | Auto | `2:3` | Home screen, search results |
-| Wide Card | `160.dp` | Auto | `16:9` | Continue watching, episodes |
-
-#### Button Sizes
-
-| Type | Size | Usage |
-|------|------|-------|
-| Icon Button | `48.dp` | Standard touch target |
-| FAB | `56.dp` | Floating action buttons |
-
-### Rating Badge Colors
-
-| Source | Color | Usage |
-|--------|-------|-------|
-| TMDb | `#01D277` (Green) | TMDb rating label |
-| TMDb Value | `#FBBF24` (Yellow) | TMDb rating value |
-| RT Fresh | `#FA320A` (Red) | Rotten Tomatoes fresh score |
-| RT Rotten | `#6AC238` (Green) | Rotten Tomatoes rotten score |
-| IMDb | `#F5C518` (Yellow) | IMDb rating |
-
 ### Current Gaps
 
 > **Note:** Some screens silently ignore errors (e.g., HomeScreen shows empty rows on failure). Consider adding:
@@ -1163,24 +1021,13 @@ LaunchedEffect(contentReady) {
 5. **Variable caching** - TTL based on data volatility
 6. **Focus management** - Proper D-pad navigation on TV
 
-## Reference Materials
-
-The `references/` directory contains documentation and code references that are **not part of the project build**. These are kept for reference purposes only:
-
-| Directory | Contents |
-|-----------|----------|
-| `references/myflix-wholphin-main/` | Legacy fork-based Jellyfin client source code (production reference for feature parity) |
-| `references/added_references/` | Screenshots and UI references from Plex, Jellyfin web, and Seerr for feature design |
-
-> **Note:** Do not modify files in `references/`. They are gitignored and excluded from builds.
-
 ## Related Projects
 
-| Project | Purpose |
-|---------|---------|
-| Universe Collections | Jellyfin plugin for collection tagging |
-| UMTK | Unraid Media Toolkit |
-
+| Project | Location | Purpose |
+|---------|----------|---------|
+| MyFlix-Wholphin | `/home/jstout/StudioProjects/MyFlix-Wholphin` | Legacy fork-based client (production reference) |
+| Universe Collections | — | Jellyfin plugin for collection tagging |
+| UMTK | — | Unraid Media Toolkit |
 ## Code Quality Rules
 
 **NEVER suppress or disable Detekt/lint rules. ALWAYS fix the underlying issue.**

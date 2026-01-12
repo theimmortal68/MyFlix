@@ -44,6 +44,7 @@ import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverMoviesScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTrendingScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTvScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverUpcomingScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
@@ -327,6 +328,9 @@ fun MyFlixTvApp() {
                         onNavigateDiscoverTv = {
                             navController.navigate("seerr/tv")
                         },
+                        onNavigateDiscoverUpcoming = {
+                            navController.navigate("seerr/upcoming")
+                        },
                     )
                 }
             }
@@ -370,6 +374,16 @@ fun MyFlixTvApp() {
 
             composable("seerr/tv") {
                 SeerrDiscoverTvScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable("seerr/upcoming") {
+                SeerrDiscoverUpcomingScreen(
                     seerrClient = seerrClient,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
@@ -482,6 +496,13 @@ fun MyFlixTvApp() {
                         onBack = { navController.popBackStack() },
                     )
                     "tv" -> SeerrDiscoverTvScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                    "upcoming" -> SeerrDiscoverUpcomingScreen(
                         seerrClient = seerrClient,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")

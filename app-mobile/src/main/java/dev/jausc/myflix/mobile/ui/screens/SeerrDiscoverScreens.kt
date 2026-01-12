@@ -113,6 +113,21 @@ fun SeerrDiscoverTvScreen(
 }
 
 @Composable
+fun SeerrDiscoverUpcomingScreen(
+    seerrClient: SeerrClient,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    SeerrMediaListScreen(
+        title = "Coming Soon",
+        onBack = onBack,
+        loadItems = { page -> seerrClient.getUpcomingMovies(page) },
+        seerrClient = seerrClient,
+        onMediaClick = onMediaClick,
+    )
+}
+
+@Composable
 fun SeerrDiscoverByGenreScreen(
     seerrClient: SeerrClient,
     mediaType: String,

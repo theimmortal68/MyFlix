@@ -43,6 +43,7 @@ import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverMoviesScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverTrendingScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverTvScreen
+import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverUpcomingScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrRequestsScreen
@@ -330,6 +331,9 @@ fun MyFlixMobileContent() {
                     onNavigateDiscoverTv = {
                         navController.navigate(NavigationHelper.buildSeerrDiscoverRoute("tv"))
                     },
+                    onNavigateDiscoverUpcoming = {
+                        navController.navigate(NavigationHelper.buildSeerrDiscoverRoute("upcoming"))
+                    },
                 )
             }
         }
@@ -454,6 +458,13 @@ fun MyFlixMobileContent() {
                     onBack = { navController.popBackStack() },
                 )
                 "tv" -> SeerrDiscoverTvScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+                "upcoming" -> SeerrDiscoverUpcomingScreen(
                     seerrClient = seerrClient,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")

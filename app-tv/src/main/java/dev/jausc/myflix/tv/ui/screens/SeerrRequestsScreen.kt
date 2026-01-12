@@ -193,10 +193,11 @@ fun SeerrRequestsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(
                 onClick = onBack,
-                modifier = Modifier.size(48.dp),
-                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.height(20.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
                 colors = ButtonDefaults.colors(
-                    containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                    containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
                     contentColor = TvColors.TextPrimary,
                     focusedContainerColor = TvColors.BluePrimary,
                     focusedContentColor = Color.White,
@@ -205,7 +206,7 @@ fun SeerrRequestsScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(14.dp),
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
