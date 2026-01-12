@@ -39,8 +39,15 @@ import dev.jausc.myflix.tv.ui.screens.PlayerScreen
 import dev.jausc.myflix.tv.ui.screens.PreferencesScreen
 import dev.jausc.myflix.tv.ui.screens.SearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrActorDetailScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrCollectionDetailScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverMoviesScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTrendingScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTvScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverWatchlistScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -365,6 +372,79 @@ fun MyFlixTvApp() {
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
+                )
+            }
+
+            composable(NavigationHelper.SEERR_SEARCH_ROUTE) {
+                SeerrSearchScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(NavigationHelper.SEERR_REQUESTS_ROUTE) {
+                SeerrRequestsScreen(
+                    seerrClient = seerrClient,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = "seerr/discover/{category}",
+                arguments = listOf(
+                    navArgument("category") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val category = backStackEntry.arguments?.getString("category") ?: "trending"
+                when (NavigationHelper.decodeNavArg(category)) {
+                    "movies" -> SeerrDiscoverMoviesScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                    "tv" -> SeerrDiscoverTvScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                    "watchlist" -> SeerrDiscoverWatchlistScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                    else -> SeerrDiscoverTrendingScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+
+            composable(
+                route = "seerr/collection/{collectionId}",
+                arguments = listOf(
+                    navArgument("collectionId") { type = NavType.IntType },
+                ),
+            ) { backStackEntry ->
+                val collectionId = backStackEntry.arguments?.getInt("collectionId") ?: return@composable
+                SeerrCollectionDetailScreen(
+                    collectionId = collectionId,
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
                 )
             }
 

@@ -510,6 +510,15 @@ class SeerrClient(
     // ========================================================================
 
     /**
+     * Get discover slider configuration from server settings.
+     */
+    suspend fun getDiscoverSettings(): Result<List<SeerrDiscoverSlider>> = runCatching {
+        requireAuth()
+        val response = httpClient.get("$baseUrl/api/v1/settings/discover")
+        response.body()
+    }
+
+    /**
      * Get trending movies and TV shows.
      */
     suspend fun getTrending(page: Int = 1): Result<SeerrDiscoverResult> = runCatching {
@@ -592,6 +601,21 @@ class SeerrClient(
     }
 
     /**
+     * Discover movies with raw query parameters.
+     */
+    suspend fun discoverMoviesWithParams(
+        params: Map<String, String>,
+        page: Int = 1,
+    ): Result<SeerrDiscoverResult> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/discover/movies") {
+            parameter("page", page)
+            params.forEach { (key, value) -> parameter(key, value) }
+        }
+        response.body()
+    }
+
+    /**
      * Discover TV shows with optional filters.
      */
     suspend fun discoverTV(
@@ -607,6 +631,21 @@ class SeerrClient(
             genreId?.let { parameter("genre", it) }
             year?.let { parameter("firstAirDateGte", "$it-01-01") }
             year?.let { parameter("firstAirDateLte", "$it-12-31") }
+        }
+        response.body()
+    }
+
+    /**
+     * Discover TV shows with raw query parameters.
+     */
+    suspend fun discoverTVWithParams(
+        params: Map<String, String>,
+        page: Int = 1,
+    ): Result<SeerrDiscoverResult> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/discover/tv") {
+            parameter("page", page)
+            params.forEach { (key, value) -> parameter(key, value) }
         }
         response.body()
     }
@@ -673,6 +712,15 @@ class SeerrClient(
     suspend fun getTVShow(tmdbId: Int): Result<SeerrMedia> = runCatching {
         requireBaseUrl()
         val response = httpClient.get("$baseUrl/api/v1/tv/$tmdbId")
+        response.body()
+    }
+
+    /**
+     * Get collection details by TMDB collection ID.
+     */
+    suspend fun getCollection(collectionId: Int): Result<SeerrCollection> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/collection/$collectionId")
         response.body()
     }
 

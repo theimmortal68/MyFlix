@@ -1,6 +1,7 @@
 package dev.jausc.myflix.core.seerr
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
 /**
  * Seerr API data models.
@@ -27,6 +28,7 @@ data class SeerrMedia(
     val originalTitle: String? = null,
     val originalName: String? = null,
     val posterPath: String? = null,
+    val profilePath: String? = null,
     val backdropPath: String? = null,
     val overview: String? = null,
     val releaseDate: String? = null,
@@ -257,6 +259,81 @@ data class SeerrQuotaDetails(
 // ============================================================================
 // Discovery/Search Types
 // ============================================================================
+
+/**
+ * Collection details from Seerr.
+ */
+@Serializable
+data class SeerrCollection(
+    val id: Int,
+    val name: String? = null,
+    val overview: String? = null,
+    val posterPath: String? = null,
+    val backdropPath: String? = null,
+    val parts: List<SeerrMedia> = emptyList(),
+)
+
+/**
+ * Discover slider definitions from Seerr settings.
+ */
+@Serializable
+data class SeerrDiscoverSlider(
+    val id: Int,
+    val type: SeerrDiscoverSliderType,
+    val title: String? = null,
+    val data: String? = null,
+    val isDefault: Boolean? = null,
+    val isEnabled: Boolean? = null,
+)
+
+/**
+ * Discover slider types supported by Seerr.
+ */
+@Serializable
+enum class SeerrDiscoverSliderType {
+    @SerialName("recentlyAdded")
+    RECENTLY_ADDED,
+    @SerialName("recentRequests")
+    RECENT_REQUESTS,
+    @SerialName("plexWatchlist")
+    PLEX_WATCHLIST,
+    @SerialName("trending")
+    TRENDING,
+    @SerialName("popularMovies")
+    POPULAR_MOVIES,
+    @SerialName("movieGenres")
+    MOVIE_GENRES,
+    @SerialName("upcomingMovies")
+    UPCOMING_MOVIES,
+    @SerialName("studios")
+    STUDIOS,
+    @SerialName("popularTV")
+    POPULAR_TV,
+    @SerialName("tvGenres")
+    TV_GENRES,
+    @SerialName("upcomingTV")
+    UPCOMING_TV,
+    @SerialName("networks")
+    NETWORKS,
+    @SerialName("tmdbMovieKeyword")
+    TMDB_MOVIE_KEYWORD,
+    @SerialName("tmdbTvKeyword")
+    TMDB_TV_KEYWORD,
+    @SerialName("tmdbMovieGenre")
+    TMDB_MOVIE_GENRE,
+    @SerialName("tmdbTvGenre")
+    TMDB_TV_GENRE,
+    @SerialName("tmdbStudio")
+    TMDB_STUDIO,
+    @SerialName("tmdbNetwork")
+    TMDB_NETWORK,
+    @SerialName("tmdbSearch")
+    TMDB_SEARCH,
+    @SerialName("tmdbMovieStreamingServices")
+    TMDB_MOVIE_STREAMING_SERVICES,
+    @SerialName("tmdbTvStreamingServices")
+    TMDB_TV_STREAMING_SERVICES,
+}
 
 /**
  * Paginated discover/search result.

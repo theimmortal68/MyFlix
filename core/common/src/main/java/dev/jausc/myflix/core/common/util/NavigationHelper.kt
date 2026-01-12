@@ -34,4 +34,22 @@ object NavigationHelper {
      */
     fun buildLibraryRoute(libraryId: String, libraryName: String): String =
         "library/$libraryId/${encodeNavArg(libraryName)}"
+
+    /**
+     * Base routes for Seerr navigation.
+     */
+    const val SEERR_SEARCH_ROUTE = "seerr/search"
+    const val SEERR_REQUESTS_ROUTE = "seerr/requests"
+
+    /**
+     * Builds a Seerr discover route for a specific category.
+     */
+    fun buildSeerrDiscoverRoute(category: String): String =
+        "seerr/discover/${encodeNavArg(category)}"
+
+    /**
+     * Builds a Seerr collection detail route.
+     */
+    fun buildSeerrCollectionRoute(collectionId: Int): String =
+        "seerr/collection/$collectionId"
 }
