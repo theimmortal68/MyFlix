@@ -76,6 +76,10 @@ import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrNetwork
+import dev.jausc.myflix.core.seerr.SeerrNetworkRow
+import dev.jausc.myflix.core.seerr.SeerrStudio
+import dev.jausc.myflix.core.seerr.SeerrStudioRow
 import dev.jausc.myflix.core.seerr.getColor
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
@@ -107,11 +111,15 @@ fun SeerrHomeScreen(
     onNavigateDiscoverUpcomingMovies: () -> Unit = {},
     onNavigateDiscoverUpcomingTv: () -> Unit = {},
     onNavigateGenre: (mediaType: String, genreId: Int, genreName: String) -> Unit = { _, _, _ -> },
+    onNavigateStudio: (studioId: Int, studioName: String) -> Unit = { _, _ -> },
+    onNavigateNetwork: (networkId: Int, networkName: String) -> Unit = { _, _ -> },
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var rows by remember { mutableStateOf<List<SeerrDiscoverRow>>(emptyList()) }
     var genreRows by remember { mutableStateOf<List<SeerrGenreRow>>(emptyList()) }
+    var studiosRow by remember { mutableStateOf<SeerrStudioRow?>(null) }
+    var networksRow by remember { mutableStateOf<SeerrNetworkRow?>(null) }
 
     // Coroutine scope for actions
     val scope = rememberCoroutineScope()
@@ -165,6 +173,10 @@ fun SeerrHomeScreen(
 
         // Load genre rows for browsing
         genreRows = SeerrDiscoverHelper.loadGenreRows(seerrClient)
+
+        // Load studios and networks rows
+        studiosRow = SeerrDiscoverHelper.getStudiosRow()
+        networksRow = SeerrDiscoverHelper.getNetworksRow()
 
         isLoading = false
     }
@@ -268,37 +280,72 @@ fun SeerrHomeScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 32.dp),
                 ) {
-                    rows.forEach { row ->
-                        item(key = row.key) {
-                            val onViewAll: (() -> Unit)? = when (row.rowType) {
-                                SeerrRowType.TRENDING -> onNavigateDiscoverTrending
-                                SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
-                                SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
-                                SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
-                                else -> null
-                            }
-                            MobileSeerrRow(
-                                title = row.title,
-                                items = row.items,
-                                seerrClient = seerrClient,
-                                accentColor = Color(row.accentColorValue),
-                                onItemClick = { media ->
-                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                },
-                                onItemLongClick = { media ->
-                                    menuParams = BottomSheetParams(
-                                        title = media.displayTitle,
-                                        items = buildSeerrMenuItems(media, seerrActions),
-                                    )
-                                },
-                                onViewAll = onViewAll,
-                            )
-                        }
+                    // Ordered rows:
+                    // 1. Trending
+                    // 2. Popular Movies
+                    // 3. Movie Genres
+                    // 4. Upcoming Movies
+                    // 5. Studios
+                    // 6. Popular TV
+                    // 7. TV Genres
+                    // 8. Upcoming TV
+                    // 9. Networks
+
+                    // Find rows by type for ordered rendering
+                    val trendingRow = rows.find { it.rowType == SeerrRowType.TRENDING }
+                    val popularMoviesRow = rows.find { it.rowType == SeerrRowType.POPULAR_MOVIES }
+                    val movieGenresRow = genreRows.find { it.mediaType == "movie" }
+                    val upcomingMoviesRow = rows.find { it.rowType == SeerrRowType.UPCOMING_MOVIES }
+                    val popularTvRow = rows.find { it.rowType == SeerrRowType.POPULAR_TV }
+                    val tvGenresRow = genreRows.find { it.mediaType == "tv" }
+                    val upcomingTvRow = rows.find { it.rowType == SeerrRowType.UPCOMING_TV }
+
+                    // Other rows not in the ordered list
+                    val otherRows = rows.filter { row ->
+                        row.rowType == SeerrRowType.OTHER
                     }
 
-                    // Genre browser rows
-                    genreRows.forEach { genreRow ->
+                    // Helper to render a content row
+                    @Composable
+                    fun RenderContentRow(row: SeerrDiscoverRow) {
+                        val onViewAll: (() -> Unit)? = when (row.rowType) {
+                            SeerrRowType.TRENDING -> onNavigateDiscoverTrending
+                            SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
+                            SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
+                            SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
+                            SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
+                            else -> null
+                        }
+                        MobileSeerrRow(
+                            title = row.title,
+                            items = row.items,
+                            seerrClient = seerrClient,
+                            accentColor = Color(row.accentColorValue),
+                            onItemClick = { media ->
+                                onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                            },
+                            onItemLongClick = { media ->
+                                menuParams = BottomSheetParams(
+                                    title = media.displayTitle,
+                                    items = buildSeerrMenuItems(media, seerrActions),
+                                )
+                            },
+                            onViewAll = onViewAll,
+                        )
+                    }
+
+                    // 1. Trending
+                    trendingRow?.let { row ->
+                        item(key = row.key) { RenderContentRow(row) }
+                    }
+
+                    // 2. Popular Movies
+                    popularMoviesRow?.let { row ->
+                        item(key = row.key) { RenderContentRow(row) }
+                    }
+
+                    // 3. Movie Genres
+                    movieGenresRow?.let { genreRow ->
                         item(key = genreRow.key) {
                             MobileSeerrGenreBrowseRow(
                                 title = genreRow.title,
@@ -308,6 +355,65 @@ fun SeerrHomeScreen(
                                 },
                             )
                         }
+                    }
+
+                    // 4. Upcoming Movies
+                    upcomingMoviesRow?.let { row ->
+                        item(key = row.key) { RenderContentRow(row) }
+                    }
+
+                    // 5. Studios
+                    studiosRow?.let { studioRow ->
+                        item(key = studioRow.key) {
+                            MobileSeerrStudioBrowseRow(
+                                title = studioRow.title,
+                                studios = studioRow.studios,
+                                onStudioClick = { studio ->
+                                    onNavigateStudio(studio.id, studio.name)
+                                },
+                            )
+                        }
+                    }
+
+                    // 6. Popular TV
+                    popularTvRow?.let { row ->
+                        item(key = row.key) { RenderContentRow(row) }
+                    }
+
+                    // 7. TV Genres
+                    tvGenresRow?.let { genreRow ->
+                        item(key = genreRow.key) {
+                            MobileSeerrGenreBrowseRow(
+                                title = genreRow.title,
+                                genres = genreRow.genres,
+                                onGenreClick = { genre ->
+                                    onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
+                                },
+                            )
+                        }
+                    }
+
+                    // 8. Upcoming TV
+                    upcomingTvRow?.let { row ->
+                        item(key = row.key) { RenderContentRow(row) }
+                    }
+
+                    // 9. Networks
+                    networksRow?.let { networkRow ->
+                        item(key = networkRow.key) {
+                            MobileSeerrNetworkBrowseRow(
+                                title = networkRow.title,
+                                networks = networkRow.networks,
+                                onNetworkClick = { network ->
+                                    onNavigateNetwork(network.id, network.name)
+                                },
+                            )
+                        }
+                    }
+
+                    // Other/custom rows at the end
+                    otherRows.forEach { row ->
+                        item(key = row.key) { RenderContentRow(row) }
                     }
                 }
             }
@@ -659,6 +765,168 @@ private fun MobileSeerrGenreCard(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
+            )
+        }
+    }
+}
+
+/**
+ * A row of studio cards for browsing by studio.
+ */
+@Composable
+private fun MobileSeerrStudioBrowseRow(
+    title: String,
+    studios: List<SeerrStudio>,
+    onStudioClick: (SeerrStudio) -> Unit,
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        // Row header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(20.dp)
+                    .background(Color(SeerrColors.YELLOW), RoundedCornerShape(2.dp)),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+
+        // Studio cards
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(studios, key = { it.id }) { studio ->
+                MobileSeerrStudioCard(
+                    studio = studio,
+                    onClick = { onStudioClick(studio) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A card displaying a studio with a colored gradient background.
+ */
+@Composable
+private fun MobileSeerrStudioCard(
+    studio: SeerrStudio,
+    onClick: () -> Unit,
+) {
+    val studioColor = Color(studio.getColor())
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(140.dp)
+            .height(70.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = studioColor,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = studio.name,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp),
+                maxLines = 2,
+            )
+        }
+    }
+}
+
+/**
+ * A row of network cards for browsing by network.
+ */
+@Composable
+private fun MobileSeerrNetworkBrowseRow(
+    title: String,
+    networks: List<SeerrNetwork>,
+    onNetworkClick: (SeerrNetwork) -> Unit,
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        // Row header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(20.dp)
+                    .background(Color(SeerrColors.TEAL), RoundedCornerShape(2.dp)),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+
+        // Network cards
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(networks, key = { it.id }) { network ->
+                MobileSeerrNetworkCard(
+                    network = network,
+                    onClick = { onNetworkClick(network) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A card displaying a network with a colored gradient background.
+ */
+@Composable
+private fun MobileSeerrNetworkCard(
+    network: SeerrNetwork,
+    onClick: () -> Unit,
+) {
+    val networkColor = Color(network.getColor())
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(140.dp)
+            .height(70.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = networkColor,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = network.name,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp),
+                maxLines = 2,
             )
         }
     }

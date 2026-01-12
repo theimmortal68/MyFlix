@@ -16,7 +16,8 @@ class SeerrDiscoverHelperTest {
         trending: List<SeerrMedia> = emptyList(),
         popularMovies: List<SeerrMedia> = emptyList(),
         popularTV: List<SeerrMedia> = emptyList(),
-        upcoming: List<SeerrMedia> = emptyList(),
+        upcomingMovies: List<SeerrMedia> = emptyList(),
+        upcomingTV: List<SeerrMedia> = emptyList(),
     ): SeerrClient {
         val mockClient = mockk<SeerrClient>()
         coEvery { mockClient.getTrending(any()) } returns Result.success(
@@ -29,7 +30,10 @@ class SeerrDiscoverHelperTest {
             SeerrDiscoverResult(page = 1, totalPages = 1, totalResults = popularTV.size, results = popularTV)
         )
         coEvery { mockClient.getUpcomingMovies(any()) } returns Result.success(
-            SeerrDiscoverResult(page = 1, totalPages = 1, totalResults = upcoming.size, results = upcoming)
+            SeerrDiscoverResult(page = 1, totalPages = 1, totalResults = upcomingMovies.size, results = upcomingMovies)
+        )
+        coEvery { mockClient.getUpcomingTV(any()) } returns Result.success(
+            SeerrDiscoverResult(page = 1, totalPages = 1, totalResults = upcomingTV.size, results = upcomingTV)
         )
         return mockClient
     }
@@ -43,7 +47,7 @@ class SeerrDiscoverHelperTest {
         )
         val client = createMockClient(trending = trendingItems)
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         assertTrue(rows.any { it.title == "Trending" })
         val trendingRow = rows.find { it.title == "Trending" }
@@ -57,7 +61,7 @@ class SeerrDiscoverHelperTest {
         )
         val client = createMockClient(popularMovies = movies)
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         assertTrue(rows.any { it.title == "Popular Movies" })
     }
@@ -69,45 +73,56 @@ class SeerrDiscoverHelperTest {
         )
         val client = createMockClient(popularTV = shows)
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         assertTrue(rows.any { it.title == "Popular TV Shows" })
     }
 
     @Test
-    fun `loadFallbackRows returns coming soon row when upcoming exists`() = runTest {
-        val upcoming = listOf(
+    fun `loadFallbackRows returns upcoming movies row when upcoming exists`() = runTest {
+        val upcomingMovies = listOf(
             SeerrMedia(id = 1, mediaType = "movie", title = "Upcoming Movie")
         )
-        val client = createMockClient(upcoming = upcoming)
+        val client = createMockClient(upcomingMovies = upcomingMovies)
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
-        assertTrue(rows.any { it.title == "Coming Soon" })
+        assertTrue(rows.any { it.title == "Upcoming Movies" })
     }
 
     @Test
-    fun `loadFallbackRows filters out items using filterDiscoverable`() = runTest {
+    fun `loadFallbackRows returns upcoming TV row when upcoming TV exists`() = runTest {
+        val upcomingTV = listOf(
+            SeerrMedia(id = 1, mediaType = "tv", name = "Upcoming Show")
+        )
+        val client = createMockClient(upcomingTV = upcomingTV)
+
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
+
+        assertTrue(rows.any { it.title == "Upcoming TV" })
+    }
+
+    @Test
+    fun `loadFallbackRows filters out available and requested items`() = runTest {
         val items = listOf(
             SeerrMedia(id = 1, mediaType = "movie", title = "Available", mediaInfo = SeerrMediaInfo(status = 5)),
-            SeerrMedia(id = 2, mediaType = "movie", title = "Not Available")
+            SeerrMedia(id = 2, mediaType = "movie", title = "Requested", mediaInfo = SeerrMediaInfo(status = 2)),
+            SeerrMedia(id = 3, mediaType = "movie", title = "Discoverable")
         )
         val client = createMockClient(trending = items)
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) {
-            filter { it.mediaInfo?.status != 5 } // Filter out available
-        }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         val trendingRow = rows.find { it.title == "Trending" }
         assertEquals(1, trendingRow?.items?.size)
-        assertEquals("Not Available", trendingRow?.items?.first()?.displayTitle)
+        assertEquals("Discoverable", trendingRow?.items?.first()?.displayTitle)
     }
 
     @Test
     fun `loadFallbackRows returns empty list when all content is empty`() = runTest {
         val client = createMockClient()
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         assertTrue(rows.isEmpty())
     }
@@ -119,7 +134,7 @@ class SeerrDiscoverHelperTest {
         }
         val client = createMockClient(trending = manyItems)
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         val trendingRow = rows.find { it.title == "Trending" }
         assertEquals(12, trendingRow?.items?.size)
@@ -131,20 +146,23 @@ class SeerrDiscoverHelperTest {
             trending = listOf(SeerrMedia(id = 1, mediaType = "movie", title = "T")),
             popularMovies = listOf(SeerrMedia(id = 2, mediaType = "movie", title = "M")),
             popularTV = listOf(SeerrMedia(id = 3, mediaType = "tv", name = "TV")),
-            upcoming = listOf(SeerrMedia(id = 4, mediaType = "movie", title = "U")),
+            upcomingMovies = listOf(SeerrMedia(id = 4, mediaType = "movie", title = "UM")),
+            upcomingTV = listOf(SeerrMedia(id = 5, mediaType = "tv", name = "UT")),
         )
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         val trendingRow = rows.find { it.title == "Trending" }
         val moviesRow = rows.find { it.title == "Popular Movies" }
         val tvRow = rows.find { it.title == "Popular TV Shows" }
-        val upcomingRow = rows.find { it.title == "Coming Soon" }
+        val upcomingMoviesRow = rows.find { it.title == "Upcoming Movies" }
+        val upcomingTvRow = rows.find { it.title == "Upcoming TV" }
 
         assertEquals(SeerrColors.PURPLE, trendingRow?.accentColorValue)
         assertEquals(SeerrColors.YELLOW, moviesRow?.accentColorValue)
         assertEquals(SeerrColors.TEAL, tvRow?.accentColorValue)
-        assertEquals(SeerrColors.BLUE, upcomingRow?.accentColorValue)
+        assertEquals(SeerrColors.BLUE, upcomingMoviesRow?.accentColorValue)
+        assertEquals(SeerrColors.BLUE, upcomingTvRow?.accentColorValue)
     }
 
     @Test
@@ -154,7 +172,7 @@ class SeerrDiscoverHelperTest {
             popularMovies = listOf(SeerrMedia(id = 2, mediaType = "movie", title = "M")),
         )
 
-        val rows = SeerrDiscoverHelper.loadFallbackRows(client) { this }
+        val rows = SeerrDiscoverHelper.loadFallbackRows(client)
 
         val keys = rows.map { it.key }
         assertEquals(keys.size, keys.distinct().size) // All keys should be unique

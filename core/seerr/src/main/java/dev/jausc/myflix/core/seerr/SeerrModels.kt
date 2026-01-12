@@ -877,3 +877,164 @@ fun List<SeerrMedia>.filterDiscoverable(): List<SeerrMedia> = filter { media ->
         !media.isPending &&
         media.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
 }
+
+// ============================================================================
+// Studio & Network Types
+// ============================================================================
+
+/**
+ * Movie studio (production company) for browsing.
+ * Uses TMDB production company IDs.
+ */
+data class SeerrStudio(
+    val id: Int,
+    val name: String,
+    val logoPath: String? = null,
+) {
+    /** Get a color for this studio based on its ID */
+    fun getColor(): Long = StudioColors.forStudio(id)
+}
+
+/**
+ * TV network for browsing.
+ * Uses TMDB network IDs.
+ */
+data class SeerrNetwork(
+    val id: Int,
+    val name: String,
+    val logoPath: String? = null,
+) {
+    /** Get a color for this network based on its ID */
+    fun getColor(): Long = NetworkColors.forNetwork(id)
+}
+
+/**
+ * Predefined colors for popular studios.
+ */
+object StudioColors {
+    // Studio colors mapped by TMDB company ID
+    private val studioColorMap = mapOf(
+        174 to 0xFF0046BEL,    // Warner Bros - Blue
+        2 to 0xFF0072CEL,      // Walt Disney Pictures - Blue
+        420 to 0xFFED1D24L,    // Marvel Studios - Red
+        33 to 0xFF0033A0L,     // Universal Pictures - Blue
+        4 to 0xFF0167B6L,      // Paramount Pictures - Blue
+        3 to 0xFFF9F5E3L,      // Pixar - Off White
+        5 to 0xFF002D62L,      // Columbia Pictures - Navy
+        7 to 0xFF000000L,      // DreamWorks - Black
+        25 to 0xFF003087L,     // 20th Century Fox - Blue
+        9993 to 0xFFFFE21FL,   // DC Films - Yellow
+        21 to 0xFF1F73B8L,     // Metro-Goldwyn-Mayer - Blue
+        12 to 0xFF000000L,     // New Line Cinema - Black
+        429 to 0xFFFA7D00L,    // Lucasfilm - Orange
+        34 to 0xFF0165E1L,     // Sony Pictures - Blue
+        1632 to 0xFF000000L,   // Lionsgate - Black
+        923 to 0xFF8B5CF6L,    // Legendary - Purple
+        11461 to 0xFFDC2626L,  // Bad Robot - Red
+        82968 to 0xFF000000L,  // Apple Studios - Black
+        127928 to 0xFF000000L, // A24 - Black
+        2785 to 0xFF6366F1L,   // Castle Rock - Indigo
+    )
+
+    private val fallbackColors = listOf(
+        0xFF8B5CF6L, // Purple
+        0xFF3B82F6L, // Blue
+        0xFF0EA5E9L, // Cyan
+        0xFF059669L, // Green
+        0xFFFBBF24L, // Yellow
+        0xFFF97316L, // Orange
+        0xFFDC2626L, // Red
+        0xFFEC4899L, // Pink
+    )
+
+    fun forStudio(id: Int): Long {
+        return studioColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
+    }
+}
+
+/**
+ * Predefined colors for popular networks.
+ */
+object NetworkColors {
+    // Network colors mapped by TMDB network ID
+    private val networkColorMap = mapOf(
+        49 to 0xFF000000L,     // HBO - Black
+        213 to 0xFFE50914L,    // Netflix - Red
+        2739 to 0xFF00A8E1L,   // Disney+ - Blue
+        1024 to 0xFFFF6600L,   // Amazon Prime - Orange
+        2552 to 0xFF6B3FA0L,   // Apple TV+ - Purple
+        67 to 0xFF68B244L,     // Showtime - Green
+        16 to 0xFF003D7CL,     // CBS - Blue
+        6 to 0xFF000000L,      // NBC - Black
+        19 to 0xFF3D3D3DL,     // FOX - Gray
+        2 to 0xFF014098L,      // ABC - Blue
+        174 to 0xFFCD1C1EL,    // AMC - Red
+        54 to 0xFFF7B32BL,     // Disney Channel - Yellow
+        88 to 0xFF019934L,     // FX - Green
+        453 to 0xFF004696L,    // Hulu - Green
+        4330 to 0xFF5C16C5L,   // Paramount+ - Purple
+        56 to 0xFFD81B60L,     // Cartoon Network - Pink
+        318 to 0xFFF5B51DL,    // Starz - Gold
+        359 to 0xFF97D700L,    // Syfy - Green
+        21 to 0xFF000000L,     // The WB - Black
+        65 to 0xFF0080FFL,     // History - Blue
+        33 to 0xFF0073D4L,     // Peacock - Blue
+    )
+
+    private val fallbackColors = listOf(
+        0xFF8B5CF6L, // Purple
+        0xFF3B82F6L, // Blue
+        0xFF0EA5E9L, // Cyan
+        0xFF059669L, // Green
+        0xFFFBBF24L, // Yellow
+        0xFFF97316L, // Orange
+        0xFFDC2626L, // Red
+        0xFFEC4899L, // Pink
+    )
+
+    fun forNetwork(id: Int): Long {
+        return networkColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
+    }
+}
+
+/**
+ * Popular movie studios for browsing.
+ * TMDB production company IDs.
+ */
+object PopularStudios {
+    val studios = listOf(
+        SeerrStudio(420, "Marvel Studios", "/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"),
+        SeerrStudio(174, "Warner Bros. Pictures", "/zhD3hhtKB5qyv7ZeL4uLpNxgMVU.png"),
+        SeerrStudio(2, "Walt Disney Pictures", "/wdrCwmRnLFJhEoH8GSfymY85KHT.png"),
+        SeerrStudio(33, "Universal Pictures", "/8lvHyhjr8oUKOOy2dKXoALWKdp0.png"),
+        SeerrStudio(4, "Paramount Pictures", "/gz66EfNoYPqHTYI4q9UEN4CbHRc.png"),
+        SeerrStudio(3, "Pixar", "/1TjvGVDMYsj6JBxOAkUHpPEwLf7.png"),
+        SeerrStudio(429, "Lucasfilm", "/o86DbpburjxrqAzEDhXZcyE8pDb.png"),
+        SeerrStudio(9993, "DC Studios", "/2Tc1P3Ac8M479naPp1kYT3izLS5.png"),
+        SeerrStudio(7, "DreamWorks Animation", "/vru2SssLX3FPhnKZGtYw00pVIS9.png"),
+        SeerrStudio(5, "Columbia Pictures", "/71BqEFAF4V3qjjMPCpLuyJFB9A.png"),
+        SeerrStudio(127928, "A24", "/9aotxauvc9685tq9pTcRJszuT06.png"),
+        SeerrStudio(923, "Legendary Pictures", "/8M99Dkt23MjQMTTWukq4m5XsEuo.png"),
+    )
+}
+
+/**
+ * Popular TV networks for browsing.
+ * TMDB network IDs.
+ */
+object PopularNetworks {
+    val networks = listOf(
+        SeerrNetwork(213, "Netflix", "/wwemzKWzjKYJFfCeiB57q3r4Bcm.png"),
+        SeerrNetwork(49, "HBO", "/tuomPhY2UtuPTqqFnKMVHvSb724.png"),
+        SeerrNetwork(2739, "Disney+", "/gJ8VX6JSu3ciXHuC2dDGAo2lvwM.png"),
+        SeerrNetwork(1024, "Amazon", "/ifhbNuuVnlwYy5oXA5VIb2YR8AZ.png"),
+        SeerrNetwork(2552, "Apple TV+", "/4KAy34EHvRM25Ih8wb82AuiWN41.png"),
+        SeerrNetwork(67, "Showtime", "/Allse9kbjiP6ExaQrnSpIhkurEi.png"),
+        SeerrNetwork(174, "AMC", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png"),
+        SeerrNetwork(4330, "Paramount+", "/fi83B1oztoS47xxcemFdPMhIzK.png"),
+        SeerrNetwork(88, "FX", "/aexGjtcs42DgRtZh7zOxayiry4J.png"),
+        SeerrNetwork(453, "Hulu", "/pqUTCleNUiTLAVlelGxUgWn1ELh.png"),
+        SeerrNetwork(318, "Starz", "/8GJjw3HHsAJYwIWKIPBPfqMxlEa.png"),
+        SeerrNetwork(16, "CBS", "/nm8d7P7MJNiBLdgIzUK0gkuEA4r.png"),
+    )
+}

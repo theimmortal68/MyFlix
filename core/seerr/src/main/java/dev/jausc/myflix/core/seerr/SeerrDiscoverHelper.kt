@@ -259,6 +259,32 @@ object SeerrDiscoverHelper {
 
         return rows
     }
+
+    /**
+     * Get studios row for browsing.
+     *
+     * @return A row of popular movie studios
+     */
+    fun getStudiosRow(): SeerrStudioRow {
+        return SeerrStudioRow(
+            key = "studios",
+            title = "Studios",
+            studios = PopularStudios.studios,
+        )
+    }
+
+    /**
+     * Get networks row for browsing.
+     *
+     * @return A row of popular TV networks
+     */
+    fun getNetworksRow(): SeerrNetworkRow {
+        return SeerrNetworkRow(
+            key = "networks",
+            title = "Networks",
+            networks = PopularNetworks.networks,
+        )
+    }
 }
 
 /**
@@ -280,6 +306,24 @@ data class SeerrGenreRow(
     val title: String,
     val mediaType: String, // "movie" or "tv"
     val genres: List<SeerrGenre>,
+)
+
+/**
+ * Represents a row of studio cards for browsing.
+ */
+data class SeerrStudioRow(
+    val key: String,
+    val title: String,
+    val studios: List<SeerrStudio>,
+)
+
+/**
+ * Represents a row of network cards for browsing.
+ */
+data class SeerrNetworkRow(
+    val key: String,
+    val title: String,
+    val networks: List<SeerrNetwork>,
 )
 
 /**
