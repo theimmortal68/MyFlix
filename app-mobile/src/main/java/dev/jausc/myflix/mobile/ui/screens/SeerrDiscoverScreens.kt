@@ -22,14 +22,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +62,7 @@ import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
+import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.filterDiscoverable
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
@@ -68,18 +74,51 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
+// ============================================================================
+// Filter Configuration (shared types)
+// ============================================================================
+
+/**
+ * Filter configuration for discover screens.
+ */
+data class MobileDiscoverFilterConfig(
+    val showMediaTypeFilter: Boolean = false,
+    val showGenreFilter: Boolean = false,
+    val showReleaseStatusFilter: Boolean = false,
+    val defaultMediaType: MobileMediaTypeFilter = MobileMediaTypeFilter.ALL,
+)
+
+enum class MobileMediaTypeFilter(val label: String, val apiValue: String?) {
+    ALL("All", null),
+    MOVIES("Movies", "movie"),
+    TV_SHOWS("TV Shows", "tv"),
+}
+
+enum class MobileReleaseStatusFilter(val label: String) {
+    ALL("All"),
+    RELEASED("Released"),
+    UPCOMING("Upcoming"),
+}
+
 @Composable
 fun SeerrDiscoverTrendingScreen(
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
-    SeerrMediaListScreen(
+    SeerrFilterableMediaListScreen(
         title = "Trending",
         onBack = onBack,
-        loadItems = { page -> seerrClient.getTrending(page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
+        filterConfig = MobileDiscoverFilterConfig(
+            showMediaTypeFilter = true,
+            showGenreFilter = true,
+            showReleaseStatusFilter = true,
+        ),
+        loadItems = { page, mediaType, genreIds, releaseStatus ->
+            loadMobileTrendingWithFilters(seerrClient, page, mediaType, genreIds, releaseStatus)
+        },
     )
 }
 
@@ -89,12 +128,20 @@ fun SeerrDiscoverMoviesScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
-    SeerrMediaListScreen(
+    SeerrFilterableMediaListScreen(
         title = "Discover Movies",
         onBack = onBack,
-        loadItems = { page -> seerrClient.discoverMovies(page = page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
+        filterConfig = MobileDiscoverFilterConfig(
+            showGenreFilter = true,
+            showReleaseStatusFilter = true,
+            defaultMediaType = MobileMediaTypeFilter.MOVIES,
+        ),
+        loadItems = { page, _, genreIds, releaseStatus ->
+            loadMobileMoviesWithFilters(seerrClient, page, genreIds, releaseStatus)
+        },
+        genreMediaType = "movie",
     )
 }
 
@@ -104,12 +151,20 @@ fun SeerrDiscoverTvScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
-    SeerrMediaListScreen(
+    SeerrFilterableMediaListScreen(
         title = "Discover TV",
         onBack = onBack,
-        loadItems = { page -> seerrClient.discoverTV(page = page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
+        filterConfig = MobileDiscoverFilterConfig(
+            showGenreFilter = true,
+            showReleaseStatusFilter = true,
+            defaultMediaType = MobileMediaTypeFilter.TV_SHOWS,
+        ),
+        loadItems = { page, _, genreIds, releaseStatus ->
+            loadMobileTvWithFilters(seerrClient, page, genreIds, releaseStatus)
+        },
+        genreMediaType = "tv",
     )
 }
 
@@ -119,12 +174,19 @@ fun SeerrDiscoverUpcomingMoviesScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
-    SeerrMediaListScreen(
+    SeerrFilterableMediaListScreen(
         title = "Upcoming Movies",
         onBack = onBack,
-        loadItems = { page -> seerrClient.getUpcomingMovies(page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
+        filterConfig = MobileDiscoverFilterConfig(
+            showGenreFilter = true,
+            defaultMediaType = MobileMediaTypeFilter.MOVIES,
+        ),
+        loadItems = { page, _, genreIds, _ ->
+            loadMobileUpcomingWithFilters(seerrClient, page, MobileMediaTypeFilter.MOVIES, genreIds)
+        },
+        genreMediaType = "movie",
     )
 }
 
@@ -134,12 +196,19 @@ fun SeerrDiscoverUpcomingTvScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
-    SeerrMediaListScreen(
+    SeerrFilterableMediaListScreen(
         title = "Upcoming TV",
         onBack = onBack,
-        loadItems = { page -> seerrClient.getUpcomingTV(page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
+        filterConfig = MobileDiscoverFilterConfig(
+            showGenreFilter = true,
+            defaultMediaType = MobileMediaTypeFilter.TV_SHOWS,
+        ),
+        loadItems = { page, _, genreIds, _ ->
+            loadMobileUpcomingWithFilters(seerrClient, page, MobileMediaTypeFilter.TV_SHOWS, genreIds)
+        },
+        genreMediaType = "tv",
     )
 }
 
@@ -152,18 +221,24 @@ fun SeerrDiscoverByGenreScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
-    SeerrMediaListScreen(
+    SeerrFilterableMediaListScreen(
         title = genreName,
         onBack = onBack,
-        loadItems = { page ->
-            if (mediaType == "movie") {
-                seerrClient.discoverMovies(genreId = genreId, page = page)
-            } else {
-                seerrClient.discoverTV(genreId = genreId, page = page)
-            }
-        },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
+        filterConfig = MobileDiscoverFilterConfig(
+            showReleaseStatusFilter = true,
+            defaultMediaType = if (mediaType == "movie") MobileMediaTypeFilter.MOVIES
+                else MobileMediaTypeFilter.TV_SHOWS,
+        ),
+        loadItems = { page, _, _, releaseStatus ->
+            if (mediaType == "movie") {
+                loadMobileMoviesWithFilters(seerrClient, page, setOf(genreId), releaseStatus)
+            } else {
+                loadMobileTvWithFilters(seerrClient, page, setOf(genreId), releaseStatus)
+            }
+        },
+        genreMediaType = mediaType,
     )
 }
 
@@ -468,6 +543,482 @@ private fun SeerrMobileMediaCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+// ============================================================================
+// Filterable Media List Screen
+// ============================================================================
+
+@Composable
+private fun SeerrFilterableMediaListScreen(
+    title: String,
+    onBack: () -> Unit,
+    seerrClient: SeerrClient,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    filterConfig: MobileDiscoverFilterConfig,
+    loadItems: suspend (
+        page: Int,
+        mediaType: MobileMediaTypeFilter,
+        genreIds: Set<Int>,
+        releaseStatus: MobileReleaseStatusFilter,
+    ) -> Result<SeerrDiscoverResult>,
+    genreMediaType: String? = null,
+) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // Content state
+    var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var items by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
+    var page by remember { mutableIntStateOf(1) }
+    var totalPages by remember { mutableIntStateOf(1) }
+
+    // Filter state
+    var mediaTypeFilter by remember { mutableStateOf(filterConfig.defaultMediaType) }
+    var releaseStatusFilter by remember { mutableStateOf(MobileReleaseStatusFilter.ALL) }
+    var selectedGenreIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var genres by remember { mutableStateOf<List<SeerrGenre>>(emptyList()) }
+    var filterTrigger by remember { mutableIntStateOf(0) }
+
+    // Menu state for long-press context menu
+    var menuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
+
+    // Seerr actions for context menu
+    val seerrActions = remember(onMediaClick, scope, seerrClient) {
+        SeerrMediaActions(
+            onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
+            onRequest = { media ->
+                scope.launch {
+                    if (media.isMovie) {
+                        seerrClient.requestMovie(media.tmdbId ?: media.id)
+                    } else {
+                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
+                    }
+                }
+            },
+            onBlacklist = { media ->
+                scope.launch {
+                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+        )
+    }
+
+    // Load genres on first composition
+    LaunchedEffect(Unit) {
+        if (filterConfig.showGenreFilter) {
+            val genreType = genreMediaType ?: when (filterConfig.defaultMediaType) {
+                MobileMediaTypeFilter.MOVIES -> "movie"
+                MobileMediaTypeFilter.TV_SHOWS -> "tv"
+                else -> "movie"
+            }
+            val genreResult = if (genreType == "tv") {
+                seerrClient.getTVGenres()
+            } else {
+                seerrClient.getMovieGenres()
+            }
+            genreResult.onSuccess { genres = it }
+        }
+    }
+
+    suspend fun loadPage(pageToLoad: Int, append: Boolean) {
+        if (append) {
+            isLoadingMore = true
+        } else {
+            isLoading = true
+        }
+        errorMessage = null
+
+        loadItems(pageToLoad, mediaTypeFilter, selectedGenreIds, releaseStatusFilter)
+            .onSuccess { result ->
+                val filtered = result.results.filterDiscoverable()
+                items = if (append) {
+                    (items + filtered).distinctBy { "${it.mediaType}-${it.id}" }
+                } else {
+                    filtered
+                }
+                page = result.page
+                totalPages = result.totalPages
+            }
+            .onFailure { error ->
+                if (!append) {
+                    errorMessage = error.message ?: "Failed to load content"
+                }
+            }
+
+        if (append) {
+            isLoadingMore = false
+        } else {
+            isLoading = false
+        }
+    }
+
+    // Reload when filters change
+    LaunchedEffect(filterTrigger) {
+        items = emptyList()
+        page = 1
+        totalPages = 1
+        loadPage(pageToLoad = 1, append = false)
+    }
+
+    // Pagination
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .filterNotNull()
+            .collectLatest { lastVisibleIndex ->
+                val shouldLoadMore = lastVisibleIndex >= items.lastIndex - 4
+                val hasMore = page < totalPages
+                if (shouldLoadMore && hasMore && !isLoading && !isLoadingMore) {
+                    scope.launch { loadPage(pageToLoad = page + 1, append = true) }
+                }
+            }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        SeerrMobileTopBar(title = title, onBack = onBack)
+
+        // Filter row
+        val hasActiveFilters = filterConfig.showMediaTypeFilter ||
+            filterConfig.showGenreFilter ||
+            filterConfig.showReleaseStatusFilter
+
+        if (hasActiveFilters) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Media type filter chips
+                if (filterConfig.showMediaTypeFilter) {
+                    items(MobileMediaTypeFilter.entries) { filter ->
+                        FilterChip(
+                            selected = mediaTypeFilter == filter,
+                            onClick = {
+                                if (mediaTypeFilter != filter) {
+                                    mediaTypeFilter = filter
+                                    filterTrigger++
+                                }
+                            },
+                            label = { Text(filter.label) },
+                            leadingIcon = if (mediaTypeFilter == filter) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.2f),
+                                selectedLabelColor = Color(0xFF8B5CF6),
+                                selectedLeadingIconColor = Color(0xFF8B5CF6),
+                            ),
+                        )
+                    }
+                }
+
+                // Release status filter chips
+                if (filterConfig.showReleaseStatusFilter) {
+                    items(MobileReleaseStatusFilter.entries) { filter ->
+                        FilterChip(
+                            selected = releaseStatusFilter == filter,
+                            onClick = {
+                                if (releaseStatusFilter != filter) {
+                                    releaseStatusFilter = filter
+                                    filterTrigger++
+                                }
+                            },
+                            label = { Text(filter.label) },
+                            leadingIcon = if (releaseStatusFilter == filter) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.2f),
+                                selectedLabelColor = Color(0xFF8B5CF6),
+                                selectedLeadingIconColor = Color(0xFF8B5CF6),
+                            ),
+                        )
+                    }
+                }
+
+                // Genre filter chips (multi-select)
+                if (filterConfig.showGenreFilter && genres.isNotEmpty()) {
+                    items(genres) { genre ->
+                        val isSelected = selectedGenreIds.contains(genre.id)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                selectedGenreIds = if (isSelected) {
+                                    selectedGenreIds - genre.id
+                                } else {
+                                    selectedGenreIds + genre.id
+                                }
+                                filterTrigger++
+                            },
+                            label = { Text(genre.name) },
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.2f),
+                                selectedLabelColor = Color(0xFF8B5CF6),
+                                selectedLeadingIconColor = Color(0xFF8B5CF6),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        // Content
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF8B5CF6))
+                }
+            }
+            errorMessage != null -> {
+                SeerrMobileErrorState(
+                    message = errorMessage ?: "Failed to load content",
+                    onRetry = { filterTrigger++ },
+                )
+            }
+            items.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "No results found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    itemsIndexed(
+                        items,
+                        key = { _, media -> "${media.mediaType}-${media.id}" },
+                    ) { _, media ->
+                        SeerrMobileMediaCard(
+                            media = media,
+                            seerrClient = seerrClient,
+                            onClick = {
+                                onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                            },
+                            onLongClick = {
+                                menuParams = BottomSheetParams(
+                                    title = media.displayTitle,
+                                    items = buildSeerrMenuItems(media, seerrActions),
+                                )
+                            },
+                        )
+                    }
+                    if (isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFF8B5CF6),
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Long-press context menu
+        menuParams?.let { params ->
+            PopupMenu(
+                params = params,
+                onDismiss = { menuParams = null },
+            )
+        }
+    }
+}
+
+// ============================================================================
+// Filter Helper Functions
+// ============================================================================
+
+private suspend fun loadMobileTrendingWithFilters(
+    seerrClient: SeerrClient,
+    page: Int,
+    mediaType: MobileMediaTypeFilter,
+    genreIds: Set<Int>,
+    releaseStatus: MobileReleaseStatusFilter,
+): Result<SeerrDiscoverResult> {
+    return seerrClient.getTrending(page).map { result ->
+        var filtered = result.results
+
+        // Filter by media type
+        if (mediaType != MobileMediaTypeFilter.ALL) {
+            filtered = filtered.filter { it.mediaType == mediaType.apiValue }
+        }
+
+        // Filter by release status
+        filtered = filterMobileByReleaseStatus(filtered, releaseStatus)
+
+        result.copy(results = filtered)
+    }
+}
+
+private suspend fun loadMobileMoviesWithFilters(
+    seerrClient: SeerrClient,
+    page: Int,
+    genreIds: Set<Int>,
+    releaseStatus: MobileReleaseStatusFilter,
+): Result<SeerrDiscoverResult> {
+    val params = mutableMapOf<String, String>()
+
+    // Add genre filter
+    if (genreIds.isNotEmpty()) {
+        params["genre"] = genreIds.joinToString(",")
+    }
+
+    // Add release status filter
+    val today = java.time.LocalDate.now().toString()
+    when (releaseStatus) {
+        MobileReleaseStatusFilter.RELEASED -> {
+            params["primaryReleaseDateLte"] = today
+        }
+        MobileReleaseStatusFilter.UPCOMING -> {
+            params["primaryReleaseDateGte"] = today
+        }
+        MobileReleaseStatusFilter.ALL -> { /* No filter */ }
+    }
+
+    return if (params.isEmpty()) {
+        seerrClient.discoverMovies(page = page)
+    } else {
+        seerrClient.discoverMoviesWithParams(params, page)
+    }
+}
+
+private suspend fun loadMobileTvWithFilters(
+    seerrClient: SeerrClient,
+    page: Int,
+    genreIds: Set<Int>,
+    releaseStatus: MobileReleaseStatusFilter,
+): Result<SeerrDiscoverResult> {
+    val params = mutableMapOf<String, String>()
+
+    // Add genre filter
+    if (genreIds.isNotEmpty()) {
+        params["genre"] = genreIds.joinToString(",")
+    }
+
+    // Add release status filter
+    val today = java.time.LocalDate.now().toString()
+    when (releaseStatus) {
+        MobileReleaseStatusFilter.RELEASED -> {
+            params["firstAirDateLte"] = today
+        }
+        MobileReleaseStatusFilter.UPCOMING -> {
+            params["firstAirDateGte"] = today
+        }
+        MobileReleaseStatusFilter.ALL -> { /* No filter */ }
+    }
+
+    return if (params.isEmpty()) {
+        seerrClient.discoverTV(page = page)
+    } else {
+        seerrClient.discoverTVWithParams(params, page)
+    }
+}
+
+private suspend fun loadMobileUpcomingWithFilters(
+    seerrClient: SeerrClient,
+    page: Int,
+    mediaType: MobileMediaTypeFilter,
+    genreIds: Set<Int>,
+): Result<SeerrDiscoverResult> {
+    val today = java.time.LocalDate.now().toString()
+
+    return when (mediaType) {
+        MobileMediaTypeFilter.MOVIES, MobileMediaTypeFilter.ALL -> {
+            val params = mutableMapOf<String, String>()
+            params["primaryReleaseDateGte"] = today
+            if (genreIds.isNotEmpty()) {
+                params["genre"] = genreIds.joinToString(",")
+            }
+            seerrClient.discoverMoviesWithParams(params, page)
+        }
+        MobileMediaTypeFilter.TV_SHOWS -> {
+            val params = mutableMapOf<String, String>()
+            params["firstAirDateGte"] = today
+            if (genreIds.isNotEmpty()) {
+                params["genre"] = genreIds.joinToString(",")
+            }
+            seerrClient.discoverTVWithParams(params, page)
+        }
+    }
+}
+
+private fun filterMobileByReleaseStatus(
+    items: List<SeerrMedia>,
+    releaseStatus: MobileReleaseStatusFilter,
+): List<SeerrMedia> {
+    if (releaseStatus == MobileReleaseStatusFilter.ALL) return items
+
+    val today = java.time.LocalDate.now()
+    return items.filter { media ->
+        val releaseDate = media.displayReleaseDate?.let {
+            try {
+                java.time.LocalDate.parse(it)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        when (releaseStatus) {
+            MobileReleaseStatusFilter.RELEASED -> releaseDate == null || releaseDate <= today
+            MobileReleaseStatusFilter.UPCOMING -> releaseDate != null && releaseDate > today
+            MobileReleaseStatusFilter.ALL -> true
         }
     }
 }
