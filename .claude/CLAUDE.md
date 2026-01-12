@@ -864,13 +864,38 @@ Button(
 }
 ```
 
+#### Grid Layout (Standard TV View)
+
+| Type | Columns | Usage |
+|------|---------|-------|
+| Discover Grid | `GridCells.Fixed(7)` | Seerr discover, search results, genre grids |
+| Home Rows | Horizontal scroll | Jellyfin home content rows |
+
+**Implementation:**
+```kotlin
+// Standard TV grid - 7 columns (standard view style for TV)
+LazyVerticalGrid(
+    columns = GridCells.Fixed(7),
+    horizontalArrangement = Arrangement.spacedBy(16.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp),
+) {
+    items(mediaList) { media ->
+        PosterCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+        )
+    }
+}
+```
+
 #### Spacing
 
 | Type | Value | Usage |
 |------|-------|-------|
-| Card Gap | `16.dp` | Between cards in rows |
+| Card Gap | `16.dp` | Between cards in grids and rows |
 | Row Gap | `24.dp` | Between content rows |
-| Screen Padding | `48.dp` | Left/right margins |
+| Screen Padding | `24.dp` | Screen edge padding |
 | Section Padding | `24.dp` | Top/bottom of sections |
 
 ### Mobile App (app-mobile)

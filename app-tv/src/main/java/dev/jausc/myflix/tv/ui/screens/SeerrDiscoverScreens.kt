@@ -302,7 +302,7 @@ private fun SeerrMediaGridScreen(
             else -> {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    columns = GridCells.Fixed(7),
                     contentPadding = PaddingValues(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -392,7 +392,7 @@ private fun SeerrTvPosterCard(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
-            .width(120.dp)
+            .fillMaxWidth()
             .aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
