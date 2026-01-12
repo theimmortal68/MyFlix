@@ -60,6 +60,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.util.DateFormatter
@@ -68,6 +69,7 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCrewMember
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrSeason
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -113,6 +115,8 @@ fun SeerrDetailScreen(
     var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var isWatchlisted by remember { mutableStateOf<Boolean?>(null) }
     var isWatchlistUpdating by remember { mutableStateOf(false) }
+    var request4k by remember { mutableStateOf(false) }
+    var quotaDetails by remember { mutableStateOf<SeerrQuotaDetails?>(null) }
 
     // Request focus on action button when content loads
     LaunchedEffect(media) {
@@ -133,6 +137,9 @@ fun SeerrDetailScreen(
         recommendations = emptyList()
         similar = emptyList()
         isWatchlisted = null
+        selectedSeasons = emptySet()
+        request4k = false
+        quotaDetails = null
 
         val result = if (mediaType == "movie") {
             seerrClient.getMovie(tmdbId)
@@ -175,6 +182,12 @@ fun SeerrDetailScreen(
             }
             .onFailure { isWatchlisted = null }
 
+        seerrClient.getUserQuota()
+            .onSuccess { quota ->
+                quotaDetails = if (mediaType == "movie") quota.movie else quota.tv
+            }
+            .onFailure { quotaDetails = null }
+
         // Load seasons for TV shows
         if (mediaType == "tv") {
             // Get season info from the media details
@@ -193,14 +206,14 @@ fun SeerrDetailScreen(
         scope.launch {
             isRequesting = true
             val result = if (currentMedia.isMovie) {
-                seerrClient.requestMovie(tmdbId)
+                seerrClient.requestMovie(tmdbId, request4k)
             } else {
                 val seasonsToRequest = if (selectedSeasons.isNotEmpty()) {
                     selectedSeasons.toList()
                 } else {
                     null // Request all seasons
                 }
-                seerrClient.requestTVShow(tmdbId, seasonsToRequest)
+                seerrClient.requestTVShow(tmdbId, seasonsToRequest, request4k)
             }
 
             result
@@ -405,6 +418,15 @@ fun SeerrDetailScreen(
 
                                     Spacer(modifier = Modifier.height(16.dp))
 
+                                    // Request eligibility checks (defined outside Row for later use)
+                                    val statusAllowsRequest = currentMedia.availabilityStatus !in listOf(
+                                        SeerrMediaStatus.AVAILABLE,
+                                        SeerrMediaStatus.PENDING,
+                                        SeerrMediaStatus.PROCESSING,
+                                    )
+                                    val quotaRemaining = quotaDetails?.remaining
+                                    val quotaAllowsRequest = quotaRemaining == null || quotaRemaining > 0
+
                                     // Action buttons
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         // Request/Available button (uses mediaInfo.status for availability)
@@ -451,7 +473,7 @@ fun SeerrDetailScreen(
                                                 Button(
                                                     onClick = { handleRequest() },
                                                     modifier = Modifier.focusRequester(actionButtonFocusRequester),
-                                                    enabled = !isRequesting,
+                                                    enabled = !isRequesting && statusAllowsRequest && quotaAllowsRequest,
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFF8B5CF6),
                                                     ),
@@ -533,6 +555,109 @@ fun SeerrDetailScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text("Trailer")
+                                            }
+                                        }
+                                    }
+
+                                    val quotaText = buildQuotaText(quotaDetails)
+                                    if (quotaText != null) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = quotaText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TvColors.TextSecondary,
+                                        )
+                                    }
+                                    if (!quotaAllowsRequest && statusAllowsRequest) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Quota reached",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TvColors.Error,
+                                        )
+                                    }
+
+                                    if (statusAllowsRequest) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Button(
+                                                onClick = { request4k = !request4k },
+                                                colors = if (request4k) {
+                                                    ButtonDefaults.colors(
+                                                        containerColor = TvColors.BluePrimary,
+                                                        contentColor = TvColors.TextPrimary,
+                                                        focusedContainerColor = TvColors.BluePrimary,
+                                                    )
+                                                } else {
+                                                    ButtonDefaults.colors(
+                                                        containerColor = TvColors.Surface,
+                                                        contentColor = TvColors.TextPrimary,
+                                                        focusedContainerColor = TvColors.FocusedSurface,
+                                                    )
+                                                },
+                                            ) {
+                                                Text("4K")
+                                            }
+                                        }
+
+                                        val seasonCount = currentMedia.numberOfSeasons
+                                        if (currentMedia.isTvShow && seasonCount != null) {
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Text(
+                                                text = "Seasons",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = TvColors.TextSecondary,
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                item {
+                                                    Button(
+                                                        onClick = { selectedSeasons = emptySet() },
+                                                        colors = if (selectedSeasons.isEmpty()) {
+                                                            ButtonDefaults.colors(
+                                                                containerColor = TvColors.BluePrimary,
+                                                                contentColor = TvColors.TextPrimary,
+                                                                focusedContainerColor = TvColors.BluePrimary,
+                                                            )
+                                                        } else {
+                                                            ButtonDefaults.colors(
+                                                                containerColor = TvColors.Surface,
+                                                                contentColor = TvColors.TextPrimary,
+                                                                focusedContainerColor = TvColors.FocusedSurface,
+                                                            )
+                                                        },
+                                                    ) {
+                                                        Text("All")
+                                                    }
+                                                }
+                                                items(seasonCount) { index ->
+                                                    val seasonNumber = index + 1
+                                                    val selected = selectedSeasons.contains(seasonNumber)
+                                                    Button(
+                                                        onClick = {
+                                                            selectedSeasons = if (selected) {
+                                                                selectedSeasons - seasonNumber
+                                                            } else {
+                                                                selectedSeasons + seasonNumber
+                                                            }
+                                                        },
+                                                        colors = if (selected) {
+                                                            ButtonDefaults.colors(
+                                                                containerColor = TvColors.BluePrimary,
+                                                                contentColor = TvColors.TextPrimary,
+                                                                focusedContainerColor = TvColors.BluePrimary,
+                                                            )
+                                                        } else {
+                                                            ButtonDefaults.colors(
+                                                                containerColor = TvColors.Surface,
+                                                                contentColor = TvColors.TextPrimary,
+                                                                focusedContainerColor = TvColors.FocusedSurface,
+                                                            )
+                                                        },
+                                                    ) {
+                                                        Text("S$seasonNumber")
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -635,7 +760,7 @@ fun SeerrDetailScreen(
                                         contentPadding = PaddingValues(horizontal = 48.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
-                                        items(cast.take(10)) { member ->
+                                        items(cast.take(20)) { member ->
                                             CastCard(
                                                 member = member,
                                                 seerrClient = seerrClient,
@@ -816,6 +941,20 @@ private fun StatusBadge(status: Int?) {
             style = MaterialTheme.typography.labelSmall,
             color = color,
         )
+    }
+}
+
+private fun buildQuotaText(quotaDetails: SeerrQuotaDetails?): String? {
+    val limit = quotaDetails?.limit ?: return null
+    val days = quotaDetails.days
+    val remaining = quotaDetails.remaining
+    val used = quotaDetails.used
+
+    val windowText = days?.let { " per $it days" } ?: ""
+    return if (remaining != null) {
+        "Quota: $remaining/$limit remaining$windowText"
+    } else {
+        "Quota: $used/$limit used$windowText"
     }
 }
 

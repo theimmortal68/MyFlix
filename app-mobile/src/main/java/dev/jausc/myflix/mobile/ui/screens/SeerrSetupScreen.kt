@@ -37,6 +37,8 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +92,12 @@ fun SeerrSetupScreen(
     var isAutoDetecting by remember { mutableStateOf(false) }
     var connectionError by remember { mutableStateOf<String?>(null) }
 
+    val defaultAuthMode = if (!jellyfinUsername.isNullOrBlank()) {
+        SeerrAuthMode.JELLYFIN
+    } else {
+        SeerrAuthMode.LOCAL
+    }
+    var authMode by remember { mutableStateOf(defaultAuthMode) }
     var username by remember { mutableStateOf(jellyfinUsername ?: "") }
     var password by remember { mutableStateOf(jellyfinPassword ?: "") }
     var isAuthenticating by remember { mutableStateOf(false) }
@@ -107,7 +115,10 @@ fun SeerrSetupScreen(
                     seerrClient.connectToServer(url)
 
                     // Try auto-login if we have credentials
-                    if (!jellyfinUsername.isNullOrBlank() && !jellyfinPassword.isNullOrBlank()) {
+                    if (authMode == SeerrAuthMode.JELLYFIN &&
+                        !jellyfinUsername.isNullOrBlank() &&
+                        !jellyfinPassword.isNullOrBlank()
+                    ) {
                         seerrClient.loginWithJellyfin(jellyfinUsername, jellyfinPassword, jellyfinHost)
                             .onSuccess { user ->
                                 preferences.setSeerrEnabled(true)
@@ -160,7 +171,12 @@ fun SeerrSetupScreen(
             isAuthenticating = true
             authError = null
 
-            seerrClient.loginWithJellyfin(username, password, jellyfinHost)
+            val authResult = if (authMode == SeerrAuthMode.LOCAL) {
+                seerrClient.loginWithLocal(username, password)
+            } else {
+                seerrClient.loginWithJellyfin(username, password, jellyfinHost)
+            }
+            authResult
                 .onSuccess { user ->
                     preferences.setSeerrUrl(serverUrl) // Save URL (may have been set by auto-detection)
                     preferences.setSeerrEnabled(true)
@@ -331,16 +347,35 @@ fun SeerrSetupScreen(
                 MobileSeerrSetupStep(
                     icon = Icons.Outlined.Person,
                     title = "Authentication",
-                    description = "Sign in with your Jellyfin credentials",
+                    description = if (authMode == SeerrAuthMode.JELLYFIN) {
+                        "Sign in with your Jellyfin credentials"
+                    } else {
+                        "Sign in with your Seerr account"
+                    },
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Jellyfin credentials
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SeerrAuthMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = authMode == mode,
+                            onClick = { authMode = mode },
+                            label = { Text(mode.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.2f),
+                                selectedLabelColor = Color(0xFF8B5CF6),
+                            ),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("Username") },
+                    label = { Text(if (authMode == SeerrAuthMode.LOCAL) "Email" else "Username") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -545,4 +580,9 @@ private fun MobileSeerrSetupStep(icon: ImageVector, title: String, description: 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+private enum class SeerrAuthMode(val label: String) {
+    JELLYFIN("Jellyfin"),
+    LOCAL("Local"),
 }

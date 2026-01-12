@@ -486,10 +486,14 @@ class SeerrClient(
             movie = SeerrQuotaDetails(
                 limit = user.movieQuotaLimit,
                 days = user.movieQuotaDays,
+                used = user.requestCount ?: 0,
+                remaining = user.movieQuotaRemaining,
             ),
             tv = SeerrQuotaDetails(
                 limit = user.tvQuotaLimit,
                 days = user.tvQuotaDays,
+                used = user.requestCount ?: 0,
+                remaining = user.tvQuotaRemaining,
             ),
         )
     }

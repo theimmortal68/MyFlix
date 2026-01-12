@@ -45,6 +45,8 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +74,7 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCrewMember
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrVideo
 import dev.jausc.myflix.core.common.util.DateFormatter
 import kotlinx.coroutines.launch
@@ -108,6 +111,9 @@ fun SeerrDetailScreen(
     var requestSuccess by remember { mutableStateOf(false) }
     var isWatchlisted by remember { mutableStateOf<Boolean?>(null) }
     var isWatchlistUpdating by remember { mutableStateOf(false) }
+    var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var request4k by remember { mutableStateOf(false) }
+    var quotaDetails by remember { mutableStateOf<SeerrQuotaDetails?>(null) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -121,6 +127,9 @@ fun SeerrDetailScreen(
         recommendations = emptyList()
         similar = emptyList()
         isWatchlisted = null
+        selectedSeasons = emptySet()
+        request4k = false
+        quotaDetails = null
 
         val result = if (mediaType == "movie") {
             seerrClient.getMovie(tmdbId)
@@ -131,7 +140,7 @@ fun SeerrDetailScreen(
         result
             .onSuccess { mediaItem ->
                 media = mediaItem
-                cast = mediaItem.credits?.cast?.take(10) ?: emptyList()
+                cast = mediaItem.credits?.cast?.take(20) ?: emptyList()
                 crew = mediaItem.credits?.crew?.take(10) ?: emptyList()
             }
             .onFailure {
@@ -166,6 +175,12 @@ fun SeerrDetailScreen(
             }
             .onFailure { isWatchlisted = null }
 
+        seerrClient.getUserQuota()
+            .onSuccess { quota ->
+                quotaDetails = if (mediaType == "movie") quota.movie else quota.tv
+            }
+            .onFailure { quotaDetails = null }
+
         isLoading = false
     }
 
@@ -174,10 +189,10 @@ fun SeerrDetailScreen(
         scope.launch {
             isRequesting = true
             val result = if (mediaType == "movie") {
-                seerrClient.requestMovie(tmdbId)
+                seerrClient.requestMovie(tmdbId, request4k)
             } else {
-                // Request all seasons for TV
-                seerrClient.requestTVShow(tmdbId, null)
+                val seasons = selectedSeasons.takeIf { it.isNotEmpty() }?.toList()
+                seerrClient.requestTVShow(tmdbId, seasons, request4k)
             }
 
             result
@@ -416,6 +431,20 @@ fun SeerrDetailScreen(
                                 requestSuccess = requestSuccess,
                                 isWatchlisted = isWatchlisted,
                                 isWatchlistUpdating = isWatchlistUpdating,
+                                isTvShow = currentMedia.isTvShow,
+                                seasonCount = currentMedia.numberOfSeasons,
+                                selectedSeasons = selectedSeasons,
+                                quotaDetails = quotaDetails,
+                                request4k = request4k,
+                                onSeasonToggle = { season ->
+                                    selectedSeasons = if (selectedSeasons.contains(season)) {
+                                        selectedSeasons - season
+                                    } else {
+                                        selectedSeasons + season
+                                    }
+                                },
+                                onClearSeasons = { selectedSeasons = emptySet() },
+                                onToggle4k = { request4k = !request4k },
                                 onRequest = { requestMedia() },
                                 onWatchlistToggle = { toggleWatchlist() },
                             )
@@ -671,6 +700,14 @@ fun SeerrDetailScreen(
     }
 }
 
+private data class RequestStatusInfo(
+    val color: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val text: String,
+    val allowsRequest: Boolean,
+)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MobileSeerrRequestSection(
     status: Int?,
@@ -678,43 +715,52 @@ private fun MobileSeerrRequestSection(
     requestSuccess: Boolean,
     isWatchlisted: Boolean?,
     isWatchlistUpdating: Boolean,
+    isTvShow: Boolean,
+    seasonCount: Int?,
+    selectedSeasons: Set<Int>,
+    quotaDetails: SeerrQuotaDetails?,
+    request4k: Boolean,
+    onSeasonToggle: (Int) -> Unit,
+    onClearSeasons: () -> Unit,
+    onToggle4k: () -> Unit,
     onRequest: () -> Unit,
     onWatchlistToggle: () -> Unit,
 ) {
-    val (statusColor, statusIcon, statusText, canRequest) = when (status) {
-        SeerrMediaStatus.AVAILABLE -> {
-            listOf(
-                Color(0xFF22C55E),
-                Icons.Outlined.Check,
-                "Available in Library",
-                false,
-            )
-        }
-        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> {
-            listOf(
-                Color(0xFFFBBF24),
-                Icons.Outlined.Schedule,
-                "Request Pending",
-                false,
-            )
-        }
-        SeerrMediaStatus.PARTIALLY_AVAILABLE -> {
-            listOf(
-                Color(0xFF60A5FA),
-                Icons.Outlined.Check,
-                "Partially Available",
-                true,
-            )
-        }
-        else -> {
-            listOf(
-                Color(0xFF8B5CF6),
-                Icons.Outlined.Add,
-                "Not Requested",
-                true,
-            )
-        }
+    val statusInfo = when (status) {
+        SeerrMediaStatus.AVAILABLE -> RequestStatusInfo(
+            color = Color(0xFF22C55E),
+            icon = Icons.Outlined.Check,
+            text = "Available in Library",
+            allowsRequest = false,
+        )
+        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> RequestStatusInfo(
+            color = Color(0xFFFBBF24),
+            icon = Icons.Outlined.Schedule,
+            text = "Request Pending",
+            allowsRequest = false,
+        )
+        SeerrMediaStatus.PARTIALLY_AVAILABLE -> RequestStatusInfo(
+            color = Color(0xFF60A5FA),
+            icon = Icons.Outlined.Check,
+            text = "Partially Available",
+            allowsRequest = true,
+        )
+        else -> RequestStatusInfo(
+            color = Color(0xFF8B5CF6),
+            icon = Icons.Outlined.Add,
+            text = "Not Requested",
+            allowsRequest = true,
+        )
     }
+    val statusColor = statusInfo.color
+    val statusIcon = statusInfo.icon
+    val statusText = statusInfo.text
+    val statusAllowsRequest = statusInfo.allowsRequest
+
+    val quotaRemaining = quotaDetails?.remaining
+    val quotaAllowsRequest = quotaRemaining == null || quotaRemaining > 0
+    val canRequest = statusAllowsRequest && quotaAllowsRequest
+    val quotaText = buildQuotaText(quotaDetails)
 
     Column {
         // Status badge
@@ -722,32 +768,93 @@ private fun MobileSeerrRequestSection(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .background(
-                    (statusColor as Color).copy(alpha = 0.15f),
+                    statusColor.copy(alpha = 0.15f),
                     RoundedCornerShape(8.dp),
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Icon(
-                imageVector = statusIcon as androidx.compose.ui.graphics.vector.ImageVector,
+                imageVector = statusIcon,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = statusColor,
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = statusText as String,
+                text = statusText,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = statusColor,
             )
         }
 
+        quotaText?.let { text ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (!quotaAllowsRequest && statusAllowsRequest) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Quota reached",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        if (statusAllowsRequest) {
+            if (isTvShow && seasonCount != null && seasonCount > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Seasons",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = selectedSeasons.isEmpty(),
+                        onClick = onClearSeasons,
+                        label = { Text("All") },
+                    )
+                    (1..seasonCount).forEach { season ->
+                        FilterChip(
+                            selected = selectedSeasons.contains(season),
+                            onClick = { onSeasonToggle(season) },
+                            label = { Text("S$season") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            FilterChip(
+                selected = request4k,
+                onClick = onToggle4k,
+                label = { Text("4K") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    selectedLabelColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
+        }
+
         // Request button
-        if (canRequest as Boolean) {
+        if (statusAllowsRequest) {
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onRequest,
-                enabled = !isRequesting && !requestSuccess,
+                enabled = !isRequesting && !requestSuccess && canRequest,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF8B5CF6),
                     contentColor = Color.White,
@@ -810,6 +917,20 @@ private fun MobileSeerrRequestSection(
                 Text(if (isWatchlisted) "In Watchlist" else "Add to Watchlist")
             }
         }
+    }
+}
+
+private fun buildQuotaText(quotaDetails: SeerrQuotaDetails?): String? {
+    val limit = quotaDetails?.limit ?: return null
+    val days = quotaDetails.days
+    val remaining = quotaDetails.remaining
+    val used = quotaDetails.used
+
+    val windowText = days?.let { " per $it days" } ?: ""
+    return if (remaining != null) {
+        "Quota: $remaining/$limit remaining$windowText"
+    } else {
+        "Quota: $used/$limit used$windowText"
     }
 }
 

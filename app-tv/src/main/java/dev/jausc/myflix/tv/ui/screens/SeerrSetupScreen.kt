@@ -87,6 +87,12 @@ fun SeerrSetupScreen(
     var serverUrl by remember { mutableStateOf("") }
     var manualUsername by remember { mutableStateOf("") }
     var manualPassword by remember { mutableStateOf("") }
+    val defaultAuthMode = if (!jellyfinUsername.isNullOrBlank()) {
+        SeerrAuthMode.JELLYFIN
+    } else {
+        SeerrAuthMode.LOCAL
+    }
+    var authMode by remember { mutableStateOf(defaultAuthMode) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf("Searching for Seerr server...") }
@@ -96,12 +102,13 @@ fun SeerrSetupScreen(
     // Check if credentials are available
     val hasCredentials = !jellyfinUsername.isNullOrBlank() && !jellyfinPassword.isNullOrBlank()
 
+    LaunchedEffect(authMode, hasCredentials) {
+        needsManualCredentials = authMode == SeerrAuthMode.LOCAL || !hasCredentials
+    }
+
     // Autodiscovery on launch
     LaunchedEffect(Unit) {
-        // If no credentials, we'll need manual entry
-        if (!hasCredentials) {
-            needsManualCredentials = true
-        }
+        needsManualCredentials = authMode == SeerrAuthMode.LOCAL || !hasCredentials
 
         isLoading = true
 
@@ -153,7 +160,7 @@ fun SeerrSetupScreen(
             statusMessage = "Found Seerr at $foundUrl"
 
             // Auto-login with Jellyfin credentials if available
-            if (hasCredentials) {
+            if (hasCredentials && authMode == SeerrAuthMode.JELLYFIN) {
                 statusMessage = "Logging in as $jellyfinUsername..."
                 currentStep = 2
 
@@ -221,7 +228,12 @@ fun SeerrSetupScreen(
                     serverUrl = url
                     currentStep = 2
 
-                    seerrClient.loginWithJellyfin(creds.first, creds.second)
+                    val authResult = if (authMode == SeerrAuthMode.LOCAL) {
+                        seerrClient.loginWithLocal(creds.first, creds.second)
+                    } else {
+                        seerrClient.loginWithJellyfin(creds.first, creds.second)
+                    }
+                    authResult
                         .onSuccess { user ->
                             preferences.setSeerrUrl(url)
                             preferences.setSeerrEnabled(true)
@@ -391,9 +403,11 @@ fun SeerrSetupScreen(
 
                             Text(
                                 text = if (serverUrl.isNotBlank() && needsManualCredentials) {
-                                    "Found Seerr at $serverUrl\nEnter your Jellyfin credentials to login."
+                                    val authLabel = if (authMode == SeerrAuthMode.LOCAL) "local" else "Jellyfin"
+                                    "Found Seerr at $serverUrl\nEnter your $authLabel credentials to login."
                                 } else if (needsManualCredentials) {
-                                    "Enter server URL and Jellyfin credentials"
+                                    val authLabel = if (authMode == SeerrAuthMode.LOCAL) "local" else "Jellyfin"
+                                    "Enter server URL and $authLabel credentials"
                                 } else {
                                     "Could not auto-detect. Enter the address manually."
                                 },
@@ -418,8 +432,34 @@ fun SeerrSetupScreen(
 
                             // Credentials fields (if needed)
                             if (needsManualCredentials) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    SeerrAuthMode.entries.forEach { mode ->
+                                        val isSelected = authMode == mode
+                                        Button(
+                                            onClick = { authMode = mode },
+                                            colors = if (isSelected) {
+                                                ButtonDefaults.colors(
+                                                    containerColor = TvColors.BluePrimary,
+                                                    contentColor = TvColors.TextPrimary,
+                                                    focusedContainerColor = TvColors.BluePrimary,
+                                                )
+                                            } else {
+                                                ButtonDefaults.colors(
+                                                    containerColor = TvColors.Surface,
+                                                    contentColor = TvColors.TextPrimary,
+                                                    focusedContainerColor = TvColors.FocusedSurface,
+                                                )
+                                            },
+                                        ) {
+                                            Text(mode.label)
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
                                 SeerrEditText(
-                                    label = "Jellyfin Username",
+                                    label = if (authMode == SeerrAuthMode.LOCAL) "Email" else "Jellyfin Username",
                                     hint = "username",
                                     value = manualUsername,
                                     onValueChange = { manualUsername = it },
@@ -430,7 +470,7 @@ fun SeerrSetupScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 SeerrEditText(
-                                    label = "Jellyfin Password",
+                                    label = if (authMode == SeerrAuthMode.LOCAL) "Password" else "Jellyfin Password",
                                     hint = "password",
                                     value = manualPassword,
                                     onValueChange = { manualPassword = it },
@@ -660,4 +700,9 @@ private fun SeerrEditText(
                 .height(56.dp),
         )
     }
+}
+
+private enum class SeerrAuthMode(val label: String) {
+    JELLYFIN("Jellyfin"),
+    LOCAL("Local"),
 }

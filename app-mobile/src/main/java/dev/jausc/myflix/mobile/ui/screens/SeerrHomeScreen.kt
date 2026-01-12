@@ -63,13 +63,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.seerr.SeerrClient
-import dev.jausc.myflix.core.seerr.SeerrDiscoverSlider
-import dev.jausc.myflix.core.seerr.SeerrDiscoverSliderType
+import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
+import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * Mobile Seerr home/discover screen.
@@ -118,9 +115,9 @@ fun SeerrHomeScreen(
 
         val sliders = seerrClient.getDiscoverSettings().getOrNull()
         val discoverRows = if (!sliders.isNullOrEmpty()) {
-            loadDiscoverRows(seerrClient, sliders) { filterDiscoverable() }
+            SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders) { filterDiscoverable() }
         } else {
-            loadFallbackRows(seerrClient) { filterDiscoverable() }
+            SeerrDiscoverHelper.loadFallbackRows(seerrClient) { filterDiscoverable() }
         }
 
         rows = discoverRows
@@ -246,7 +243,7 @@ fun SeerrHomeScreen(
                                 title = row.title,
                                 items = row.items,
                                 seerrClient = seerrClient,
-                                accentColor = row.accentColor,
+                                accentColor = Color(row.accentColorValue),
                                 onItemClick = { media ->
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                                 },
@@ -257,170 +254,6 @@ fun SeerrHomeScreen(
             }
         }
     }
-}
-
-private data class SeerrDiscoverRow(
-    val key: String,
-    val title: String,
-    val items: List<SeerrMedia>,
-    val accentColor: Color,
-)
-
-private suspend fun loadDiscoverRows(
-    seerrClient: SeerrClient,
-    sliders: List<SeerrDiscoverSlider>,
-    filterDiscoverable: List<SeerrMedia>.() -> List<SeerrMedia>,
-): List<SeerrDiscoverRow> {
-    val rows = mutableListOf<SeerrDiscoverRow>()
-    val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
-
-    for (slider in sliders) {
-        val (title, color) = discoverTitleAndColor(slider)
-        val items = when (slider.type) {
-            SeerrDiscoverSliderType.TRENDING ->
-                seerrClient.getTrending().map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.POPULAR_MOVIES ->
-                seerrClient.getPopularMovies().map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.POPULAR_TV ->
-                seerrClient.getPopularTV().map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.UPCOMING_MOVIES ->
-                seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.UPCOMING_TV ->
-                seerrClient.discoverTVWithParams(mapOf("firstAirDateGte" to today))
-                    .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.PLEX_WATCHLIST ->
-                seerrClient.getWatchlist().map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_MOVIE_KEYWORD ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverMoviesWithParams(mapOf("keywords" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_TV_KEYWORD ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverTVWithParams(mapOf("keywords" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_MOVIE_GENRE ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverMoviesWithParams(mapOf("genre" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_TV_GENRE ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverTVWithParams(mapOf("genre" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_STUDIO ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverMoviesWithParams(mapOf("studio" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_NETWORK ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverTVWithParams(mapOf("network" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_SEARCH ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.search(slider.data!!)
-                        .map { it.results.filter { media -> media.mediaType == "movie" || media.mediaType == "tv" } }
-                        .getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverMoviesWithParams(mapOf("watchProviders" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.TMDB_TV_STREAMING_SERVICES ->
-                if (slider.data.isNullOrBlank()) emptyList() else
-                    seerrClient.discoverTVWithParams(mapOf("watchProviders" to slider.data!!))
-                        .map { it.results }.getOrDefault(emptyList())
-            SeerrDiscoverSliderType.RECENTLY_ADDED,
-            SeerrDiscoverSliderType.RECENT_REQUESTS,
-            SeerrDiscoverSliderType.MOVIE_GENRES,
-            SeerrDiscoverSliderType.TV_GENRES,
-            SeerrDiscoverSliderType.STUDIOS,
-            SeerrDiscoverSliderType.NETWORKS -> emptyList()
-        }
-
-        val filtered = items.filterDiscoverable().take(12)
-        if (filtered.isNotEmpty()) {
-            rows.add(
-                SeerrDiscoverRow(
-                    key = "discover_${slider.type.name.lowercase(Locale.US)}_${slider.id}",
-                    title = title,
-                    items = filtered,
-                    accentColor = color,
-                ),
-            )
-        }
-    }
-
-    return rows
-}
-
-private suspend fun loadFallbackRows(
-    seerrClient: SeerrClient,
-    filterDiscoverable: List<SeerrMedia>.() -> List<SeerrMedia>,
-): List<SeerrDiscoverRow> {
-    val rows = mutableListOf<SeerrDiscoverRow>()
-    val trending = seerrClient.getTrending().map { it.results }.getOrDefault(emptyList())
-    val popularMovies = seerrClient.getPopularMovies().map { it.results }.getOrDefault(emptyList())
-    val popularTv = seerrClient.getPopularTV().map { it.results }.getOrDefault(emptyList())
-    val upcoming = seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
-
-    listOf(
-        "Trending" to Pair(Color(0xFF8B5CF6), trending),
-        "Popular Movies" to Pair(Color(0xFFFBBF24), popularMovies),
-        "Popular TV Shows" to Pair(Color(0xFF34D399), popularTv),
-        "Coming Soon" to Pair(Color(0xFF60A5FA), upcoming),
-    ).forEach { (title, data) ->
-        val filtered = data.second.filterDiscoverable().take(12)
-        if (filtered.isNotEmpty()) {
-            rows.add(
-                SeerrDiscoverRow(
-                    key = "fallback_${title.lowercase(Locale.US).replace(" ", "_")}",
-                    title = title,
-                    items = filtered,
-                    accentColor = data.first,
-                ),
-            )
-        }
-    }
-
-    return rows
-}
-
-private fun discoverTitleAndColor(
-    slider: SeerrDiscoverSlider,
-): Pair<String, Color> {
-    val defaultTitle = when (slider.type) {
-        SeerrDiscoverSliderType.RECENTLY_ADDED -> "Recently Added"
-        SeerrDiscoverSliderType.RECENT_REQUESTS -> "Recent Requests"
-        SeerrDiscoverSliderType.PLEX_WATCHLIST -> "Watchlist"
-        SeerrDiscoverSliderType.TRENDING -> "Trending"
-        SeerrDiscoverSliderType.POPULAR_MOVIES -> "Popular Movies"
-        SeerrDiscoverSliderType.MOVIE_GENRES -> "Movie Genres"
-        SeerrDiscoverSliderType.UPCOMING_MOVIES -> "Upcoming Movies"
-        SeerrDiscoverSliderType.STUDIOS -> "Studios"
-        SeerrDiscoverSliderType.POPULAR_TV -> "Popular TV"
-        SeerrDiscoverSliderType.TV_GENRES -> "TV Genres"
-        SeerrDiscoverSliderType.UPCOMING_TV -> "Upcoming TV"
-        SeerrDiscoverSliderType.NETWORKS -> "Networks"
-        SeerrDiscoverSliderType.TMDB_MOVIE_KEYWORD -> slider.title ?: "Movie Keyword"
-        SeerrDiscoverSliderType.TMDB_TV_KEYWORD -> slider.title ?: "TV Keyword"
-        SeerrDiscoverSliderType.TMDB_MOVIE_GENRE -> slider.title ?: "Movie Genre"
-        SeerrDiscoverSliderType.TMDB_TV_GENRE -> slider.title ?: "TV Genre"
-        SeerrDiscoverSliderType.TMDB_STUDIO -> slider.title ?: "Studio"
-        SeerrDiscoverSliderType.TMDB_NETWORK -> slider.title ?: "Network"
-        SeerrDiscoverSliderType.TMDB_SEARCH -> slider.title ?: "Search"
-        SeerrDiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES -> slider.title ?: "Streaming Movies"
-        SeerrDiscoverSliderType.TMDB_TV_STREAMING_SERVICES -> slider.title ?: "Streaming TV"
-    }
-
-    val accentColor = when (slider.type) {
-        SeerrDiscoverSliderType.TRENDING -> Color(0xFF8B5CF6)
-        SeerrDiscoverSliderType.POPULAR_MOVIES -> Color(0xFFFBBF24)
-        SeerrDiscoverSliderType.POPULAR_TV -> Color(0xFF34D399)
-        SeerrDiscoverSliderType.UPCOMING_MOVIES -> Color(0xFF60A5FA)
-        SeerrDiscoverSliderType.UPCOMING_TV -> Color(0xFF60A5FA)
-        SeerrDiscoverSliderType.PLEX_WATCHLIST -> Color(0xFF22C55E)
-        else -> Color(0xFF8B5CF6)
-    }
-
-    return defaultTitle to accentColor
 }
 
 @Composable

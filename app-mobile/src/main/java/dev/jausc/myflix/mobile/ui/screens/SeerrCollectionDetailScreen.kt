@@ -60,6 +60,7 @@ fun SeerrCollectionDetailScreen(
     var collection by remember { mutableStateOf<SeerrCollection?>(null) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var requestingId by remember { mutableStateOf<Int?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(collectionId, refreshTrigger) {
         isLoading = true
@@ -71,18 +72,20 @@ fun SeerrCollectionDetailScreen(
     }
 
     fun requestMedia(media: SeerrMedia) {
-        requestingId = media.id
-        val mediaType = if (media.mediaType.isNotBlank()) media.mediaType else if (media.isMovie) "movie" else "tv"
-        val tmdbId = media.tmdbId ?: media.id
-        val requestResult = if (mediaType == "movie") {
-            seerrClient.requestMovie(tmdbId)
-        } else {
-            seerrClient.requestTVShow(tmdbId, null)
+        scope.launch {
+            requestingId = media.id
+            val mediaType = if (media.mediaType.isNotBlank()) media.mediaType else if (media.isMovie) "movie" else "tv"
+            val tmdbId = media.tmdbId ?: media.id
+            val requestResult = if (mediaType == "movie") {
+                seerrClient.requestMovie(tmdbId)
+            } else {
+                seerrClient.requestTVShow(tmdbId, null)
+            }
+            requestResult
+                .onSuccess { refreshTrigger++ }
+                .onFailure { errorMessage = it.message ?: "Request failed" }
+            requestingId = null
         }
-        requestResult
-            .onSuccess { refreshTrigger++ }
-            .onFailure { errorMessage = it.message ?: "Request failed" }
-        requestingId = null
     }
 
     Column(
@@ -143,9 +146,11 @@ fun SeerrCollectionDetailScreen(
                         SeerrCollectionMediaRow(
                             media = media,
                             seerrClient = seerrClient,
+                            isRequesting = requestingId == media.id,
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
+                            onRequest = { requestMedia(media) },
                         )
                     }
                 }
@@ -158,9 +163,18 @@ fun SeerrCollectionDetailScreen(
 private fun SeerrCollectionMediaRow(
     media: SeerrMedia,
     seerrClient: SeerrClient,
+    isRequesting: Boolean,
     onClick: () -> Unit,
+    onRequest: () -> Unit,
 ) {
     val posterUrl = seerrClient.getPosterUrl(media.posterPath)
+    val availabilityStatus = media.availabilityStatus
+    val (requestLabel, canRequest) = when (availabilityStatus) {
+        SeerrMediaStatus.AVAILABLE -> "Available" to false
+        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> "Requested" to false
+        SeerrMediaStatus.PARTIALLY_AVAILABLE -> "Request" to true
+        else -> "Request" to true
+    }
 
     Row(
         modifier = Modifier
@@ -184,6 +198,13 @@ private fun SeerrCollectionMediaRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Button(
+            onClick = onRequest,
+            enabled = canRequest && !isRequesting,
+        ) {
+            Text(text = if (isRequesting) "Requesting..." else requestLabel)
         }
     }
 }

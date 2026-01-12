@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -40,8 +42,10 @@ import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCollection
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.launch
 
 @Composable
 fun SeerrCollectionDetailScreen(
@@ -53,14 +57,34 @@ fun SeerrCollectionDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var collection by remember { mutableStateOf<SeerrCollection?>(null) }
+    var refreshTrigger by remember { mutableStateOf(0) }
+    var requestingId by remember { mutableStateOf<Int?>(null) }
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(collectionId) {
+    LaunchedEffect(collectionId, refreshTrigger) {
         isLoading = true
         errorMessage = null
         seerrClient.getCollection(collectionId)
             .onSuccess { collection = it }
             .onFailure { errorMessage = it.message ?: "Failed to load collection" }
         isLoading = false
+    }
+
+    fun requestMedia(media: SeerrMedia) {
+        scope.launch {
+            requestingId = media.id
+            val mediaType = if (media.mediaType.isNotBlank()) media.mediaType else if (media.isMovie) "movie" else "tv"
+            val tmdbId = media.tmdbId ?: media.id
+            val requestResult = if (mediaType == "movie") {
+                seerrClient.requestMovie(tmdbId)
+            } else {
+                seerrClient.requestTVShow(tmdbId, null)
+            }
+            requestResult
+                .onSuccess { refreshTrigger++ }
+                .onFailure { errorMessage = it.message ?: "Request failed" }
+            requestingId = null
+        }
     }
 
     Column(
@@ -115,9 +139,11 @@ fun SeerrCollectionDetailScreen(
                         SeerrCollectionPosterCard(
                             media = media,
                             seerrClient = seerrClient,
+                            isRequesting = requestingId == media.id,
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
+                            onRequest = { requestMedia(media) },
                         )
                     }
                 }
@@ -130,13 +156,22 @@ fun SeerrCollectionDetailScreen(
 private fun SeerrCollectionPosterCard(
     media: SeerrMedia,
     seerrClient: SeerrClient,
+    isRequesting: Boolean,
     onClick: () -> Unit,
+    onRequest: () -> Unit,
 ) {
     val posterUrl = seerrClient.getPosterUrl(media.posterPath)
+    val availabilityStatus = media.availabilityStatus
+    val (requestLabel, canRequest) = when (availabilityStatus) {
+        SeerrMediaStatus.AVAILABLE -> "Available" to false
+        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> "Requested" to false
+        SeerrMediaStatus.PARTIALLY_AVAILABLE -> "Request" to true
+        else -> "Request" to true
+    }
 
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(160.dp).height(240.dp),
+        modifier = Modifier.width(160.dp).height(300.dp),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
@@ -150,26 +185,43 @@ private fun SeerrCollectionPosterCard(
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = posterUrl,
-                contentDescription = media.displayTitle,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+        Column(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.BottomStart)
-                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f))
-                    .padding(8.dp),
+                    .height(220.dp),
             ) {
-                Text(
-                    text = media.displayTitle,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = androidx.compose.ui.graphics.Color.White,
-                    maxLines = 1,
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = media.displayTitle,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomStart)
+                        .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f))
+                        .padding(8.dp),
+                ) {
+                    Text(
+                        text = media.displayTitle,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        maxLines = 1,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onRequest,
+                enabled = canRequest && !isRequesting,
+                colors = ButtonDefaults.colors(containerColor = TvColors.BluePrimary),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+            ) {
+                Text(if (isRequesting) "Requesting..." else requestLabel)
             }
         }
     }
