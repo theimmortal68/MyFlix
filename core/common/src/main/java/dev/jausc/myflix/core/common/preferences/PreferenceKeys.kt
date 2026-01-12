@@ -38,11 +38,14 @@ object PreferenceKeys {
         /** Unique device identifier */
         val DEVICE_ID = stringPreferencesKey("device_id")
 
-        /** Stored username (for Seerr integration) */
-        val USERNAME = stringPreferencesKey("username")
+        // Legacy credential keys - for migration to encrypted storage only.
+        // New code should NOT use these; credentials are now in SecureCredentialStore.
 
-        /** Stored password (for Seerr integration) */
-        val PASSWORD = stringPreferencesKey("password")
+        /** @deprecated Migrate to SecureCredentialStore, then remove */
+        val USERNAME_LEGACY = stringPreferencesKey("username")
+
+        /** @deprecated Migrate to SecureCredentialStore, then remove */
+        val PASSWORD_LEGACY = stringPreferencesKey("password")
     }
 
     // ==================== SharedPreferences Keys (AppPreferences) ====================

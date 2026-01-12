@@ -24,6 +24,9 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.2")
 
+    // Encrypted storage for sensitive credentials
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
 

@@ -44,13 +44,14 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun PlayerScreen(
     itemId: String,
@@ -59,6 +60,8 @@ fun PlayerScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val stopReportScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
+    var latestPositionMs by remember { mutableStateOf(0L) }
 
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
@@ -105,7 +108,7 @@ fun PlayerScreen(
         if (playbackState.isPlaying && !playbackState.isPaused) {
             while (isActive) {
                 delay(PlayerConstants.PROGRESS_REPORT_INTERVAL_MS)
-                viewModel.reportProgress(playbackState.position, isPaused = false)
+                viewModel.reportProgress(playerController.state.value.position, isPaused = false)
             }
         }
     }
@@ -124,6 +127,7 @@ fun PlayerScreen(
 
     // Detect video completion (95% watched = mark as played)
     LaunchedEffect(playbackState.position, playbackState.duration) {
+        latestPositionMs = playbackState.position
         viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
@@ -131,8 +135,9 @@ fun PlayerScreen(
     DisposableEffect(Unit) {
         onDispose {
             // Fire-and-forget: don't block main thread, let server handle eventual consistency
-            GlobalScope.launch {
-                viewModel.reportPlaybackStopped(playerController.state.value.position)
+            stopReportScope.launch {
+                viewModel.reportPlaybackStopped(latestPositionMs)
+                stopReportScope.cancel()
             }
             playerController.stop()
             playerController.release()
