@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import dev.jausc.myflix.tv.ui.components.DetailDialogActions
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.buildDetailDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
@@ -291,153 +292,8 @@ fun DetailScreen(
     mediaInfoItem?.let { episode ->
         MediaInfoDialog(
             item = episode,
-            jellyfinClient = jellyfinClient,
             onDismiss = { mediaInfoItem = null },
         )
-    }
-}
-
-@Suppress("UnusedParameter")
-@Composable
-private fun MediaInfoDialog(item: JellyfinItem, jellyfinClient: JellyfinClient, onDismiss: () -> Unit) {
-    // Get media source info
-    val mediaSource = item.mediaSources?.firstOrNull()
-    val mediaStreams = mediaSource?.mediaStreams ?: emptyList()
-    val container = mediaSource?.container
-
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.8f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .widthIn(min = 400.dp, max = 600.dp)
-                    .padding(32.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = SurfaceDefaults.colors(
-                    containerColor = TvColors.Surface,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        text = "Media Information",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TvColors.TextPrimary,
-                    )
-
-                    Text(
-                        text = item.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TvColors.BluePrimary,
-                    )
-
-                    // Video stream info
-                    mediaStreams.filter { it.type == "Video" }.firstOrNull()?.let { video ->
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = "VIDEO",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary,
-                            )
-                            Text(
-                                text = buildString {
-                                    append(video.codec?.uppercase() ?: "Unknown")
-                                    video.width?.let { w -> video.height?.let { h -> append(" • ${w}x$h") } }
-                                    video.videoRangeType?.let { append(" • $it") }
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextPrimary,
-                            )
-                        }
-                    }
-
-                    // Audio streams
-                    val audioStreams = mediaStreams.filter { it.type == "Audio" }
-                    if (audioStreams.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = "AUDIO (${audioStreams.size} tracks)",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary,
-                            )
-                            audioStreams.take(3).forEach { audio ->
-                                Text(
-                                    text = buildString {
-                                        append(audio.codec?.uppercase() ?: "Unknown")
-                                        audio.channels?.let { append(" • ${it}ch") }
-                                        audio.language?.let { append(" • $it") }
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TvColors.TextPrimary,
-                                )
-                            }
-                            if (audioStreams.size > 3) {
-                                Text(
-                                    text = "... and ${audioStreams.size - 3} more",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TvColors.TextSecondary,
-                                )
-                            }
-                        }
-                    }
-
-                    // Subtitle streams
-                    val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }
-                    if (subtitleStreams.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = "SUBTITLES (${subtitleStreams.size} tracks)",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary,
-                            )
-                            Text(
-                                text = subtitleStreams.take(5).mapNotNull { it.language }.joinToString(", "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TvColors.TextPrimary,
-                            )
-                        }
-                    }
-
-                    // File info
-                    container?.let { cont ->
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = "CONTAINER",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TvColors.TextSecondary,
-                            )
-                            Text(
-                                text = cont.uppercase(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextPrimary,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        Text("Close")
-                    }
-                }
-            }
-        }
     }
 }
 

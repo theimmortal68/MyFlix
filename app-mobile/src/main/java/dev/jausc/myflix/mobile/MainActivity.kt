@@ -366,6 +366,9 @@ fun MyFlixMobileContent() {
                 mediaType = mediaType,
                 tmdbId = tmdbId,
                 seerrClient = seerrClient,
+                onMediaClick = { relatedMediaType, relatedTmdbId ->
+                    navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
+                },
                 onBack = { navController.popBackStack() },
                 onActorClick = { personId ->
                     navController.navigate("seerr/person/$personId")

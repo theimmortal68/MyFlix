@@ -71,6 +71,7 @@ import dev.jausc.myflix.core.player.QueueSource
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
@@ -129,6 +130,7 @@ fun HomeScreen(
 
     // Long-press dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Dialog actions
     val dialogActions = remember(scope, viewModel) {
@@ -181,6 +183,7 @@ fun HomeScreen(
                         }
                 }
             },
+            onShowMediaInfo = { item -> mediaInfoItem = item },
         )
     }
 
@@ -320,6 +323,14 @@ fun HomeScreen(
         DialogPopup(
             params = params,
             onDismissRequest = { dialogParams = null },
+        )
+    }
+
+    // Media Information dialog
+    mediaInfoItem?.let { item ->
+        MediaInfoDialog(
+            item = item,
+            onDismiss = { mediaInfoItem = null },
         )
     }
 }

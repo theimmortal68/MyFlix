@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 import dev.jausc.myflix.mobile.MobilePreferences
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
+import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileContentRow
 import dev.jausc.myflix.mobile.ui.components.MobileHeroSection
 import dev.jausc.myflix.mobile.ui.components.MobileNavItem
@@ -101,6 +102,7 @@ fun HomeScreen(
 
     // Popup menu state for long-press
     var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
+    var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Menu actions for long-press
     val menuActions = remember(viewModel, scope) {
@@ -153,6 +155,7 @@ fun HomeScreen(
                         }
                 }
             },
+            onShowMediaInfo = { item -> mediaInfoItem = item },
         )
     }
 
@@ -405,6 +408,14 @@ fun HomeScreen(
                     PopupMenu(
                         params = params,
                         onDismiss = { popupMenuParams = null },
+                    )
+                }
+
+                // Media Information bottom sheet
+                mediaInfoItem?.let { item ->
+                    MediaInfoBottomSheet(
+                        item = item,
+                        onDismiss = { mediaInfoItem = null },
                     )
                 }
             }

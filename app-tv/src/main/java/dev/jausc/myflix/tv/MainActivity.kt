@@ -351,6 +351,9 @@ fun MyFlixTvApp() {
                     mediaType = mediaType,
                     tmdbId = tmdbId,
                     seerrClient = seerrClient,
+                    onMediaClick = { relatedMediaType, relatedTmdbId ->
+                        navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
+                    },
                     onBack = { navController.popBackStack() },
                     onActorClick = { personId ->
                         navController.navigate("seerr/person/$personId")
@@ -380,6 +383,9 @@ fun MyFlixTvApp() {
                     seerrClient = seerrClient,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onPersonClick = { personId ->
+                        navController.navigate("seerr/person/$personId")
                     },
                     onBack = { navController.popBackStack() },
                 )

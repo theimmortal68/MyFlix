@@ -86,6 +86,7 @@ data class HomeActions(
     val onGoToSeason: ((String) -> Unit)? = null,
     val onHideFromResume: ((String) -> Unit)? = null,
     val onPlayAllFromEpisode: ((PlayAllData) -> Unit)? = null,
+    val onShowMediaInfo: ((JellyfinItem) -> Unit)? = null,
 )
 
 /**
@@ -223,6 +224,20 @@ fun buildHomeActionItems(item: JellyfinItem, actions: HomeActions): List<ActionE
             onClick = { actions.onToggleFavorite(item.id, !isFavorite) },
         ),
     )
+
+    // Media Information (for items with media sources)
+    if (item.mediaSources?.isNotEmpty() == true && actions.onShowMediaInfo != null) {
+        add(ActionDivider)
+        add(
+            ActionItem(
+                id = "media_info",
+                text = "Media Information",
+                icon = Icons.Default.VideoFile,
+                iconTint = ActionColors.MediaInfo,
+                onClick = { actions.onShowMediaInfo.invoke(item) },
+            ),
+        )
+    }
 
     // Go to Series / Season (for episodes only)
     if (isEpisode) {

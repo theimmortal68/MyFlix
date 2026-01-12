@@ -10,6 +10,8 @@
 
 package dev.jausc.myflix.mobile.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,9 +29,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.*
+import dev.jausc.myflix.core.common.ui.DetailActions
+import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.QueueSource
+import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
+import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
+import dev.jausc.myflix.mobile.ui.components.PopupMenu
+import dev.jausc.myflix.mobile.ui.components.buildDetailMenuItems
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DetailScreen(
     itemId: String,
@@ -46,6 +58,58 @@ fun DetailScreen(
 
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    // Long-press menu state
+    var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
+    var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
+
+    // Menu actions for long-press on episodes
+    val menuActions = remember(viewModel, scope) {
+        DetailActions(
+            onPlay = { episodeId -> onEpisodeClick(episodeId) },
+            onMarkWatched = { episodeId, watched ->
+                viewModel.setPlayed(episodeId, watched)
+            },
+            onToggleFavorite = { episodeId, favorite ->
+                viewModel.setFavorite(episodeId, favorite)
+            },
+            onShowMediaInfo = { episode -> mediaInfoItem = episode },
+            onGoToSeries = null, // Already on series page
+            onPlayAllFromEpisode = { data: PlayAllData ->
+                scope.launch {
+                    jellyfinClient.getEpisodes(data.seriesId, data.seasonId)
+                        .onSuccess { episodes ->
+                            val sortedEpisodes = episodes.sortedBy { it.indexNumber ?: 0 }
+                            val startIndex = sortedEpisodes.indexOfFirst { it.id == data.itemId }
+                                .coerceAtLeast(0)
+                            val episodesToPlay = sortedEpisodes.drop(startIndex)
+
+                            if (episodesToPlay.isNotEmpty()) {
+                                val queueItems = episodesToPlay.map { episode ->
+                                    QueueItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = buildString {
+                                            episode.parentIndexNumber?.let { append("S$it ") }
+                                            episode.indexNumber?.let { append("E$it") }
+                                        }.takeIf { it.isNotBlank() },
+                                        thumbnailItemId = episode.seriesId,
+                                    )
+                                }
+
+                                PlayQueueManager.setQueue(
+                                    items = queueItems,
+                                    source = QueueSource.EPISODE_PLAY_ALL,
+                                    startIndex = 0,
+                                )
+                                onEpisodeClick(episodesToPlay.first().id)
+                            }
+                        }
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -191,20 +255,53 @@ fun DetailScreen(
                                 episode = episode,
                                 imageUrl = jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary),
                                 onClick = { onEpisodeClick(episode.id) },
+                                onLongClick = {
+                                    popupMenuParams = BottomSheetParams(
+                                        title = episode.name,
+                                        subtitle = "Episode ${episode.indexNumber ?: ""}",
+                                        items = buildDetailMenuItems(episode, menuActions),
+                                    )
+                                },
                             )
                         }
                     }
                 }
             }
         }
+
+        // Popup menu for long-press
+        popupMenuParams?.let { params ->
+            PopupMenu(
+                params = params,
+                onDismiss = { popupMenuParams = null },
+            )
+        }
+
+        // Media Information bottom sheet
+        mediaInfoItem?.let { item ->
+            MediaInfoBottomSheet(
+                item = item,
+                onDismiss = { mediaInfoItem = null },
+            )
+        }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EpisodeCard(episode: JellyfinItem, imageUrl: String, onClick: () -> Unit) {
+private fun EpisodeCard(
+    episode: JellyfinItem,
+    imageUrl: String,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+) {
     ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
