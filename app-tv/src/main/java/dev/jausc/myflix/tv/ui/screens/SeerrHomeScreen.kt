@@ -51,7 +51,9 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -72,6 +74,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -129,8 +133,8 @@ fun SeerrHomeScreen(
     onNavigateSettings: () -> Unit = {},
     jellyfinClient: JellyfinClient? = null,
     onNavigateLibrary: (String, String) -> Unit = { _, _ -> },
-    @Suppress("UNUSED_PARAMETER") onNavigateSeerrSearch: () -> Unit = {},
-    @Suppress("UNUSED_PARAMETER") onNavigateSeerrRequests: () -> Unit = {},
+    onNavigateSeerrSearch: () -> Unit = {},
+    onNavigateSeerrRequests: () -> Unit = {},
     onNavigateDiscoverTrending: () -> Unit = {},
     onNavigateDiscoverMovies: () -> Unit = {},
     onNavigateDiscoverTv: () -> Unit = {},
@@ -379,6 +383,55 @@ fun SeerrHomeScreen(
                         contentPadding = PaddingValues(top = 16.dp, bottom = 300.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
+                        // Quick action buttons row
+                        item(key = "quick_actions") {
+                            Row(
+                                modifier = Modifier.padding(start = 48.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Button(
+                                    onClick = onNavigateSeerrSearch,
+                                    modifier = Modifier.height(20.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                                        contentColor = TvColors.TextPrimary,
+                                        focusedContainerColor = TvColors.BluePrimary,
+                                        focusedContentColor = Color.White,
+                                    ),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Search,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Search", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Button(
+                                    onClick = onNavigateSeerrRequests,
+                                    modifier = Modifier.height(20.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                                        contentColor = TvColors.TextPrimary,
+                                        focusedContainerColor = TvColors.BluePrimary,
+                                        focusedContentColor = Color.White,
+                                    ),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.FormatListBulleted,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Requests", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+
                         rows.forEach { row ->
                             item(key = row.key) {
                                 val onViewAll: (() -> Unit)? = when (row.rowType) {

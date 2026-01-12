@@ -331,6 +331,12 @@ fun MyFlixTvApp() {
                         onNavigateDiscoverUpcoming = {
                             navController.navigate("seerr/upcoming")
                         },
+                        onNavigateSeerrSearch = {
+                            navController.navigate(NavigationHelper.SEERR_SEARCH_ROUTE)
+                        },
+                        onNavigateSeerrRequests = {
+                            navController.navigate(NavigationHelper.SEERR_REQUESTS_ROUTE)
+                        },
                     )
                 }
             }
