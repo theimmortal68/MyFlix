@@ -700,6 +700,79 @@ class JellyfinClient(
         }
     }
 
+    /**
+     * Get library items with full filter support.
+     * Supports sorting, genre filtering, watched status, year range, and rating filters.
+     *
+     * @param libraryId The parent library ID
+     * @param limit Maximum items to return
+     * @param startIndex Pagination offset
+     * @param sortBy Jellyfin sort field (SortName, DateCreated, PremiereDate, CommunityRating, Runtime, Random)
+     * @param sortOrder Ascending or Descending
+     * @param genres Optional list of genre names to filter by (OR logic)
+     * @param isPlayed Optional watched status filter (true=watched, false=unwatched, null=all)
+     * @param minCommunityRating Optional minimum community rating (0-10)
+     * @param years Optional comma-separated years to filter by
+     */
+    @Suppress("LongParameterList")
+    suspend fun getLibraryItemsFiltered(
+        libraryId: String,
+        limit: Int = 100,
+        startIndex: Int = 0,
+        sortBy: String = "SortName",
+        sortOrder: String = "Ascending",
+        genres: List<String>? = null,
+        isPlayed: Boolean? = null,
+        minCommunityRating: Float? = null,
+        years: String? = null,
+    ): Result<ItemsResponse> {
+        // Build cache key including filter parameters
+        val filterSuffix = buildString {
+            genres?.let { append("_g${it.hashCode()}") }
+            isPlayed?.let { append("_p$it") }
+            minCommunityRating?.let { append("_r$it") }
+            years?.let { append("_y${it.hashCode()}") }
+        }
+        val key = CacheKeys.library(libraryId, limit, startIndex, sortBy) + filterSuffix
+
+        // Skip cache for random sort as results should vary
+        if (sortBy != "Random") {
+            getCached<ItemsResponse>(key)?.let { return Result.success(it) }
+        }
+
+        return runCatching {
+            httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("parentId", libraryId)
+                parameter("limit", limit)
+                parameter("startIndex", startIndex)
+                parameter("sortBy", sortBy)
+                parameter("sortOrder", sortOrder)
+                parameter("fields", Fields.CARD)
+                parameter("enableImageTypes", ImageTypes.CARD)
+                parameter("recursive", true)
+
+                // Apply optional filters
+                genres?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("genres", it.joinToString("|"))
+                }
+                isPlayed?.let {
+                    parameter("isPlayed", it)
+                }
+                minCommunityRating?.let {
+                    parameter("minCommunityRating", it)
+                }
+                years?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("years", it)
+                }
+            }.body<ItemsResponse>().also {
+                if (sortBy != "Random") {
+                    putCache(key, it)
+                }
+            }
+        }
+    }
+
     suspend fun getItem(itemId: String): Result<JellyfinItem> {
         val key = CacheKeys.item(itemId)
         getCached<JellyfinItem>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }

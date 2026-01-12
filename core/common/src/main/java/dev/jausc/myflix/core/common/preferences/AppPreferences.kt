@@ -2,6 +2,12 @@ package dev.jausc.myflix.core.common.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import dev.jausc.myflix.core.common.model.LibraryFilterState
+import dev.jausc.myflix.core.common.model.LibrarySortOption
+import dev.jausc.myflix.core.common.model.LibraryViewMode
+import dev.jausc.myflix.core.common.model.SortOrder
+import dev.jausc.myflix.core.common.model.WatchedFilter
+import dev.jausc.myflix.core.common.model.YearRange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -250,5 +256,132 @@ abstract class AppPreferences(context: Context) {
         _seerrAutoDetected.value = false
         _seerrApiKey.value = null
         _seerrSessionCookie.value = null
+    }
+
+    // ==================== Library Filter Preferences ====================
+
+    /**
+     * Get the saved filter state for a specific library.
+     * Returns default state if no preferences are saved.
+     */
+    fun getLibraryFilterState(libraryId: String): LibraryFilterState {
+        val sortByValue = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_SORT_BY_PREFIX + libraryId,
+            LibrarySortOption.TITLE.jellyfinValue,
+        ) ?: LibrarySortOption.TITLE.jellyfinValue
+
+        val sortOrderValue = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_SORT_ORDER_PREFIX + libraryId,
+            SortOrder.ASCENDING.jellyfinValue,
+        ) ?: SortOrder.ASCENDING.jellyfinValue
+
+        val viewModeValue = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_VIEW_MODE_PREFIX + libraryId,
+            LibraryViewMode.GRID.name,
+        ) ?: LibraryViewMode.GRID.name
+
+        val watchedFilterValue = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_WATCHED_FILTER_PREFIX + libraryId,
+            WatchedFilter.ALL.name,
+        ) ?: WatchedFilter.ALL.name
+
+        val genresString = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_GENRES_PREFIX + libraryId,
+            null,
+        )
+        val selectedGenres = if (genresString.isNullOrBlank()) {
+            emptySet()
+        } else {
+            genresString.split(",").toSet()
+        }
+
+        val yearFrom = prefs.getInt(
+            PreferenceKeys.Prefs.LIBRARY_YEAR_FROM_PREFIX + libraryId,
+            -1,
+        ).takeIf { it > 0 }
+
+        val yearTo = prefs.getInt(
+            PreferenceKeys.Prefs.LIBRARY_YEAR_TO_PREFIX + libraryId,
+            -1,
+        ).takeIf { it > 0 }
+
+        val ratingFilter = prefs.getFloat(
+            PreferenceKeys.Prefs.LIBRARY_RATING_PREFIX + libraryId,
+            -1f,
+        ).takeIf { it > 0 }
+
+        return LibraryFilterState(
+            sortBy = LibrarySortOption.fromJellyfinValue(sortByValue),
+            sortOrder = SortOrder.fromJellyfinValue(sortOrderValue),
+            viewMode = LibraryViewMode.fromString(viewModeValue),
+            watchedFilter = WatchedFilter.fromString(watchedFilterValue),
+            selectedGenres = selectedGenres,
+            yearRange = YearRange(from = yearFrom, to = yearTo),
+            ratingFilter = ratingFilter,
+        )
+    }
+
+    /**
+     * Save the filter state for a specific library.
+     */
+    fun setLibraryFilterState(libraryId: String, state: LibraryFilterState) {
+        prefs.edit()
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_SORT_BY_PREFIX + libraryId,
+                state.sortBy.jellyfinValue,
+            )
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_SORT_ORDER_PREFIX + libraryId,
+                state.sortOrder.jellyfinValue,
+            )
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_VIEW_MODE_PREFIX + libraryId,
+                state.viewMode.name,
+            )
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_WATCHED_FILTER_PREFIX + libraryId,
+                state.watchedFilter.name,
+            )
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_GENRES_PREFIX + libraryId,
+                state.selectedGenres.joinToString(","),
+            )
+            .apply()
+
+        // Save year range (use -1 as "not set" sentinel)
+        prefs.edit()
+            .putInt(
+                PreferenceKeys.Prefs.LIBRARY_YEAR_FROM_PREFIX + libraryId,
+                state.yearRange.from ?: -1,
+            )
+            .putInt(
+                PreferenceKeys.Prefs.LIBRARY_YEAR_TO_PREFIX + libraryId,
+                state.yearRange.to ?: -1,
+            )
+            .apply()
+
+        // Save rating filter (use -1 as "not set" sentinel)
+        prefs.edit()
+            .putFloat(
+                PreferenceKeys.Prefs.LIBRARY_RATING_PREFIX + libraryId,
+                state.ratingFilter ?: -1f,
+            )
+            .apply()
+    }
+
+    /**
+     * Clear all filter preferences for a specific library, resetting to defaults.
+     */
+    fun clearLibraryFilterState(libraryId: String) {
+        prefs.edit()
+            .remove(PreferenceKeys.Prefs.LIBRARY_SORT_BY_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_SORT_ORDER_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_VIEW_MODE_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_WATCHED_FILTER_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_GENRES_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_YEAR_FROM_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_YEAR_TO_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_RATING_PREFIX + libraryId)
+            .apply()
     }
 }

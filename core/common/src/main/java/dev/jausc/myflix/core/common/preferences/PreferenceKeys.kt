@@ -105,6 +105,31 @@ object PreferenceKeys {
 
         /** Seerr session cookie for persistent authentication */
         const val SEERR_SESSION_COOKIE = "seerr_session_cookie"
+
+        // Library filter preferences (per-library, use with libraryId suffix)
+        /** Prefix for library sort option (append libraryId) */
+        const val LIBRARY_SORT_BY_PREFIX = "library_sort_by_"
+
+        /** Prefix for library sort order (append libraryId) */
+        const val LIBRARY_SORT_ORDER_PREFIX = "library_sort_order_"
+
+        /** Prefix for library view mode (append libraryId) */
+        const val LIBRARY_VIEW_MODE_PREFIX = "library_view_mode_"
+
+        /** Prefix for library watched filter (append libraryId) */
+        const val LIBRARY_WATCHED_FILTER_PREFIX = "library_watched_filter_"
+
+        /** Prefix for library selected genres (append libraryId) */
+        const val LIBRARY_GENRES_PREFIX = "library_genres_"
+
+        /** Prefix for library year range from (append libraryId) */
+        const val LIBRARY_YEAR_FROM_PREFIX = "library_year_from_"
+
+        /** Prefix for library year range to (append libraryId) */
+        const val LIBRARY_YEAR_TO_PREFIX = "library_year_to_"
+
+        /** Prefix for library rating filter (append libraryId) */
+        const val LIBRARY_RATING_PREFIX = "library_rating_"
     }
 
     // ==================== Default Values ====================

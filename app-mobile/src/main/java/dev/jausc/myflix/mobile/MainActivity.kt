@@ -262,8 +262,12 @@ fun MyFlixMobileContent() {
                 libraryId = libraryId,
                 libraryName = libraryName,
                 jellyfinClient = jellyfinClient,
+                preferences = mobilePreferences,
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")
+                },
+                onPlayClick = { itemId ->
+                    navController.navigate("player/$itemId")
                 },
                 onBack = { navController.popBackStack() },
             )
