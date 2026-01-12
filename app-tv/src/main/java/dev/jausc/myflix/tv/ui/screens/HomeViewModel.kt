@@ -223,7 +223,10 @@ class HomeViewModel(
 
     private suspend fun loadPinnedCollections() {
         val pinned = pinnedCollections.value
-        if (pinned.isEmpty()) return
+        if (pinned.isEmpty()) {
+            _uiState.update { it.copy(pinnedCollectionsData = emptyMap()) }
+            return
+        }
 
         val pinnedData = linkedMapOf<String, Pair<String, List<JellyfinItem>>>()
         pinned.forEach { collectionId ->

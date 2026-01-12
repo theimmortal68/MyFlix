@@ -243,7 +243,8 @@ fun MyFlixMobileContent() {
             ),
         ) { backStackEntry ->
             val libraryId = backStackEntry.arguments?.getString("libraryId") ?: return@composable
-            val libraryName = backStackEntry.arguments?.getString("libraryName") ?: ""
+            val libraryNameEncoded = backStackEntry.arguments?.getString("libraryName") ?: ""
+            val libraryName = NavigationHelper.decodeNavArg(libraryNameEncoded)
             LibraryScreen(
                 libraryId = libraryId,
                 libraryName = libraryName,

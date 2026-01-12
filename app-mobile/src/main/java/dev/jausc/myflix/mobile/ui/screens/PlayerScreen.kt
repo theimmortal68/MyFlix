@@ -44,9 +44,13 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun PlayerScreen(
     itemId: String,
@@ -123,11 +127,11 @@ fun PlayerScreen(
         viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
-    // Cleanup - report playback stopped (use runBlocking to ensure it completes)
+    // Cleanup - report playback stopped
     DisposableEffect(Unit) {
         onDispose {
-            // Report stopped with final position - MUST complete before returning
-            kotlinx.coroutines.runBlocking {
+            // Fire-and-forget: don't block main thread, let server handle eventual consistency
+            GlobalScope.launch {
                 viewModel.reportPlaybackStopped(playerController.state.value.position)
             }
             playerController.stop()

@@ -18,6 +18,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -43,6 +46,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun PlayerScreen(
     itemId: String,
@@ -121,11 +125,11 @@ fun PlayerScreen(
         viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
-    // Cleanup - report playback stopped (use runBlocking to ensure it completes)
+    // Cleanup - report playback stopped
     DisposableEffect(Unit) {
         onDispose {
-            // Report stopped with final position - MUST complete before returning
-            kotlinx.coroutines.runBlocking {
+            // Fire-and-forget: don't block main thread, let server handle eventual consistency
+            GlobalScope.launch {
                 viewModel.reportPlaybackStopped(playerController.state.value.position)
             }
             playerController.stop()
