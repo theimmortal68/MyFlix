@@ -61,7 +61,7 @@ fun TopNavigationBarPopup(
 ) {
     // Track if nav bar has been hidden once (for auto-focus behavior)
     var hasBeenHiddenOnce by remember { mutableStateOf(false) }
-    
+
     // Focus Home button when popup reappears after being hidden
     LaunchedEffect(visible) {
         if (visible && hasBeenHiddenOnce) {
@@ -101,7 +101,9 @@ fun TopNavigationBarPopup(
                                 onDismiss()
                                 true
                             }
-                            else -> false
+                            else -> {
+                                false
+                            }
                         }
                     } else {
                         false
@@ -162,11 +164,11 @@ fun TopNavigationBarPopup(
 class NavBarPopupState {
     var isVisible by mutableStateOf(true)
         private set
-    
+
     fun show() {
         isVisible = true
     }
-    
+
     fun hide() {
         isVisible = false
     }
@@ -175,13 +177,13 @@ class NavBarPopupState {
 @Composable
 fun rememberNavBarPopupState(): NavBarPopupState {
     val state = remember { NavBarPopupState() }
-    
+
     // Auto-hide after 5 seconds on initial load
     LaunchedEffect(Unit) {
         delay(5000)
         state.hide()
     }
-    
+
     return state
 }
 
@@ -202,9 +204,16 @@ private fun NavIconButton(
             focusedScale = 1f,
         ),
         colors = ButtonDefaults.colors(
-            containerColor = if (isSelected) TvColors.BluePrimary.copy(alpha = 0.3f)
-                            else Color.Transparent,
-            contentColor = if (isSelected) TvColors.BluePrimary else TvColors.TextSecondary,
+            containerColor = if (isSelected) {
+                TvColors.BluePrimary.copy(alpha = 0.3f)
+            } else {
+                Color.Transparent
+            },
+            contentColor = if (isSelected) {
+                TvColors.BluePrimary
+            } else {
+                TvColors.TextSecondary
+            },
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),
@@ -241,9 +250,16 @@ private fun NavTabButton(
             focusedScale = 1f,
         ),
         colors = ButtonDefaults.colors(
-            containerColor = if (isSelected) TvColors.BluePrimary.copy(alpha = 0.3f)
-                            else Color.Transparent,
-            contentColor = if (isSelected) TvColors.BluePrimary else TvColors.TextSecondary,
+            containerColor = if (isSelected) {
+                TvColors.BluePrimary.copy(alpha = 0.3f)
+            } else {
+                Color.Transparent
+            },
+            contentColor = if (isSelected) {
+                TvColors.BluePrimary
+            } else {
+                TvColors.TextSecondary
+            },
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),

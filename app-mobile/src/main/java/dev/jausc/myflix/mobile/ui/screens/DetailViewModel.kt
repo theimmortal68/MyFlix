@@ -44,9 +44,8 @@ class DetailViewModel(
         private val jellyfinClient: JellyfinClient,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return DetailViewModel(itemId, jellyfinClient) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            DetailViewModel(itemId, jellyfinClient) as T
     }
 
     private val _uiState = MutableStateFlow(DetailUiState())

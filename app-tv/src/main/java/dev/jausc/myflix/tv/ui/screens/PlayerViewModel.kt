@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -90,9 +89,8 @@ class PlayerViewModel(
         private val jellyfinClient: JellyfinClient,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return PlayerViewModel(itemId, jellyfinClient) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            PlayerViewModel(itemId, jellyfinClient) as T
     }
 
     private val _uiState = MutableStateFlow(PlayerUiState())

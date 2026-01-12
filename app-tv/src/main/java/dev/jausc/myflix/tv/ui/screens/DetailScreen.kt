@@ -33,7 +33,6 @@ import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.buildDetailDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.launch
 
 @Suppress("UnusedParameter")
 @Composable

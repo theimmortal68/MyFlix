@@ -96,9 +96,6 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
                         currentStep = LoginStep.AUTH_CHOICE
                     }
                 },
-                onConnectFailed = {
-                    currentStep = LoginStep.SERVER_DISCOVERY
-                },
             )
         }
 
@@ -142,7 +139,6 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
                 QuickConnectScreen(
                     server = server,
                     jellyfinClient = jellyfinClient,
-                    state = state,
                     viewModel = viewModel,
                     onLoginSuccess = onLoginSuccess,
                     onUsePassword = {
@@ -180,7 +176,6 @@ private fun ServerDiscoveryScreen(
     state: LoginUiState,
     viewModel: LoginViewModel,
     onConnect: (String) -> Unit,
-    onConnectFailed: () -> Unit,
 ) {
     var serverAddress by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
@@ -389,7 +384,6 @@ private fun AuthChoiceScreen(
 private fun QuickConnectScreen(
     server: ValidatedServerInfo,
     jellyfinClient: JellyfinClient,
-    state: LoginUiState,
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
     onUsePassword: () -> Unit,

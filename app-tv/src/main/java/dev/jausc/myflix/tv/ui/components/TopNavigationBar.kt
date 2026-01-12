@@ -38,7 +38,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 /**
  * Netflix-style top navigation bar.
  * Search icon on left, main nav centered, Settings icon on right.
- * 
+ *
  * Focus behavior: When navigating UP from content, focus always lands on Home first.
  */
 @Composable
@@ -128,7 +128,7 @@ private fun NavIconButton(
 ) {
     // Track if we just got focus to redirect to Home
     var justGotFocus by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(justGotFocus) {
         if (justGotFocus && homeButtonFocusRequester != null) {
             kotlinx.coroutines.delay(10)
@@ -139,7 +139,7 @@ private fun NavIconButton(
             justGotFocus = false
         }
     }
-    
+
     // Circular icon button - 20dp size, no scale on focus
     Button(
         onClick = onClick,
@@ -195,10 +195,10 @@ private fun NavTabButton(
 ) {
     // Track if this is the Home button
     val isHomeButton = item == NavItem.HOME
-    
+
     // Track if we just got focus to redirect to Home (for non-Home buttons)
     var justGotFocus by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(justGotFocus) {
         if (justGotFocus && homeButtonFocusRequester != null && !isHomeButton) {
             kotlinx.coroutines.delay(10)
@@ -209,7 +209,7 @@ private fun NavTabButton(
             justGotFocus = false
         }
     }
-    
+
     // 20dp height, no scale on focus
     Button(
         onClick = onClick,

@@ -40,9 +40,8 @@ class LibraryViewModel(
         private val jellyfinClient: JellyfinClient,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return LibraryViewModel(libraryId, jellyfinClient) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            LibraryViewModel(libraryId, jellyfinClient) as T
     }
 
     private val _uiState = MutableStateFlow(LibraryUiState())

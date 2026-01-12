@@ -99,7 +99,7 @@ fun PreferencesScreen(
     // Focus requesters for navigation
     val homeButtonFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
-    
+
     // Popup nav bar state - visible on load, auto-hides after 5 seconds
     val navBarState = rememberNavBarPopupState()
 
@@ -128,19 +128,19 @@ fun PreferencesScreen(
     val handleNavSelection: (NavItem) -> Unit = { item ->
         selectedNavItem = item
         when (item) {
-            NavItem.HOME -> onNavigateHome()
-            NavItem.SEARCH -> onNavigateSearch()
+            NavItem.HOME -> { onNavigateHome() }
+            NavItem.SEARCH -> { onNavigateSearch() }
             NavItem.MOVIES -> {
-                LibraryFinder.findMoviesLibrary(libraries)?.let { 
-                    onNavigateLibrary(it.id, it.name) 
+                LibraryFinder.findMoviesLibrary(libraries)?.let {
+                    onNavigateLibrary(it.id, it.name)
                 } ?: onNavigateMovies()
             }
             NavItem.SHOWS -> {
-                LibraryFinder.findShowsLibrary(libraries)?.let { 
-                    onNavigateLibrary(it.id, it.name) 
+                LibraryFinder.findShowsLibrary(libraries)?.let {
+                    onNavigateLibrary(it.id, it.name)
                 } ?: onNavigateShows()
             }
-            NavItem.DISCOVER -> onNavigateDiscover()
+            NavItem.DISCOVER -> { onNavigateDiscover() }
             NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
             NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }
             NavItem.SETTINGS -> { /* Already here */ }
@@ -262,7 +262,7 @@ private fun PreferencesContent(
     onShowNavBar: () -> Unit,
 ) {
     val lazyListState = rememberLazyListState()
-    
+
     LazyColumn(
         state = lazyListState,
         modifier = Modifier

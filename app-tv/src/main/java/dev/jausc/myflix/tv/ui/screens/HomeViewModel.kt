@@ -67,9 +67,8 @@ class HomeViewModel(
         private val preferences: TvPreferences,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return HomeViewModel(jellyfinClient, preferences) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            HomeViewModel(jellyfinClient, preferences) as T
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -292,13 +291,11 @@ class HomeViewModel(
         }
     }
 
-    private fun findMoviesLibraryId(libraries: List<JellyfinItem>): String? {
-        return libraries.find { it.collectionType == "movies" }?.id
-    }
+    private fun findMoviesLibraryId(libraries: List<JellyfinItem>): String? =
+        libraries.find { it.collectionType == "movies" }?.id
 
-    private fun findShowsLibraryId(libraries: List<JellyfinItem>): String? {
-        return libraries.find { it.collectionType == "tvshows" }?.id
-    }
+    private fun findShowsLibraryId(libraries: List<JellyfinItem>): String? =
+        libraries.find { it.collectionType == "tvshows" }?.id
 
     /**
      * Filter items based on hideWatchedFromRecent preference.

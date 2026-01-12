@@ -249,9 +249,8 @@ internal class TvLoginAuthenticator(
         serverUrl: String,
         username: String,
         password: String,
-    ): Result<AuthResponse> {
-        return jellyfinClient.login(serverUrl, username, password)
-    }
+    ): Result<AuthResponse> =
+        jellyfinClient.login(serverUrl, username, password)
 
     override suspend fun onLoginSuccess(
         server: ValidatedServerInfo,

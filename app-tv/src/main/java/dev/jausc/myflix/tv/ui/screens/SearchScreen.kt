@@ -85,7 +85,7 @@ fun SearchScreen(
     val resultsFocusRequester = remember { FocusRequester() }
     val homeButtonFocusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Popup nav bar state - visible on load, auto-hides after 5 seconds
     val navBarState = rememberNavBarPopupState()
 
@@ -175,7 +175,9 @@ fun SearchScreen(
                                     onBack()
                                     true
                                 }
-                                else -> false
+                                else -> {
+                                    false
+                                }
                             }
                         },
                 )
@@ -258,7 +260,7 @@ fun SearchScreen(
             }
         }
         } // End Column
-        
+
         // Top Navigation Bar (popup overlay)
         TopNavigationBarPopup(
             visible = navBarState.isVisible,

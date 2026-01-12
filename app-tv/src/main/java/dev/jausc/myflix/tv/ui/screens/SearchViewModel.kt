@@ -49,9 +49,8 @@ class SearchViewModel(
         private val jellyfinClient: JellyfinClient,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SearchViewModel(jellyfinClient) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            SearchViewModel(jellyfinClient) as T
     }
 
     private val _uiState = MutableStateFlow(SearchUiState())
