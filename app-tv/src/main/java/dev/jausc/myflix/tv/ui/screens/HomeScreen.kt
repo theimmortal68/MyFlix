@@ -81,7 +81,6 @@ import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -329,7 +328,7 @@ private fun HomeContent(
     onNavItemSelected: (NavItem) -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Popup nav bar state - visible on load, auto-hides after 5 seconds
     val navBarState = rememberNavBarPopupState()
 
@@ -495,9 +494,9 @@ private fun HomeContent(
         }
     }
 
-    // KEY PATTERN: Restore focus and scroll on EVERY recomposition (e.g., returning from nav bar)
-    // This runs BEFORE Compose's automatic bring-into-view can cause the shift
-    LaunchedEffect(Unit) {
+    // KEY PATTERN: Restore focus and scroll when rows load or position changes
+    // Keys ensure this re-runs when content loads or focus state changes
+    LaunchedEffect(firstFocused, rows.size, position.row) {
         if (firstFocused && rows.isNotEmpty()) {
             val index = position.row.coerceIn(0, rows.size - 1)
             try {

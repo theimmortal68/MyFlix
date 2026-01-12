@@ -211,7 +211,8 @@ fun HeroSection(
     }
 
     // Auto-rotate through featured items (only when not in preview mode)
-    LaunchedEffect(featuredItems.size, isPreviewMode) {
+    // Keys include items reference and interval to restart loop when content or timing changes
+    LaunchedEffect(featuredItems, isPreviewMode, autoRotateIntervalMs) {
         if (!isPreviewMode && featuredItems.size > 1) {
             while (true) {
                 delay(autoRotateIntervalMs)

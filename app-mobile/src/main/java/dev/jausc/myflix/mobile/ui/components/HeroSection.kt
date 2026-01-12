@@ -160,7 +160,8 @@ fun MobileHeroSection(
     val pagerState = rememberPagerState(pageCount = { featuredItems.size })
 
     // Auto-rotate through items - with safety checks
-    LaunchedEffect(featuredItems.size) {
+    // Keys include items reference and interval to restart loop when content or timing changes
+    LaunchedEffect(featuredItems, autoRotateIntervalMs) {
         if (featuredItems.size > 1) {
             while (true) {
                 delay(autoRotateIntervalMs)

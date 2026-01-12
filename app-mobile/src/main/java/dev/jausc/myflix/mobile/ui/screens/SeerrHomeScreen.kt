@@ -91,8 +91,8 @@ fun SeerrHomeScreen(
         !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
     }
 
-    // Load content
-    LaunchedEffect(Unit) {
+    // Load content - key on auth status to reload if auth changes
+    LaunchedEffect(seerrClient.isAuthenticated) {
         if (!seerrClient.isAuthenticated) {
             errorMessage = "Not connected to Seerr"
             isLoading = false

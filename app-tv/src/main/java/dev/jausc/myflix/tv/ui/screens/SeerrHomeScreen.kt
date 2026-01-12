@@ -49,7 +49,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +80,6 @@ import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -110,12 +108,10 @@ fun SeerrHomeScreen(
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrSearch: () -> Unit = {},
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrRequests: () -> Unit = {},
 ) {
-    val scope = rememberCoroutineScope()
-
     // Focus requesters for navigation
     val homeButtonFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
-    
+
     // Popup nav bar state - visible on load, auto-hides after 5 seconds
     val navBarState = rememberNavBarPopupState()
 
@@ -140,8 +136,8 @@ fun SeerrHomeScreen(
         !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
     }
 
-    // Load content and libraries
-    LaunchedEffect(Unit) {
+    // Load content and libraries - key on auth status to reload if auth changes
+    LaunchedEffect(seerrClient.isAuthenticated) {
         // Load libraries for navigation
         jellyfinClient?.getLibraries()?.onSuccess { libs ->
             libraries = libs
@@ -198,20 +194,20 @@ fun SeerrHomeScreen(
     // Handle navigation
     val handleNavSelection: (NavItem) -> Unit = { item ->
         when (item) {
-            NavItem.HOME -> onNavigateHome()
-            NavItem.SEARCH -> onNavigateSearch()
+            NavItem.HOME -> { onNavigateHome() }
+            NavItem.SEARCH -> { onNavigateSearch() }
             NavItem.MOVIES -> {
-                LibraryFinder.findMoviesLibrary(libraries)?.let { 
-                    onNavigateLibrary(it.id, it.name) 
+                LibraryFinder.findMoviesLibrary(libraries)?.let {
+                    onNavigateLibrary(it.id, it.name)
                 } ?: onNavigateMovies()
             }
             NavItem.SHOWS -> {
-                LibraryFinder.findShowsLibrary(libraries)?.let { 
-                    onNavigateLibrary(it.id, it.name) 
+                LibraryFinder.findShowsLibrary(libraries)?.let {
+                    onNavigateLibrary(it.id, it.name)
                 } ?: onNavigateShows()
             }
             NavItem.DISCOVER -> { /* Already here */ }
-            NavItem.SETTINGS -> onNavigateSettings()
+            NavItem.SETTINGS -> { onNavigateSettings() }
             else -> {}
         }
     }
@@ -264,18 +260,6 @@ fun SeerrHomeScreen(
             else -> {
                 val lazyListState = rememberLazyListState()
 
-                // Callback for showing nav bar when UP is pressed on first content row
-                val showNavBarOnUp: () -> Unit = {
-                    navBarState.show()
-                    scope.launch {
-                        delay(150)
-                        try {
-                            homeButtonFocusRequester.requestFocus()
-                        } catch (_: Exception) {
-                        }
-                    }
-                }
-
                 // Layer 1: Backdrop image (90% of screen, fades at edges)
                 SeerrBackdropLayer(
                     media = heroDisplayItem,
@@ -292,9 +276,6 @@ fun SeerrHomeScreen(
                     heroDisplayItem?.let { media ->
                         SeerrHeroSection(
                             media = media,
-                            seerrClient = seerrClient,
-                            onClick = { onMediaClick(media.mediaType, media.tmdbId ?: media.id) },
-                            onUpPressed = showNavBarOnUp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fillMaxHeight(0.50f),
@@ -464,9 +445,6 @@ private fun SeerrBackdropLayer(
 @Composable
 private fun SeerrHeroSection(
     media: SeerrMedia,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit,
-    onUpPressed: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // Content overlay (left side)
