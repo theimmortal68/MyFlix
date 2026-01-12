@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -26,6 +27,7 @@ object ActionColors {
     val Favorite = Color(0xFFEF4444) // Red
     val Info = Color(0xFF94A3B8) // Gray
     val Series = Color(0xFF8B5CF6) // Purple
+    val Season = Color(0xFFA78BFA) // Light Purple
     val Audio = Color(0xFFF59E0B) // Amber
     val Subtitles = Color(0xFF06B6D4) // Cyan
     val MediaInfo = Color(0xFF6366F1) // Indigo
@@ -69,6 +71,7 @@ data class HomeActions(
     val onMarkWatched: (String, Boolean) -> Unit,
     val onToggleFavorite: (String, Boolean) -> Unit,
     val onGoToSeries: ((String) -> Unit)? = null,
+    val onGoToSeason: ((String) -> Unit)? = null,
     val onHideFromResume: ((String) -> Unit)? = null,
 )
 
@@ -178,18 +181,44 @@ fun buildHomeActionItems(item: JellyfinItem, actions: HomeActions): List<ActionE
         ),
     )
 
-    // Go to Series (for episodes only)
-    if (isEpisode && item.seriesId != null && actions.onGoToSeries != null) {
-        add(ActionDivider)
-        add(
-            ActionItem(
-                id = "goto_series",
-                text = "Go to Series",
-                icon = Icons.Default.Tv,
-                iconTint = ActionColors.Series,
-                onClick = { actions.onGoToSeries.invoke(item.seriesId) },
-            ),
-        )
+    // Go to Series / Season (for episodes only)
+    if (isEpisode) {
+        val seriesId = item.seriesId
+        val onGoToSeries = actions.onGoToSeries
+        val seasonId = item.seasonId ?: item.parentId
+        val onGoToSeason = actions.onGoToSeason
+
+        val hasSeriesAction = seriesId != null && onGoToSeries != null
+        val hasSeasonAction = seasonId != null && onGoToSeason != null
+
+        if (hasSeriesAction || hasSeasonAction) {
+            add(ActionDivider)
+        }
+
+        if (seriesId != null && onGoToSeries != null) {
+            add(
+                ActionItem(
+                    id = "goto_series",
+                    text = "Go to Series",
+                    icon = Icons.Default.Tv,
+                    iconTint = ActionColors.Series,
+                    onClick = { onGoToSeries(seriesId) },
+                ),
+            )
+        }
+
+        if (seasonId != null && onGoToSeason != null) {
+            val seasonLabel = item.seasonName ?: "Season ${item.parentIndexNumber ?: "?"}"
+            add(
+                ActionItem(
+                    id = "goto_season",
+                    text = "Go to $seasonLabel",
+                    icon = Icons.AutoMirrored.Filled.ViewList,
+                    iconTint = ActionColors.Season,
+                    onClick = { onGoToSeason(seasonId) },
+                ),
+            )
+        }
     }
 }
 

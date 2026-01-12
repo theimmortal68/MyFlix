@@ -192,7 +192,7 @@ class JellyfinClient(
         const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating"
 
         // Fields for episode cards (need series info)
-        const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,OfficialRating,CriticRating"
+        const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CriticRating"
 
         // Full fields for detail screens
         const val DETAIL = "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People,ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CriticRating"
