@@ -63,7 +63,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.QueueSource
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -141,6 +145,41 @@ fun HomeScreen(
             onGoToSeason = { seasonId -> onItemClick(seasonId) },
             onHideFromResume = { itemId ->
                 viewModel.hideFromResume(itemId)
+            },
+            onPlayAllFromEpisode = { data: PlayAllData ->
+                scope.launch {
+                    jellyfinClient.getEpisodes(data.seriesId, data.seasonId)
+                        .onSuccess { episodes ->
+                            // Filter to episodes from the selected one onwards
+                            val sortedEpisodes = episodes.sortedBy { it.indexNumber ?: 0 }
+                            val startIndex = sortedEpisodes.indexOfFirst { it.id == data.itemId }
+                                .coerceAtLeast(0)
+                            val episodesToPlay = sortedEpisodes.drop(startIndex)
+
+                            if (episodesToPlay.isNotEmpty()) {
+                                // Build queue items
+                                val queueItems = episodesToPlay.map { episode ->
+                                    QueueItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = buildString {
+                                            episode.parentIndexNumber?.let { append("S$it ") }
+                                            episode.indexNumber?.let { append("E$it") }
+                                        }.takeIf { it.isNotBlank() },
+                                        thumbnailItemId = episode.seriesId,
+                                    )
+                                }
+
+                                // Set queue and navigate to first item
+                                PlayQueueManager.setQueue(
+                                    items = queueItems,
+                                    source = QueueSource.EPISODE_PLAY_ALL,
+                                    startIndex = 0,
+                                )
+                                onPlayClick(episodesToPlay.first().id)
+                            }
+                        }
+                }
             },
         )
     }

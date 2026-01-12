@@ -39,6 +39,7 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -129,6 +130,13 @@ fun PlayerScreen(
         viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
+    // Detect video end and trigger auto-play countdown
+    LaunchedEffect(playbackState.isEnded) {
+        if (playbackState.isEnded && !state.showAutoPlayCountdown) {
+            viewModel.onVideoEnded()
+        }
+    }
+
     // Cleanup - report playback stopped
     DisposableEffect(Unit) {
         onDispose {
@@ -180,7 +188,11 @@ fun PlayerScreen(
                             true
                         }
                         Key.Back -> {
-                            onBack()
+                            if (state.showAutoPlayCountdown) {
+                                viewModel.cancelQueue()
+                            } else {
+                                onBack()
+                            }
                             true
                         }
                         else -> {
@@ -236,11 +248,23 @@ fun PlayerScreen(
             }
 
             // Controls overlay
-            if (state.showControls) {
+            if (state.showControls && !state.showAutoPlayCountdown) {
                 PlayerControlsOverlay(
                     item = state.item,
                     playbackState = playbackState,
                     onPlayPause = { playerController.togglePause() },
+                )
+            }
+
+            // Auto-play countdown overlay
+            if (state.showAutoPlayCountdown && state.nextQueueItem != null) {
+                AutoPlayCountdown(
+                    nextItem = state.nextQueueItem!!,
+                    countdownSeconds = state.countdownSecondsRemaining,
+                    jellyfinClient = jellyfinClient,
+                    onPlayNow = { viewModel.playNextNow() },
+                    onCancel = { viewModel.cancelQueue() },
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }

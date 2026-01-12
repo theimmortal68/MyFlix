@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +32,11 @@ private const val CONTROLS_AUTO_HIDE_MS = 5_000L
 private const val COMPLETION_THRESHOLD = 0.95f
 
 /**
+ * Default countdown duration for auto-play.
+ */
+private const val AUTO_PLAY_COUNTDOWN_SECONDS = 5
+
+/**
  * UI state for the player screen.
  */
 data class PlayerUiState(
@@ -40,6 +47,11 @@ data class PlayerUiState(
     val error: String? = null,
     val playerReady: Boolean = false,
     val showControls: Boolean = true,
+    // Queue/Auto-play state
+    val showAutoPlayCountdown: Boolean = false,
+    val nextQueueItem: QueueItem? = null,
+    val countdownSecondsRemaining: Int = AUTO_PLAY_COUNTDOWN_SECONDS,
+    val isQueueMode: Boolean = false,
 ) {
     /**
      * MediaInfo for content-aware player selection.
@@ -97,11 +109,16 @@ class PlayerViewModel(
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     // Internal tracking
+    private var currentItemId: String = itemId
     private var playbackStarted = false
     private var markedAsPlayed = false
     private var controlsHideJob: Job? = null
+    private var countdownJob: Job? = null
 
     init {
+        // Check if we're in queue mode
+        val isQueueMode = PlayQueueManager.isQueueMode()
+        _uiState.update { it.copy(isQueueMode = isQueueMode) }
         loadItem()
     }
 
@@ -156,7 +173,7 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
+            jellyfinClient.reportPlaybackStart(currentItemId, positionTicks = positionTicks)
         }
     }
 
@@ -169,7 +186,7 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            jellyfinClient.reportPlaybackProgress(itemId, positionTicks, isPaused)
+            jellyfinClient.reportPlaybackProgress(currentItemId, positionTicks, isPaused)
         }
     }
 
@@ -181,7 +198,7 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            jellyfinClient.reportPlaybackProgress(itemId, positionTicks, isPaused)
+            jellyfinClient.reportPlaybackProgress(currentItemId, positionTicks, isPaused)
         }
     }
 
@@ -195,7 +212,7 @@ class PlayerViewModel(
         if (watchedPercent >= COMPLETION_THRESHOLD) {
             markedAsPlayed = true
             viewModelScope.launch {
-                jellyfinClient.setPlayed(itemId, true)
+                jellyfinClient.setPlayed(currentItemId, true)
             }
         }
     }
@@ -206,7 +223,7 @@ class PlayerViewModel(
      */
     suspend fun reportPlaybackStopped(positionMs: Long) {
         val positionTicks = positionMs * TICKS_PER_MS
-        jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
+        jellyfinClient.reportPlaybackStopped(currentItemId, positionTicks)
     }
 
     /**
@@ -248,8 +265,130 @@ class PlayerViewModel(
         }
     }
 
+    // ==================== Queue Management ====================
+
+    /**
+     * Called when the current video ends.
+     * Starts auto-play countdown if there's a next item in the queue.
+     */
+    fun onVideoEnded() {
+        val nextItem = PlayQueueManager.peekNext()
+        if (nextItem != null) {
+            _uiState.update {
+                it.copy(
+                    showAutoPlayCountdown = true,
+                    nextQueueItem = nextItem,
+                    countdownSecondsRemaining = AUTO_PLAY_COUNTDOWN_SECONDS,
+                )
+            }
+            startCountdown()
+        }
+    }
+
+    /**
+     * Start the auto-play countdown timer.
+     */
+    private fun startCountdown() {
+        countdownJob?.cancel()
+        countdownJob = viewModelScope.launch {
+            for (seconds in AUTO_PLAY_COUNTDOWN_SECONDS downTo 1) {
+                _uiState.update { it.copy(countdownSecondsRemaining = seconds) }
+                delay(1000)
+            }
+            // Countdown finished, advance to next
+            advanceToNextInQueue()
+        }
+    }
+
+    /**
+     * Immediately play the next item in the queue (skip countdown).
+     */
+    fun playNextNow() {
+        countdownJob?.cancel()
+        advanceToNextInQueue()
+    }
+
+    /**
+     * Advance to the next item in the queue.
+     */
+    private fun advanceToNextInQueue() {
+        val nextItem = PlayQueueManager.advanceToNext()
+        if (nextItem != null) {
+            // Reset playback state for new item
+            playbackStarted = false
+            markedAsPlayed = false
+            currentItemId = nextItem.itemId
+
+            // Hide countdown and load new item
+            _uiState.update {
+                it.copy(
+                    showAutoPlayCountdown = false,
+                    nextQueueItem = null,
+                    isLoading = true,
+                    streamUrl = null,
+                    startPositionMs = 0L,
+                    playerReady = false,
+                )
+            }
+
+            loadItemById(nextItem.itemId)
+        }
+    }
+
+    /**
+     * Cancel the queue and hide countdown.
+     * Called when user presses Cancel or Back during countdown.
+     */
+    fun cancelQueue() {
+        countdownJob?.cancel()
+        PlayQueueManager.clear()
+        _uiState.update {
+            it.copy(
+                showAutoPlayCountdown = false,
+                nextQueueItem = null,
+                isQueueMode = false,
+            )
+        }
+    }
+
+    /**
+     * Load a specific item by ID (for queue advancement).
+     */
+    private fun loadItemById(newItemId: String) {
+        viewModelScope.launch {
+            jellyfinClient.getItem(newItemId)
+                .onSuccess { loadedItem ->
+                    val streamUrl = jellyfinClient.getStreamUrl(newItemId)
+                    val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
+                        it / TICKS_PER_MS
+                    } ?: 0L
+
+                    _uiState.update {
+                        it.copy(
+                            item = loadedItem,
+                            streamUrl = streamUrl,
+                            startPositionMs = startPositionMs,
+                            isLoading = false,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            error = e.message ?: "Failed to load next item",
+                            isLoading = false,
+                            showAutoPlayCountdown = false,
+                        )
+                    }
+                }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         controlsHideJob?.cancel()
+        countdownJob?.cancel()
+        // Clear queue when player is destroyed
+        PlayQueueManager.clear()
     }
 }

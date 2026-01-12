@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,6 +23,7 @@ import dev.jausc.myflix.core.common.model.progressPercent
  */
 object ActionColors {
     val Play = Color(0xFF34D399) // Green
+    val PlayAll = Color(0xFF10B981) // Emerald (darker green)
     val GoTo = Color(0xFF60A5FA) // Blue
     val Watched = Color(0xFFFBBF24) // Yellow/Gold
     val Favorite = Color(0xFFEF4444) // Red
@@ -63,6 +65,16 @@ data class ActionItem(
 ) : ActionEntry
 
 /**
+ * Data for Play All action - contains IDs needed to build the queue.
+ */
+data class PlayAllData(
+    val itemId: String,
+    val seriesId: String,
+    val seasonId: String,
+    val episodeIndex: Int,
+)
+
+/**
  * Actions available from the home screen context menu.
  */
 data class HomeActions(
@@ -73,6 +85,7 @@ data class HomeActions(
     val onGoToSeries: ((String) -> Unit)? = null,
     val onGoToSeason: ((String) -> Unit)? = null,
     val onHideFromResume: ((String) -> Unit)? = null,
+    val onPlayAllFromEpisode: ((PlayAllData) -> Unit)? = null,
 )
 
 /**
@@ -84,6 +97,7 @@ data class DetailActions(
     val onToggleFavorite: (String, Boolean) -> Unit,
     val onShowMediaInfo: ((JellyfinItem) -> Unit)? = null,
     val onGoToSeries: ((String) -> Unit)? = null,
+    val onPlayAllFromEpisode: ((PlayAllData) -> Unit)? = null,
 )
 
 /**
@@ -140,6 +154,35 @@ fun buildHomeActionItems(item: JellyfinItem, actions: HomeActions): List<ActionE
                 onClick = { actions.onPlay(item.id) },
             ),
         )
+    }
+
+    // Play All from Here (for episodes with series/season info)
+    if (isEpisode) {
+        val seriesId = item.seriesId
+        val seasonId = item.seasonId ?: item.parentId
+        val episodeIndex = item.indexNumber
+        val onPlayAll = actions.onPlayAllFromEpisode
+
+        if (seriesId != null && seasonId != null && episodeIndex != null && onPlayAll != null) {
+            add(
+                ActionItem(
+                    id = "play_all_from_here",
+                    text = "Play All from Here",
+                    icon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    iconTint = ActionColors.PlayAll,
+                    onClick = {
+                        onPlayAll(
+                            PlayAllData(
+                                itemId = item.id,
+                                seriesId = seriesId,
+                                seasonId = seasonId,
+                                episodeIndex = episodeIndex,
+                            ),
+                        )
+                    },
+                ),
+            )
+        }
     }
 
     // Remove from Continue Watching (only if item has progress)
@@ -264,6 +307,35 @@ fun buildDetailActionItems(item: JellyfinItem, actions: DetailActions): List<Act
                 onClick = { actions.onPlay(item.id) },
             ),
         )
+    }
+
+    // Play All from Here (for episodes with series/season info)
+    if (item.type == "Episode") {
+        val seriesId = item.seriesId
+        val seasonId = item.seasonId ?: item.parentId
+        val episodeIndex = item.indexNumber
+        val onPlayAll = actions.onPlayAllFromEpisode
+
+        if (seriesId != null && seasonId != null && episodeIndex != null && onPlayAll != null) {
+            add(
+                ActionItem(
+                    id = "play_all_from_here",
+                    text = "Play All from Here",
+                    icon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    iconTint = ActionColors.PlayAll,
+                    onClick = {
+                        onPlayAll(
+                            PlayAllData(
+                                itemId = item.id,
+                                seriesId = seriesId,
+                                seasonId = seasonId,
+                                episodeIndex = episodeIndex,
+                            ),
+                        )
+                    },
+                ),
+            )
+        }
     }
 
     // Divider before state toggles

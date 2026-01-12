@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
@@ -40,7 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.QueueSource
+import kotlinx.coroutines.launch
 import dev.jausc.myflix.mobile.MobilePreferences
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
@@ -90,11 +96,14 @@ fun HomeScreen(
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val pinnedCollections by viewModel.pinnedCollections.collectAsState()
 
+    // Scope for async menu actions
+    val scope = rememberCoroutineScope()
+
     // Popup menu state for long-press
     var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
 
     // Menu actions for long-press
-    val menuActions = remember(viewModel) {
+    val menuActions = remember(viewModel, scope) {
         HomeMenuActions(
             onGoTo = { itemId -> onItemClick(itemId) },
             onPlay = { itemId -> onPlayClick(itemId) },
@@ -108,6 +117,41 @@ fun HomeScreen(
             onGoToSeason = { seasonId -> onItemClick(seasonId) },
             onHideFromResume = { itemId ->
                 viewModel.hideFromResume(itemId)
+            },
+            onPlayAllFromEpisode = { data: PlayAllData ->
+                scope.launch {
+                    jellyfinClient.getEpisodes(data.seriesId, data.seasonId)
+                        .onSuccess { episodes ->
+                            // Filter to episodes from the selected one onwards
+                            val sortedEpisodes = episodes.sortedBy { it.indexNumber ?: 0 }
+                            val startIndex = sortedEpisodes.indexOfFirst { it.id == data.itemId }
+                                .coerceAtLeast(0)
+                            val episodesToPlay = sortedEpisodes.drop(startIndex)
+
+                            if (episodesToPlay.isNotEmpty()) {
+                                // Build queue items
+                                val queueItems = episodesToPlay.map { episode ->
+                                    QueueItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = buildString {
+                                            episode.parentIndexNumber?.let { append("S$it ") }
+                                            episode.indexNumber?.let { append("E$it") }
+                                        }.takeIf { it.isNotBlank() },
+                                        thumbnailItemId = episode.seriesId,
+                                    )
+                                }
+
+                                // Set queue and navigate to first item
+                                PlayQueueManager.setQueue(
+                                    items = queueItems,
+                                    source = QueueSource.EPISODE_PLAY_ALL,
+                                    startIndex = 0,
+                                )
+                                onPlayClick(episodesToPlay.first().id)
+                            }
+                        }
+                }
             },
         )
     }

@@ -10,6 +10,7 @@ data class PlaybackState(
     val isPaused: Boolean = false,
     val isBuffering: Boolean = false,
     val isIdle: Boolean = true,
+    val isEnded: Boolean = false,
     val position: Long = 0L, // milliseconds
     val duration: Long = 0L, // milliseconds
     val speed: Float = 1.0f,

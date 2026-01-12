@@ -189,6 +189,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                     _state.value = _state.value.copy(
                         isPlaying = false,
                         isIdle = true,
+                        isEnded = true,
                     )
                 }
             }
@@ -249,6 +250,7 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
         _state.value = _state.value.copy(
             isBuffering = true,
             isIdle = false,
+            isEnded = false,
             error = null,
         )
 

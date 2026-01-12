@@ -27,7 +27,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.*
+import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.QueueSource
+import kotlinx.coroutines.launch
 import dev.jausc.myflix.tv.ui.components.DetailDialogActions
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -51,13 +56,14 @@ fun DetailScreen(
 
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
 
     // Long-press dialog state (TV-specific)
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Dialog actions (TV-specific)
-    val dialogActions = remember(viewModel) {
+    val dialogActions = remember(viewModel, scope) {
         DetailDialogActions(
             onPlay = { episodeId -> onEpisodeClick(episodeId) },
             onMarkWatched = { episodeId, watched ->
@@ -68,6 +74,41 @@ fun DetailScreen(
             },
             onShowMediaInfo = { episode -> mediaInfoItem = episode },
             onGoToSeries = null, // Already on series page
+            onPlayAllFromEpisode = { data: PlayAllData ->
+                scope.launch {
+                    jellyfinClient.getEpisodes(data.seriesId, data.seasonId)
+                        .onSuccess { episodes ->
+                            // Filter to episodes from the selected one onwards
+                            val sortedEpisodes = episodes.sortedBy { it.indexNumber ?: 0 }
+                            val startIndex = sortedEpisodes.indexOfFirst { it.id == data.itemId }
+                                .coerceAtLeast(0)
+                            val episodesToPlay = sortedEpisodes.drop(startIndex)
+
+                            if (episodesToPlay.isNotEmpty()) {
+                                // Build queue items
+                                val queueItems = episodesToPlay.map { episode ->
+                                    QueueItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = buildString {
+                                            episode.parentIndexNumber?.let { append("S$it ") }
+                                            episode.indexNumber?.let { append("E$it") }
+                                        }.takeIf { it.isNotBlank() },
+                                        thumbnailItemId = episode.seriesId,
+                                    )
+                                }
+
+                                // Set queue and navigate to first item
+                                PlayQueueManager.setQueue(
+                                    items = queueItems,
+                                    source = QueueSource.EPISODE_PLAY_ALL,
+                                    startIndex = 0,
+                                )
+                                onEpisodeClick(episodesToPlay.first().id)
+                            }
+                        }
+                }
+            },
         )
     }
 

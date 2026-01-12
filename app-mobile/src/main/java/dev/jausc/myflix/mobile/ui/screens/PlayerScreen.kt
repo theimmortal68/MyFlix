@@ -44,6 +44,7 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -131,6 +132,13 @@ fun PlayerScreen(
         viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
+    // Detect video ended for queue auto-play
+    LaunchedEffect(playbackState.isEnded) {
+        if (playbackState.isEnded) {
+            viewModel.onVideoEnded()
+        }
+    }
+
     // Cleanup - report playback stopped
     DisposableEffect(Unit) {
         onDispose {
@@ -209,6 +217,22 @@ fun PlayerScreen(
                     playbackState = playbackState,
                     playerController = playerController,
                     onBack = onBack,
+                )
+            }
+
+            // Auto-play countdown overlay
+            val nextQueueItem = state.nextQueueItem
+            if (state.showAutoPlayCountdown && nextQueueItem != null) {
+                AutoPlayCountdown(
+                    nextItem = nextQueueItem,
+                    countdownSeconds = state.countdownSecondsRemaining,
+                    jellyfinClient = jellyfinClient,
+                    onPlayNow = { viewModel.playNextNow() },
+                    onCancel = {
+                        viewModel.cancelQueue()
+                        onBack()
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }
