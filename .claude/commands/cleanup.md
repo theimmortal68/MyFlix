@@ -11,6 +11,7 @@ Steps to perform:
 8. **Move common code to core modules** - Extract shared logic (models, utilities, formatters, state classes) to appropriate core modules (core/common, core/seerr, etc.) to avoid duplication
 9. Build both apps to verify compilation: `./gradlew :app-tv:assembleDebug :app-mobile:assembleDebug`
 10. **Stage all modified files and create the git commit** - Do NOT ask for confirmation, just commit
+11. **Push to remote** - After committing, push to the remote repository without asking for confirmation
 
 For unused import removal, use:
 ```bash
@@ -28,4 +29,4 @@ feat/fix/refactor: Brief description
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
-IMPORTANT: After cleanup is complete, automatically stage all changes and create the commit. Do not ask "Would you like me to commit?" - just do it.
+IMPORTANT: After cleanup is complete, automatically stage all changes, create the commit, and push to remote. Do not ask "Would you like me to commit?" or "Would you like me to push?" - just do it.

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -243,15 +244,19 @@ private fun SeerrMediaGridScreen(
         ) {
             Button(
                 onClick = onBack,
+                modifier = Modifier.size(48.dp),
+                contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.colors(
                     containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                    contentColor = TvColors.TextPrimary,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
                 ),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
                     modifier = Modifier.size(24.dp),
-                    tint = TvColors.TextPrimary,
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -386,7 +391,9 @@ private fun SeerrTvPosterCard(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier.size(width = 160.dp, height = 240.dp),
+        modifier = modifier
+            .width(120.dp)
+            .aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,

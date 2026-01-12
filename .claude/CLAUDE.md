@@ -786,6 +786,97 @@ JellyfinClient                    Screen                         UI
 | `TvColors.Success` | `#22C55E` (Green) | Success states |
 | `TvColors.TextPrimary` | `#F8FAFC` (White) | Text on error/success backgrounds |
 
+## Standardized UI Sizes
+
+All UI components should use these standardized sizes for consistency across the app.
+
+### TV App (app-tv)
+
+#### Card Sizes
+
+| Type | Width | Height | Aspect Ratio | Usage |
+|------|-------|--------|--------------|-------|
+| Portrait Poster | `120.dp` | Auto | `2:3` | Movies, TV shows, Seerr media, search results |
+| Wide Thumbnail | `210.dp` | Auto | `16:9` | Episodes, continue watching, next up |
+
+**Implementation:**
+```kotlin
+// Portrait poster card
+Modifier
+    .width(120.dp)
+    .aspectRatio(2f / 3f)
+
+// Wide thumbnail card
+Modifier
+    .width(210.dp)
+    .aspectRatio(16f / 9f)
+```
+
+#### Button Sizes
+
+| Type | Size | Icon Size | Content Padding | Usage |
+|------|------|-----------|-----------------|-------|
+| Icon Button | `48.dp` | `24.dp` | `0.dp` | Back buttons, action buttons |
+| Primary Button | `160.dp x 48.dp` | `20.dp` | Default | Play, Request buttons |
+
+**Implementation:**
+```kotlin
+// Icon button (back button)
+Button(
+    onClick = onBack,
+    modifier = Modifier.size(48.dp),
+    contentPadding = PaddingValues(0.dp),
+    colors = ButtonDefaults.colors(
+        containerColor = TvColors.Surface.copy(alpha = 0.7f),
+        contentColor = TvColors.TextPrimary,
+        focusedContainerColor = TvColors.BluePrimary,
+        focusedContentColor = Color.White,
+    ),
+) {
+    Icon(
+        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+        contentDescription = "Back",
+        modifier = Modifier.size(24.dp),
+    )
+}
+```
+
+#### Spacing
+
+| Type | Value | Usage |
+|------|-------|-------|
+| Card Gap | `16.dp` | Between cards in rows |
+| Row Gap | `24.dp` | Between content rows |
+| Screen Padding | `48.dp` | Left/right margins |
+| Section Padding | `24.dp` | Top/bottom of sections |
+
+### Mobile App (app-mobile)
+
+#### Card Sizes
+
+| Type | Width | Height | Aspect Ratio | Usage |
+|------|-------|--------|--------------|-------|
+| List Thumbnail | `72.dp` | `72.dp` | `1:1` | Discover list items |
+| Poster Card | `120.dp` | Auto | `2:3` | Home screen, search results |
+| Wide Card | `160.dp` | Auto | `16:9` | Continue watching, episodes |
+
+#### Button Sizes
+
+| Type | Size | Usage |
+|------|------|-------|
+| Icon Button | `48.dp` | Standard touch target |
+| FAB | `56.dp` | Floating action buttons |
+
+### Rating Badge Colors
+
+| Source | Color | Usage |
+|--------|-------|-------|
+| TMDb | `#01D277` (Green) | TMDb rating label |
+| TMDb Value | `#FBBF24` (Yellow) | TMDb rating value |
+| RT Fresh | `#FA320A` (Red) | Rotten Tomatoes fresh score |
+| RT Rotten | `#6AC238` (Green) | Rotten Tomatoes rotten score |
+| IMDb | `#F5C518` (Yellow) | IMDb rating |
+
 ### Current Gaps
 
 > **Note:** Some screens silently ignore errors (e.g., HomeScreen shows empty rows on failure). Consider adding:

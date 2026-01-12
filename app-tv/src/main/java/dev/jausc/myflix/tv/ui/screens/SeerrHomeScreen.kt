@@ -89,8 +89,10 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
+import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemDivider
@@ -156,6 +158,10 @@ fun SeerrHomeScreen(
     // The item to display in hero - preview takes precedence
     val heroDisplayItem = previewItem ?: featuredItem
 
+    // Ratings for hero item (RT and IMDB)
+    var heroRtRating by remember { mutableStateOf<SeerrRottenTomatoesRating?>(null) }
+    var heroImdbRating by remember { mutableStateOf<SeerrImdbRating?>(null) }
+
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var dialogMedia by remember { mutableStateOf<SeerrMedia?>(null) }
@@ -217,6 +223,29 @@ fun SeerrHomeScreen(
         featuredItem = discoverRows.firstOrNull()?.items?.firstOrNull()
 
         isLoading = false
+    }
+
+    // Load ratings for hero item when it changes
+    LaunchedEffect(heroDisplayItem) {
+        val media = heroDisplayItem ?: return@LaunchedEffect
+        val tmdbId = media.tmdbId ?: media.id
+
+        // Clear previous ratings immediately for responsive UI
+        heroRtRating = null
+        heroImdbRating = null
+
+        // Load ratings based on media type
+        if (media.isMovie) {
+            seerrClient.getMovieRatings(tmdbId).onSuccess { response ->
+                heroRtRating = response.rt
+                heroImdbRating = response.imdb
+            }
+        } else {
+            seerrClient.getTVRatings(tmdbId).onSuccess { rtRating ->
+                heroRtRating = rtRating
+                // TV shows only have RT ratings from this endpoint
+            }
+        }
     }
 
     // Request initial focus on content
@@ -313,6 +342,8 @@ fun SeerrHomeScreen(
                     heroDisplayItem?.let { media ->
                         SeerrHeroSection(
                             media = media,
+                            rtRating = heroRtRating,
+                            imdbRating = heroImdbRating,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fillMaxHeight(0.50f),
@@ -499,6 +530,8 @@ private fun SeerrBackdropLayer(
 @Composable
 private fun SeerrHeroSection(
     media: SeerrMedia,
+    rtRating: SeerrRottenTomatoesRating? = null,
+    imdbRating: SeerrImdbRating? = null,
     modifier: Modifier = Modifier,
 ) {
     // Content overlay (left side)
@@ -605,6 +638,46 @@ private fun SeerrHeroSection(
                             text = "%.1f".format(rating),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFFBBF24),
+                        )
+                    }
+                }
+                // Rotten Tomatoes rating
+                rtRating?.criticsScore?.let { score ->
+                    val isFresh = rtRating.isCriticsFresh
+                    val rtColor = if (isFresh) Color(0xFFFA320A) else Color(0xFF6AC238)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "RT",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TvColors.TextSecondary,
+                        )
+                        Text(
+                            text = "$score%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = rtColor,
+                        )
+                    }
+                }
+                // IMDB rating
+                imdbRating?.criticsScore?.let { score ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "IMDb",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TvColors.TextSecondary,
+                        )
+                        Text(
+                            text = "%.1f".format(score),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF5C518),
                         )
                     }
                 }

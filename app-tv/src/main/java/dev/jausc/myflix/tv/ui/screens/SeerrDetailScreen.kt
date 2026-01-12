@@ -323,16 +323,20 @@ fun SeerrDetailScreen(
                                 onClick = onBack,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
-                                    .padding(24.dp),
+                                    .padding(24.dp)
+                                    .size(48.dp),
+                                contentPadding = PaddingValues(0.dp),
                                 colors = ButtonDefaults.colors(
                                     containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                                    contentColor = TvColors.TextPrimary,
+                                    focusedContainerColor = TvColors.BluePrimary,
+                                    focusedContentColor = Color.White,
                                 ),
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                     contentDescription = "Back",
                                     modifier = Modifier.size(24.dp),
-                                    tint = TvColors.TextPrimary,
                                 )
                             }
 
