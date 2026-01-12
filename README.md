@@ -1,106 +1,182 @@
-# Claude Code Setup for MyFlix
+# MyFlix
 
-This package adds Claude Code CLI configuration to your existing MyFlix project.
+Multi-platform Jellyfin client for Android with dedicated TV and Mobile apps, built with Kotlin and Jetpack Compose.
 
-## Contents
+## Modules
 
-```
-.claude/
-├── settings.json              # Permissions for Claude Code
-├── CODE_QUALITY_ADDENDUM.md   # Append to your existing CLAUDE.md
-├── skills/                    # Custom skills for MyFlix development
-│   ├── myflix-architecture/
-│   ├── kotlin-compose-patterns/
-│   ├── android-tv-development/
-│   └── jellyfin-api/
-└── commands/                  # Custom slash commands
-    ├── build-tv.md
-    ├── build-mobile.md
-    ├── cleanup.md
-    └── zip-update.md
-.mcp.json                      # MCP server configuration
-```
+- `app-tv` - Android TV app (Compose TV Material, D-pad navigation)
+- `app-mobile` - Phone/tablet app (Material3)
+- `core/common` - Shared models, UI utilities, fonts
+- `core/network` - Ktor-based Jellyfin API client
+- `core/data` - Auth and app state persistence
+- `core/player` - Player abstraction (ExoPlayer + MPV)
+- `core/seerr` - Jellyseerr/Overseerr client
+- `ui/common`, `ui/tv`, `ui/mobile` - Shared UI placeholders
 
-## Installation
+## Requirements
 
-### 1. Extract to Your MyFlix Project Root
+- Android Studio Ladybug or newer
+- JDK 21
+- Android SDK 36
+
+## Build
 
 ```bash
-cd ~/StudioProjects/MyFlix
-unzip claude-code-setup-myflix-final.zip
+# TV app
+./gradlew :app-tv:assembleDebug
+
+# Mobile app
+./gradlew :app-mobile:assembleDebug
 ```
 
-This will add/merge files into your existing `.claude/` directory.
-
-### 2. Append Code Quality Rules to CLAUDE.md
+## Install (device/emulator)
 
 ```bash
-cat .claude/CODE_QUALITY_ADDENDUM.md >> .claude/CLAUDE.md
+adb install app-tv/build/outputs/apk/debug/app-tv-debug.apk
+adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 ```
 
-Or manually copy the content from `CODE_QUALITY_ADDENDUM.md` to the end of your existing `.claude/CLAUDE.md`.
-
-### 3. (Optional) Set GitHub Token for MCP
+## Test
 
 ```bash
-export GITHUB_TOKEN="your-github-personal-access-token"
+./gradlew test
+./gradlew :core:network:test
 ```
 
-Add to your shell profile (`~/.bashrc` or `~/.zshrc`) for persistence.
+## Key Files
 
-### 4. Install Recommended Plugins
-
-Launch Claude Code in your project directory, then run:
-
-```
-/plugin install anthropics/claude-code/plugins/pr-review-toolkit
-```
-
-### 5. Restart Claude Code
-
-Exit and relaunch to load the new configuration:
-
-```bash
-cd ~/StudioProjects/MyFlix
-claude
-```
-
-## Verification
-
-After restarting, verify the setup:
-
-1. **Check skills:** Ask "what skills do you have for MyFlix?"
-2. **Check commands:** Type `/` and look for `build-tv`, `cleanup`, etc.
-3. **Check code quality rules:** Ask "what are the code quality rules?"
-
-## Custom Skills
-
-| Skill | When Used |
-|-------|-----------|
-| `myflix-architecture` | Creating new features, understanding project structure |
-| `kotlin-compose-patterns` | Writing Compose UI, state management, focus handling |
-| `android-tv-development` | TV screens, D-pad navigation, hero sections |
-| `jellyfin-api` | API calls, caching, image URLs |
-
-## Custom Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/build-tv` | Build `app-tv` debug APK |
-| `/build-mobile` | Build `app-mobile` debug APK |
-| `/cleanup` | Review code, remove unused imports, generate commit message |
-| `/zip-update` | Create zip file with code changes |
-
-## MCP Servers
-
-| Server | Purpose |
-|--------|---------|
-| `github` | GitHub API integration (requires GITHUB_TOKEN) |
-| `filesystem` | File operations |
-| `memory` | Persistent context across sessions |
+- Jellyfin API client: `core/network/src/main/java/dev/jausc/myflix/core/network/JellyfinClient.kt`
+- App state: `core/data/src/main/java/dev/jausc/myflix/core/data/AppState.kt`
+- Player abstraction: `core/player/src/main/java/dev/jausc/myflix/core/player/UnifiedPlayer.kt`
+- TV entrypoint: `app-tv/src/main/java/dev/jausc/myflix/tv/MainActivity.kt`
+- Mobile entrypoint: `app-mobile/src/main/java/dev/jausc/myflix/mobile/MainActivity.kt`
 
 ## Notes
 
-- Skills are automatically referenced based on your task
-- The code quality rules enforce proper Detekt fixes (no suppressions except for SDK compatibility)
-- Settings.json pre-approves common development commands
+- Manual dependency injection (no Hilt/Koin/Dagger).
+- Compose state is managed in screens; shared state uses `StateFlow`.
+- Detekt is enforced; fix rules rather than suppressing.
+
+## Feature Checklist
+
+### TV App
+- [x] Home screen with hero section and content rows
+- [x] Dynamic backdrop with color extraction
+- [x] Top navigation bar (Home/Movies/Shows/Search/Discover/Settings)
+- [x] Continue Watching row
+- [x] Next Up row
+- [x] Latest Movies/Shows/Episodes rows
+- [x] Season Premieres row
+- [x] Genre rows with randomization
+- [x] Collection rows with pinning
+- [x] Media cards (portrait + wide)
+- [x] Long-press context menus on media cards
+- [x] Detail screen
+- [x] Player screen
+- [x] Library screen
+- [x] Search screen
+- [x] Login screen
+- [x] Server discovery (UDP)
+- [x] Quick Connect authentication
+- [x] QR code login display
+- [x] Preferences screen with home customization
+- [x] D-pad navigation and focus management
+- [x] Background polling for content updates
+- [x] Jellyseerr integration (setup, browse, request)
+
+### Mobile App
+- [x] Home screen with responsive hero section
+- [x] Dropdown navigation menu
+- [x] Auto-rotating hero carousel
+- [x] Responsive layout (phones, foldables, tablets)
+- [x] Progress bars on Continue Watching cards
+- [x] Episode badges on wide cards
+- [x] Season Premieres, Genre, and Collection rows
+- [x] Detail screen
+- [x] Player screen with PlaybackService
+- [x] Library screen
+- [x] Search screen
+- [x] Settings screen with home customization
+- [x] Login screen
+- [x] Splash screen
+- [x] Jellyseerr integration (setup, browse, request)
+
+### Playback - Video
+- [x] Dual player backend architecture (ExoPlayer + MPV)
+- [ ] Video zoom/aspect ratio (fit/crop/fill/stretch cycle)
+- [ ] HDR detection and handling
+- [ ] Dolby Vision support
+- [ ] Buffer mode selection (low/medium/high)
+- [ ] External subtitles during direct play
+- [ ] Subtitle styling customization
+- [x] Resume playback position
+- [ ] Background video (audio continues when backgrounded)
+
+### Playback - Audio
+- [ ] Audio Night Mode (dynamic range compression)
+- [ ] Audio Delay Offset (sync delay)
+- [ ] Stereo downmix (7.1/5.1 -> stereo)
+- [ ] DTS/TrueHD runtime capability detection
+- [ ] DTS capability toggle in settings
+- [ ] DTS-only audio delay mode
+- [ ] Audio track selection and memory
+
+### Playback - Advanced
+- [ ] Media Segments integration (skip intro/outro/credits)
+- [ ] Per-segment-type skip settings
+- [ ] Theme music during browsing
+- [ ] Remember audio/subtitle preferences per series
+- [ ] Multi-version/multi-source support
+- [ ] Collection binge mode (auto-queue next item)
+
+### Home Screen
+- [x] User-selectable collection rows
+- [x] Collection picker settings UI
+- [x] Genre rows with randomization
+- [x] Genre picker settings UI
+- [x] Section visibility toggles
+- [x] Season Premieres row
+- [x] Continue Watching row
+- [x] Next Up row
+- [x] Latest additions rows
+
+### Search and Discovery
+- [x] Text search (basic)
+- [ ] Voice search
+- [ ] Search suggestions
+- [ ] Filter by type/genre/year
+
+### Server and Authentication
+- [x] Server discovery (UDP)
+- [x] Manual server entry
+- [x] QR code login display
+- [ ] Multiple server support
+- [x] Quick Connect support
+
+### Integrations
+- [x] Jellyseerr integration
+- [ ] OTA updates from GitHub releases
+- [ ] Dream Service (screensaver)
+- [ ] Photo player/slideshow
+
+## Roadmap
+
+### Near-term
+- Video zoom/aspect ratio controls
+- Audio track selection and memory
+- Subtitle styling customization
+- Loading states and skeleton screens
+- Retry buttons for failed API calls
+
+### Mid-term
+- Media Segments integration (skip intro/credits)
+- Voice search (TV)
+- Search filters (type/genre/year)
+- Multiple server support
+- HDR detection and handling
+
+### Long-term
+- OTA updates from GitHub releases
+- Universe Collections integration
+- Dream Service (screensaver)
+- Dolby Vision support
