@@ -81,6 +81,10 @@ import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.common.ui.SeerrActionDivider
+import dev.jausc.myflix.core.common.ui.SeerrActionItem
+import dev.jausc.myflix.core.common.ui.SeerrMediaActions
+import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
@@ -88,6 +92,11 @@ import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRowType
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogItemDivider
+import dev.jausc.myflix.tv.ui.components.DialogItemEntry
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
@@ -147,6 +156,36 @@ fun SeerrHomeScreen(
 
     // The item to display in hero - preview takes precedence
     val heroDisplayItem = previewItem ?: featuredItem
+
+    // Dialog state for long-press context menu
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogMedia by remember { mutableStateOf<SeerrMedia?>(null) }
+
+    // Seerr actions for context menu
+    val seerrActions = remember(onMediaClick, coroutineScope, seerrClient) {
+        SeerrMediaActions(
+            onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
+            onRequest = { media ->
+                coroutineScope.launch {
+                    if (media.isMovie) {
+                        seerrClient.requestMovie(media.tmdbId ?: media.id)
+                    } else {
+                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
+                    }
+                }
+            },
+            onAddToWatchlist = { media ->
+                coroutineScope.launch {
+                    seerrClient.addToWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+            onRemoveFromWatchlist = { media ->
+                coroutineScope.launch {
+                    seerrClient.removeFromWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+        )
+    }
 
     // Collect auth state as Compose state for proper recomposition
     val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
@@ -331,6 +370,14 @@ fun SeerrHomeScreen(
                                     onItemClick = { media ->
                                         onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                                     },
+                                    onItemLongClick = { media ->
+                                        dialogMedia = media
+                                        dialogParams = DialogParams(
+                                            title = media.displayTitle,
+                                            items = buildSeerrDialogItems(media, seerrActions),
+                                            fromLongClick = true,
+                                        )
+                                    },
                                     onItemFocused = { media -> previewItem = media },
                                     onViewAll = onViewAll,
                                 )
@@ -356,6 +403,38 @@ fun SeerrHomeScreen(
             homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
+
+        // Long-press context menu dialog
+        dialogParams?.let { params ->
+            DialogPopup(
+                params = params,
+                onDismissRequest = {
+                    dialogParams = null
+                    dialogMedia = null
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Convert Seerr action items to TV dialog items.
+ */
+private fun buildSeerrDialogItems(
+    media: SeerrMedia,
+    actions: SeerrMediaActions,
+): List<DialogItemEntry> {
+    return buildSeerrActionItems(media, actions).map { entry ->
+        when (entry) {
+            is SeerrActionDivider -> DialogItemDivider
+            is SeerrActionItem -> DialogItem(
+                text = entry.text,
+                icon = entry.icon,
+                iconTint = entry.iconTint,
+                enabled = entry.enabled,
+                onClick = entry.onClick,
+            )
+        }
     }
 }
 
@@ -561,6 +640,7 @@ private fun SeerrContentRow(
     seerrClient: SeerrClient,
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
+    onItemLongClick: ((SeerrMedia) -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
     onViewAll: (() -> Unit)? = null,
 ) {
@@ -597,6 +677,7 @@ private fun SeerrContentRow(
                     media = media,
                     seerrClient = seerrClient,
                     onClick = { onItemClick(media) },
+                    onLongClick = onItemLongClick?.let { { it(media) } },
                     onItemFocused = onItemFocused,
                 )
             }
@@ -615,10 +696,12 @@ private fun SeerrMediaCard(
     media: SeerrMedia,
     seerrClient: SeerrClient,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
 ) {
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = Modifier
             .width(120.dp)
             .aspectRatio(2f / 3f)

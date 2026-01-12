@@ -5,8 +5,10 @@
 
 package dev.jausc.myflix.mobile.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,9 +51,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.ui.SeerrActionDivider
+import dev.jausc.myflix.core.common.ui.SeerrActionItem
+import dev.jausc.myflix.core.common.ui.SeerrMediaActions
+import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
+import dev.jausc.myflix.mobile.ui.components.MenuItem
+import dev.jausc.myflix.mobile.ui.components.MenuItemDivider
+import dev.jausc.myflix.mobile.ui.components.MenuItemEntry
+import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -159,6 +170,35 @@ private fun SeerrMediaListScreen(
     var totalPages by remember { mutableIntStateOf(1) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
+    // Menu state for long-press context menu
+    var menuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
+
+    // Seerr actions for context menu
+    val seerrActions = remember(onMediaClick, scope, seerrClient) {
+        SeerrMediaActions(
+            onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
+            onRequest = { media ->
+                scope.launch {
+                    if (media.isMovie) {
+                        seerrClient.requestMovie(media.tmdbId ?: media.id)
+                    } else {
+                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
+                    }
+                }
+            },
+            onAddToWatchlist = { media ->
+                scope.launch {
+                    seerrClient.addToWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+            onRemoveFromWatchlist = { media ->
+                scope.launch {
+                    seerrClient.removeFromWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+        )
+    }
+
     suspend fun loadPage(pageToLoad: Int, append: Boolean) {
         if (append) {
             isLoadingMore = true
@@ -248,6 +288,12 @@ private fun SeerrMediaListScreen(
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
+                            onLongClick = {
+                                menuParams = BottomSheetParams(
+                                    title = media.displayTitle,
+                                    items = buildSeerrMenuItems(media, seerrActions),
+                                )
+                            },
                         )
                     }
                     if (isLoadingMore) {
@@ -265,6 +311,40 @@ private fun SeerrMediaListScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Long-press context menu
+        menuParams?.let { params ->
+            PopupMenu(
+                params = params,
+                onDismiss = { menuParams = null },
+            )
+        }
+    }
+}
+
+/**
+ * Convert Seerr action items to mobile menu items.
+ */
+private fun buildSeerrMenuItems(
+    media: SeerrMedia,
+    actions: SeerrMediaActions,
+): List<MenuItemEntry> {
+    return buildSeerrActionItems(media, actions).mapNotNull { entry ->
+        when (entry) {
+            is SeerrActionDivider -> MenuItemDivider
+            is SeerrActionItem -> {
+                if (entry.enabled) {
+                    MenuItem(
+                        text = entry.text,
+                        icon = entry.icon,
+                        iconTint = entry.iconTint,
+                        onClick = entry.onClick,
+                    )
+                } else {
+                    null // Skip disabled items on mobile
                 }
             }
         }
@@ -325,21 +405,27 @@ private fun SeerrMobileErrorState(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SeerrMobileMediaCard(
     media: SeerrMedia,
     seerrClient: SeerrClient?,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val posterUrl = seerrClient?.getPosterUrl(media.posterPath) ?: media.posterPath?.let {
         "https://image.tmdb.org/t/p/w500$it"
     }
 
     Card(
-        onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
     ) {
         Row(
             modifier = Modifier

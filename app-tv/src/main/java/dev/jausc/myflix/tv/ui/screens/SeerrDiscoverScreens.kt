@@ -51,9 +51,18 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.ui.SeerrActionDivider
+import dev.jausc.myflix.core.common.ui.SeerrActionItem
+import dev.jausc.myflix.core.common.ui.SeerrMediaActions
+import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogItemDivider
+import dev.jausc.myflix.tv.ui.components.DialogItemEntry
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
@@ -163,6 +172,35 @@ private fun SeerrMediaGridScreen(
     var totalPages by remember { mutableIntStateOf(1) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val firstItemFocusRequester = remember { FocusRequester() }
+
+    // Dialog state for long-press context menu
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+
+    // Seerr actions for context menu
+    val seerrActions = remember(onMediaClick, scope, seerrClient) {
+        SeerrMediaActions(
+            onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
+            onRequest = { media ->
+                scope.launch {
+                    if (media.isMovie) {
+                        seerrClient.requestMovie(media.tmdbId ?: media.id)
+                    } else {
+                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
+                    }
+                }
+            },
+            onAddToWatchlist = { media ->
+                scope.launch {
+                    seerrClient.addToWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+            onRemoveFromWatchlist = { media ->
+                scope.launch {
+                    seerrClient.removeFromWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                }
+            },
+        )
+    }
 
     suspend fun loadPage(pageToLoad: Int, append: Boolean) {
         if (append) {
@@ -299,6 +337,13 @@ private fun SeerrMediaGridScreen(
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
+                            onLongClick = {
+                                dialogParams = DialogParams(
+                                    title = media.displayTitle,
+                                    items = buildSeerrDialogItems(media, seerrActions),
+                                    fromLongClick = true,
+                                )
+                            },
                         )
                     }
                     if (isLoadingMore) {
@@ -316,6 +361,35 @@ private fun SeerrMediaGridScreen(
                 }
             }
         }
+
+        // Long-press context menu dialog
+        dialogParams?.let { params ->
+            DialogPopup(
+                params = params,
+                onDismissRequest = { dialogParams = null },
+            )
+        }
+    }
+}
+
+/**
+ * Convert Seerr action items to TV dialog items.
+ */
+private fun buildSeerrDialogItems(
+    media: SeerrMedia,
+    actions: SeerrMediaActions,
+): List<DialogItemEntry> {
+    return buildSeerrActionItems(media, actions).map { entry ->
+        when (entry) {
+            is SeerrActionDivider -> DialogItemDivider
+            is SeerrActionItem -> DialogItem(
+                text = entry.text,
+                icon = entry.icon,
+                iconTint = entry.iconTint,
+                enabled = entry.enabled,
+                onClick = entry.onClick,
+            )
+        }
     }
 }
 
@@ -325,11 +399,13 @@ private fun SeerrTvPosterCard(
     seerrClient: SeerrClient,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val posterUrl = seerrClient.getPosterUrl(media.posterPath)
 
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier.size(width = 160.dp, height = 240.dp),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
