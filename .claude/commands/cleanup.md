@@ -7,8 +7,8 @@ Steps to perform:
 4. Ensure consistent formatting
 5. Check for TODO comments that should be addressed
 6. Verify no debug logging left in production code
-7. **Apply changes equally to TV and mobile apps** - Any feature, fix, or improvement made to one app must be applied to the other
-8. **Move common code to core modules** - Extract shared logic (models, utilities, formatters) to appropriate core modules
+7. **Apply changes equally to TV and mobile apps** - Any feature, fix, or improvement made to one app must be applied to the other. Always check both app-tv and app-mobile when reviewing changes.
+8. **Move common code to core modules** - Extract shared logic (models, utilities, formatters, state classes) to appropriate core modules (core/common, core/seerr, etc.) to avoid duplication
 9. Generate a comprehensive git commit message
 
 For unused import removal, use:

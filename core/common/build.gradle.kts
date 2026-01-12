@@ -26,6 +26,9 @@ dependencies {
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
 
+    // Core modules
+    api(project(":core:seerr"))
+
     // Coroutines - exposed to consumers for StateFlow in preferences
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
 

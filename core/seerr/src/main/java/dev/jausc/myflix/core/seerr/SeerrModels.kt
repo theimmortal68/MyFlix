@@ -389,7 +389,16 @@ data class SeerrPerson(
     val knownForDepartment: String? = null,
     val alsoKnownAs: List<String>? = null,
     val combinedCredits: SeerrPersonCredits? = null,
-)
+) {
+    /**
+     * Formatted "Also known as" text (first 3 names).
+     * Returns null if no alternate names.
+     */
+    val formattedAlsoKnownAs: String?
+        get() = alsoKnownAs?.takeIf { it.isNotEmpty() }?.let { names ->
+            "Also known as: ${names.take(3).joinToString(", ")}"
+        }
+}
 
 /**
  * Person's combined credits (movies and TV shows they appeared in).
@@ -398,7 +407,13 @@ data class SeerrPerson(
 data class SeerrPersonCredits(
     val cast: List<SeerrPersonCastCredit>? = null,
     val crew: List<SeerrPersonCrewCredit>? = null,
-)
+) {
+    /**
+     * Cast credits sorted by vote average (highest rated first).
+     */
+    val sortedCast: List<SeerrPersonCastCredit>
+        get() = cast?.sortedByDescending { it.voteAverage ?: 0.0 } ?: emptyList()
+}
 
 /**
  * A cast credit for a person (a movie/show they acted in).
