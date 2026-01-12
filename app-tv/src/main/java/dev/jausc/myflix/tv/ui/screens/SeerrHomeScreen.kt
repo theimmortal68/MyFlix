@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,19 +132,22 @@ fun SeerrHomeScreen(
     // The item to display in hero - preview takes precedence
     val heroDisplayItem = previewItem ?: featuredItem
 
+    // Collect auth state as Compose state for proper recomposition
+    val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
+
     // Filter out items already in library, partially available, or already requested
     fun List<SeerrMedia>.filterDiscoverable() = filter {
         !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
     }
 
     // Load content and libraries - key on auth status to reload if auth changes
-    LaunchedEffect(seerrClient.isAuthenticated) {
+    LaunchedEffect(isAuthenticated) {
         // Load libraries for navigation
         jellyfinClient?.getLibraries()?.onSuccess { libs ->
             libraries = libs
         }
 
-        if (!seerrClient.isAuthenticated) {
+        if (!isAuthenticated) {
             errorMessage = "Not connected to Seerr"
             isLoading = false
             return@LaunchedEffect

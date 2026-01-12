@@ -46,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,14 +87,17 @@ fun SeerrHomeScreen(
     var upcomingMovies by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
     var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
 
+    // Collect auth state as Compose state for proper recomposition
+    val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
+
     // Filter out items already in library, partially available, or already requested
     fun List<SeerrMedia>.filterDiscoverable() = filter {
         !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
     }
 
     // Load content - key on auth status to reload if auth changes
-    LaunchedEffect(seerrClient.isAuthenticated) {
-        if (!seerrClient.isAuthenticated) {
+    LaunchedEffect(isAuthenticated) {
+        if (!isAuthenticated) {
             errorMessage = "Not connected to Seerr"
             isLoading = false
             return@LaunchedEffect

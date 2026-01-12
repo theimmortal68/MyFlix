@@ -22,6 +22,9 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import java.net.URL
@@ -77,8 +80,8 @@ class SeerrClient(
 
     var baseUrl: String? = null
         private set
-    var isAuthenticated: Boolean = false
-        private set
+    private val _isAuthenticated = MutableStateFlow(false)
+    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
     var currentUser: SeerrUser? = null
         private set
     var apiKey: String? = null
@@ -243,7 +246,7 @@ class SeerrClient(
         }
 
         val user: SeerrUser = response.body()
-        isAuthenticated = true
+        _isAuthenticated.value = true
         currentUser = user
         apiKey = user.apiKey // Store API key for persistent auth (if provided)
         user
@@ -265,7 +268,7 @@ class SeerrClient(
         }
 
         val user: SeerrUser = response.body()
-        isAuthenticated = true
+        _isAuthenticated.value = true
         currentUser = user
         sessionCookie = cookie
         user
@@ -287,7 +290,7 @@ class SeerrClient(
         }
 
         val user: SeerrUser = response.body()
-        isAuthenticated = true
+        _isAuthenticated.value = true
         currentUser = user
         apiKey = key
         user
@@ -308,7 +311,7 @@ class SeerrClient(
         }
 
         val user: SeerrUser = response.body()
-        isAuthenticated = true
+        _isAuthenticated.value = true
         currentUser = user
         user
     }
@@ -439,7 +442,7 @@ class SeerrClient(
         }
 
         val user = userResult.getOrThrow()
-        isAuthenticated = true
+        _isAuthenticated.value = true
         currentUser = user
         apiKey = user.apiKey
 
@@ -452,7 +455,7 @@ class SeerrClient(
     suspend fun logout(): Result<Unit> = runCatching {
         requireBaseUrl()
         httpClient.post("$baseUrl/api/v1/auth/logout")
-        isAuthenticated = false
+        _isAuthenticated.value = false
         currentUser = null
     }
 
@@ -964,7 +967,7 @@ class SeerrClient(
      */
     fun reset() {
         baseUrl = null
-        isAuthenticated = false
+        _isAuthenticated.value = false
         currentUser = null
     }
 
@@ -974,7 +977,7 @@ class SeerrClient(
 
     private fun requireAuth() {
         requireBaseUrl()
-        require(isAuthenticated) { "Not authenticated. Call login*() first." }
+        require(isAuthenticated.value) { "Not authenticated. Call login*() first." }
     }
 
     /**
