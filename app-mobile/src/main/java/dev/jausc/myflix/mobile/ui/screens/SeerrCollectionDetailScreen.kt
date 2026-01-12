@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +45,8 @@ import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCollection
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import kotlinx.coroutines.launch
 
 @Composable
 fun SeerrCollectionDetailScreen(
@@ -54,14 +58,31 @@ fun SeerrCollectionDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var collection by remember { mutableStateOf<SeerrCollection?>(null) }
+    var refreshTrigger by remember { mutableStateOf(0) }
+    var requestingId by remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(collectionId) {
+    LaunchedEffect(collectionId, refreshTrigger) {
         isLoading = true
         errorMessage = null
         seerrClient.getCollection(collectionId)
             .onSuccess { collection = it }
             .onFailure { errorMessage = it.message ?: "Failed to load collection" }
         isLoading = false
+    }
+
+    fun requestMedia(media: SeerrMedia) {
+        requestingId = media.id
+        val mediaType = if (media.mediaType.isNotBlank()) media.mediaType else if (media.isMovie) "movie" else "tv"
+        val tmdbId = media.tmdbId ?: media.id
+        val requestResult = if (mediaType == "movie") {
+            seerrClient.requestMovie(tmdbId)
+        } else {
+            seerrClient.requestTVShow(tmdbId, null)
+        }
+        requestResult
+            .onSuccess { refreshTrigger++ }
+            .onFailure { errorMessage = it.message ?: "Request failed" }
+        requestingId = null
     }
 
     Column(
