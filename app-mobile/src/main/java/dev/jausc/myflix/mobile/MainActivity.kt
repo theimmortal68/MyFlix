@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.jausc.myflix.core.common.ui.SplashScreen
+import dev.jausc.myflix.core.common.util.NavigationHelper
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
@@ -196,7 +197,7 @@ fun MyFlixMobileContent() {
                 jellyfinClient = jellyfinClient,
                 preferences = mobilePreferences,
                 onLibraryClick = { libraryId, libraryName ->
-                    navController.navigate("library/$libraryId/$libraryName")
+                    navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
                 },
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")

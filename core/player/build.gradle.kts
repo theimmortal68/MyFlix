@@ -49,6 +49,6 @@ dependencies {
     implementation("androidx.media3:media3-common:$media3Version")
 
     // Jellyfin's FFmpeg extension for DTS/DTS-HD/DTS:X/TrueHD audio decoding
-    // Version must match Media3 version (1.8.0+1 for Media3 1.8.0)
-    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.8.0+1")
+    // Version must match Media3 version
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1")
 }

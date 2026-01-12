@@ -28,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.jausc.myflix.core.common.ui.SplashScreen
 import dev.jausc.myflix.core.common.ui.SplashScreenTvConfig
+import dev.jausc.myflix.core.common.util.NavigationHelper
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
@@ -54,15 +55,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-/**
- * Helper function to navigate to a library screen.
- * Encodes the library name for URL safety.
- */
-private fun navigateToLibrary(navController: NavController, libraryId: String, libraryName: String) {
-    val encodedName = java.net.URLEncoder.encode(libraryName, "UTF-8")
-    navController.navigate("library/$libraryId/$encodedName")
 }
 
 @Composable
@@ -206,7 +198,7 @@ fun MyFlixTvApp() {
                     jellyfinClient = jellyfinClient,
                     preferences = tvPreferences,
                     onLibraryClick = { libraryId, libraryName ->
-                        navController.navigate("library/$libraryId/$libraryName")
+                        navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
                     },
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
@@ -272,7 +264,7 @@ fun MyFlixTvApp() {
                         navController.navigate("seerr")
                     },
                     onNavigateLibrary = { libraryId, libraryName ->
-                        navigateToLibrary(navController, libraryId, libraryName)
+                        navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
                     },
                 )
             }
@@ -318,7 +310,7 @@ fun MyFlixTvApp() {
                         },
                         jellyfinClient = jellyfinClient,
                         onNavigateLibrary = { libraryId, libraryName ->
-                            navigateToLibrary(navController, libraryId, libraryName)
+                            navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
                         },
                     )
                 }
