@@ -113,21 +113,6 @@ fun SeerrDiscoverTvScreen(
 }
 
 @Composable
-fun SeerrDiscoverWatchlistScreen(
-    seerrClient: SeerrClient,
-    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
-    onBack: () -> Unit,
-) {
-    SeerrMediaListScreen(
-        title = "Watchlist",
-        onBack = onBack,
-        loadItems = { page -> seerrClient.getWatchlist(page) },
-        seerrClient = seerrClient,
-        onMediaClick = onMediaClick,
-    )
-}
-
-@Composable
 fun SeerrDiscoverByGenreScreen(
     seerrClient: SeerrClient,
     mediaType: String,
@@ -186,14 +171,9 @@ private fun SeerrMediaListScreen(
                     }
                 }
             },
-            onAddToWatchlist = { media ->
+            onBlacklist = { media ->
                 scope.launch {
-                    seerrClient.addToWatchlist(media.tmdbId ?: media.id, media.mediaType)
-                }
-            },
-            onRemoveFromWatchlist = { media ->
-                scope.launch {
-                    seerrClient.removeFromWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
                 }
             },
         )

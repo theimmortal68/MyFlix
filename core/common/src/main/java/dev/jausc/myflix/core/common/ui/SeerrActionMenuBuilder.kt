@@ -2,9 +2,8 @@ package dev.jausc.myflix.core.common.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Block
 import dev.jausc.myflix.core.seerr.SeerrMedia
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.ui.graphics.Color
@@ -15,7 +14,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
  */
 object SeerrActionColors {
     val Request = Color(0xFF8B5CF6) // Purple (Seerr brand)
-    val Watchlist = Color(0xFFFBBF24) // Yellow/Gold
+    val Blacklist = Color(0xFFEF4444) // Red
     val GoTo = Color(0xFF60A5FA) // Blue
     val Pending = Color(0xFFFBBF24) // Yellow (already requested)
     val Available = Color(0xFF22C55E) // Green (already in library)
@@ -49,8 +48,7 @@ data class SeerrActionItem(
 data class SeerrMediaActions(
     val onGoTo: (mediaType: String, tmdbId: Int) -> Unit,
     val onRequest: (media: SeerrMedia) -> Unit,
-    val onAddToWatchlist: (media: SeerrMedia) -> Unit,
-    val onRemoveFromWatchlist: (media: SeerrMedia) -> Unit,
+    val onBlacklist: (media: SeerrMedia) -> Unit,
 )
 
 /**
@@ -58,13 +56,11 @@ data class SeerrMediaActions(
  *
  * @param media The SeerrMedia being acted upon
  * @param actions Callbacks for the various actions
- * @param isOnWatchlist Whether the item is currently on the user's watchlist
  * @return List of SeerrActionEntry for the menu
  */
 fun buildSeerrActionItems(
     media: SeerrMedia,
     actions: SeerrMediaActions,
-    isOnWatchlist: Boolean = false,
 ): List<SeerrActionEntry> = buildList {
     val isAvailable = media.isAvailable
     val isPending = media.isPending
@@ -127,26 +123,14 @@ fun buildSeerrActionItems(
 
     add(SeerrActionDivider)
 
-    // Watchlist toggle
-    if (isOnWatchlist) {
-        add(
-            SeerrActionItem(
-                id = "watchlist",
-                text = "Remove from Watchlist",
-                icon = Icons.Default.Bookmark,
-                iconTint = SeerrActionColors.Watchlist,
-                onClick = { actions.onRemoveFromWatchlist(media) },
-            ),
-        )
-    } else {
-        add(
-            SeerrActionItem(
-                id = "watchlist",
-                text = "Add to Watchlist",
-                icon = Icons.Default.BookmarkBorder,
-                iconTint = SeerrActionColors.Watchlist,
-                onClick = { actions.onAddToWatchlist(media) },
-            ),
-        )
-    }
+    // Blacklist - hide from discover
+    add(
+        SeerrActionItem(
+            id = "blacklist",
+            text = "Hide from Discover",
+            icon = Icons.Default.Block,
+            iconTint = SeerrActionColors.Blacklist,
+            onClick = { actions.onBlacklist(media) },
+        ),
+    )
 }

@@ -502,17 +502,6 @@ class SeerrClient(
         )
     }
 
-    /**
-     * Get user's watchlist.
-     */
-    suspend fun getWatchlist(page: Int = 1): Result<SeerrDiscoverResult> = runCatching {
-        requireAuth()
-        val response = httpClient.get("$baseUrl/api/v1/discover/watchlist") {
-            parameter("page", page)
-        }
-        response.body()
-    }
-
     // ========================================================================
     // Discovery
     // ========================================================================
@@ -785,6 +774,25 @@ class SeerrClient(
         response.body()
     }
 
+    /**
+     * Get combined ratings for a movie (Rotten Tomatoes, IMDB).
+     */
+    suspend fun getMovieRatings(tmdbId: Int): Result<SeerrRatingResponse> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/movie/$tmdbId/ratingscombined")
+        response.body()
+    }
+
+    /**
+     * Get Rotten Tomatoes ratings for a TV show.
+     * Note: TV shows return a flat structure, not nested like movies.
+     */
+    suspend fun getTVRatings(tmdbId: Int): Result<SeerrRottenTomatoesRating> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/tv/$tmdbId/ratings")
+        response.body()
+    }
+
     // ========================================================================
     // Person/Actor
     // ========================================================================
@@ -945,15 +953,16 @@ class SeerrClient(
     }
 
     // ========================================================================
-    // Watchlist
+    // Blacklist
     // ========================================================================
 
     /**
-     * Add media to watchlist.
+     * Add media to blacklist.
+     * Blacklisted items won't appear in discover results.
      */
-    suspend fun addToWatchlist(tmdbId: Int, mediaType: String): Result<Unit> = runCatching {
+    suspend fun addToBlacklist(tmdbId: Int, mediaType: String): Result<Unit> = runCatching {
         requireAuth()
-        val response = httpClient.post("$baseUrl/api/v1/discover/watchlist") {
+        val response = httpClient.post("$baseUrl/api/v1/blacklist") {
             setBody(
                 mapOf(
                     "tmdbId" to tmdbId,
@@ -962,20 +971,18 @@ class SeerrClient(
             )
         }
         if (!response.status.isSuccess()) {
-            throw Exception("Failed to add to watchlist: ${response.status}")
+            throw Exception("Failed to add to blacklist: ${response.status}")
         }
     }
 
     /**
-     * Remove media from watchlist.
+     * Remove media from blacklist.
      */
-    suspend fun removeFromWatchlist(tmdbId: Int, mediaType: String): Result<Unit> = runCatching {
+    suspend fun removeFromBlacklist(tmdbId: Int): Result<Unit> = runCatching {
         requireAuth()
-        val response = httpClient.delete("$baseUrl/api/v1/discover/watchlist/$tmdbId") {
-            parameter("mediaType", mediaType)
-        }
+        val response = httpClient.delete("$baseUrl/api/v1/blacklist/$tmdbId")
         if (!response.status.isSuccess()) {
-            throw Exception("Failed to remove from watchlist: ${response.status}")
+            throw Exception("Failed to remove from blacklist: ${response.status}")
         }
     }
 

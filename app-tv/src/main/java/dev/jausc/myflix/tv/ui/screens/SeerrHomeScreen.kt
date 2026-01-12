@@ -132,7 +132,6 @@ fun SeerrHomeScreen(
     onNavigateDiscoverTrending: () -> Unit = {},
     onNavigateDiscoverMovies: () -> Unit = {},
     onNavigateDiscoverTv: () -> Unit = {},
-    onNavigateWatchlist: () -> Unit = {},
 ) {
     // Coroutine scope for navigation actions
     val coroutineScope = rememberCoroutineScope()
@@ -174,14 +173,9 @@ fun SeerrHomeScreen(
                     }
                 }
             },
-            onAddToWatchlist = { media ->
+            onBlacklist = { media ->
                 coroutineScope.launch {
-                    seerrClient.addToWatchlist(media.tmdbId ?: media.id, media.mediaType)
-                }
-            },
-            onRemoveFromWatchlist = { media ->
-                coroutineScope.launch {
-                    seerrClient.removeFromWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
                 }
             },
         )
@@ -359,8 +353,7 @@ fun SeerrHomeScreen(
                                     SeerrRowType.TRENDING -> onNavigateDiscoverTrending
                                     SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
                                     SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                    SeerrRowType.WATCHLIST -> onNavigateWatchlist
-                                    SeerrRowType.OTHER -> null
+                                    else -> null
                                 }
                                 SeerrContentRow(
                                     title = row.title,

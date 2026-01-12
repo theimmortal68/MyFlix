@@ -100,7 +100,6 @@ fun SeerrHomeScreen(
     onNavigateDiscoverTrending: () -> Unit = {},
     onNavigateDiscoverMovies: () -> Unit = {},
     onNavigateDiscoverTv: () -> Unit = {},
-    onNavigateWatchlist: () -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -125,14 +124,9 @@ fun SeerrHomeScreen(
                     }
                 }
             },
-            onAddToWatchlist = { media ->
+            onBlacklist = { media ->
                 scope.launch {
-                    seerrClient.addToWatchlist(media.tmdbId ?: media.id, media.mediaType)
-                }
-            },
-            onRemoveFromWatchlist = { media ->
-                scope.launch {
-                    seerrClient.removeFromWatchlist(media.tmdbId ?: media.id, media.mediaType)
+                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
                 }
             },
         )
@@ -216,7 +210,6 @@ fun SeerrHomeScreen(
                 "Trending" to onNavigateDiscoverTrending,
                 "Movies" to onNavigateDiscoverMovies,
                 "TV" to onNavigateDiscoverTv,
-                "Watchlist" to onNavigateWatchlist,
                 "Search" to onNavigateSearch,
                 "Requests" to onNavigateRequests,
             )
@@ -274,8 +267,7 @@ fun SeerrHomeScreen(
                                 SeerrRowType.TRENDING -> onNavigateDiscoverTrending
                                 SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
                                 SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                SeerrRowType.WATCHLIST -> onNavigateWatchlist
-                                SeerrRowType.OTHER -> null
+                                else -> null
                             }
                             MobileSeerrRow(
                                 title = row.title,

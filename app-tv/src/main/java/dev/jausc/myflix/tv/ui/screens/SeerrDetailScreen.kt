@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Schedule
@@ -67,9 +68,11 @@ import dev.jausc.myflix.core.common.util.DateFormatter
 import dev.jausc.myflix.core.seerr.SeerrCastMember
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCrewMember
+import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
+import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeason
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -114,10 +117,11 @@ fun SeerrDetailScreen(
     var isRequesting by remember { mutableStateOf(false) }
     var requestSuccess by remember { mutableStateOf(false) }
     var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var isWatchlisted by remember { mutableStateOf<Boolean?>(null) }
-    var isWatchlistUpdating by remember { mutableStateOf(false) }
+    var isBlacklisting by remember { mutableStateOf(false) }
     var request4k by remember { mutableStateOf(false) }
     var quotaDetails by remember { mutableStateOf<SeerrQuotaDetails?>(null) }
+    var rtRating by remember { mutableStateOf<SeerrRottenTomatoesRating?>(null) }
+    var imdbRating by remember { mutableStateOf<SeerrImdbRating?>(null) }
 
     // Request focus on action button when content loads
     LaunchedEffect(media) {
@@ -137,7 +141,6 @@ fun SeerrDetailScreen(
         crew = emptyList()
         recommendations = emptyList()
         similar = emptyList()
-        isWatchlisted = null
         selectedSeasons = emptySet()
         request4k = false
         quotaDetails = null
@@ -175,19 +178,27 @@ fun SeerrDetailScreen(
             .onSuccess { similar = it.results }
             .onFailure { }
 
-        seerrClient.getWatchlist()
-            .onSuccess { response ->
-                isWatchlisted = response.results.any { item ->
-                    item.tmdbId == tmdbId && item.mediaType == mediaType
-                }
-            }
-            .onFailure { isWatchlisted = null }
-
         seerrClient.getUserQuota()
             .onSuccess { quota ->
                 quotaDetails = if (mediaType == "movie") quota.movie else quota.tv
             }
             .onFailure { quotaDetails = null }
+
+        // Load external ratings (RT, IMDB)
+        rtRating = null
+        imdbRating = null
+        if (mediaType == "movie") {
+            seerrClient.getMovieRatings(tmdbId)
+                .onSuccess { ratings ->
+                    rtRating = ratings.rt
+                    imdbRating = ratings.imdb
+                }
+        } else {
+            seerrClient.getTVRatings(tmdbId)
+                .onSuccess { ratings ->
+                    rtRating = ratings
+                }
+        }
 
         // Load seasons for TV shows
         if (mediaType == "tv") {
@@ -233,19 +244,13 @@ fun SeerrDetailScreen(
         }
     }
 
-    fun toggleWatchlist() {
-        val watchlisted = isWatchlisted ?: return
+    fun handleBlacklist() {
         scope.launch {
-            isWatchlistUpdating = true
-            val result = if (watchlisted) {
-                seerrClient.removeFromWatchlist(tmdbId, mediaType)
-            } else {
-                seerrClient.addToWatchlist(tmdbId, mediaType)
-            }
-            result
-                .onSuccess { isWatchlisted = !watchlisted }
-                .onFailure { errorMessage = it.message ?: "Watchlist update failed" }
-            isWatchlistUpdating = false
+            isBlacklisting = true
+            seerrClient.addToBlacklist(tmdbId, mediaType)
+                .onSuccess { onBack() } // Go back after blacklisting
+                .onFailure { errorMessage = it.message ?: "Failed to blacklist" }
+            isBlacklisting = false
         }
     }
 
@@ -389,24 +394,23 @@ fun SeerrDetailScreen(
                                             ContentRatingBadge(rating = rating)
                                         }
 
-                                        // TMDb rating with label
+                                        // Rotten Tomatoes critics score
+                                        rtRating?.criticsScore?.let { score ->
+                                            RottenTomatoesBadge(
+                                                score = score,
+                                                isFresh = rtRating?.isCriticsFresh == true,
+                                                label = "RT",
+                                            )
+                                        }
+
+                                        // IMDB rating (movies only)
+                                        imdbRating?.criticsScore?.let { score ->
+                                            ImdbRatingBadge(rating = score)
+                                        }
+
+                                        // TMDb rating
                                         currentMedia.voteAverage?.let { rating ->
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            ) {
-                                                Text(
-                                                    text = "TMDb",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color(0xFF01D277),
-                                                )
-                                                Text(
-                                                    text = "%.1f".format(rating),
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFFFBBF24),
-                                                )
-                                            }
+                                            TmdbRatingBadge(rating = rating)
                                         }
 
                                         // Status badge (uses mediaInfo.status for availability)
@@ -515,38 +519,30 @@ fun SeerrDetailScreen(
                                             }
                                         }
 
-                                        if (isWatchlisted != null) {
-                                            Button(
-                                                onClick = { toggleWatchlist() },
-                                                enabled = !isWatchlistUpdating,
-                                                colors = ButtonDefaults.colors(
-                                                    containerColor = if (isWatchlisted == true) {
-                                                        TvColors.Surface
-                                                    } else {
-                                                        TvColors.BluePrimary
-                                                    },
-                                                ),
-                                            ) {
-                                                if (isWatchlistUpdating) {
-                                                    TvLoadingIndicator(
-                                                        modifier = Modifier.size(18.dp),
-                                                        color = TvColors.TextPrimary,
-                                                        strokeWidth = 2.dp,
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        imageVector = if (isWatchlisted == true) {
-                                                            Icons.Outlined.Check
-                                                        } else {
-                                                            Icons.Outlined.Add
-                                                        },
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(18.dp),
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(if (isWatchlisted == true) "Watchlist" else "Add to Watchlist")
+                                        // Blacklist button - hide from discover
+                                        Button(
+                                            onClick = { handleBlacklist() },
+                                            enabled = !isBlacklisting,
+                                            colors = ButtonDefaults.colors(
+                                                containerColor = TvColors.Surface,
+                                            ),
+                                        ) {
+                                            if (isBlacklisting) {
+                                                TvLoadingIndicator(
+                                                    modifier = Modifier.size(18.dp),
+                                                    color = TvColors.TextPrimary,
+                                                    strokeWidth = 2.dp,
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Block,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = TvColors.Error,
+                                                )
                                             }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Hide from Discover")
                                         }
 
                                         // Trailer button (if available)
@@ -944,6 +940,88 @@ private fun ContentRatingBadge(rating: String) {
             )
             .padding(horizontal = 8.dp, vertical = 4.dp),
     )
+}
+
+/**
+ * TMDb rating badge matching Seerr web UI styling.
+ * Displays rating as decimal (e.g., "7.8") not percentage.
+ */
+@Composable
+private fun TmdbRatingBadge(rating: Double) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = "TMDB",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = TvColors.TextSecondary,
+        )
+        Text(
+            text = String.format("%.1f", rating),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF01D277), // TMDb teal/green
+        )
+    }
+}
+
+/**
+ * Rotten Tomatoes rating badge.
+ * Shows RT label with fresh (green) or rotten (red) color based on score.
+ */
+@Composable
+private fun RottenTomatoesBadge(
+    score: Int,
+    isFresh: Boolean,
+    label: String = "RT",
+) {
+    // RT uses red tomato for fresh and green splat for rotten
+    val color = if (isFresh) Color(0xFFFA320A) else Color(0xFF6AC238)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = TvColors.TextSecondary,
+        )
+        Text(
+            text = "$score%",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+    }
+}
+
+/**
+ * IMDB rating badge.
+ * Shows IMDB label with the score in yellow (IMDB brand color).
+ */
+@Composable
+private fun ImdbRatingBadge(rating: Double) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = "IMDB",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = TvColors.TextSecondary,
+        )
+        Text(
+            text = String.format("%.1f", rating),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFF5C518), // IMDB yellow
+        )
+    }
 }
 
 private fun buildQuotaText(quotaDetails: SeerrQuotaDetails?): String? {

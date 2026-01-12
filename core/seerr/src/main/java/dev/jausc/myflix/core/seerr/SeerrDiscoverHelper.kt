@@ -41,7 +41,7 @@ object SeerrDiscoverHelper {
                     seerrClient.discoverTVWithParams(mapOf("firstAirDateGte" to today))
                         .map { it.results }.getOrDefault(emptyList())
                 SeerrDiscoverSliderType.PLEX_WATCHLIST ->
-                    seerrClient.getWatchlist().map { it.results }.getOrDefault(emptyList())
+                    emptyList() // Watchlist removed - use blacklist instead
                 SeerrDiscoverSliderType.TMDB_MOVIE_KEYWORD ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverMoviesWithParams(mapOf("keywords" to data))
@@ -212,7 +212,6 @@ object SeerrDiscoverHelper {
             SeerrDiscoverSliderType.TRENDING -> SeerrRowType.TRENDING
             SeerrDiscoverSliderType.POPULAR_MOVIES -> SeerrRowType.POPULAR_MOVIES
             SeerrDiscoverSliderType.POPULAR_TV -> SeerrRowType.POPULAR_TV
-            SeerrDiscoverSliderType.PLEX_WATCHLIST -> SeerrRowType.WATCHLIST
             else -> SeerrRowType.OTHER
         }
     }
@@ -238,7 +237,6 @@ enum class SeerrRowType {
     TRENDING,
     POPULAR_MOVIES,
     POPULAR_TV,
-    WATCHLIST,
     OTHER,
 }
 

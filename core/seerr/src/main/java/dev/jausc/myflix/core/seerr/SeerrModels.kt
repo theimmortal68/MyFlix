@@ -755,3 +755,46 @@ data class SeerrContentRating(
     val iso31661: String? = null,
     val rating: String? = null,
 )
+
+// ============================================================================
+// External Ratings (Rotten Tomatoes, IMDB)
+// ============================================================================
+
+/**
+ * Combined ratings response for movies.
+ * Returned by /api/v1/movie/{id}/ratingscombined
+ */
+@Serializable
+data class SeerrRatingResponse(
+    val rt: SeerrRottenTomatoesRating? = null,
+    val imdb: SeerrImdbRating? = null,
+)
+
+/**
+ * Rotten Tomatoes ratings.
+ */
+@Serializable
+data class SeerrRottenTomatoesRating(
+    val criticsRating: String? = null, // "Fresh", "Rotten", "Certified Fresh"
+    val criticsScore: Int? = null,
+    val audienceRating: String? = null, // "Upright", "Spilled"
+    val audienceScore: Int? = null,
+    val url: String? = null,
+) {
+    /** Whether critics rating is "Fresh" or "Certified Fresh" */
+    val isCriticsFresh: Boolean
+        get() = criticsRating == "Fresh" || criticsRating == "Certified Fresh"
+
+    /** Whether audience rating is positive ("Upright") */
+    val isAudienceFresh: Boolean
+        get() = audienceRating == "Upright"
+}
+
+/**
+ * IMDB rating.
+ */
+@Serializable
+data class SeerrImdbRating(
+    val criticsScore: Double? = null, // IMDB score (0-10 scale)
+    val criticsScoreCount: Int? = null, // Number of votes
+)
