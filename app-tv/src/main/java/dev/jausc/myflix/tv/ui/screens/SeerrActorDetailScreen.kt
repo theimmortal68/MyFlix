@@ -223,15 +223,21 @@ private fun PersonHeader(
         ) {
             Button(
                 onClick = onBack,
-                modifier = Modifier.focusRequester(backButtonFocusRequester),
+                modifier = Modifier
+                    .size(48.dp)
+                    .focusRequester(backButtonFocusRequester),
+                contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.colors(
-                    containerColor = TvColors.Surface,
+                    containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                    contentColor = TvColors.TextPrimary,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
                 ),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
-                    tint = TvColors.TextPrimary,
+                    modifier = Modifier.size(24.dp),
                 )
             }
 

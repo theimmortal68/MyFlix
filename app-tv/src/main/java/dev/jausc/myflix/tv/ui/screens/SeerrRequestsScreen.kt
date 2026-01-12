@@ -16,7 +16,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -186,8 +191,22 @@ fun SeerrRequestsScreen(
             .padding(24.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onBack, modifier = Modifier.height(40.dp)) {
-                Text("Back")
+            Button(
+                onClick = onBack,
+                modifier = Modifier.size(48.dp),
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.colors(
+                    containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                    contentColor = TvColors.TextPrimary,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(24.dp),
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
@@ -205,6 +224,8 @@ fun SeerrRequestsScreen(
                     val isSelected = requestScope == scopeItem
                     Button(
                         onClick = { requestScope = scopeItem },
+                        modifier = Modifier.height(20.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         colors = if (isSelected) {
                             ButtonDefaults.colors(
                                 containerColor = TvColors.BluePrimary,
@@ -219,7 +240,7 @@ fun SeerrRequestsScreen(
                             )
                         },
                     ) {
-                        Text(scopeItem.label)
+                        Text(scopeItem.label, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -231,6 +252,8 @@ fun SeerrRequestsScreen(
                 val isSelected = selectedFilter == filter
                 Button(
                     onClick = { selectedFilter = filter },
+                    modifier = Modifier.height(20.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     colors = if (isSelected) {
                         ButtonDefaults.colors(
                             containerColor = TvColors.BluePrimary,
@@ -245,7 +268,7 @@ fun SeerrRequestsScreen(
                         )
                     },
                 ) {
-                    Text(filter.label)
+                    Text(filter.label, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -257,6 +280,8 @@ fun SeerrRequestsScreen(
                 val isSelected = selectedSort == sort
                 Button(
                     onClick = { selectedSort = sort },
+                    modifier = Modifier.height(20.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     colors = if (isSelected) {
                         ButtonDefaults.colors(
                             containerColor = TvColors.BluePrimary,
@@ -271,7 +296,7 @@ fun SeerrRequestsScreen(
                         )
                     },
                 ) {
-                    Text(sort.label)
+                    Text(sort.label, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -414,18 +439,33 @@ private fun SeerrRequestRow(
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (canApprove) {
-                        Button(onClick = onApprove, enabled = !isUpdating) {
-                            Text("Approve")
+                        Button(
+                            onClick = onApprove,
+                            enabled = !isUpdating,
+                            modifier = Modifier.height(20.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        ) {
+                            Text("Approve", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     if (canDecline) {
-                        Button(onClick = onDecline, enabled = !isUpdating) {
-                            Text("Decline")
+                        Button(
+                            onClick = onDecline,
+                            enabled = !isUpdating,
+                            modifier = Modifier.height(20.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        ) {
+                            Text("Decline", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     if (canCancel) {
-                        Button(onClick = onCancel, enabled = !isUpdating) {
-                            Text("Cancel")
+                        Button(
+                            onClick = onCancel,
+                            enabled = !isUpdating,
+                            modifier = Modifier.height(20.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        ) {
+                            Text("Cancel", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }

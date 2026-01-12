@@ -814,14 +814,15 @@ Modifier
 
 #### Button Sizes
 
-| Type | Size | Icon Size | Content Padding | Usage |
-|------|------|-----------|-----------------|-------|
-| Icon Button | `48.dp` | `24.dp` | `0.dp` | Back buttons, action buttons |
-| Primary Button | `160.dp x 48.dp` | `20.dp` | Default | Play, Request buttons |
+| Type | Height | Icon Size | Content Padding | Usage |
+|------|--------|-----------|-----------------|-------|
+| Icon Button | `48.dp x 48.dp` | `24.dp` | `0.dp` | Back buttons, standalone icon actions |
+| Action Button | `20.dp` | `14.dp` | `horizontal: 14.dp` | Play, Request, More Info (hero-style) |
+| Text Button | `20.dp` | `14-16.dp` | `horizontal: 12.dp` | Text with optional icon |
 
 **Implementation:**
 ```kotlin
-// Icon button (back button)
+// Icon button (back button) - 48x48dp square
 Button(
     onClick = onBack,
     modifier = Modifier.size(48.dp),
@@ -838,6 +839,28 @@ Button(
         contentDescription = "Back",
         modifier = Modifier.size(24.dp),
     )
+}
+
+// Action button (hero-style) - 20dp height
+Button(
+    onClick = onPlayClick,
+    modifier = Modifier.height(20.dp),
+    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+    scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
+    colors = ButtonDefaults.colors(
+        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+        contentColor = TvColors.TextPrimary,
+        focusedContainerColor = TvColors.BluePrimary,
+        focusedContentColor = Color.White,
+    ),
+) {
+    Icon(
+        imageVector = Icons.Outlined.PlayArrow,
+        contentDescription = null,
+        modifier = Modifier.size(14.dp),
+    )
+    Spacer(modifier = Modifier.width(4.dp))
+    Text("Play", style = MaterialTheme.typography.labelSmall)
 }
 ```
 

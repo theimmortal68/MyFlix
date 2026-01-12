@@ -460,7 +460,10 @@ fun SeerrDetailScreen(
                                             SeerrMediaStatus.AVAILABLE -> {
                                                 Button(
                                                     onClick = { /* Play in Jellyfin */ },
-                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
+                                                    modifier = Modifier
+                                                        .height(20.dp)
+                                                        .focusRequester(actionButtonFocusRequester),
+                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFF22C55E),
                                                     ),
@@ -468,17 +471,20 @@ fun SeerrDetailScreen(
                                                     Icon(
                                                         imageVector = Icons.Outlined.PlayArrow,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
+                                                        modifier = Modifier.size(14.dp),
                                                     )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text("Play")
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Play", style = MaterialTheme.typography.labelSmall)
                                                 }
                                             }
 
                                             SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> {
                                                 Button(
                                                     onClick = { },
-                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
+                                                    modifier = Modifier
+                                                        .height(20.dp)
+                                                        .focusRequester(actionButtonFocusRequester),
+                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                                     enabled = false,
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
@@ -488,17 +494,20 @@ fun SeerrDetailScreen(
                                                     Icon(
                                                         imageVector = Icons.Outlined.Schedule,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
+                                                        modifier = Modifier.size(14.dp),
                                                     )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text("Requested")
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Requested", style = MaterialTheme.typography.labelSmall)
                                                 }
                                             }
 
                                             else -> {
                                                 Button(
                                                     onClick = { handleRequest() },
-                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
+                                                    modifier = Modifier
+                                                        .height(20.dp)
+                                                        .focusRequester(actionButtonFocusRequester),
+                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                                     enabled = !isRequesting && statusAllowsRequest && quotaAllowsRequest,
                                                     colors = ButtonDefaults.colors(
                                                         containerColor = Color(0xFF8B5CF6),
@@ -506,7 +515,7 @@ fun SeerrDetailScreen(
                                                 ) {
                                                     if (isRequesting) {
                                                         TvLoadingIndicator(
-                                                            modifier = Modifier.size(20.dp),
+                                                            modifier = Modifier.size(14.dp),
                                                             color = TvColors.TextPrimary,
                                                             strokeWidth = 2.dp,
                                                         )
@@ -514,11 +523,14 @@ fun SeerrDetailScreen(
                                                         Icon(
                                                             imageVector = Icons.Outlined.Add,
                                                             contentDescription = null,
-                                                            modifier = Modifier.size(20.dp),
+                                                            modifier = Modifier.size(14.dp),
                                                         )
                                                     }
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text(if (isRequesting) "Requesting..." else "Request")
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        if (isRequesting) "Requesting..." else "Request",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                    )
                                                 }
                                             }
                                         }
@@ -526,6 +538,8 @@ fun SeerrDetailScreen(
                                         // Blacklist button - hide from discover
                                         Button(
                                             onClick = { handleBlacklist() },
+                                            modifier = Modifier.height(20.dp),
+                                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                             enabled = !isBlacklisting,
                                             colors = ButtonDefaults.colors(
                                                 containerColor = TvColors.Surface,
@@ -533,7 +547,7 @@ fun SeerrDetailScreen(
                                         ) {
                                             if (isBlacklisting) {
                                                 TvLoadingIndicator(
-                                                    modifier = Modifier.size(18.dp),
+                                                    modifier = Modifier.size(14.dp),
                                                     color = TvColors.TextPrimary,
                                                     strokeWidth = 2.dp,
                                                 )
@@ -541,12 +555,12 @@ fun SeerrDetailScreen(
                                                 Icon(
                                                     imageVector = Icons.Outlined.Block,
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(18.dp),
+                                                    modifier = Modifier.size(14.dp),
                                                     tint = TvColors.Error,
                                                 )
                                             }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Hide from Discover")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Hide from Discover", style = MaterialTheme.typography.labelSmall)
                                         }
 
                                         // Trailer button (if available)
@@ -562,6 +576,8 @@ fun SeerrDetailScreen(
                                                     )
                                                     context.startActivity(intent)
                                                 },
+                                                modifier = Modifier.height(20.dp),
+                                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                                 colors = ButtonDefaults.colors(
                                                     containerColor = Color(0xFFFF0000),
                                                 ),
@@ -569,10 +585,10 @@ fun SeerrDetailScreen(
                                                 Icon(
                                                     imageVector = Icons.Outlined.PlayArrow,
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(20.dp),
+                                                    modifier = Modifier.size(14.dp),
                                                 )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Trailer")
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Trailer", style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
                                     }
@@ -600,6 +616,8 @@ fun SeerrDetailScreen(
                                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                             Button(
                                                 onClick = { request4k = !request4k },
+                                                modifier = Modifier.height(20.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                                 colors = if (request4k) {
                                                     ButtonDefaults.colors(
                                                         containerColor = TvColors.BluePrimary,
@@ -614,7 +632,7 @@ fun SeerrDetailScreen(
                                                     )
                                                 },
                                             ) {
-                                                Text("4K")
+                                                Text("4K", style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
 
@@ -631,6 +649,8 @@ fun SeerrDetailScreen(
                                                 item {
                                                     Button(
                                                         onClick = { selectedSeasons = emptySet() },
+                                                        modifier = Modifier.height(20.dp),
+                                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                                         colors = if (selectedSeasons.isEmpty()) {
                                                             ButtonDefaults.colors(
                                                                 containerColor = TvColors.BluePrimary,
@@ -645,7 +665,7 @@ fun SeerrDetailScreen(
                                                             )
                                                         },
                                                     ) {
-                                                        Text("All")
+                                                        Text("All", style = MaterialTheme.typography.labelSmall)
                                                     }
                                                 }
                                                 items(seasonCount) { index ->
@@ -662,6 +682,8 @@ fun SeerrDetailScreen(
                                                                 selectedSeasons + seasonNumber
                                                             }
                                                         },
+                                                        modifier = Modifier.height(20.dp),
+                                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                                         colors = if (selected) {
                                                             ButtonDefaults.colors(
                                                                 containerColor = TvColors.BluePrimary,
@@ -676,7 +698,7 @@ fun SeerrDetailScreen(
                                                             )
                                                         },
                                                     ) {
-                                                        Text("S$seasonNumber")
+                                                        Text("S$seasonNumber", style = MaterialTheme.typography.labelSmall)
                                                     }
                                                 }
                                             }

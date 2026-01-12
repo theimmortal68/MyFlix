@@ -20,7 +20,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -44,6 +48,7 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -146,8 +151,22 @@ fun SeerrSearchScreen(
             .padding(24.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onBack, modifier = Modifier.height(40.dp)) {
-                Text("Back")
+            Button(
+                onClick = onBack,
+                modifier = Modifier.size(48.dp),
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.colors(
+                    containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                    contentColor = TvColors.TextPrimary,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(24.dp),
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
@@ -191,6 +210,8 @@ fun SeerrSearchScreen(
                 val isSelected = selectedFilter == filter
                 Button(
                     onClick = { selectedFilter = filter },
+                    modifier = Modifier.height(20.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     colors = if (isSelected) {
                         ButtonDefaults.colors(
                             containerColor = TvColors.BluePrimary,
@@ -205,7 +226,7 @@ fun SeerrSearchScreen(
                         )
                     },
                 ) {
-                    Text(filter.label)
+                    Text(filter.label, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

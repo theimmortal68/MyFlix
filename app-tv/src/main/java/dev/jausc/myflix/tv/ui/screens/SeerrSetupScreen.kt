@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -303,12 +304,19 @@ fun SeerrSetupScreen(
             ) {
                 Button(
                     onClick = onBack,
-                    colors = ButtonDefaults.colors(containerColor = TvColors.Surface),
+                    modifier = Modifier.size(48.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.colors(
+                        containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                        contentColor = TvColors.TextPrimary,
+                        focusedContainerColor = TvColors.BluePrimary,
+                        focusedContentColor = Color.White,
+                    ),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
-                        tint = TvColors.TextPrimary,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
 
@@ -437,6 +445,8 @@ fun SeerrSetupScreen(
                                         val isSelected = authMode == mode
                                         Button(
                                             onClick = { authMode = mode },
+                                            modifier = Modifier.height(20.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                             colors = if (isSelected) {
                                                 ButtonDefaults.colors(
                                                     containerColor = TvColors.BluePrimary,
@@ -451,7 +461,7 @@ fun SeerrSetupScreen(
                                                 )
                                             },
                                         ) {
-                                            Text(mode.label)
+                                            Text(mode.label, style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
                                 }
