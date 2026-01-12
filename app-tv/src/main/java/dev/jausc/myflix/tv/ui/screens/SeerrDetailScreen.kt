@@ -383,6 +383,11 @@ fun SeerrDetailScreen(
                                             )
                                         }
 
+                                        // Content rating (e.g., PG-13, R, TV-MA)
+                                        currentMedia.contentRating?.let { rating ->
+                                            ContentRatingBadge(rating = rating)
+                                        }
+
                                         // TMDb rating with label
                                         currentMedia.voteAverage?.let { rating ->
                                             Row(
@@ -923,6 +928,21 @@ private fun StatusBadge(status: Int?) {
             color = color,
         )
     }
+}
+
+@Composable
+private fun ContentRatingBadge(rating: String) {
+    Text(
+        text = rating,
+        style = MaterialTheme.typography.labelMedium,
+        color = TvColors.TextSecondary,
+        modifier = Modifier
+            .background(
+                color = TvColors.Surface.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(4.dp),
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 private fun buildQuotaText(quotaDetails: SeerrQuotaDetails?): String? {

@@ -40,9 +40,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -221,9 +225,15 @@ private fun SeerrMediaGridScreen(
         ) {
             Button(
                 onClick = onBack,
-                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.colors(
+                    containerColor = TvColors.Surface.copy(alpha = 0.7f),
+                ),
             ) {
-                Text("Back")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    tint = TvColors.TextPrimary,
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(

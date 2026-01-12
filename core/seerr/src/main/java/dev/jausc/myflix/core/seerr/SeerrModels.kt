@@ -47,6 +47,9 @@ data class SeerrMedia(
     val externalIds: SeerrExternalIds? = null,
     val keywords: List<SeerrKeyword>? = null,
     val relatedVideos: List<SeerrVideo>? = null,
+    // Content ratings - movies use releases, TV uses contentRatings
+    val releases: SeerrReleases? = null,
+    val contentRatings: SeerrContentRatings? = null,
 ) {
     /** Display title (handles movie vs TV naming) */
     val displayTitle: String
@@ -79,6 +82,30 @@ data class SeerrMedia(
     /** Whether this is a TV show (derives from mediaType or field presence) */
     val isTvShow: Boolean
         get() = mediaType == "tv" || (mediaType.isEmpty() && name != null)
+
+    /** Content rating (e.g., "PG-13", "R", "TV-MA") - prefers US rating */
+    val contentRating: String?
+        get() {
+            // For movies: check releases
+            releases?.results?.let { releaseResults ->
+                // Prefer US certification
+                val usRelease = releaseResults.find { it.iso31661 == "US" }
+                usRelease?.releaseDates?.firstOrNull { !it.certification.isNullOrBlank() }
+                    ?.certification?.let { return it }
+                // Fallback to first available certification
+                releaseResults.flatMap { it.releaseDates ?: emptyList() }
+                    .firstOrNull { !it.certification.isNullOrBlank() }
+                    ?.certification?.let { return it }
+            }
+            // For TV: check contentRatings
+            contentRatings?.results?.let { ratings ->
+                // Prefer US rating
+                ratings.find { it.iso31661 == "US" }?.rating?.let { return it }
+                // Fallback to first available rating
+                ratings.firstOrNull { !it.rating.isNullOrBlank() }?.rating?.let { return it }
+            }
+            return null
+        }
 }
 
 /**
@@ -674,3 +701,57 @@ object SeerrRequestStatus {
         else -> "Unknown"
     }
 }
+
+// ============================================================================
+// Content Rating Types (for movies and TV)
+// ============================================================================
+
+/**
+ * Movie releases container (contains release dates with certifications).
+ */
+@Serializable
+data class SeerrReleases(
+    val results: List<SeerrReleaseCountry>? = null,
+)
+
+/**
+ * Release info per country.
+ */
+@Serializable
+data class SeerrReleaseCountry(
+    @SerialName("iso_3166_1")
+    val iso31661: String? = null,
+    @SerialName("release_dates")
+    val releaseDates: List<SeerrReleaseDate>? = null,
+)
+
+/**
+ * Individual release date with certification.
+ */
+@Serializable
+data class SeerrReleaseDate(
+    val certification: String? = null,
+    @SerialName("iso_639_1")
+    val iso6391: String? = null,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+    val type: Int? = null, // 1=Premiere, 2=Theatrical (limited), 3=Theatrical, etc.
+)
+
+/**
+ * TV content ratings container.
+ */
+@Serializable
+data class SeerrContentRatings(
+    val results: List<SeerrContentRating>? = null,
+)
+
+/**
+ * Content rating per country.
+ */
+@Serializable
+data class SeerrContentRating(
+    @SerialName("iso_3166_1")
+    val iso31661: String? = null,
+    val rating: String? = null,
+)

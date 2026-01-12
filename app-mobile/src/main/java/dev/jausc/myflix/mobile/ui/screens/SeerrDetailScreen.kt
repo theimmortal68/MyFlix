@@ -350,6 +350,11 @@ fun SeerrDetailScreen(
                                     )
                                 }
 
+                                // Content rating (e.g., PG-13, R, TV-MA)
+                                currentMedia.contentRating?.let { rating ->
+                                    MobileContentRatingBadge(rating = rating)
+                                }
+
                                 // TMDb Rating with label
                                 currentMedia.voteAverage?.let { rating ->
                                     Row(
@@ -1133,6 +1138,21 @@ private fun MobileSeerrTrailerCard(video: SeerrVideo) {
             )
         }
     }
+}
+
+@Composable
+private fun MobileContentRatingBadge(rating: String) {
+    Text(
+        text = rating,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(4.dp),
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
