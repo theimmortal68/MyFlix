@@ -1111,6 +1111,21 @@ class JellyfinClient(
         invalidateCache(CacheKeys.item(itemId), CacheKeys.Patterns.RESUME, CacheKeys.Patterns.NEXT_UP)
     }
 
+    /**
+     * Hide item from Continue Watching by clearing playback position.
+     * Uses /UserItems/{itemId}/UserData endpoint per API spec.
+     */
+    suspend fun hideFromResume(itemId: String): Result<Unit> = runCatching {
+        val response = httpClient.post("$baseUrl/UserItems/$itemId/UserData") {
+            header("Authorization", authHeader())
+            parameter("userId", userId)
+            setBody(mapOf("PlaybackPositionTicks" to 0))
+        }
+        android.util.Log.d("JellyfinClient", "hideFromResume: itemId=$itemId status=${response.status}")
+        // Invalidate resume cache
+        invalidateCache(CacheKeys.item(itemId), CacheKeys.Patterns.RESUME)
+    }
+
     // ==================== URL Helpers ====================
 
     fun getStreamUrl(itemId: String): String = "$baseUrl/Videos/$itemId/stream?Static=true&api_key=$accessToken"

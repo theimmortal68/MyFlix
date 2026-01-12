@@ -2,6 +2,7 @@ package dev.jausc.myflix.core.common.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
@@ -28,6 +29,7 @@ object ActionColors {
     val Audio = Color(0xFFF59E0B) // Amber
     val Subtitles = Color(0xFF06B6D4) // Cyan
     val MediaInfo = Color(0xFF6366F1) // Indigo
+    val Remove = Color(0xFFF97316) // Orange
 }
 
 /**
@@ -67,6 +69,7 @@ data class HomeActions(
     val onMarkWatched: (String, Boolean) -> Unit,
     val onToggleFavorite: (String, Boolean) -> Unit,
     val onGoToSeries: ((String) -> Unit)? = null,
+    val onHideFromResume: ((String) -> Unit)? = null,
 )
 
 /**
@@ -132,6 +135,20 @@ fun buildHomeActionItems(item: JellyfinItem, actions: HomeActions): List<ActionE
                 icon = Icons.Default.PlayArrow,
                 iconTint = ActionColors.Play,
                 onClick = { actions.onPlay(item.id) },
+            ),
+        )
+    }
+
+    // Remove from Continue Watching (only if item has progress)
+    if (hasProgress && actions.onHideFromResume != null) {
+        add(ActionDivider)
+        add(
+            ActionItem(
+                id = "hide_from_resume",
+                text = "Remove from Continue Watching",
+                icon = Icons.Default.Close,
+                iconTint = ActionColors.Remove,
+                onClick = { actions.onHideFromResume.invoke(item.id) },
             ),
         )
     }

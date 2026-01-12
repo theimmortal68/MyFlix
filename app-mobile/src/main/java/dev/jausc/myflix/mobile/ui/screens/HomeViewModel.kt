@@ -219,6 +219,16 @@ class HomeViewModel(
         }
     }
 
+    /**
+     * Hide an item from Continue Watching by clearing its playback position.
+     */
+    fun hideFromResume(itemId: String) {
+        viewModelScope.launch {
+            jellyfinClient.hideFromResume(itemId)
+            loadContent(showLoading = false)
+        }
+    }
+
     private suspend fun loadPinnedCollections() {
         val pinned = pinnedCollections.value
         if (pinned.isEmpty()) {

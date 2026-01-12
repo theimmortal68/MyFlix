@@ -1021,13 +1021,24 @@ LaunchedEffect(contentReady) {
 5. **Variable caching** - TTL based on data volatility
 6. **Focus management** - Proper D-pad navigation on TV
 
+## Reference Materials
+
+The `references/` directory contains documentation and code references that are **not part of the project build**. These are kept for reference purposes only:
+
+| Directory | Contents |
+|-----------|----------|
+| `references/myflix-wholphin-main/` | Legacy fork-based Jellyfin client source code (production reference for feature parity) |
+| `references/added_references/` | Screenshots and UI references from Plex, Jellyfin web, and Seerr for feature design |
+
+> **Note:** Do not modify files in `references/`. They are gitignored and excluded from builds.
+
 ## Related Projects
 
-| Project | Location | Purpose |
-|---------|----------|---------|
-| MyFlix-Wholphin | `/home/jstout/StudioProjects/MyFlix-Wholphin` | Legacy fork-based client (production reference) |
-| Universe Collections | — | Jellyfin plugin for collection tagging |
-| UMTK | — | Unraid Media Toolkit |
+| Project | Purpose |
+|---------|---------|
+| Universe Collections | Jellyfin plugin for collection tagging |
+| UMTK | Unraid Media Toolkit |
+
 ## Code Quality Rules
 
 **NEVER suppress or disable Detekt/lint rules. ALWAYS fix the underlying issue.**

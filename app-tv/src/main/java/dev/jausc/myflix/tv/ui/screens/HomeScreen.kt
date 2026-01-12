@@ -138,6 +138,9 @@ fun HomeScreen(
                 viewModel.setFavorite(itemId, favorite)
             },
             onGoToSeries = { seriesId -> onItemClick(seriesId) },
+            onHideFromResume = { itemId ->
+                viewModel.hideFromResume(itemId)
+            },
         )
     }
 
