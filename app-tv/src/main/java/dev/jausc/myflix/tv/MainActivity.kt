@@ -40,6 +40,7 @@ import dev.jausc.myflix.tv.ui.screens.PreferencesScreen
 import dev.jausc.myflix.tv.ui.screens.SearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrActorDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrCollectionDetailScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverMoviesScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTrendingScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTvScreen
@@ -358,6 +359,34 @@ fun MyFlixTvApp() {
                     onActorClick = { personId ->
                         navController.navigate("seerr/person/$personId")
                     },
+                    onNavigateGenre = { genreMediaType, genreId, genreName ->
+                        val encodedName = NavigationHelper.encodeNavArg(genreName)
+                        navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
+                    },
+                )
+            }
+
+            composable(
+                route = "seerr/genre/{mediaType}/{genreId}/{genreName}",
+                arguments = listOf(
+                    navArgument("mediaType") { type = NavType.StringType },
+                    navArgument("genreId") { type = NavType.IntType },
+                    navArgument("genreName") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val genreMediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
+                val genreId = backStackEntry.arguments?.getInt("genreId") ?: return@composable
+                val genreNameEncoded = backStackEntry.arguments?.getString("genreName") ?: ""
+                val genreName = NavigationHelper.decodeNavArg(genreNameEncoded)
+                SeerrDiscoverByGenreScreen(
+                    seerrClient = seerrClient,
+                    mediaType = genreMediaType,
+                    genreId = genreId,
+                    genreName = genreName,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
                 )
             }
 

@@ -75,6 +75,7 @@ import dev.jausc.myflix.core.seerr.SeerrCrewMember
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
+import dev.jausc.myflix.core.seerr.SeerrSeasonStatus
 import dev.jausc.myflix.core.seerr.SeerrVideo
 import dev.jausc.myflix.core.common.util.DateFormatter
 import kotlinx.coroutines.launch
@@ -99,6 +100,7 @@ fun SeerrDetailScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null,
+    onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var media by remember { mutableStateOf<SeerrMedia?>(null) }
@@ -400,23 +402,20 @@ fun SeerrDetailScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Genres
+                            // Genres (clickable)
                             if (!currentMedia.genres.isNullOrEmpty()) {
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     currentMedia.genres!!.take(4).forEach { genre ->
-                                        Text(
-                                            text = genre.name,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .background(
-                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                    RoundedCornerShape(16.dp),
-                                                )
-                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        MobileGenreChip(
+                                            name = genre.name,
+                                            onClick = if (onNavigateGenre != null) {
+                                                { onNavigateGenre(mediaType, genre.id, genre.name) }
+                                            } else {
+                                                null
+                                            },
                                         )
                                     }
                                 }
@@ -436,6 +435,7 @@ fun SeerrDetailScreen(
                                 selectedSeasons = selectedSeasons,
                                 quotaDetails = quotaDetails,
                                 request4k = request4k,
+                                seasonStatuses = currentMedia.mediaInfo?.seasons,
                                 onSeasonToggle = { season ->
                                     selectedSeasons = if (selectedSeasons.contains(season)) {
                                         selectedSeasons - season
@@ -720,6 +720,7 @@ private fun MobileSeerrRequestSection(
     selectedSeasons: Set<Int>,
     quotaDetails: SeerrQuotaDetails?,
     request4k: Boolean,
+    seasonStatuses: List<SeerrSeasonStatus>?,
     onSeasonToggle: (Int) -> Unit,
     onClearSeasons: () -> Unit,
     onToggle4k: () -> Unit,
@@ -824,6 +825,9 @@ private fun MobileSeerrRequestSection(
                         label = { Text("All") },
                     )
                     (1..seasonCount).forEach { season ->
+                        val seasonStatus = seasonStatuses
+                            ?.find { it.seasonNumber == season }?.status
+                        val statusColor = getMobileSeasonStatusColor(seasonStatus)
                         FilterChip(
                             selected = selectedSeasons.contains(season),
                             onClick = { onSeasonToggle(season) },
@@ -831,10 +835,15 @@ private fun MobileSeerrRequestSection(
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                 selectedLabelColor = MaterialTheme.colorScheme.primary,
+                                containerColor = statusColor.copy(alpha = 0.2f),
+                                labelColor = statusColor,
                             ),
                         )
                     }
                 }
+                // Season status legend
+                Spacer(modifier = Modifier.height(8.dp))
+                MobileSeasonStatusLegend()
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -1123,5 +1132,72 @@ private fun MobileSeerrTrailerCard(video: SeerrVideo) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+@Composable
+private fun MobileGenreChip(
+    name: String,
+    onClick: (() -> Unit)?,
+) {
+    val chipModifier = Modifier
+        .background(
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            RoundedCornerShape(16.dp),
+        )
+        .padding(horizontal = 12.dp, vertical = 6.dp)
+
+    if (onClick != null) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = chipModifier.clickable(onClick = onClick),
+        )
+    } else {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = chipModifier,
+        )
+    }
+}
+
+private fun getMobileSeasonStatusColor(status: Int?): Color = when (status) {
+    SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E) // Green
+    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA) // Blue
+    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24) // Yellow
+    else -> Color(0xFF6B7280) // Default gray
+}
+
+@Composable
+private fun MobileSeasonStatusLegend() {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MobileSeasonLegendItem(color = Color(0xFF22C55E), label = "Available")
+        MobileSeasonLegendItem(color = Color(0xFFFBBF24), label = "Requested")
+        MobileSeasonLegendItem(color = Color(0xFF6B7280), label = "Not Requested")
+    }
+}
+
+@Composable
+private fun MobileSeasonLegendItem(color: Color, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, RoundedCornerShape(2.dp)),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

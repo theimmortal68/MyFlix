@@ -19,14 +19,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -34,7 +39,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
@@ -44,9 +48,13 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 
 @Composable
 fun SeerrDiscoverTrendingScreen(
@@ -57,7 +65,7 @@ fun SeerrDiscoverTrendingScreen(
     SeerrMediaGridScreen(
         title = "Trending",
         onBack = onBack,
-        loadItems = { seerrClient.getTrending().map { it.results } },
+        loadItems = { page -> seerrClient.getTrending(page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
     )
@@ -72,7 +80,7 @@ fun SeerrDiscoverMoviesScreen(
     SeerrMediaGridScreen(
         title = "Discover Movies",
         onBack = onBack,
-        loadItems = { seerrClient.discoverMovies().map { it.results } },
+        loadItems = { page -> seerrClient.discoverMovies(page = page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
     )
@@ -87,7 +95,7 @@ fun SeerrDiscoverTvScreen(
     SeerrMediaGridScreen(
         title = "Discover TV",
         onBack = onBack,
-        loadItems = { seerrClient.discoverTV().map { it.results } },
+        loadItems = { page -> seerrClient.discoverTV(page = page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
     )
@@ -102,7 +110,31 @@ fun SeerrDiscoverWatchlistScreen(
     SeerrMediaGridScreen(
         title = "Watchlist",
         onBack = onBack,
-        loadItems = { seerrClient.getWatchlist().map { it.results } },
+        loadItems = { page -> seerrClient.getWatchlist(page) },
+        seerrClient = seerrClient,
+        onMediaClick = onMediaClick,
+    )
+}
+
+@Composable
+fun SeerrDiscoverByGenreScreen(
+    seerrClient: SeerrClient,
+    mediaType: String,
+    genreId: Int,
+    genreName: String,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    SeerrMediaGridScreen(
+        title = genreName,
+        onBack = onBack,
+        loadItems = { page ->
+            if (mediaType == "movie") {
+                seerrClient.discoverMovies(genreId = genreId, page = page)
+            } else {
+                seerrClient.discoverTV(genreId = genreId, page = page)
+            }
+        },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
     )
@@ -112,23 +144,70 @@ fun SeerrDiscoverWatchlistScreen(
 private fun SeerrMediaGridScreen(
     title: String,
     onBack: () -> Unit,
-    loadItems: suspend () -> Result<List<SeerrMedia>>,
+    loadItems: suspend (page: Int) -> Result<SeerrDiscoverResult>,
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
 ) {
+    val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+
     var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var items by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
-    var refreshTrigger by remember { mutableStateOf(0) }
+    var page by remember { mutableIntStateOf(1) }
+    var totalPages by remember { mutableIntStateOf(1) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
     val firstItemFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(refreshTrigger) {
-        isLoading = true
+    suspend fun loadPage(pageToLoad: Int, append: Boolean) {
+        if (append) {
+            isLoadingMore = true
+        } else {
+            isLoading = true
+        }
         errorMessage = null
-        loadItems()
-            .onSuccess { items = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load content" }
-        isLoading = false
+
+        loadItems(pageToLoad)
+            .onSuccess { result ->
+                items = if (append) {
+                    (items + result.results).distinctBy { "${it.mediaType}-${it.id}" }
+                } else {
+                    result.results
+                }
+                page = result.page
+                totalPages = result.totalPages
+            }
+            .onFailure { error ->
+                if (!append) {
+                    errorMessage = error.message ?: "Failed to load content"
+                }
+            }
+
+        if (append) {
+            isLoadingMore = false
+        } else {
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(refreshTrigger) {
+        items = emptyList()
+        page = 1
+        totalPages = 1
+        loadPage(pageToLoad = 1, append = false)
+    }
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .filterNotNull()
+            .collectLatest { lastVisibleIndex ->
+                val shouldLoadMore = lastVisibleIndex >= items.lastIndex - 4
+                val hasMore = page < totalPages
+                if (shouldLoadMore && hasMore && !isLoading && !isLoadingMore) {
+                    scope.launch { loadPage(pageToLoad = page + 1, append = true) }
+                }
+            }
     }
 
     Column(
@@ -188,16 +267,20 @@ private fun SeerrMediaGridScreen(
             }
             else -> {
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    items(items, key = { it.id }) { media ->
+                    itemsIndexed(
+                        items,
+                        key = { _, media -> "${media.mediaType}-${media.id}" },
+                    ) { index, media ->
                         SeerrTvPosterCard(
                             media = media,
                             seerrClient = seerrClient,
-                            modifier = if (items.firstOrNull() == media) {
+                            modifier = if (index == 0) {
                                 Modifier.focusRequester(firstItemFocusRequester)
                             } else {
                                 Modifier
@@ -206,6 +289,18 @@ private fun SeerrMediaGridScreen(
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
                         )
+                    }
+                    if (isLoadingMore) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                TvLoadingIndicator()
+                            }
+                        }
                     }
                 }
             }

@@ -94,6 +94,7 @@ fun SeerrDetailScreen(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null, // Person ID
+    onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -406,14 +407,25 @@ fun SeerrDetailScreen(
                                         StatusBadge(status = currentMedia.availabilityStatus)
                                     }
 
-                                    // Genres
+                                    // Genres (clickable)
                                     currentMedia.genres?.let { genres ->
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = genres.joinToString(" • ") { it.name },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = TvColors.TextSecondary,
-                                        )
+                                        if (genres.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                genres.forEach { genre ->
+                                                    GenreChip(
+                                                        name = genre.name,
+                                                        onClick = if (onNavigateGenre != null) {
+                                                            { onNavigateGenre(mediaType, genre.id, genre.name) }
+                                                        } else {
+                                                            null
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -633,6 +645,9 @@ fun SeerrDetailScreen(
                                                 items(seasonCount) { index ->
                                                     val seasonNumber = index + 1
                                                     val selected = selectedSeasons.contains(seasonNumber)
+                                                    val seasonStatus = currentMedia.mediaInfo?.seasons
+                                                        ?.find { it.seasonNumber == seasonNumber }?.status
+                                                    val statusColor = getSeasonStatusColor(seasonStatus)
                                                     Button(
                                                         onClick = {
                                                             selectedSeasons = if (selected) {
@@ -649,9 +664,9 @@ fun SeerrDetailScreen(
                                                             )
                                                         } else {
                                                             ButtonDefaults.colors(
-                                                                containerColor = TvColors.Surface,
+                                                                containerColor = statusColor,
                                                                 contentColor = TvColors.TextPrimary,
-                                                                focusedContainerColor = TvColors.FocusedSurface,
+                                                                focusedContainerColor = statusColor.copy(alpha = 0.8f),
                                                             )
                                                         },
                                                     ) {
@@ -659,6 +674,9 @@ fun SeerrDetailScreen(
                                                     }
                                                 }
                                             }
+                                            // Season status legend
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            SeasonStatusLegend()
                                         }
                                     }
                                 }
@@ -1082,5 +1100,82 @@ private fun RelatedMediaCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun GenreChip(
+    name: String,
+    onClick: (() -> Unit)?,
+) {
+    if (onClick != null) {
+        Surface(
+            onClick = onClick,
+            shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
+                shape = RoundedCornerShape(16.dp),
+            ),
+            colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = TvColors.Surface,
+                focusedContainerColor = TvColors.FocusedSurface,
+            ),
+            border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+                focusedBorder = androidx.tv.material3.Border(
+                    border = BorderStroke(1.dp, TvColors.BluePrimary),
+                    shape = RoundedCornerShape(16.dp),
+                ),
+            ),
+            scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelMedium,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    } else {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TvColors.TextSecondary,
+        )
+    }
+}
+
+private fun getSeasonStatusColor(status: Int?): Color = when (status) {
+    SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E) // Green
+    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA) // Blue
+    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24) // Yellow
+    else -> TvColors.Surface // Default gray
+}
+
+@Composable
+private fun SeasonStatusLegend() {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SeasonLegendItem(color = Color(0xFF22C55E), label = "Available")
+        SeasonLegendItem(color = Color(0xFFFBBF24), label = "Requested")
+        SeasonLegendItem(color = TvColors.Surface, label = "Not Requested")
+    }
+}
+
+@Composable
+private fun SeasonLegendItem(color: Color, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, RoundedCornerShape(2.dp)),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TvColors.TextSecondary,
+        )
     }
 }

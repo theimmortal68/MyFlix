@@ -36,6 +36,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -50,6 +57,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,6 +119,9 @@ fun SeerrHomeScreen(
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrSearch: () -> Unit = {},
     @Suppress("UNUSED_PARAMETER") onNavigateSeerrRequests: () -> Unit = {},
 ) {
+    // Coroutine scope for navigation actions
+    val coroutineScope = rememberCoroutineScope()
+
     // Focus requesters for navigation
     val homeButtonFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
@@ -274,7 +285,26 @@ fun SeerrHomeScreen(
                         state = lazyListState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .focusRequester(contentFocusRequester),
+                            .focusRequester(contentFocusRequester)
+                            .onPreviewKeyEvent { keyEvent ->
+                                // Intercept UP on first row to show nav bar
+                                if (keyEvent.type == KeyEventType.KeyDown &&
+                                    keyEvent.key == Key.DirectionUp &&
+                                    lazyListState.firstVisibleItemIndex == 0
+                                ) {
+                                    navBarState.show()
+                                    coroutineScope.launch {
+                                        delay(150) // Wait for animation
+                                        try {
+                                            homeButtonFocusRequester.requestFocus()
+                                        } catch (_: Exception) {
+                                        }
+                                    }
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
                         contentPadding = PaddingValues(top = 16.dp, bottom = 300.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
