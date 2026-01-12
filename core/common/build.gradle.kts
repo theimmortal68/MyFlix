@@ -35,6 +35,9 @@ dependencies {
     // Serialization - exposed to consumers
     api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.0")
 
+    // DataStore - for preference key definitions
+    api("androidx.datastore:datastore-preferences:1.1.6")
+
     // Compose UI - exposed to consumers
     api("androidx.compose.runtime:runtime")
     api("androidx.compose.ui:ui-graphics")

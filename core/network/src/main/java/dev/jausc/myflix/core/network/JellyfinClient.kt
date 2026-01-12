@@ -85,12 +85,11 @@ class JellyfinClient(
 
     // DNS cache to prevent intermittent resolution failures during Quick Connect polling
     private val dnsCache = ConcurrentHashMap<String, Pair<List<InetAddress>, Long>>()
-    private val dnsCacheTtl = 300_000L // 5 minutes
 
     private val cachingDns = object : Dns {
         override fun lookup(hostname: String): List<InetAddress> {
             val cached = dnsCache[hostname]
-            if (cached != null && System.currentTimeMillis() - cached.second < dnsCacheTtl) {
+            if (cached != null && System.currentTimeMillis() - cached.second < CacheKeys.Ttl.DNS) {
                 android.util.Log.d("JellyfinClient", "DNS cache hit for $hostname: ${cached.first}")
                 return cached.first
             }
@@ -134,18 +133,8 @@ class JellyfinClient(
     private data class CacheEntry<T>(val data: T, val timestamp: Long)
     private val cache = ConcurrentHashMap<String, CacheEntry<Any>>()
 
-    // Variable TTL based on data type
-    private object CacheTtl {
-        const val LIBRARIES = 300_000L // 5 min - rarely changes
-        const val ITEM_DETAILS = 120_000L // 2 min - moderate
-        const val RESUME = 30_000L // 30 sec - changes frequently
-        const val NEXT_UP = 60_000L // 1 min
-        const val LATEST = 60_000L // 1 min
-        const val DEFAULT = 60_000L // 1 min
-    }
-
     @Suppress("UNCHECKED_CAST")
-    private fun <T> getCached(key: String, ttlMs: Long = CacheTtl.DEFAULT): T? {
+    private fun <T> getCached(key: String, ttlMs: Long = CacheKeys.Ttl.DEFAULT): T? {
         val entry = cache[key] ?: return null
         if (System.currentTimeMillis() - entry.timestamp > ttlMs) {
             cache.remove(key)
@@ -210,6 +199,20 @@ class JellyfinClient(
 
         // Fields for episode listing
         const val EPISODE_LIST = "Overview,ImageTags,UserData,MediaSources"
+    }
+
+    // Image types for enableImageTypes parameter
+    private object ImageTypes {
+        const val PRIMARY = "Primary"
+        const val BACKDROP = "Backdrop"
+        const val THUMB = "Thumb"
+        const val LOGO = "Logo"
+        const val BANNER = "Banner"
+
+        // Common combinations
+        const val CARD = "$PRIMARY,$BACKDROP,$THUMB"
+        const val HERO = "$PRIMARY,$BACKDROP"
+        const val EPISODE = "$PRIMARY,$THUMB"
     }
 
     // ==================== Server Discovery ====================
@@ -665,12 +668,12 @@ class JellyfinClient(
     // ==================== Library & Content APIs ====================
 
     suspend fun getLibraries(): Result<List<JellyfinItem>> {
-        getCached<List<JellyfinItem>>("libraries", CacheTtl.LIBRARIES)?.let { return Result.success(it) }
+        getCached<List<JellyfinItem>>(CacheKeys.LIBRARIES, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Views") {
                 header("Authorization", authHeader())
             }.body()
-            r.items.also { putCache("libraries", it) }
+            r.items.also { putCache(CacheKeys.LIBRARIES, it) }
         }
     }
 
@@ -681,7 +684,7 @@ class JellyfinClient(
         sortBy: String = "SortName",
         sortOrder: String = "Ascending",
     ): Result<ItemsResponse> {
-        val key = "library:$libraryId:$limit:$startIndex:$sortBy"
+        val key = CacheKeys.library(libraryId, limit, startIndex, sortBy)
         getCached<ItemsResponse>(key)?.let { return Result.success(it) }
         return runCatching {
             httpClient.get("$baseUrl/Users/$userId/Items") {
@@ -692,18 +695,19 @@ class JellyfinClient(
                 parameter("sortBy", sortBy)
                 parameter("sortOrder", sortOrder)
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop,Thumb")
+                parameter("enableImageTypes", ImageTypes.CARD)
             }.body<ItemsResponse>().also { putCache(key, it) }
         }
     }
 
     suspend fun getItem(itemId: String): Result<JellyfinItem> {
-        getCached<JellyfinItem>("item:$itemId", CacheTtl.ITEM_DETAILS)?.let { return Result.success(it) }
+        val key = CacheKeys.item(itemId)
+        getCached<JellyfinItem>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
         return runCatching {
             httpClient.get("$baseUrl/Users/$userId/Items/$itemId") {
                 header("Authorization", authHeader())
                 parameter("fields", Fields.DETAIL)
-            }.body<JellyfinItem>().also { putCache("item:$itemId", it) }
+            }.body<JellyfinItem>().also { putCache(key, it) }
         }
     }
 
@@ -712,7 +716,8 @@ class JellyfinClient(
      * Uses /UserItems/Resume endpoint per API spec.
      */
     suspend fun getContinueWatching(limit: Int = 20): Result<List<JellyfinItem>> {
-        getCached<List<JellyfinItem>>("resume:$limit", CacheTtl.RESUME)?.let { return Result.success(it) }
+        val key = CacheKeys.resume(limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.RESUME)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/UserItems/Resume") {
                 header("Authorization", authHeader())
@@ -720,9 +725,9 @@ class JellyfinClient(
                 parameter("limit", limit)
                 parameter("mediaTypes", "Video")
                 parameter("fields", Fields.EPISODE_CARD)
-                parameter("enableImageTypes", "Primary,Backdrop,Thumb")
+                parameter("enableImageTypes", ImageTypes.CARD)
             }.body()
-            r.items.also { putCache("resume:$limit", it) }
+            r.items.also { putCache(key, it) }
         }
     }
 
@@ -731,8 +736,8 @@ class JellyfinClient(
      * Supports rewatching completed series.
      */
     suspend fun getNextUp(limit: Int = 20, enableRewatching: Boolean = false,): Result<List<JellyfinItem>> {
-        val key = "nextup:$limit:$enableRewatching"
-        getCached<List<JellyfinItem>>(key, CacheTtl.NEXT_UP)?.let { return Result.success(it) }
+        val key = CacheKeys.nextUp(limit, enableRewatching)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.NEXT_UP)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Shows/NextUp") {
                 header("Authorization", authHeader())
@@ -740,7 +745,7 @@ class JellyfinClient(
                 parameter("limit", limit)
                 parameter("fields", Fields.EPISODE_CARD)
                 parameter("enableRewatching", enableRewatching)
-                parameter("enableImageTypes", "Primary,Backdrop,Thumb")
+                parameter("enableImageTypes", ImageTypes.CARD)
             }.body()
             r.items.also { putCache(key, it) }
         }
@@ -752,8 +757,8 @@ class JellyfinClient(
      * Note: Use getLatestMovies or getLatestSeries for filtered results.
      */
     suspend fun getLatestItems(libraryId: String, limit: Int = 20): Result<List<JellyfinItem>> {
-        val key = "latest:$libraryId:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.latest(libraryId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             httpClient.get("$baseUrl/Items/Latest") {
                 header("Authorization", authHeader())
@@ -761,7 +766,7 @@ class JellyfinClient(
                 parameter("parentId", libraryId)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop,Thumb")
+                parameter("enableImageTypes", ImageTypes.CARD)
             }.body<List<JellyfinItem>>().also { putCache(key, it) }
         }
     }
@@ -771,8 +776,8 @@ class JellyfinClient(
      * Excludes collections (BoxSets).
      */
     suspend fun getLatestMovies(libraryId: String, limit: Int = 20): Result<List<JellyfinItem>> {
-        val key = "latestMovies:$libraryId:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.latestMovies(libraryId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
@@ -783,7 +788,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("limit", limit + 10) // Request extra to account for filtering
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop")
+                parameter("enableImageTypes", ImageTypes.HERO)
             }.body()
             // Filter out any BoxSet/Collection items that slip through
             r.items
@@ -798,8 +803,8 @@ class JellyfinClient(
      * Excludes unaired shows (no premiered episodes) and collections.
      */
     suspend fun getLatestSeries(libraryId: String, limit: Int = 20): Result<List<JellyfinItem>> {
-        val key = "latestSeries:$libraryId:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.latestSeries(libraryId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
@@ -810,7 +815,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("limit", limit + 10) // Request extra to account for filtering
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop")
+                parameter("enableImageTypes", ImageTypes.HERO)
                 // Exclude shows that haven't aired yet
                 parameter("maxPremiereDate", java.time.Instant.now().toString())
             }.body()
@@ -827,8 +832,8 @@ class JellyfinClient(
      * Returns episode items with series context.
      */
     suspend fun getLatestEpisodes(libraryId: String, limit: Int = 20): Result<List<JellyfinItem>> {
-        val key = "latestEpisodes:$libraryId:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.latestEpisodes(libraryId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             httpClient.get("$baseUrl/Items/Latest") {
                 header("Authorization", authHeader())
@@ -837,7 +842,7 @@ class JellyfinClient(
                 parameter("limit", limit)
                 parameter("includeItemTypes", "Episode")
                 parameter("fields", Fields.EPISODE_CARD)
-                parameter("enableImageTypes", "Primary,Thumb")
+                parameter("enableImageTypes", ImageTypes.EPISODE)
             }.body<List<JellyfinItem>>().also { putCache(key, it) }
         }
     }
@@ -858,7 +863,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("includeItemTypes", includeItemTypes)
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop,Thumb")
+                parameter("enableImageTypes", ImageTypes.CARD)
             }.body()
             r.items
         }
@@ -869,8 +874,8 @@ class JellyfinClient(
      * Excludes specials (season 0).
      */
     suspend fun getUpcomingEpisodes(libraryId: String? = null, limit: Int = 20): Result<List<JellyfinItem>> {
-        val key = "upcoming:${libraryId ?: "all"}:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.upcoming(libraryId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             val today = java.time.LocalDate.now()
             val future = today.plusDays(30)
@@ -886,7 +891,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("limit", limit * 2) // Fetch extra to account for filtering
                 parameter("fields", Fields.EPISODE_CARD)
-                parameter("enableImageTypes", "Primary,Thumb")
+                parameter("enableImageTypes", ImageTypes.EPISODE)
             }.body()
             // Filter out specials (season 0)
             r.items.filter { episode ->
@@ -899,8 +904,8 @@ class JellyfinClient(
      * Get all genres from a library or across all libraries.
      */
     suspend fun getGenres(libraryId: String? = null): Result<List<JellyfinGenre>> {
-        val key = "genres:${libraryId ?: "all"}"
-        getCached<List<JellyfinGenre>>(key, CacheTtl.LIBRARIES)?.let { return Result.success(it) }
+        val key = CacheKeys.genres(libraryId)
+        getCached<List<JellyfinGenre>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: GenresResponse = httpClient.get("$baseUrl/Genres") {
                 header("Authorization", authHeader())
@@ -922,8 +927,8 @@ class JellyfinClient(
         limit: Int = 20,
         includeItemTypes: String = "Movie,Series",
     ): Result<List<JellyfinItem>> {
-        val key = "genre:$genreName:${libraryId ?: "all"}:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.genre(genreName, libraryId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
@@ -934,7 +939,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop")
+                parameter("enableImageTypes", ImageTypes.HERO)
             }.body()
             r.items.also { putCache(key, it) }
         }
@@ -944,8 +949,8 @@ class JellyfinClient(
      * Get all collections (BoxSets) from the server.
      */
     suspend fun getCollections(limit: Int = 50): Result<List<JellyfinItem>> {
-        val key = "collections:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LIBRARIES)?.let { return Result.success(it) }
+        val key = CacheKeys.collections(limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
@@ -955,7 +960,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop")
+                parameter("enableImageTypes", ImageTypes.HERO)
             }.body()
             r.items.also { putCache(key, it) }
         }
@@ -965,8 +970,8 @@ class JellyfinClient(
      * Get items in a specific collection (BoxSet).
      */
     suspend fun getCollectionItems(collectionId: String, limit: Int = 50): Result<List<JellyfinItem>> {
-        val key = "collection:$collectionId:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.ITEM_DETAILS)?.let { return Result.success(it) }
+        val key = CacheKeys.collection(collectionId, limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
@@ -974,7 +979,7 @@ class JellyfinClient(
                 parameter("sortBy", "SortName")
                 parameter("sortOrder", "Ascending")
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop")
+                parameter("enableImageTypes", ImageTypes.HERO)
             }.body()
             r.items.also { putCache(key, it) }
         }
@@ -985,8 +990,8 @@ class JellyfinClient(
      * Uses the Similar endpoint for relevant suggestions.
      */
     suspend fun getSuggestions(limit: Int = 20): Result<List<JellyfinItem>> {
-        val key = "suggestions:$limit"
-        getCached<List<JellyfinItem>>(key, CacheTtl.LATEST)?.let { return Result.success(it) }
+        val key = CacheKeys.suggestions(limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LATEST)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
@@ -995,7 +1000,7 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
-                parameter("enableImageTypes", "Primary,Backdrop")
+                parameter("enableImageTypes", ImageTypes.HERO)
                 // Get unwatched items the user might like
                 parameter("isPlayed", false)
             }.body()
@@ -1004,7 +1009,7 @@ class JellyfinClient(
     }
 
     suspend fun getSeasons(seriesId: String): Result<List<JellyfinItem>> {
-        val key = "seasons:$seriesId"
+        val key = CacheKeys.seasons(seriesId)
         getCached<List<JellyfinItem>>(key)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Shows/$seriesId/Seasons") {
@@ -1017,7 +1022,7 @@ class JellyfinClient(
     }
 
     suspend fun getEpisodes(seriesId: String, seasonId: String): Result<List<JellyfinItem>> {
-        val key = "episodes:$seriesId:$seasonId"
+        val key = CacheKeys.episodes(seriesId, seasonId)
         getCached<List<JellyfinItem>>(key)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Shows/$seriesId/Episodes") {
@@ -1025,7 +1030,7 @@ class JellyfinClient(
                 parameter("userId", userId)
                 parameter("seasonId", seasonId)
                 parameter("fields", Fields.EPISODE_LIST)
-                parameter("enableImageTypes", "Primary,Thumb")
+                parameter("enableImageTypes", ImageTypes.EPISODE)
             }.body()
             r.items.also { putCache(key, it) }
         }
@@ -1035,7 +1040,7 @@ class JellyfinClient(
      * Get similar items for recommendations.
      */
     suspend fun getSimilarItems(itemId: String, limit: Int = 12): Result<List<JellyfinItem>> {
-        val key = "similar:$itemId:$limit"
+        val key = CacheKeys.similar(itemId, limit)
         getCached<List<JellyfinItem>>(key)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Items/$itemId/Similar") {
@@ -1052,7 +1057,7 @@ class JellyfinClient(
      * Get user's favorite items.
      */
     suspend fun getFavorites(limit: Int = 50, includeItemTypes: String? = null,): Result<List<JellyfinItem>> {
-        val key = "favorites:$limit:$includeItemTypes"
+        val key = CacheKeys.favorites(limit, includeItemTypes)
         getCached<List<JellyfinItem>>(key)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
@@ -1082,7 +1087,7 @@ class JellyfinClient(
             }
         }
         // Invalidate relevant caches
-        invalidateCache("favorites", "item:$itemId")
+        invalidateCache(CacheKeys.Patterns.FAVORITES, CacheKeys.item(itemId))
     }
 
     /**
@@ -1103,7 +1108,7 @@ class JellyfinClient(
         }
         android.util.Log.d("JellyfinClient", "setPlayed: itemId=$itemId played=$played status=${response.status}")
         // Invalidate relevant caches
-        invalidateCache("item:$itemId", "resume", "nextup")
+        invalidateCache(CacheKeys.item(itemId), CacheKeys.Patterns.RESUME, CacheKeys.Patterns.NEXT_UP)
     }
 
     // ==================== URL Helpers ====================
@@ -1115,19 +1120,19 @@ class JellyfinClient(
      * Uses WebP format for smaller file sizes.
      */
     fun getPrimaryImageUrl(itemId: String, tag: String?, maxWidth: Int = 400): String =
-        buildImageUrl(itemId, "Primary", tag, maxWidth)
+        buildImageUrl(itemId, ImageTypes.PRIMARY, tag, maxWidth)
 
     /**
      * Get backdrop image URL for backgrounds.
      */
     fun getBackdropUrl(itemId: String, tag: String?, maxWidth: Int = 1920): String =
-        buildImageUrl(itemId, "Backdrop", tag, maxWidth)
+        buildImageUrl(itemId, ImageTypes.BACKDROP, tag, maxWidth)
 
     /**
      * Get thumb image URL (landscape thumbnails).
      */
     fun getThumbUrl(itemId: String, tag: String?, maxWidth: Int = 600): String =
-        buildImageUrl(itemId, "Thumb", tag, maxWidth)
+        buildImageUrl(itemId, ImageTypes.THUMB, tag, maxWidth)
 
     /**
      * Build image URL with consistent parameters.
@@ -1196,7 +1201,7 @@ class JellyfinClient(
             android.util.Log.e("JellyfinClient", "reportPlaybackStart failed: $errorBody")
         }
         // Invalidate resume cache since playback state changed
-        invalidateCache("resume")
+        invalidateCache(CacheKeys.Patterns.RESUME)
     }
 
     suspend fun reportPlaybackProgress(
@@ -1258,7 +1263,7 @@ class JellyfinClient(
         }
         currentPlaySessionId = null
         // Invalidate caches that depend on playback state
-        invalidateCache("resume", "nextup", "item:$itemId")
+        invalidateCache(CacheKeys.Patterns.RESUME, CacheKeys.Patterns.NEXT_UP, CacheKeys.item(itemId))
     }
 }
 

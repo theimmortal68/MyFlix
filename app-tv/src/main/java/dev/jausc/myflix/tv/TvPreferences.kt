@@ -2,6 +2,7 @@ package dev.jausc.myflix.tv
 
 import android.content.Context
 import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.preferences.PreferenceKeys
 
 /**
  * TV app preferences manager.
@@ -9,11 +10,9 @@ import dev.jausc.myflix.core.common.preferences.AppPreferences
  */
 class TvPreferences private constructor(context: Context) : AppPreferences(context) {
 
-    override val preferencesName: String = PREFS_NAME
+    override val preferencesName: String = PreferenceKeys.Prefs.TV_PREFS_NAME
 
     companion object {
-        private const val PREFS_NAME = "myflix_tv_prefs"
-
         @Volatile
         private var INSTANCE: TvPreferences? = null
 

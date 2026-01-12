@@ -26,69 +26,69 @@ abstract class AppPreferences(context: Context) {
 
     // Playback Preferences
     private val _hideWatchedFromRecent: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_HIDE_WATCHED_FROM_RECENT, false))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.HIDE_WATCHED_FROM_RECENT, PreferenceKeys.Defaults.HIDE_WATCHED_FROM_RECENT))
     }
     val hideWatchedFromRecent: StateFlow<Boolean> by lazy { _hideWatchedFromRecent.asStateFlow() }
 
     private val _useMpvPlayer: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_USE_MPV_PLAYER, false))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.USE_MPV_PLAYER, PreferenceKeys.Defaults.USE_MPV_PLAYER))
     }
     val useMpvPlayer: StateFlow<Boolean> by lazy { _useMpvPlayer.asStateFlow() }
 
     // Home Screen Row Preferences
     private val _showSeasonPremieres: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_SHOW_SEASON_PREMIERES, true))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_SEASON_PREMIERES, PreferenceKeys.Defaults.SHOW_SEASON_PREMIERES))
     }
     val showSeasonPremieres: StateFlow<Boolean> by lazy { _showSeasonPremieres.asStateFlow() }
 
     private val _showGenreRows: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_SHOW_GENRE_ROWS, false))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_GENRE_ROWS, PreferenceKeys.Defaults.SHOW_GENRE_ROWS))
     }
     val showGenreRows: StateFlow<Boolean> by lazy { _showGenreRows.asStateFlow() }
 
     private val _enabledGenres: MutableStateFlow<List<String>> by lazy {
-        MutableStateFlow(loadStringList(KEY_ENABLED_GENRES))
+        MutableStateFlow(loadStringList(PreferenceKeys.Prefs.ENABLED_GENRES))
     }
     val enabledGenres: StateFlow<List<String>> by lazy { _enabledGenres.asStateFlow() }
 
     private val _showCollections: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_SHOW_COLLECTIONS, true))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_COLLECTIONS, PreferenceKeys.Defaults.SHOW_COLLECTIONS))
     }
     val showCollections: StateFlow<Boolean> by lazy { _showCollections.asStateFlow() }
 
     private val _pinnedCollections: MutableStateFlow<List<String>> by lazy {
-        MutableStateFlow(loadStringList(KEY_PINNED_COLLECTIONS))
+        MutableStateFlow(loadStringList(PreferenceKeys.Prefs.PINNED_COLLECTIONS))
     }
     val pinnedCollections: StateFlow<List<String>> by lazy { _pinnedCollections.asStateFlow() }
 
     private val _showSuggestions: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_SHOW_SUGGESTIONS, true))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_SUGGESTIONS, PreferenceKeys.Defaults.SHOW_SUGGESTIONS))
     }
     val showSuggestions: StateFlow<Boolean> by lazy { _showSuggestions.asStateFlow() }
 
     // Seerr Integration Preferences
     private val _seerrEnabled: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_SEERR_ENABLED, false))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, PreferenceKeys.Defaults.SEERR_ENABLED))
     }
     val seerrEnabled: StateFlow<Boolean> by lazy { _seerrEnabled.asStateFlow() }
 
     private val _seerrUrl: MutableStateFlow<String?> by lazy {
-        MutableStateFlow(prefs.getString(KEY_SEERR_URL, null))
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SEERR_URL, null))
     }
     val seerrUrl: StateFlow<String?> by lazy { _seerrUrl.asStateFlow() }
 
     private val _seerrAutoDetected: MutableStateFlow<Boolean> by lazy {
-        MutableStateFlow(prefs.getBoolean(KEY_SEERR_AUTO_DETECTED, false))
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_AUTO_DETECTED, PreferenceKeys.Defaults.SEERR_AUTO_DETECTED))
     }
     val seerrAutoDetected: StateFlow<Boolean> by lazy { _seerrAutoDetected.asStateFlow() }
 
     private val _seerrApiKey: MutableStateFlow<String?> by lazy {
-        MutableStateFlow(prefs.getString(KEY_SEERR_API_KEY, null))
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SEERR_API_KEY, null))
     }
     val seerrApiKey: StateFlow<String?> by lazy { _seerrApiKey.asStateFlow() }
 
     private val _seerrSessionCookie: MutableStateFlow<String?> by lazy {
-        MutableStateFlow(prefs.getString(KEY_SEERR_SESSION_COOKIE, null))
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SEERR_SESSION_COOKIE, null))
     }
     val seerrSessionCookie: StateFlow<String?> by lazy { _seerrSessionCookie.asStateFlow() }
 
@@ -108,7 +108,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether to hide watched items from Recently Added rows.
      */
     fun setHideWatchedFromRecent(hide: Boolean) {
-        prefs.edit().putBoolean(KEY_HIDE_WATCHED_FROM_RECENT, hide).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.HIDE_WATCHED_FROM_RECENT, hide).apply()
         _hideWatchedFromRecent.value = hide
     }
 
@@ -117,7 +117,7 @@ abstract class AppPreferences(context: Context) {
      * MPV offers better codec support but may have compatibility issues.
      */
     fun setUseMpvPlayer(useMpv: Boolean) {
-        prefs.edit().putBoolean(KEY_USE_MPV_PLAYER, useMpv).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.USE_MPV_PLAYER, useMpv).apply()
         _useMpvPlayer.value = useMpv
     }
 
@@ -127,7 +127,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether to show upcoming episodes (Season Premieres) row.
      */
     fun setShowSeasonPremieres(show: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_SEASON_PREMIERES, show).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_SEASON_PREMIERES, show).apply()
         _showSeasonPremieres.value = show
     }
 
@@ -135,7 +135,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether to show genre-based content rows.
      */
     fun setShowGenreRows(show: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_GENRE_ROWS, show).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_GENRE_ROWS, show).apply()
         _showGenreRows.value = show
     }
 
@@ -143,7 +143,7 @@ abstract class AppPreferences(context: Context) {
      * Set which genres to display as rows on the home screen (ordered).
      */
     fun setEnabledGenres(genres: List<String>) {
-        saveStringList(KEY_ENABLED_GENRES, genres)
+        saveStringList(PreferenceKeys.Prefs.ENABLED_GENRES, genres)
         _enabledGenres.value = genres
     }
 
@@ -151,7 +151,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether to show collections row.
      */
     fun setShowCollections(show: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_COLLECTIONS, show).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_COLLECTIONS, show).apply()
         _showCollections.value = show
     }
 
@@ -159,7 +159,7 @@ abstract class AppPreferences(context: Context) {
      * Set which collections to pin on the home screen (ordered).
      */
     fun setPinnedCollections(collectionIds: List<String>) {
-        saveStringList(KEY_PINNED_COLLECTIONS, collectionIds)
+        saveStringList(PreferenceKeys.Prefs.PINNED_COLLECTIONS, collectionIds)
         _pinnedCollections.value = collectionIds
     }
 
@@ -167,7 +167,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether to show suggestions row.
      */
     fun setShowSuggestions(show: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_SUGGESTIONS, show).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_SUGGESTIONS, show).apply()
         _showSuggestions.value = show
     }
 
@@ -177,7 +177,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether Seerr integration is enabled.
      */
     fun setSeerrEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_SEERR_ENABLED, enabled).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, enabled).apply()
         _seerrEnabled.value = enabled
     }
 
@@ -185,7 +185,7 @@ abstract class AppPreferences(context: Context) {
      * Set the Seerr server URL.
      */
     fun setSeerrUrl(url: String?) {
-        prefs.edit().putString(KEY_SEERR_URL, url).apply()
+        prefs.edit().putString(PreferenceKeys.Prefs.SEERR_URL, url).apply()
         _seerrUrl.value = url
     }
 
@@ -193,7 +193,7 @@ abstract class AppPreferences(context: Context) {
      * Set whether Seerr was auto-detected (vs manually configured).
      */
     fun setSeerrAutoDetected(autoDetected: Boolean) {
-        prefs.edit().putBoolean(KEY_SEERR_AUTO_DETECTED, autoDetected).apply()
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SEERR_AUTO_DETECTED, autoDetected).apply()
         _seerrAutoDetected.value = autoDetected
     }
 
@@ -202,9 +202,9 @@ abstract class AppPreferences(context: Context) {
      */
     fun setSeerrApiKey(apiKey: String?) {
         if (apiKey != null) {
-            prefs.edit().putString(KEY_SEERR_API_KEY, apiKey).apply()
+            prefs.edit().putString(PreferenceKeys.Prefs.SEERR_API_KEY, apiKey).apply()
         } else {
-            prefs.edit().remove(KEY_SEERR_API_KEY).apply()
+            prefs.edit().remove(PreferenceKeys.Prefs.SEERR_API_KEY).apply()
         }
         _seerrApiKey.value = apiKey
     }
@@ -214,9 +214,9 @@ abstract class AppPreferences(context: Context) {
      */
     fun setSeerrSessionCookie(cookie: String?) {
         if (cookie != null) {
-            prefs.edit().putString(KEY_SEERR_SESSION_COOKIE, cookie).apply()
+            prefs.edit().putString(PreferenceKeys.Prefs.SEERR_SESSION_COOKIE, cookie).apply()
         } else {
-            prefs.edit().remove(KEY_SEERR_SESSION_COOKIE).apply()
+            prefs.edit().remove(PreferenceKeys.Prefs.SEERR_SESSION_COOKIE).apply()
         }
         _seerrSessionCookie.value = cookie
     }
@@ -226,33 +226,16 @@ abstract class AppPreferences(context: Context) {
      */
     fun clearSeerrConfig() {
         prefs.edit()
-            .remove(KEY_SEERR_ENABLED)
-            .remove(KEY_SEERR_URL)
-            .remove(KEY_SEERR_AUTO_DETECTED)
-            .remove(KEY_SEERR_API_KEY)
-            .remove(KEY_SEERR_SESSION_COOKIE)
+            .remove(PreferenceKeys.Prefs.SEERR_ENABLED)
+            .remove(PreferenceKeys.Prefs.SEERR_URL)
+            .remove(PreferenceKeys.Prefs.SEERR_AUTO_DETECTED)
+            .remove(PreferenceKeys.Prefs.SEERR_API_KEY)
+            .remove(PreferenceKeys.Prefs.SEERR_SESSION_COOKIE)
             .apply()
         _seerrEnabled.value = false
         _seerrUrl.value = null
         _seerrAutoDetected.value = false
         _seerrApiKey.value = null
         _seerrSessionCookie.value = null
-    }
-
-    companion object {
-        // Preference keys - shared across all platforms
-        private const val KEY_HIDE_WATCHED_FROM_RECENT = "hide_watched_from_recent"
-        private const val KEY_USE_MPV_PLAYER = "use_mpv_player"
-        private const val KEY_SHOW_SEASON_PREMIERES = "show_season_premieres"
-        private const val KEY_SHOW_GENRE_ROWS = "show_genre_rows"
-        private const val KEY_ENABLED_GENRES = "enabled_genres"
-        private const val KEY_SHOW_COLLECTIONS = "show_collections"
-        private const val KEY_PINNED_COLLECTIONS = "pinned_collections"
-        private const val KEY_SHOW_SUGGESTIONS = "show_suggestions"
-        private const val KEY_SEERR_ENABLED = "seerr_enabled"
-        private const val KEY_SEERR_URL = "seerr_url"
-        private const val KEY_SEERR_AUTO_DETECTED = "seerr_auto_detected"
-        private const val KEY_SEERR_API_KEY = "seerr_api_key"
-        private const val KEY_SEERR_SESSION_COOKIE = "seerr_session_cookie"
     }
 }
