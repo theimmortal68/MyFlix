@@ -111,6 +111,8 @@ MyFlix/
 - [x] D-pad navigation with focus management
 - [x] Background polling for content updates
 - [x] Jellyseerr integration (setup, browse, request)
+- [x] Jellyseerr advanced filters (sort, rating, year range)
+- [x] Recent Requests row (optional, settings toggle)
 
 ### Mobile App (app-mobile)
 - [x] Home screen with responsive hero section
@@ -128,6 +130,8 @@ MyFlix/
 - [x] Login screen
 - [x] Splash screen
 - [x] Jellyseerr integration (setup, browse, request)
+- [x] Jellyseerr advanced filters (sort, rating, year range)
+- [x] Recent Requests row (optional, settings toggle)
 
 ### Core Modules
 - [x] JellyfinClient with caching (variable TTL)
@@ -186,6 +190,7 @@ MyFlix/
 - [x] Continue Watching row
 - [x] Next Up row
 - [x] Latest additions rows
+- [x] Recent Requests row (Jellyseerr, optional)
 
 ### Universe Collections Integration
 - [ ] Detect universe-collection tagged BoxSets
@@ -197,7 +202,7 @@ MyFlix/
 - [ ] Voice search (SpeechRecognizer)
 - [x] Text search (basic)
 - [ ] Search suggestions
-- [ ] Filter by type/genre/year
+- [x] Seerr discover filters (sort, rating, year range)
 
 ### UI & Branding
 - [x] Purple gradient theme
@@ -232,7 +237,6 @@ MyFlix/
 ### Mid-term
 - [ ] Media Segments integration (skip intro/credits)
 - [ ] Voice search (TV)
-- [ ] Search filters (type/genre/year)
 - [ ] Multiple server support
 - [ ] HDR detection and handling
 

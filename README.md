@@ -83,6 +83,8 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 - [x] D-pad navigation and focus management
 - [x] Background polling for content updates
 - [x] Jellyseerr integration (setup, browse, request)
+- [x] Jellyseerr advanced filters (sort, rating, year range)
+- [x] Recent Requests row (optional, settings toggle)
 
 ### Mobile App
 - [x] Home screen with responsive hero section
@@ -100,6 +102,8 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 - [x] Login screen
 - [x] Splash screen
 - [x] Jellyseerr integration (setup, browse, request)
+- [x] Jellyseerr advanced filters (sort, rating, year range)
+- [x] Recent Requests row (optional, settings toggle)
 
 ### Playback - Video
 - [x] Dual player backend architecture (ExoPlayer + MPV)
@@ -139,12 +143,13 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 - [x] Continue Watching row
 - [x] Next Up row
 - [x] Latest additions rows
+- [x] Recent Requests row (Jellyseerr, optional)
 
 ### Search and Discovery
 - [x] Text search (basic)
 - [ ] Voice search
 - [ ] Search suggestions
-- [ ] Filter by type/genre/year
+- [x] Seerr discover filters (sort, rating, year range)
 
 ### Server and Authentication
 - [x] Server discovery (UDP)
@@ -171,7 +176,6 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 ### Mid-term
 - Media Segments integration (skip intro/credits)
 - Voice search (TV)
-- Search filters (type/genre/year)
 - Multiple server support
 - HDR detection and handling
 
