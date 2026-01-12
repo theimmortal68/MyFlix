@@ -39,4 +39,12 @@ dependencies {
     // Serialization JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
+    testImplementation("io.ktor:ktor-http:$ktorVersion")
+    testImplementation("io.ktor:ktor-serialization:$ktorVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:${rootProject.extra["kotlinVersion"]}")
+    testImplementation("io.mockk:mockk:1.13.10")
 }
