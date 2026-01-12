@@ -30,12 +30,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.jausc.myflix.core.common.model.AuthResponse
-import dev.jausc.myflix.core.common.ui.DiscoveredServerInfo
-import dev.jausc.myflix.core.common.ui.LoginAuthenticator
-import dev.jausc.myflix.core.common.ui.PublicUserInfo
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.common.ui.ValidatedServerInfo
-import dev.jausc.myflix.core.common.ui.rememberLoginScreenState
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.QuickConnectFlowState
@@ -60,26 +56,29 @@ enum class LoginStep {
 
 @Composable
 fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSuccess: () -> Unit) {
-    val authenticator = remember(jellyfinClient, appState) {
-        MobileLoginAuthenticator(jellyfinClient, appState)
-    }
-    val state = rememberLoginScreenState(authenticator)
+    // ViewModel with manual DI
+    val viewModel: LoginViewModel = viewModel(
+        factory = LoginViewModel.Factory(jellyfinClient, appState),
+    )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     var currentStep by remember { mutableStateOf(LoginStep.SERVER_DISCOVERY) }
 
     // Auto-discover on launch
     LaunchedEffect(Unit) {
-        state.discoverServers()
+        viewModel.discoverServers()
     }
 
     // Error dialog
     if (state.error != null) {
         AlertDialog(
-            onDismissRequest = { state.clearError() },
+            onDismissRequest = { viewModel.clearError() },
             title = { Text("Error") },
             text = { Text(state.error!!) },
             confirmButton = {
-                TextButton(onClick = { state.clearError() }) {
+                TextButton(onClick = { viewModel.clearError() }) {
                     Text("OK")
                 }
             },
@@ -90,9 +89,10 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
         LoginStep.SERVER_DISCOVERY -> {
             ServerDiscoveryScreen(
                 state = state,
+                viewModel = viewModel,
                 onConnect = { address ->
                     currentStep = LoginStep.CONNECTING
-                    state.connectToServer(address) { _, _ ->
+                    viewModel.connectToServer(address) { _, _ ->
                         currentStep = LoginStep.AUTH_CHOICE
                     }
                 },
@@ -127,7 +127,7 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
                         currentStep = LoginStep.MANUAL_LOGIN
                     },
                     onChangeServer = {
-                        state.disconnectServer()
+                        viewModel.disconnectServer()
                         currentStep = LoginStep.SERVER_DISCOVERY
                     },
                 )
@@ -143,6 +143,7 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
                     server = server,
                     jellyfinClient = jellyfinClient,
                     state = state,
+                    viewModel = viewModel,
                     onLoginSuccess = onLoginSuccess,
                     onUsePassword = {
                         currentStep = LoginStep.MANUAL_LOGIN
@@ -162,6 +163,7 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
                 ManualLoginScreen(
                     server = server,
                     state = state,
+                    viewModel = viewModel,
                     onLoginSuccess = onLoginSuccess,
                     onBack = {
                         currentStep = LoginStep.AUTH_CHOICE
@@ -175,7 +177,8 @@ fun LoginScreen(appState: AppState, jellyfinClient: JellyfinClient, onLoginSucce
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ServerDiscoveryScreen(
-    state: dev.jausc.myflix.core.common.ui.LoginScreenState,
+    state: LoginUiState,
+    viewModel: LoginViewModel,
     onConnect: (String) -> Unit,
     onConnectFailed: () -> Unit,
 ) {
@@ -188,7 +191,7 @@ private fun ServerDiscoveryScreen(
                 title = { Text("MyFlix") },
                 actions = {
                     if (!state.isSearching) {
-                        IconButton(onClick = { state.discoverServers() }) {
+                        IconButton(onClick = { viewModel.discoverServers() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
                     }
@@ -244,7 +247,7 @@ private fun ServerDiscoveryScreen(
 
             // Choose server button
             OutlinedButton(
-                onClick = { state.discoverServers() },
+                onClick = { viewModel.discoverServers() },
                 enabled = !state.isSearching,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -386,7 +389,8 @@ private fun AuthChoiceScreen(
 private fun QuickConnectScreen(
     server: ValidatedServerInfo,
     jellyfinClient: JellyfinClient,
-    state: dev.jausc.myflix.core.common.ui.LoginScreenState,
+    state: LoginUiState,
+    viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
     onUsePassword: () -> Unit,
     onBack: () -> Unit,
@@ -403,7 +407,7 @@ private fun QuickConnectScreen(
                 quickConnectState = qcState
 
                 if (qcState is QuickConnectFlowState.Authenticated) {
-                    state.handleQuickConnectSuccess(qcState.authResponse) {
+                    viewModel.handleQuickConnectSuccess(qcState.authResponse) {
                         onLoginSuccess()
                     }
                 }
@@ -537,7 +541,8 @@ private fun QuickConnectScreen(
 @Composable
 private fun ManualLoginScreen(
     server: ValidatedServerInfo,
-    state: dev.jausc.myflix.core.common.ui.LoginScreenState,
+    state: LoginUiState,
+    viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -576,7 +581,7 @@ private fun ManualLoginScreen(
                 value = username,
                 onValueChange = {
                     username = it
-                    state.clearError()
+                    viewModel.clearError()
                 },
                 label = { Text("User") },
                 modifier = Modifier.fillMaxWidth(),
@@ -594,7 +599,7 @@ private fun ManualLoginScreen(
                 value = password,
                 onValueChange = {
                     password = it
-                    state.clearError()
+                    viewModel.clearError()
                 },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
@@ -614,7 +619,7 @@ private fun ManualLoginScreen(
 
             // Sign In button
             Button(
-                onClick = { state.login(username, password, onLoginSuccess) },
+                onClick = { viewModel.login(username, password, onLoginSuccess) },
                 enabled = !state.isAuthenticating && username.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -652,77 +657,3 @@ private fun ManualLoginScreen(
     }
 }
 
-/**
- * Mobile implementation of LoginAuthenticator.
- */
-private class MobileLoginAuthenticator(
-    private val jellyfinClient: JellyfinClient,
-    private val appState: AppState,
-) : LoginAuthenticator {
-    override suspend fun discoverServers(timeoutMs: Long): Result<List<DiscoveredServerInfo>> {
-        return runCatching {
-            jellyfinClient.discoverServers(timeoutMs).map { server ->
-                DiscoveredServerInfo(
-                    name = server.name,
-                    address = server.address,
-                )
-            }
-        }
-    }
-
-    override suspend fun connectToServer(address: String): Result<ValidatedServerInfo> {
-        return jellyfinClient.connectToServer(address).map { server ->
-            ValidatedServerInfo(
-                url = server.url,
-                serverName = server.serverInfo.serverName,
-                version = server.serverInfo.version,
-                quickConnectEnabled = server.quickConnectEnabled,
-            )
-        }
-    }
-
-    override suspend fun getPublicUsers(serverUrl: String): Result<List<PublicUserInfo>> {
-        return jellyfinClient.getPublicUsers(serverUrl).map { users ->
-            users.map { user ->
-                PublicUserInfo(
-                    id = user.id,
-                    name = user.name,
-                    primaryImageTag = user.primaryImageTag,
-                )
-            }
-        }
-    }
-
-    override suspend fun login(
-        serverUrl: String,
-        username: String,
-        password: String,
-    ): Result<AuthResponse> {
-        return jellyfinClient.login(serverUrl, username, password)
-    }
-
-    override suspend fun onLoginSuccess(
-        server: ValidatedServerInfo,
-        response: AuthResponse,
-        username: String,
-        password: String,
-    ) {
-        jellyfinClient.configure(
-            server.url,
-            response.accessToken,
-            response.user.id,
-            jellyfinClient.deviceId,
-        )
-        appState.login(server.url, response.accessToken, response.user.id, username, password)
-    }
-
-    override suspend fun onQuickConnectSuccess(server: ValidatedServerInfo, response: AuthResponse) {
-        jellyfinClient.configure(
-            server.url,
-            response.accessToken,
-            response.user.id,
-            jellyfinClient.deviceId,
-        )
-        appState.login(server.url, response.accessToken, response.user.id)
-    }
-}

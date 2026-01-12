@@ -26,11 +26,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -50,7 +52,6 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.ui.rememberSearchScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
@@ -71,9 +72,13 @@ fun SearchScreen(
     onNavigateShows: () -> Unit,
     onNavigateSettings: () -> Unit,
 ) {
-    val state = rememberSearchScreenState(
-        searcher = { query -> jellyfinClient.search(query) },
+    // ViewModel with manual DI
+    val viewModel: SearchViewModel = viewModel(
+        factory = SearchViewModel.Factory(jellyfinClient),
     )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     var isTextFieldFocused by remember { mutableStateOf(false) }
     val searchFieldFocusRequester = remember { FocusRequester() }
@@ -129,7 +134,7 @@ fun SearchScreen(
                 }
                 BasicTextField(
                     value = state.query,
-                    onValueChange = { state.updateQuery(it) },
+                    onValueChange = { viewModel.updateQuery(it) },
                     singleLine = true,
                     textStyle = TextStyle(
                         color = TvColors.TextPrimary,
@@ -137,7 +142,7 @@ fun SearchScreen(
                     ),
                     cursorBrush = SolidColor(TvColors.BluePrimary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { state.performSearch() }),
+                    keyboardActions = KeyboardActions(onSearch = { viewModel.performSearch() }),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(searchFieldFocusRequester)
@@ -177,7 +182,7 @@ fun SearchScreen(
             }
 
             Button(
-                onClick = { state.performSearch() },
+                onClick = { viewModel.performSearch() },
                 enabled = state.canSearch,
             ) {
                 Text("Search")

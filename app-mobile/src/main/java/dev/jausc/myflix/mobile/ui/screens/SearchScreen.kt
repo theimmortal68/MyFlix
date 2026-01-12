@@ -32,14 +32,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.common.ui.rememberSearchScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,9 +51,13 @@ fun SearchScreen(
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val state = rememberSearchScreenState(
-        searcher = { query -> jellyfinClient.search(query) },
+    // ViewModel with manual DI
+    val viewModel: SearchViewModel = viewModel(
+        factory = SearchViewModel.Factory(jellyfinClient),
     )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -59,7 +65,7 @@ fun SearchScreen(
                 title = {
                     OutlinedTextField(
                         value = state.query,
-                        onValueChange = { state.updateQuery(it) },
+                        onValueChange = { viewModel.updateQuery(it) },
                         placeholder = { Text("Search...") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -68,7 +74,7 @@ fun SearchScreen(
                         },
                         trailingIcon = {
                             if (state.query.isNotEmpty()) {
-                                IconButton(onClick = { state.clear() }) {
+                                IconButton(onClick = { viewModel.clear() }) {
                                     Icon(Icons.Default.Clear, contentDescription = "Clear")
                                 }
                             }
@@ -89,7 +95,7 @@ fun SearchScreen(
                 .padding(padding),
         ) {
             Button(
-                onClick = { state.performSearch() },
+                onClick = { viewModel.performSearch() },
                 enabled = state.canSearch,
                 modifier = Modifier
                     .fillMaxWidth()

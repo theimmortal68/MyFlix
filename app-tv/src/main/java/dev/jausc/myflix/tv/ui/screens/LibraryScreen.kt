@@ -18,12 +18,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.ui.rememberLibraryScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -36,13 +38,14 @@ fun LibraryScreen(
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val state = rememberLibraryScreenState(
-        libraryId = libraryId,
-        libraryName = libraryName,
-        loader = { id ->
-            jellyfinClient.getLibraryItems(id).map { it.items }
-        },
+    // ViewModel with manual DI
+    val viewModel: LibraryViewModel = viewModel(
+        key = libraryId,
+        factory = LibraryViewModel.Factory(libraryId, jellyfinClient),
     )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     Box(
         modifier = Modifier

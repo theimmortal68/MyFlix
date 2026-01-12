@@ -23,11 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.*
-import dev.jausc.myflix.core.common.ui.DetailLoader
-import dev.jausc.myflix.core.common.ui.rememberDetailScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DetailDialogActions
 import dev.jausc.myflix.tv.ui.components.DialogParams
@@ -45,37 +44,28 @@ fun DetailScreen(
     onEpisodeClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
-    val state = rememberDetailScreenState(
-        itemId = itemId,
-        loader = object : DetailLoader {
-            override suspend fun loadItem(itemId: String) = jellyfinClient.getItem(itemId)
-            override suspend fun loadSeasons(seriesId: String) = jellyfinClient.getSeasons(seriesId)
-            override suspend fun loadEpisodes(seriesId: String, seasonId: String) =
-                jellyfinClient.getEpisodes(seriesId, seasonId)
-        },
+    // ViewModel with manual DI
+    val viewModel: DetailViewModel = viewModel(
+        key = itemId, // Use itemId as key so ViewModel is recreated for different items
+        factory = DetailViewModel.Factory(itemId, jellyfinClient),
     )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     // Long-press dialog state (TV-specific)
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Dialog actions (TV-specific)
-    val dialogActions = remember(scope, state) {
+    val dialogActions = remember(viewModel) {
         DetailDialogActions(
             onPlay = { episodeId -> onEpisodeClick(episodeId) },
             onMarkWatched = { episodeId, watched ->
-                scope.launch {
-                    jellyfinClient.setPlayed(episodeId, watched)
-                    state.refreshEpisodes()
-                }
+                viewModel.setPlayed(episodeId, watched)
             },
             onToggleFavorite = { episodeId, favorite ->
-                scope.launch {
-                    jellyfinClient.setFavorite(episodeId, favorite)
-                    state.refreshEpisodes()
-                }
+                viewModel.setFavorite(episodeId, favorite)
             },
             onShowMediaInfo = { episode -> mediaInfoItem = episode },
             onGoToSeries = null, // Already on series page
@@ -196,7 +186,7 @@ fun DetailScreen(
                                 items(state.seasons, key = { it.id }) { season ->
                                     val isSelected = state.selectedSeason?.id == season.id
                                     Surface(
-                                        onClick = { state.selectSeason(season) },
+                                        onClick = { viewModel.selectSeason(season) },
                                         shape = ClickableSurfaceDefaults.shape(
                                             shape = MaterialTheme.shapes.small,
                                         ),

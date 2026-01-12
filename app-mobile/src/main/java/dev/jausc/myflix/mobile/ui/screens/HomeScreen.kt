@@ -26,24 +26,22 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.LibraryFinder
-import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.ui.HomeContentLoader
-import dev.jausc.myflix.core.common.ui.HomeScreenConfig
-import dev.jausc.myflix.core.common.ui.rememberHomeScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.mobile.MobilePreferences
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
 import dev.jausc.myflix.mobile.ui.components.MobileContentRow
@@ -69,12 +67,7 @@ import dev.jausc.myflix.mobile.ui.components.buildHomeMenuItems
 @Composable
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
-    showSeasonPremieres: Boolean = true,
-    showGenreRows: Boolean = false,
-    enabledGenres: List<String> = emptyList(),
-    showCollections: Boolean = true,
-    pinnedCollections: List<String> = emptyList(),
-    showSuggestions: Boolean = true,
+    preferences: MobilePreferences,
     onLibraryClick: (String, String) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
@@ -82,38 +75,34 @@ fun HomeScreen(
     onDiscoverClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
 ) {
-    // Shared state for home screen
-    val loader = remember(jellyfinClient) { MobileHomeContentLoader(jellyfinClient) }
-    val config = remember(
-        showSeasonPremieres, showGenreRows, enabledGenres,
-        showCollections, pinnedCollections, showSuggestions,
-    ) {
-        HomeScreenConfig(
-            showSeasonPremieres = showSeasonPremieres,
-            showGenreRows = showGenreRows,
-            enabledGenres = enabledGenres,
-            showCollections = showCollections,
-            pinnedCollections = pinnedCollections,
-            showSuggestions = showSuggestions,
-            hideWatchedFromRecent = false,
-            heroConfig = HeroContentBuilder.mobileConfig,
-        )
-    }
-    val state = rememberHomeScreenState(loader, config)
+    // ViewModel with manual DI
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModel.Factory(jellyfinClient, preferences),
+    )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
+
+    // Collect preference values for UI
+    val showSeasonPremieres by viewModel.showSeasonPremieres.collectAsState()
+    val showGenreRows by viewModel.showGenreRows.collectAsState()
+    val showCollections by viewModel.showCollections.collectAsState()
+    val showSuggestions by viewModel.showSuggestions.collectAsState()
+    val pinnedCollections by viewModel.pinnedCollections.collectAsState()
 
     // Popup menu state for long-press
     var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
 
     // Menu actions for long-press
-    val menuActions = remember(state) {
+    val menuActions = remember(viewModel) {
         HomeMenuActions(
             onGoTo = { itemId -> onItemClick(itemId) },
             onPlay = { itemId -> onPlayClick(itemId) },
             onMarkWatched = { itemId, watched ->
-                state.setPlayed(itemId, watched)
+                viewModel.setPlayed(itemId, watched)
             },
             onToggleFavorite = { itemId, favorite ->
-                state.setFavorite(itemId, favorite)
+                viewModel.setFavorite(itemId, favorite)
             },
             onGoToSeries = { seriesId -> onItemClick(seriesId) },
         )
@@ -326,7 +315,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { state.refresh() },
+                            onClick = { viewModel.refresh() },
                         ) {
                             Text("Retry")
                         }
@@ -384,81 +373,3 @@ fun HomeScreen(
     }
 }
 
-/**
- * Mobile implementation of HomeContentLoader.
- */
-private class MobileHomeContentLoader(
-    private val jellyfinClient: JellyfinClient,
-) : HomeContentLoader {
-    override suspend fun clearCache() {
-        jellyfinClient.clearCache()
-    }
-
-    override suspend fun getLibraries(): Result<List<JellyfinItem>> {
-        return jellyfinClient.getLibraries()
-    }
-
-    override fun findMoviesLibraryId(libraries: List<JellyfinItem>): String? {
-        return LibraryFinder.findMoviesLibrary(libraries)?.id
-    }
-
-    override fun findShowsLibraryId(libraries: List<JellyfinItem>): String? {
-        return LibraryFinder.findShowsLibrary(libraries)?.id
-    }
-
-    override suspend fun getLatestMovies(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getLatestMovies(libraryId, limit)
-    }
-
-    override suspend fun getLatestSeries(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getLatestSeries(libraryId, limit)
-    }
-
-    override suspend fun getLatestEpisodes(libraryId: String, limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getLatestEpisodes(libraryId, limit)
-    }
-
-    override suspend fun getNextUp(limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getNextUp(limit)
-    }
-
-    override suspend fun getContinueWatching(limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getContinueWatching(limit)
-    }
-
-    override suspend fun getUpcomingEpisodes(limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getUpcomingEpisodes(limit = limit)
-    }
-
-    override suspend fun getCollections(limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getCollections(limit)
-    }
-
-    override suspend fun getItem(itemId: String): Result<JellyfinItem> {
-        return jellyfinClient.getItem(itemId)
-    }
-
-    override suspend fun getCollectionItems(collectionId: String, limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getCollectionItems(collectionId, limit)
-    }
-
-    override suspend fun getSuggestions(limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getSuggestions(limit)
-    }
-
-    override suspend fun getGenres(): Result<List<JellyfinGenre>> {
-        return jellyfinClient.getGenres()
-    }
-
-    override suspend fun getItemsByGenre(genreName: String, limit: Int): Result<List<JellyfinItem>> {
-        return jellyfinClient.getItemsByGenre(genreName, limit = limit)
-    }
-
-    override suspend fun setPlayed(itemId: String, played: Boolean) {
-        jellyfinClient.setPlayed(itemId, played)
-    }
-
-    override suspend fun setFavorite(itemId: String, favorite: Boolean) {
-        jellyfinClient.setFavorite(itemId, favorite)
-    }
-}

@@ -28,13 +28,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.videoQualityLabel
-import dev.jausc.myflix.core.common.ui.PlaybackReporter
-import dev.jausc.myflix.core.common.ui.PlayerScreenState
-import dev.jausc.myflix.core.common.ui.rememberPlayerScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
@@ -55,9 +53,14 @@ fun PlayerScreen(
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
 
-    // Shared state for player screen
-    val reporter = remember(jellyfinClient) { TvPlaybackReporter(jellyfinClient) }
-    val state = rememberPlayerScreenState(itemId, reporter)
+    // ViewModel with manual DI
+    val viewModel: PlayerViewModel = viewModel(
+        key = itemId,
+        factory = PlayerViewModel.Factory(itemId, jellyfinClient),
+    )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     // Player controller from core module - pass MPV preference
     val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
@@ -79,7 +82,7 @@ fun PlayerScreen(
                 height = mediaInfo.height,
                 bitrate = mediaInfo.bitrate,
             )
-            state.playerReady = playerController.initializeForMedia(coreMediaInfo)
+            viewModel.setPlayerReady(playerController.initializeForMedia(coreMediaInfo))
             focusRequester.requestFocus()
         }
     }
@@ -87,7 +90,7 @@ fun PlayerScreen(
     // Report playback start when playback begins
     LaunchedEffect(playbackState.isPlaying) {
         if (playbackState.isPlaying) {
-            state.onPlaybackStarted(playbackState.position)
+            viewModel.onPlaybackStarted(playbackState.position)
         }
     }
 
@@ -96,26 +99,26 @@ fun PlayerScreen(
         if (playbackState.isPlaying && !playbackState.isPaused) {
             while (isActive) {
                 delay(PlayerConstants.PROGRESS_REPORT_INTERVAL_MS)
-                state.reportProgress(playbackState.position, isPaused = false)
+                viewModel.reportProgress(playbackState.position, isPaused = false)
             }
         }
     }
 
     // Report pause/unpause
     LaunchedEffect(playbackState.isPaused) {
-        state.onPauseStateChanged(playbackState.position, playbackState.isPaused)
+        viewModel.onPauseStateChanged(playbackState.position, playbackState.isPaused)
     }
 
     // Auto-hide controls
     LaunchedEffect(state.showControls, playbackState.isPlaying) {
         if (state.showControls && playbackState.isPlaying) {
-            state.resetControlsHideTimer()
+            viewModel.resetControlsHideTimer()
         }
     }
 
     // Detect video completion (95% watched = mark as played)
     LaunchedEffect(playbackState.position, playbackState.duration) {
-        state.checkVideoCompletion(playbackState.position, playbackState.duration)
+        viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
     // Cleanup - report playback stopped (use runBlocking to ensure it completes)
@@ -123,9 +126,8 @@ fun PlayerScreen(
         onDispose {
             // Report stopped with final position - MUST complete before returning
             kotlinx.coroutines.runBlocking {
-                state.reportPlaybackStopped(playerController.state.value.position)
+                viewModel.reportPlaybackStopped(playerController.state.value.position)
             }
-            state.cleanup()
             playerController.stop()
             playerController.release()
         }
@@ -144,28 +146,28 @@ fun PlayerScreen(
                             if (state.showControls) {
                                 playerController.togglePause()
                             } else {
-                                state.showControls()
+                                viewModel.showControls()
                             }
                             true
                         }
                         Key.DirectionLeft -> {
                             playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS)
-                            state.showControls()
+                            viewModel.showControls()
                             true
                         }
                         Key.DirectionRight -> {
                             playerController.seekRelative(PlayerConstants.SEEK_STEP_MS)
-                            state.showControls()
+                            viewModel.showControls()
                             true
                         }
                         Key.DirectionUp -> {
                             playerController.seekRelative(PlayerConstants.SEEK_STEP_LONG_MS)
-                            state.showControls()
+                            viewModel.showControls()
                             true
                         }
                         Key.DirectionDown -> {
                             playerController.seekRelative(-PlayerConstants.SEEK_STEP_LONG_MS)
-                            state.showControls()
+                            viewModel.showControls()
                             true
                         }
                         Key.Back -> {
@@ -173,7 +175,7 @@ fun PlayerScreen(
                             true
                         }
                         else -> {
-                            state.showControls()
+                            viewModel.showControls()
                             false
                         }
                     }
@@ -531,36 +533,5 @@ private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color =
             style = MaterialTheme.typography.labelMedium,
             color = textColor,
         )
-    }
-}
-
-/**
- * TV implementation of PlaybackReporter.
- */
-private class TvPlaybackReporter(
-    private val jellyfinClient: JellyfinClient,
-) : PlaybackReporter {
-    override suspend fun loadItem(itemId: String): Result<JellyfinItem> {
-        return jellyfinClient.getItem(itemId)
-    }
-
-    override fun getStreamUrl(itemId: String): String {
-        return jellyfinClient.getStreamUrl(itemId)
-    }
-
-    override suspend fun reportPlaybackStart(itemId: String, positionTicks: Long) {
-        jellyfinClient.reportPlaybackStart(itemId, positionTicks = positionTicks)
-    }
-
-    override suspend fun reportPlaybackProgress(itemId: String, positionTicks: Long, isPaused: Boolean) {
-        jellyfinClient.reportPlaybackProgress(itemId, positionTicks, isPaused)
-    }
-
-    override suspend fun reportPlaybackStopped(itemId: String, positionTicks: Long) {
-        jellyfinClient.reportPlaybackStopped(itemId, positionTicks)
-    }
-
-    override suspend fun setPlayed(itemId: String, played: Boolean) {
-        jellyfinClient.setPlayed(itemId, played)
     }
 }

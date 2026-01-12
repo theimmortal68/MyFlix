@@ -79,15 +79,8 @@ fun MyFlixTvApp() {
     var splashFinished by remember { mutableStateOf(false) }
     var isSeerrAuthenticated by remember { mutableStateOf(false) }
 
-    // Collect preferences
-    val hideWatchedFromRecent by tvPreferences.hideWatchedFromRecent.collectAsState()
+    // Collect preferences (only ones used outside HomeScreen)
     val useMpvPlayer by tvPreferences.useMpvPlayer.collectAsState()
-    val showSeasonPremieres by tvPreferences.showSeasonPremieres.collectAsState()
-    val showGenreRows by tvPreferences.showGenreRows.collectAsState()
-    val enabledGenres by tvPreferences.enabledGenres.collectAsState()
-    val showCollections by tvPreferences.showCollections.collectAsState()
-    val pinnedCollections by tvPreferences.pinnedCollections.collectAsState()
-    val showSuggestions by tvPreferences.showSuggestions.collectAsState()
     val seerrEnabled by tvPreferences.seerrEnabled.collectAsState()
     val seerrUrl by tvPreferences.seerrUrl.collectAsState()
     val seerrApiKey by tvPreferences.seerrApiKey.collectAsState()
@@ -211,13 +204,7 @@ fun MyFlixTvApp() {
             composable("home") {
                 HomeScreen(
                     jellyfinClient = jellyfinClient,
-                    hideWatchedFromRecent = hideWatchedFromRecent,
-                    showSeasonPremieres = showSeasonPremieres,
-                    showGenreRows = showGenreRows,
-                    enabledGenres = enabledGenres,
-                    showCollections = showCollections,
-                    pinnedCollections = pinnedCollections,
-                    showSuggestions = showSuggestions,
+                    preferences = tvPreferences,
                     onLibraryClick = { libraryId, libraryName ->
                         navController.navigate("library/$libraryId/$libraryName")
                     },

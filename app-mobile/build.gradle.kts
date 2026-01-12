@@ -95,4 +95,8 @@ dependencies {
     implementation("com.google.guava:guava:33.3.1-android")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Lifecycle for ViewModel and collectAsStateWithLifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
 }

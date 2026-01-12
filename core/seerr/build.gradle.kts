@@ -38,4 +38,5 @@ dependencies {
 
     // Serialization JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
 }

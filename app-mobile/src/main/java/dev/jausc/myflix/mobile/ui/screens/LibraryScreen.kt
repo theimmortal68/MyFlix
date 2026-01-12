@@ -27,14 +27,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.common.ui.rememberLibraryScreenState
 import dev.jausc.myflix.core.network.JellyfinClient
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,13 +48,14 @@ fun LibraryScreen(
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val state = rememberLibraryScreenState(
-        libraryId = libraryId,
-        libraryName = libraryName,
-        loader = { id ->
-            jellyfinClient.getLibraryItems(id).map { it.items }
-        },
+    // ViewModel with manual DI
+    val viewModel: LibraryViewModel = viewModel(
+        key = libraryId,
+        factory = LibraryViewModel.Factory(libraryId, jellyfinClient),
     )
+
+    // Collect UI state from ViewModel
+    val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {

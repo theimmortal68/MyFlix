@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    MyFlixMobileApp()
+                    MyFlixMobileContent()
                 }
             }
         }
@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MyFlixMobileApp() {
+fun MyFlixMobileContent() {
     val context = LocalContext.current
 
     val jellyfinClient = remember { JellyfinClient() }
@@ -73,14 +73,8 @@ fun MyFlixMobileApp() {
     val mobilePreferences = remember { MobilePreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
 
-    // Collect preferences
+    // Collect preferences (only ones used outside HomeScreen)
     val useMpvPlayer by mobilePreferences.useMpvPlayer.collectAsState()
-    val showSeasonPremieres by mobilePreferences.showSeasonPremieres.collectAsState()
-    val showGenreRows by mobilePreferences.showGenreRows.collectAsState()
-    val enabledGenres by mobilePreferences.enabledGenres.collectAsState()
-    val showCollections by mobilePreferences.showCollections.collectAsState()
-    val pinnedCollections by mobilePreferences.pinnedCollections.collectAsState()
-    val showSuggestions by mobilePreferences.showSuggestions.collectAsState()
     val seerrEnabled by mobilePreferences.seerrEnabled.collectAsState()
     val seerrUrl by mobilePreferences.seerrUrl.collectAsState()
     val seerrApiKey by mobilePreferences.seerrApiKey.collectAsState()
@@ -200,12 +194,7 @@ fun MyFlixMobileApp() {
         composable("home") {
             HomeScreen(
                 jellyfinClient = jellyfinClient,
-                showSeasonPremieres = showSeasonPremieres,
-                showGenreRows = showGenreRows,
-                enabledGenres = enabledGenres,
-                showCollections = showCollections,
-                pinnedCollections = pinnedCollections,
-                showSuggestions = showSuggestions,
+                preferences = mobilePreferences,
                 onLibraryClick = { libraryId, libraryName ->
                     navController.navigate("library/$libraryId/$libraryName")
                 },
