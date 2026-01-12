@@ -44,7 +44,8 @@ import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverMoviesScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTrendingScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTvScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverUpcomingScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverUpcomingMoviesScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverUpcomingTvScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
@@ -328,14 +329,21 @@ fun MyFlixTvApp() {
                         onNavigateDiscoverTv = {
                             navController.navigate("seerr/tv")
                         },
-                        onNavigateDiscoverUpcoming = {
-                            navController.navigate("seerr/upcoming")
+                        onNavigateDiscoverUpcomingMovies = {
+                            navController.navigate("seerr/upcoming/movies")
+                        },
+                        onNavigateDiscoverUpcomingTv = {
+                            navController.navigate("seerr/upcoming/tv")
                         },
                         onNavigateSeerrSearch = {
                             navController.navigate(NavigationHelper.SEERR_SEARCH_ROUTE)
                         },
                         onNavigateSeerrRequests = {
                             navController.navigate(NavigationHelper.SEERR_REQUESTS_ROUTE)
+                        },
+                        onNavigateGenre = { genreMediaType, genreId, genreName ->
+                            val encodedName = NavigationHelper.encodeNavArg(genreName)
+                            navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
                         },
                     )
                 }
@@ -388,8 +396,18 @@ fun MyFlixTvApp() {
                 )
             }
 
-            composable("seerr/upcoming") {
-                SeerrDiscoverUpcomingScreen(
+            composable("seerr/upcoming/movies") {
+                SeerrDiscoverUpcomingMoviesScreen(
+                    seerrClient = seerrClient,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable("seerr/upcoming/tv") {
+                SeerrDiscoverUpcomingTvScreen(
                     seerrClient = seerrClient,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
@@ -508,7 +526,14 @@ fun MyFlixTvApp() {
                         },
                         onBack = { navController.popBackStack() },
                     )
-                    "upcoming" -> SeerrDiscoverUpcomingScreen(
+                    "upcoming_movies" -> SeerrDiscoverUpcomingMoviesScreen(
+                        seerrClient = seerrClient,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                    "upcoming_tv" -> SeerrDiscoverUpcomingTvScreen(
                         seerrClient = seerrClient,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")

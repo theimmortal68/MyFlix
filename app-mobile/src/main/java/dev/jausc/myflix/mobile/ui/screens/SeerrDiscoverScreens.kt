@@ -58,6 +58,7 @@ import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.filterDiscoverable
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MenuItem
 import dev.jausc.myflix.mobile.ui.components.MenuItemDivider
@@ -113,15 +114,30 @@ fun SeerrDiscoverTvScreen(
 }
 
 @Composable
-fun SeerrDiscoverUpcomingScreen(
+fun SeerrDiscoverUpcomingMoviesScreen(
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     SeerrMediaListScreen(
-        title = "Coming Soon",
+        title = "Upcoming Movies",
         onBack = onBack,
         loadItems = { page -> seerrClient.getUpcomingMovies(page) },
+        seerrClient = seerrClient,
+        onMediaClick = onMediaClick,
+    )
+}
+
+@Composable
+fun SeerrDiscoverUpcomingTvScreen(
+    seerrClient: SeerrClient,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    SeerrMediaListScreen(
+        title = "Upcoming TV",
+        onBack = onBack,
+        loadItems = { page -> seerrClient.getUpcomingTV(page) },
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
     )
@@ -204,10 +220,11 @@ private fun SeerrMediaListScreen(
 
         loadItems(pageToLoad)
             .onSuccess { result ->
+                val filtered = result.results.filterDiscoverable()
                 items = if (append) {
-                    (items + result.results).distinctBy { "${it.mediaType}-${it.id}" }
+                    (items + filtered).distinctBy { "${it.mediaType}-${it.id}" }
                 } else {
-                    result.results
+                    filtered
                 }
                 page = result.page
                 totalPages = result.totalPages

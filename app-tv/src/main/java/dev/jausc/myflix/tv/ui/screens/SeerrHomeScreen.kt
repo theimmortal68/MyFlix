@@ -51,7 +51,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
@@ -93,7 +93,10 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
+import dev.jausc.myflix.core.seerr.SeerrGenre
+import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrImdbRating
+import dev.jausc.myflix.core.seerr.getColor
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
@@ -138,7 +141,9 @@ fun SeerrHomeScreen(
     onNavigateDiscoverTrending: () -> Unit = {},
     onNavigateDiscoverMovies: () -> Unit = {},
     onNavigateDiscoverTv: () -> Unit = {},
-    onNavigateDiscoverUpcoming: () -> Unit = {},
+    onNavigateDiscoverUpcomingMovies: () -> Unit = {},
+    onNavigateDiscoverUpcomingTv: () -> Unit = {},
+    onNavigateGenre: (mediaType: String, genreId: Int, genreName: String) -> Unit = { _, _, _ -> },
 ) {
     // Coroutine scope for navigation actions
     val coroutineScope = rememberCoroutineScope()
@@ -154,11 +159,15 @@ fun SeerrHomeScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var rows by remember { mutableStateOf<List<SeerrDiscoverRow>>(emptyList()) }
+    var genreRows by remember { mutableStateOf<List<SeerrGenreRow>>(emptyList()) }
     var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
     var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
 
     // Preview item - shows focused card's media in hero section
     var previewItem by remember { mutableStateOf<SeerrMedia?>(null) }
+
+    // Track if quick_actions row has focus (for nav bar trigger)
+    var quickActionsHasFocus by remember { mutableStateOf(false) }
 
     // The item to display in hero - preview takes precedence
     val heroDisplayItem = previewItem ?: featuredItem
@@ -195,11 +204,6 @@ fun SeerrHomeScreen(
     // Collect auth state as Compose state for proper recomposition
     val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
 
-    // Filter out items already in library, partially available, or already requested
-    fun List<SeerrMedia>.filterDiscoverable() = filter {
-        !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
-    }
-
     // Load content and libraries - key on auth status to reload if auth changes
     LaunchedEffect(isAuthenticated) {
         // Load libraries for navigation
@@ -219,13 +223,16 @@ fun SeerrHomeScreen(
         // Load discover rows using shared helper
         val sliders = seerrClient.getDiscoverSettings().getOrNull()
         val discoverRows = if (!sliders.isNullOrEmpty()) {
-            SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders) { filterDiscoverable() }
+            SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders)
         } else {
-            SeerrDiscoverHelper.loadFallbackRows(seerrClient) { filterDiscoverable() }
+            SeerrDiscoverHelper.loadFallbackRows(seerrClient)
         }
 
         rows = discoverRows
         featuredItem = discoverRows.firstOrNull()?.items?.firstOrNull()
+
+        // Load genre rows for browsing
+        genreRows = SeerrDiscoverHelper.loadGenreRows(seerrClient)
 
         isLoading = false
     }
@@ -362,10 +369,10 @@ fun SeerrHomeScreen(
                             .fillMaxSize()
                             .focusRequester(contentFocusRequester)
                             .onPreviewKeyEvent { keyEvent ->
-                                // Intercept UP on first row to show nav bar
+                                // Only show nav bar when pressing UP from quick_actions row
                                 if (keyEvent.type == KeyEventType.KeyDown &&
                                     keyEvent.key == Key.DirectionUp &&
-                                    lazyListState.firstVisibleItemIndex == 0
+                                    quickActionsHasFocus
                                 ) {
                                     navBarState.show()
                                     coroutineScope.launch {
@@ -391,7 +398,9 @@ fun SeerrHomeScreen(
                             ) {
                                 Button(
                                     onClick = onNavigateSeerrSearch,
-                                    modifier = Modifier.height(20.dp),
+                                    modifier = Modifier
+                                        .height(20.dp)
+                                        .onFocusChanged { quickActionsHasFocus = it.hasFocus },
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                     scale = ButtonDefaults.scale(focusedScale = 1f),
                                     colors = ButtonDefaults.colors(
@@ -411,7 +420,9 @@ fun SeerrHomeScreen(
                                 }
                                 Button(
                                     onClick = onNavigateSeerrRequests,
-                                    modifier = Modifier.height(20.dp),
+                                    modifier = Modifier
+                                        .height(20.dp)
+                                        .onFocusChanged { quickActionsHasFocus = it.hasFocus },
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                     scale = ButtonDefaults.scale(focusedScale = 1f),
                                     colors = ButtonDefaults.colors(
@@ -422,7 +433,7 @@ fun SeerrHomeScreen(
                                     ),
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.FormatListBulleted,
+                                        imageVector = Icons.AutoMirrored.Outlined.FormatListBulleted,
                                         contentDescription = null,
                                         modifier = Modifier.size(14.dp),
                                     )
@@ -438,8 +449,8 @@ fun SeerrHomeScreen(
                                     SeerrRowType.TRENDING -> onNavigateDiscoverTrending
                                     SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
                                     SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                    SeerrRowType.UPCOMING_MOVIES,
-                                    SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcoming
+                                    SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
+                                    SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
                                     else -> null
                                 }
                                 SeerrContentRow(
@@ -460,6 +471,19 @@ fun SeerrHomeScreen(
                                     },
                                     onItemFocused = { media -> previewItem = media },
                                     onViewAll = onViewAll,
+                                )
+                            }
+                        }
+
+                        // Genre browser rows
+                        genreRows.forEach { genreRow ->
+                            item(key = genreRow.key) {
+                                SeerrGenreBrowseRow(
+                                    title = genreRow.title,
+                                    genres = genreRow.genres,
+                                    onGenreClick = { genre ->
+                                        onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
+                                    },
                                 )
                             }
                         }
@@ -927,6 +951,109 @@ private fun TvViewAllCard(onClick: () -> Unit) {
                     fontWeight = FontWeight.SemiBold,
                 )
             }
+        }
+    }
+}
+
+/**
+ * A row of genre cards for browsing by genre.
+ */
+@Composable
+private fun SeerrGenreBrowseRow(
+    title: String,
+    genres: List<SeerrGenre>,
+    onGenreClick: (SeerrGenre) -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(vertical = 8.dp),
+    ) {
+        // Row header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(24.dp)
+                    .background(Color(SeerrColors.PURPLE), RoundedCornerShape(2.dp)),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TvColors.TextPrimary,
+            )
+        }
+
+        // Genre cards
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 48.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            items(genres, key = { it.id }) { genre ->
+                SeerrGenreCard(
+                    genre = genre,
+                    onClick = { onGenreClick(genre) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A card displaying a genre with a colored gradient background.
+ */
+@Composable
+private fun SeerrGenreCard(
+    genre: SeerrGenre,
+    onClick: () -> Unit,
+) {
+    val genreColor = Color(genre.getColor())
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .width(160.dp)
+            .height(80.dp),
+        shape = ClickableSurfaceDefaults.shape(
+            shape = RoundedCornerShape(12.dp),
+        ),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(3.dp, TvColors.BluePrimary),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        ),
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1.05f,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            genreColor,
+                            genreColor.copy(alpha = 0.7f),
+                        ),
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = genre.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
         }
     }
 }

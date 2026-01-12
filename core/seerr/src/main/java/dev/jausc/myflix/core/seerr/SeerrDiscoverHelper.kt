@@ -15,13 +15,11 @@ object SeerrDiscoverHelper {
      *
      * @param seerrClient The Seerr API client
      * @param sliders List of discover sliders from settings
-     * @param filterDiscoverable Filter function to exclude already available/requested items
      * @return List of discover rows with content
      */
     suspend fun loadDiscoverRows(
         seerrClient: SeerrClient,
         sliders: List<SeerrDiscoverSlider>,
-        filterDiscoverable: List<SeerrMedia>.() -> List<SeerrMedia>,
     ): List<SeerrDiscoverRow> {
         val rows = mutableListOf<SeerrDiscoverRow>()
         val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
@@ -120,18 +118,17 @@ object SeerrDiscoverHelper {
      * Load fallback discover rows when no slider settings are available.
      *
      * @param seerrClient The Seerr API client
-     * @param filterDiscoverable Filter function to exclude already available/requested items
      * @return List of default discover rows
      */
     suspend fun loadFallbackRows(
         seerrClient: SeerrClient,
-        filterDiscoverable: List<SeerrMedia>.() -> List<SeerrMedia>,
     ): List<SeerrDiscoverRow> {
         val rows = mutableListOf<SeerrDiscoverRow>()
         val trending = seerrClient.getTrending().map { it.results }.getOrDefault(emptyList())
         val popularMovies = seerrClient.getPopularMovies().map { it.results }.getOrDefault(emptyList())
         val popularTv = seerrClient.getPopularTV().map { it.results }.getOrDefault(emptyList())
-        val upcoming = seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
+        val upcomingMovies = seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
+        val upcomingTv = seerrClient.getUpcomingTV().map { it.results }.getOrDefault(emptyList())
 
         data class FallbackRowData(
             val title: String,
@@ -144,7 +141,8 @@ object SeerrDiscoverHelper {
             FallbackRowData("Trending", SeerrColors.PURPLE, trending, SeerrRowType.TRENDING),
             FallbackRowData("Popular Movies", SeerrColors.YELLOW, popularMovies, SeerrRowType.POPULAR_MOVIES),
             FallbackRowData("Popular TV Shows", SeerrColors.TEAL, popularTv, SeerrRowType.POPULAR_TV),
-            FallbackRowData("Coming Soon", SeerrColors.BLUE, upcoming, SeerrRowType.UPCOMING_MOVIES),
+            FallbackRowData("Upcoming Movies", SeerrColors.BLUE, upcomingMovies, SeerrRowType.UPCOMING_MOVIES),
+            FallbackRowData("Upcoming TV", SeerrColors.BLUE, upcomingTv, SeerrRowType.UPCOMING_TV),
         ).forEach { rowData ->
             val filtered = rowData.items.filterDiscoverable().take(MAX_ITEMS_PER_ROW)
             if (filtered.isNotEmpty()) {
@@ -219,6 +217,48 @@ object SeerrDiscoverHelper {
     }
 
     private const val MAX_ITEMS_PER_ROW = 12
+
+    /**
+     * Load genre rows for browsing.
+     *
+     * @param seerrClient The Seerr API client
+     * @return List of genre rows (movie genres and TV genres)
+     */
+    suspend fun loadGenreRows(
+        seerrClient: SeerrClient,
+    ): List<SeerrGenreRow> {
+        val rows = mutableListOf<SeerrGenreRow>()
+
+        // Load movie genres
+        seerrClient.getMovieGenres().onSuccess { genres ->
+            if (genres.isNotEmpty()) {
+                rows.add(
+                    SeerrGenreRow(
+                        key = "genre_movies",
+                        title = "Movie Genres",
+                        mediaType = "movie",
+                        genres = genres,
+                    ),
+                )
+            }
+        }
+
+        // Load TV genres
+        seerrClient.getTVGenres().onSuccess { genres ->
+            if (genres.isNotEmpty()) {
+                rows.add(
+                    SeerrGenreRow(
+                        key = "genre_tv",
+                        title = "TV Genres",
+                        mediaType = "tv",
+                        genres = genres,
+                    ),
+                )
+            }
+        }
+
+        return rows
+    }
 }
 
 /**
@@ -230,6 +270,16 @@ data class SeerrDiscoverRow(
     val items: List<SeerrMedia>,
     val accentColorValue: Long,
     val rowType: SeerrRowType = SeerrRowType.OTHER,
+)
+
+/**
+ * Represents a row of genre cards for browsing.
+ */
+data class SeerrGenreRow(
+    val key: String,
+    val title: String,
+    val mediaType: String, // "movie" or "tv"
+    val genres: List<SeerrGenre>,
 )
 
 /**

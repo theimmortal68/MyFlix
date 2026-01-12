@@ -69,10 +69,14 @@ import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
+import dev.jausc.myflix.core.seerr.SeerrGenre
+import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.getColor
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MenuItem
@@ -100,11 +104,14 @@ fun SeerrHomeScreen(
     onNavigateDiscoverTrending: () -> Unit = {},
     onNavigateDiscoverMovies: () -> Unit = {},
     onNavigateDiscoverTv: () -> Unit = {},
-    onNavigateDiscoverUpcoming: () -> Unit = {},
+    onNavigateDiscoverUpcomingMovies: () -> Unit = {},
+    onNavigateDiscoverUpcomingTv: () -> Unit = {},
+    onNavigateGenre: (mediaType: String, genreId: Int, genreName: String) -> Unit = { _, _, _ -> },
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var rows by remember { mutableStateOf<List<SeerrDiscoverRow>>(emptyList()) }
+    var genreRows by remember { mutableStateOf<List<SeerrGenreRow>>(emptyList()) }
 
     // Coroutine scope for actions
     val scope = rememberCoroutineScope()
@@ -136,11 +143,6 @@ fun SeerrHomeScreen(
     // Collect auth state as Compose state for proper recomposition
     val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
 
-    // Filter out items already in library, partially available, or already requested
-    fun List<SeerrMedia>.filterDiscoverable() = filter {
-        !it.isAvailable && !it.isPending && it.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
-    }
-
     // Load content - key on auth status to reload if auth changes
     LaunchedEffect(isAuthenticated) {
         if (!isAuthenticated) {
@@ -154,12 +156,16 @@ fun SeerrHomeScreen(
 
         val sliders = seerrClient.getDiscoverSettings().getOrNull()
         val discoverRows = if (!sliders.isNullOrEmpty()) {
-            SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders) { filterDiscoverable() }
+            SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders)
         } else {
-            SeerrDiscoverHelper.loadFallbackRows(seerrClient) { filterDiscoverable() }
+            SeerrDiscoverHelper.loadFallbackRows(seerrClient)
         }
 
         rows = discoverRows
+
+        // Load genre rows for browsing
+        genreRows = SeerrDiscoverHelper.loadGenreRows(seerrClient)
+
         isLoading = false
     }
 
@@ -268,8 +274,8 @@ fun SeerrHomeScreen(
                                 SeerrRowType.TRENDING -> onNavigateDiscoverTrending
                                 SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
                                 SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                SeerrRowType.UPCOMING_MOVIES,
-                                SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcoming
+                                SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
+                                SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
                                 else -> null
                             }
                             MobileSeerrRow(
@@ -287,6 +293,19 @@ fun SeerrHomeScreen(
                                     )
                                 },
                                 onViewAll = onViewAll,
+                            )
+                        }
+                    }
+
+                    // Genre browser rows
+                    genreRows.forEach { genreRow ->
+                        item(key = genreRow.key) {
+                            MobileSeerrGenreBrowseRow(
+                                title = genreRow.title,
+                                genres = genreRow.genres,
+                                onGenreClick = { genre ->
+                                    onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
+                                },
                             )
                         }
                     }
@@ -562,6 +581,85 @@ private fun MobileViewAllCard(onClick: () -> Unit) {
                     fontWeight = FontWeight.SemiBold,
                 )
             }
+        }
+    }
+}
+
+/**
+ * A row of genre cards for browsing by genre.
+ */
+@Composable
+private fun MobileSeerrGenreBrowseRow(
+    title: String,
+    genres: List<SeerrGenre>,
+    onGenreClick: (SeerrGenre) -> Unit,
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        // Row header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(20.dp)
+                    .background(Color(SeerrColors.PURPLE), RoundedCornerShape(2.dp)),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+
+        // Genre cards
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(genres, key = { it.id }) { genre ->
+                MobileSeerrGenreCard(
+                    genre = genre,
+                    onClick = { onGenreClick(genre) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A card displaying a genre with a colored gradient background.
+ */
+@Composable
+private fun MobileSeerrGenreCard(
+    genre: SeerrGenre,
+    onClick: () -> Unit,
+) {
+    val genreColor = Color(genre.getColor())
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(140.dp)
+            .height(70.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = genreColor,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = genre.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
         }
     }
 }

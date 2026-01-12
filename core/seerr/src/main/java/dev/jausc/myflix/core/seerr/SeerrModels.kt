@@ -397,7 +397,72 @@ data class SeerrPageInfo(
 data class SeerrGenre(
     val id: Int,
     val name: String,
+    val backdrops: List<String>? = null, // Backdrop image paths from Seerr API
 )
+
+/**
+ * Get a color for a genre based on its ID.
+ * Returns a consistent color for each genre.
+ */
+fun SeerrGenre.getColor(): Long {
+    return GenreColors.forGenre(id, name)
+}
+
+/**
+ * Predefined colors for common genres.
+ */
+object GenreColors {
+    // Movie/TV genre colors (TMDB genre IDs)
+    private val genreColorMap = mapOf(
+        // Movie Genres
+        28 to 0xFFDC2626L,   // Action - Red
+        12 to 0xFFF97316L,   // Adventure - Orange
+        16 to 0xFF3B82F6L,   // Animation - Blue
+        35 to 0xFFFBBF24L,   // Comedy - Yellow
+        80 to 0xFF1F2937L,   // Crime - Dark Gray
+        99 to 0xFF059669L,   // Documentary - Green
+        18 to 0xFF7C3AEDL,   // Drama - Purple
+        10751 to 0xFFEC4899L, // Family - Pink
+        14 to 0xFF8B5CF6L,   // Fantasy - Violet
+        36 to 0xFF92400EL,   // History - Brown
+        27 to 0xFF991B1BL,   // Horror - Dark Red
+        10402 to 0xFFDB2777L, // Music - Magenta
+        9648 to 0xFF4B5563L,  // Mystery - Gray
+        10749 to 0xFFE11D48L, // Romance - Rose
+        878 to 0xFF0EA5E9L,   // Science Fiction - Cyan
+        10770 to 0xFF6366F1L, // TV Movie - Indigo
+        53 to 0xFF78350FL,    // Thriller - Amber Dark
+        10752 to 0xFF4B5563L, // War - Slate
+        37 to 0xFFD97706L,    // Western - Amber
+        // TV Genres
+        10759 to 0xFFDC2626L, // Action & Adventure - Red
+        10762 to 0xFFEC4899L, // Kids - Pink
+        10763 to 0xFF0D9488L, // News - Teal
+        10764 to 0xFF8B5CF6L, // Reality - Violet
+        10765 to 0xFF0EA5E9L, // Sci-Fi & Fantasy - Cyan
+        10766 to 0xFFDB2777L, // Soap - Magenta
+        10767 to 0xFF6366F1L, // Talk - Indigo
+        10768 to 0xFF4B5563L, // War & Politics - Slate
+    )
+
+    // Fallback colors based on name hash
+    private val fallbackColors = listOf(
+        0xFF8B5CF6L, // Purple
+        0xFF3B82F6L, // Blue
+        0xFF0EA5E9L, // Cyan
+        0xFF059669L, // Green
+        0xFFFBBF24L, // Yellow
+        0xFFF97316L, // Orange
+        0xFFDC2626L, // Red
+        0xFFEC4899L, // Pink
+        0xFF7C3AEDL, // Violet
+        0xFF6366F1L, // Indigo
+    )
+
+    fun forGenre(id: Int, name: String): Long {
+        return genreColorMap[id] ?: fallbackColors[name.hashCode().mod(fallbackColors.size)]
+    }
+}
 
 /**
  * Keyword.
@@ -798,3 +863,17 @@ data class SeerrImdbRating(
     val criticsScore: Double? = null, // IMDB score (0-10 scale)
     val criticsScoreCount: Int? = null, // Number of votes
 )
+
+// ============================================================================
+// Filter Extensions
+// ============================================================================
+
+/**
+ * Filter out items that are already available, requested, or partially available.
+ * Used in discover/browse screens to show only requestable items.
+ */
+fun List<SeerrMedia>.filterDiscoverable(): List<SeerrMedia> = filter { media ->
+    !media.isAvailable &&
+        !media.isPending &&
+        media.availabilityStatus != SeerrMediaStatus.PARTIALLY_AVAILABLE
+}

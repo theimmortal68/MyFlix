@@ -560,6 +560,14 @@ class SeerrClient(
     }
 
     /**
+     * Get upcoming TV shows (first air date in the future).
+     */
+    suspend fun getUpcomingTV(page: Int = 1): Result<SeerrDiscoverResult> {
+        val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_DATE)
+        return discoverTVWithParams(mapOf("firstAirDateGte" to today), page)
+    }
+
+    /**
      * Get movie genres.
      */
     suspend fun getMovieGenres(): Result<List<SeerrGenre>> = runCatching {
