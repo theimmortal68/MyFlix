@@ -813,14 +813,17 @@ class SeerrClient(
     suspend fun getMyRequests(
         page: Int = 1,
         pageSize: Int = 20,
-        @Suppress("UnusedParameter") status: Int? = null,
+        filter: String = "all",
+        sort: String = "added",
+        sortDirection: String = "desc",
     ): Result<SeerrRequestResult> = runCatching {
         requireAuth()
         val response = httpClient.get("$baseUrl/api/v1/request") {
             parameter("take", pageSize)
             parameter("skip", (page - 1) * pageSize)
-            parameter("filter", "all")
-            parameter("sort", "added")
+            parameter("filter", filter)
+            parameter("sort", sort)
+            parameter("sortDirection", sortDirection)
             currentUser?.id?.let { parameter("requestedBy", it) }
         }
         response.body()
@@ -832,14 +835,17 @@ class SeerrClient(
     suspend fun getAllRequests(
         page: Int = 1,
         pageSize: Int = 20,
-        @Suppress("UnusedParameter") status: Int? = null,
+        filter: String = "all",
+        sort: String = "added",
+        sortDirection: String = "desc",
     ): Result<SeerrRequestResult> = runCatching {
         requireAuth()
         val response = httpClient.get("$baseUrl/api/v1/request") {
             parameter("take", pageSize)
             parameter("skip", (page - 1) * pageSize)
-            parameter("filter", "all")
-            parameter("sort", "added")
+            parameter("filter", filter)
+            parameter("sort", sort)
+            parameter("sortDirection", sortDirection)
         }
         response.body()
     }

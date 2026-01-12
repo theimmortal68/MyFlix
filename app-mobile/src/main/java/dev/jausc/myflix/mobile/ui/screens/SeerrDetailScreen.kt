@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.seerr.SeerrCastMember
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrCrewMember
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrVideo
@@ -92,22 +93,34 @@ fun SeerrDetailScreen(
     mediaType: String,
     tmdbId: Int,
     seerrClient: SeerrClient,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null,
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var media by remember { mutableStateOf<SeerrMedia?>(null) }
     var cast by remember { mutableStateOf<List<SeerrCastMember>>(emptyList()) }
+    var crew by remember { mutableStateOf<List<SeerrCrewMember>>(emptyList()) }
+    var recommendations by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
+    var similar by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isRequesting by remember { mutableStateOf(false) }
     var requestSuccess by remember { mutableStateOf(false) }
+    var isWatchlisted by remember { mutableStateOf<Boolean?>(null) }
+    var isWatchlistUpdating by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     // Load media details
     LaunchedEffect(mediaType, tmdbId) {
         isLoading = true
         errorMessage = null
+        cast = emptyList()
+        crew = emptyList()
+        recommendations = emptyList()
+        similar = emptyList()
+        isWatchlisted = null
 
         val result = if (mediaType == "movie") {
             seerrClient.getMovie(tmdbId)
@@ -119,10 +132,39 @@ fun SeerrDetailScreen(
             .onSuccess { mediaItem ->
                 media = mediaItem
                 cast = mediaItem.credits?.cast?.take(10) ?: emptyList()
+                crew = mediaItem.credits?.crew?.take(10) ?: emptyList()
             }
             .onFailure {
                 errorMessage = it.message ?: "Failed to load details"
             }
+
+        val recommendationsResult = if (mediaType == "movie") {
+            seerrClient.getMovieRecommendations(tmdbId)
+        } else {
+            seerrClient.getTVRecommendations(tmdbId)
+        }
+
+        recommendationsResult
+            .onSuccess { recommendations = it.results }
+            .onFailure { }
+
+        val similarResult = if (mediaType == "movie") {
+            seerrClient.getSimilarMovies(tmdbId)
+        } else {
+            seerrClient.getSimilarTV(tmdbId)
+        }
+
+        similarResult
+            .onSuccess { similar = it.results }
+            .onFailure { }
+
+        seerrClient.getWatchlist()
+            .onSuccess { response ->
+                isWatchlisted = response.results.any { item ->
+                    item.tmdbId == tmdbId && item.mediaType == mediaType
+                }
+            }
+            .onFailure { isWatchlisted = null }
 
         isLoading = false
     }
@@ -153,6 +195,22 @@ fun SeerrDetailScreen(
                     errorMessage = it.message ?: "Request failed"
                 }
             isRequesting = false
+        }
+    }
+
+    fun toggleWatchlist() {
+        val watchlisted = isWatchlisted ?: return
+        scope.launch {
+            isWatchlistUpdating = true
+            val result = if (watchlisted) {
+                seerrClient.removeFromWatchlist(tmdbId, mediaType)
+            } else {
+                seerrClient.addToWatchlist(tmdbId, mediaType)
+            }
+            result
+                .onSuccess { isWatchlisted = !watchlisted }
+                .onFailure { errorMessage = it.message ?: "Watchlist update failed" }
+            isWatchlistUpdating = false
         }
     }
 
@@ -356,7 +414,10 @@ fun SeerrDetailScreen(
                                 status = currentMedia.availabilityStatus,
                                 isRequesting = isRequesting,
                                 requestSuccess = requestSuccess,
+                                isWatchlisted = isWatchlisted,
+                                isWatchlistUpdating = isWatchlistUpdating,
                                 onRequest = { requestMedia() },
+                                onWatchlistToggle = { toggleWatchlist() },
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -376,6 +437,37 @@ fun SeerrDetailScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4,
                                 )
+                            }
+                        }
+                    }
+
+                    val tmdbUrl = "https://www.themoviedb.org/${if (currentMedia.isMovie) "movie" else "tv"}/$tmdbId"
+                    val imdbUrl = currentMedia.imdbId?.let { "https://www.imdb.com/title/$it" }
+
+                    item {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            Text(
+                                text = "External Links",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tmdbUrl))
+                                    context.startActivity(intent)
+                                }) {
+                                    Text("TMDb")
+                                }
+                                imdbUrl?.let { url ->
+                                    Button(onClick = {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent)
+                                    }) {
+                                        Text("IMDb")
+                                    }
+                                }
                             }
                         }
                     }
@@ -404,6 +496,110 @@ fun SeerrDetailScreen(
                                         castMember = member,
                                         seerrClient = seerrClient,
                                         onClick = { onActorClick?.invoke(member.id) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (crew.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "Crew",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(crew, key = { it.id }) { member ->
+                                    MobileSeerrCrewCard(
+                                        crewMember = member,
+                                        seerrClient = seerrClient,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (recommendations.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "Recommendations",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(recommendations, key = { it.id }) { item ->
+                                    MobileSeerrRelatedCard(
+                                        media = item,
+                                        seerrClient = seerrClient,
+                                        onClick = {
+                                            val targetType = if (item.mediaType.isNotBlank()) {
+                                                item.mediaType
+                                            } else if (item.isMovie) {
+                                                "movie"
+                                            } else {
+                                                "tv"
+                                            }
+                                            onMediaClick(targetType, item.tmdbId ?: item.id)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (similar.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "Similar",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(similar, key = { it.id }) { item ->
+                                    MobileSeerrRelatedCard(
+                                        media = item,
+                                        seerrClient = seerrClient,
+                                        onClick = {
+                                            val targetType = if (item.mediaType.isNotBlank()) {
+                                                item.mediaType
+                                            } else if (item.isMovie) {
+                                                "movie"
+                                            } else {
+                                                "tv"
+                                            }
+                                            onMediaClick(targetType, item.tmdbId ?: item.id)
+                                        },
                                     )
                                 }
                             }
@@ -480,7 +676,10 @@ private fun MobileSeerrRequestSection(
     status: Int?,
     isRequesting: Boolean,
     requestSuccess: Boolean,
+    isWatchlisted: Boolean?,
+    isWatchlistUpdating: Boolean,
     onRequest: () -> Unit,
+    onWatchlistToggle: () -> Unit,
 ) {
     val (statusColor, statusIcon, statusText, canRequest) = when (status) {
         SeerrMediaStatus.AVAILABLE -> {
@@ -582,6 +781,35 @@ private fun MobileSeerrRequestSection(
                 }
             }
         }
+
+        if (isWatchlisted != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onWatchlistToggle,
+                enabled = !isWatchlistUpdating,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isWatchlisted) Color(0xFF1F2937) else Color(0xFF2563EB),
+                    contentColor = Color.White,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (isWatchlistUpdating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isWatchlisted) Icons.Outlined.Check else Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isWatchlisted) "In Watchlist" else "Add to Watchlist")
+            }
+        }
     }
 }
 
@@ -631,6 +859,83 @@ private fun MobileSeerrCastCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+@Composable
+private fun MobileSeerrCrewCard(
+    crewMember: SeerrCrewMember,
+    seerrClient: SeerrClient,
+) {
+    Column(
+        modifier = Modifier.width(100.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            AsyncImage(
+                model = seerrClient.getProfileUrl(crewMember.profilePath),
+                contentDescription = crewMember.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = crewMember.name,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        crewMember.job?.let { job ->
+            Text(
+                text = job,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MobileSeerrRelatedCard(
+    media: SeerrMedia,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .clickable(onClick = onClick),
+    ) {
+        AsyncImage(
+            model = seerrClient.getPosterUrl(media.posterPath),
+            contentDescription = media.displayTitle,
+            modifier = Modifier
+                .width(120.dp)
+                .height(180.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = media.displayTitle,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
