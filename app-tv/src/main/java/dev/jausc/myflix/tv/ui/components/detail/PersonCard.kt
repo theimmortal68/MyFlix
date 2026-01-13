@@ -37,6 +37,7 @@ fun PersonCard(
     person: JellyfinPerson,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     showRole: Boolean = true,
 ) {

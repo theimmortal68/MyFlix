@@ -1,54 +1,56 @@
 @file:Suppress("MagicNumber")
 
-package dev.jausc.myflix.tv.ui.components.detail
+package dev.jausc.myflix.mobile.ui.components.detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinPerson
 import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Horizontal row of cast and crew cards.
- * Shows person photos with names and roles.
  */
 @Composable
-fun CastCrewRow(
+fun CastCrewSection(
     people: List<JellyfinPerson>,
     jellyfinClient: JellyfinClient,
     onPersonClick: (JellyfinPerson) -> Unit,
+    onPersonLongClick: (Int, JellyfinPerson) -> Unit,
     modifier: Modifier = Modifier,
-    title: String = "Cast & Crew",
 ) {
     if (people.isEmpty()) return
 
-    Column(modifier = modifier) {
-        // Section header
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier,
+    ) {
         Text(
-            text = title,
+            text = "Cast & Crew",
             style = MaterialTheme.typography.titleMedium,
-            color = TvColors.TextPrimary,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp),
         )
-
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 48.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            items(people, key = { it.id }) { person ->
+            itemsIndexed(people) { index, person ->
                 PersonCard(
                     person = person,
-                    jellyfinClient = jellyfinClient,
+                    imageUrl = jellyfinClient.getPersonImageUrl(person.id, person.primaryImageTag),
                     onClick = { onPersonClick(person) },
+                    onLongClick = { onPersonLongClick(index, person) },
                 )
             }
         }
