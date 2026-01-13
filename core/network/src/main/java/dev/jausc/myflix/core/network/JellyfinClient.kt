@@ -794,6 +794,7 @@ class JellyfinClient(
         minCommunityRating: Float? = null,
         years: String? = null,
         officialRatings: List<String>? = null,
+        nameStartsWith: String? = null,
     ): Result<ItemsResponse> {
         // Build cache key including filter parameters
         val filterSuffix = buildString {
@@ -802,6 +803,7 @@ class JellyfinClient(
             minCommunityRating?.let { append("_r$it") }
             years?.let { append("_y${it.hashCode()}") }
             officialRatings?.let { append("_o${it.hashCode()}") }
+            nameStartsWith?.let { append("_l$it") }
         }
         val key = CacheKeys.library(libraryId, limit, startIndex, sortBy) + filterSuffix
 
@@ -843,6 +845,9 @@ class JellyfinClient(
                 }
                 officialRatings?.takeIf { it.isNotEmpty() }?.let {
                     parameter("OfficialRatings", it.joinToString(","))
+                }
+                nameStartsWith?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("nameStartsWith", it)
                 }
             }.body<ItemsResponse>().also {
                 if (sortBy != "Random") {

@@ -89,7 +89,7 @@ fun LibraryScreen(
     val scope = rememberCoroutineScope()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
-    // Use alphabet index from ViewModel (covers entire library, not just loaded items)
+    // Available letters from ViewModel (covers entire library)
     // Falls back to loaded items if alphabet index hasn't loaded yet
     val availableLetters = if (state.availableLetters.isNotEmpty()) {
         state.availableLetters
@@ -101,22 +101,6 @@ fun LibraryScreen(
                 if (firstChar.isLetter()) firstChar else '#'
             }
             .toSet()
-    }
-
-    // Use alphabet index from ViewModel (maps letter -> index in full library)
-    val letterIndexMap = if (state.alphabetIndex.isNotEmpty()) {
-        state.alphabetIndex
-    } else {
-        // Fallback: compute from loaded items while alphabet index loads
-        buildMap {
-            state.items.forEachIndexed { index, item ->
-                val letter = item.name.firstOrNull()?.uppercaseChar() ?: return@forEachIndexed
-                val normalizedLetter = if (letter.isLetter()) letter else '#'
-                if (normalizedLetter !in this) {
-                    put(normalizedLetter, index)
-                }
-            }
-        }
     }
 
     // Determine which NavItem is selected based on library type
@@ -282,12 +266,13 @@ fun LibraryScreen(
                         // Alphabet scroll bar on right edge
                         AlphabetScrollBar(
                             availableLetters = availableLetters,
+                            currentLetter = state.currentLetter,
                             onLetterClick = { letter ->
-                                val targetLetter = if (!letter.isLetter()) '#' else letter
-                                letterIndexMap[targetLetter]?.let { index ->
-                                    // Jump to the target index - this reloads items from that position
-                                    viewModel.jumpToIndex(index)
-                                }
+                                // Use server-side nameStartsWith filter
+                                viewModel.jumpToLetter(letter)
+                            },
+                            onClearFilter = {
+                                viewModel.clearLetterFilter()
                             },
                             focusRequester = alphabetFocusRequester,
                             modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),

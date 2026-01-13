@@ -5,7 +5,6 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dev.jausc.myflix.core.common.model.AlphabetIndexItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryFilterState
 import dev.jausc.myflix.core.common.model.LibrarySortOption
@@ -36,12 +35,12 @@ data class LibraryUiState(
     val filterState: LibraryFilterState = LibraryFilterState.DEFAULT,
     val availableGenres: List<String> = emptyList(),
     val availableParentalRatings: List<String> = emptyList(),
-    /** Full alphabet index from all library items (letter -> index mapping) */
-    val alphabetIndex: Map<Char, Int> = emptyMap(),
-    /** Set of letters that have items in the library */
+    /** Set of letters that have items in the library (for alphabet bar display) */
     val availableLetters: Set<Char> = emptySet(),
     /** Whether alphabet index is still loading */
     val isLoadingAlphabetIndex: Boolean = true,
+    /** Current letter filter for alphabet navigation (null = show all) */
+    val currentLetter: Char? = null,
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty() && error == null
@@ -90,8 +89,8 @@ class LibraryViewModel(
     }
 
     /**
-     * Load lightweight alphabet index for the entire library.
-     * This loads just names/IDs for all items to enable letter-based scrolling.
+     * Load available letters for the alphabet bar.
+     * This loads minimal item data to determine which letters have content.
      */
     private fun loadAlphabetIndex() {
         viewModelScope.launch {
@@ -101,22 +100,11 @@ class LibraryViewModel(
                 sortBy = filterState.sortBy.jellyfinValue,
                 sortOrder = filterState.sortOrder.jellyfinValue,
             ).onSuccess { response ->
-                // Build letter -> first index map
-                val indexMap = mutableMapOf<Char, Int>()
-                val letters = mutableSetOf<Char>()
-
-                response.items.forEachIndexed { index, item ->
-                    val letter = item.indexChar
-                    letters.add(letter)
-                    if (letter !in indexMap) {
-                        indexMap[letter] = index
-                    }
-                }
-
+                // Collect all unique first letters
+                val letters = response.items.map { it.indexChar }.toSet()
                 _uiState.update { state ->
                     state.copy(
-                        alphabetIndex = indexMap.toMap(),
-                        availableLetters = letters.toSet(),
+                        availableLetters = letters,
                         isLoadingAlphabetIndex = false,
                     )
                 }
@@ -152,7 +140,8 @@ class LibraryViewModel(
                 _uiState.update { it.copy(isLoadingMore = true) }
             }
 
-            val filterState = _uiState.value.filterState
+            val currentState = _uiState.value
+            val filterState = currentState.filterState
 
             // Build filter parameters
             val genres = filterState.selectedGenres.toList().takeIf { it.isNotEmpty() }
@@ -162,6 +151,12 @@ class LibraryViewModel(
                 WatchedFilter.ALL -> null
             }
             val years = filterState.yearRange.toJellyfinParam()
+
+            // Convert current letter to nameStartsWith parameter
+            // '#' represents non-letter characters (numbers, symbols)
+            val nameStartsWith = currentState.currentLetter?.let { letter ->
+                if (letter == '#') "#" else letter.toString()
+            }
 
             jellyfinClient.getLibraryItemsFiltered(
                 libraryId = libraryId,
@@ -174,6 +169,7 @@ class LibraryViewModel(
                 minCommunityRating = filterState.ratingFilter,
                 years = years,
                 officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
+                nameStartsWith = nameStartsWith,
             )
                 .onSuccess { result ->
                     _uiState.update { state ->
@@ -357,14 +353,23 @@ class LibraryViewModel(
     }
 
     /**
-     * Jump to a specific index in the library.
-     * Clears current items and loads items starting from the specified index.
-     * Used for alphabet navigation to jump to any position in a large library.
+     * Jump to items starting with a specific letter.
+     * Uses the Jellyfin API's nameStartsWith filter for server-side filtering.
      */
-    fun jumpToIndex(index: Int) {
+    fun jumpToLetter(letter: Char) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, items = emptyList()) }
-            loadLibraryItems(resetList = true, startIndex = index)
+            _uiState.update { it.copy(isLoading = true, error = null, items = emptyList(), currentLetter = letter) }
+            loadLibraryItems(resetList = true)
+        }
+    }
+
+    /**
+     * Clear the letter filter and show all items.
+     */
+    fun clearLetterFilter() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, items = emptyList(), currentLetter = null) }
+            loadLibraryItems(resetList = true)
         }
     }
 
@@ -383,7 +388,8 @@ class LibraryViewModel(
         val sortChanged = newState.sortBy != currentState.sortBy ||
             newState.sortOrder != currentState.sortOrder
 
-        _uiState.update { it.copy(filterState = newState) }
+        // Clear letter filter when filters change (user is exploring differently)
+        _uiState.update { it.copy(filterState = newState, currentLetter = null) }
 
         // Save to preferences
         preferences.setLibraryFilterState(libraryId, newState)

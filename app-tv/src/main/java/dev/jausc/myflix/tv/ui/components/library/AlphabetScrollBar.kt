@@ -4,7 +4,6 @@ package dev.jausc.myflix.tv.ui.components.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -27,13 +26,16 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Alphabet quick-scroll bar for library grids.
- * Shows A-Z letters on right edge, clicking scrolls to first item starting with that letter.
+ * Shows A-Z letters on right edge, clicking filters to items starting with that letter.
+ * Uses server-side nameStartsWith filtering for proper alphabet navigation.
  */
 @Composable
 fun AlphabetScrollBar(
     availableLetters: Set<Char>,
     onLetterClick: (Char) -> Unit,
     modifier: Modifier = Modifier,
+    currentLetter: Char? = null,
+    onClearFilter: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
 ) {
     val alphabet = remember { listOf('#') + ('A'..'Z').toList() }
@@ -54,11 +56,20 @@ fun AlphabetScrollBar(
     ) {
         alphabet.forEachIndexed { index, letter ->
             val isAvailable = letter in availableLetters
+            val isSelected = letter == currentLetter
 
             AlphabetLetter(
                 letter = letter,
                 isAvailable = isAvailable,
-                onClick = { onLetterClick(letter) },
+                isSelected = isSelected,
+                onClick = {
+                    if (isSelected && onClearFilter != null) {
+                        // Clicking the already-selected letter clears the filter
+                        onClearFilter()
+                    } else {
+                        onLetterClick(letter)
+                    }
+                },
                 modifier = if (index == firstAvailableIndex && focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
                 } else {
@@ -73,10 +84,19 @@ fun AlphabetScrollBar(
 private fun AlphabetLetter(
     letter: Char,
     isAvailable: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val fontSize = (MaterialTheme.typography.labelSmall.fontSize.value - 1f).coerceAtLeast(8f).sp
+
+    // Selected letters show in highlight color even when not focused
+    val containerColor = if (isSelected) TvColors.BluePrimary.copy(alpha = 0.7f) else Color.Transparent
+    val contentColor = when {
+        isSelected -> Color.White
+        isAvailable -> TvColors.TextPrimary
+        else -> TvColors.TextSecondary.copy(alpha = 0.3f)
+    }
 
     Button(
         onClick = { if (isAvailable) onClick() },
@@ -86,8 +106,8 @@ private fun AlphabetLetter(
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 1.dp),
         scale = ButtonDefaults.scale(focusedScale = 1.1f),
         colors = ButtonDefaults.colors(
-            containerColor = Color.Transparent,
-            contentColor = if (isAvailable) TvColors.TextPrimary else TvColors.TextSecondary.copy(alpha = 0.3f),
+            containerColor = containerColor,
+            contentColor = contentColor,
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),
