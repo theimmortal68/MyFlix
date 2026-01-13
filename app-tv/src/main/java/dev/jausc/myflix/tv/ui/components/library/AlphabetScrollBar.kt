@@ -22,11 +22,6 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -123,14 +118,13 @@ private fun AlphabetLetter(
         enabled = isAvailable,
         modifier = modifier
             .onFocusChanged { isFocused = it.isFocused }
-            .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.key == Key.DirectionLeft && keyEvent.type == KeyEventType.KeyDown) {
-                    gridFocusRequester?.requestFocus()
-                    true
+            .then(
+                if (gridFocusRequester != null) {
+                    Modifier.focusProperties { left = gridFocusRequester }
                 } else {
-                    false
+                    Modifier
                 }
-            },
+            ),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(2.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
         colors = ClickableSurfaceDefaults.colors(

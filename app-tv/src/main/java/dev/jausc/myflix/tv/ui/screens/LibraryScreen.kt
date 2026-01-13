@@ -130,24 +130,30 @@ fun LibraryScreen(
             }
     }
 
-    // Track which letter filter we last focused for (to detect changes)
-    var lastFocusedLetter by remember { mutableStateOf<Char?>(null) }
+    // Track the last letter we focused for to detect changes
+    var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
 
-    // Focus on first item when items load (initial load or after letter filter change)
-    LaunchedEffect(state.isLoading, state.items, state.currentLetter) {
-        if (!state.isLoading && state.items.isNotEmpty()) {
-            // Focus on first item if this is initial load OR letter filter changed
-            val shouldFocus = !didRequestInitialFocus || lastFocusedLetter != state.currentLetter
-            if (shouldFocus) {
-                didRequestInitialFocus = true
-                lastFocusedLetter = state.currentLetter
-                delay(100)
-                try {
-                    firstItemFocusRequester.requestFocus()
-                } catch (_: Exception) {
+    // Focus on first item when loading completes
+    // Uses snapshotFlow to reliably detect loading state transitions
+    LaunchedEffect(Unit) {
+        snapshotFlow { Triple(state.isLoading, state.items.isNotEmpty(), state.currentLetter) }
+            .collect { (isLoading, hasItems, currentLetter) ->
+                if (!isLoading && hasItems) {
+                    // Focus if initial load OR letter changed
+                    val shouldFocus = !didRequestInitialFocus || lastFocusedForLetter != currentLetter
+                    if (shouldFocus) {
+                        didRequestInitialFocus = true
+                        lastFocusedForLetter = currentLetter
+                        // Delay to ensure grid is rendered
+                        delay(300)
+                        try {
+                            firstItemFocusRequester.requestFocus()
+                        } catch (_: Exception) {
+                            // Focus request failed, ignore
+                        }
+                    }
                 }
             }
-        }
     }
 
     Box(
