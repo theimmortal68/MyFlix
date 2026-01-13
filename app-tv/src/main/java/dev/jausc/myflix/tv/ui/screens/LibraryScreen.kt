@@ -5,7 +5,6 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,9 +40,11 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
@@ -52,6 +53,7 @@ import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -85,6 +87,10 @@ fun LibraryScreen(
     val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
+
+    // Track focused item for dynamic background
+    var focusedImageUrl by remember { mutableStateOf<String?>(null) }
+    val gradientColors = rememberGradientColors(focusedImageUrl)
 
     // All letters are always available - the API handles filtering
     // If a letter has no items, the user will see "0 items" which is acceptable
@@ -153,11 +159,10 @@ fun LibraryScreen(
             }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TvColors.Background),
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Dynamic background that changes based on focused poster
+        DynamicBackground(gradientColors = gradientColors)
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Space for nav bar (content starts below where nav bar would be)
             Spacer(modifier = Modifier.height(40.dp))
@@ -260,6 +265,9 @@ fun LibraryScreen(
                             alphabetFocusRequester = alphabetFocusRequester,
                             onItemClick = onItemClick,
                             onUpNavigation = { navBarState.show() },
+                            onItemFocused = { _, imageUrl ->
+                                focusedImageUrl = imageUrl
+                            },
                             modifier = Modifier.weight(1f),
                         )
 
@@ -317,6 +325,7 @@ private fun LibraryGridContent(
     alphabetFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
     onUpNavigation: () -> Unit,
+    onItemFocused: (JellyfinItem, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Dummy focus requester to block focus movement (requests to unattached requester fail)
@@ -359,6 +368,9 @@ private fun LibraryGridContent(
                 onClick = { onItemClick(item.id) },
                 aspectRatio = aspectRatio,
                 showLabel = true,
+                onItemFocused = { focusedItem ->
+                    onItemFocused(focusedItem, imageUrl)
+                },
                 modifier = Modifier
                     .then(
                         if (index == 0) {
