@@ -52,6 +52,7 @@ import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
+import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
@@ -616,7 +617,24 @@ fun MyFlixTvApp() {
                     onPlayClick = { itemId ->
                         navController.navigate("player/$itemId")
                     },
-                    onBack = { navController.popBackStack() },
+                    onNavigate = { navItem ->
+                        when (navItem) {
+                            NavItem.HOME -> navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                            NavItem.SEARCH -> navController.navigate("search")
+                            NavItem.SETTINGS -> navController.navigate("settings")
+                            NavItem.DISCOVER -> navController.navigate("seerr")
+                            NavItem.MOVIES, NavItem.SHOWS -> {
+                                // Navigate to the specific library
+                                val targetType = if (navItem == NavItem.MOVIES) "movies" else "tvshows"
+                                navController.navigate("home")
+                            }
+                            NavItem.COLLECTIONS, NavItem.UNIVERSES -> {
+                                navController.navigate("home")
+                            }
+                        }
+                    },
                 )
             }
 

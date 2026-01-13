@@ -277,8 +277,8 @@ abstract class AppPreferences(context: Context) {
 
         val viewModeValue = prefs.getString(
             PreferenceKeys.Prefs.LIBRARY_VIEW_MODE_PREFIX + libraryId,
-            LibraryViewMode.GRID.name,
-        ) ?: LibraryViewMode.GRID.name
+            LibraryViewMode.POSTER.name,
+        ) ?: LibraryViewMode.POSTER.name
 
         val watchedFilterValue = prefs.getString(
             PreferenceKeys.Prefs.LIBRARY_WATCHED_FILTER_PREFIX + libraryId,

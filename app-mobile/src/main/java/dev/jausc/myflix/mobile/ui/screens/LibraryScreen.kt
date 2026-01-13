@@ -210,7 +210,7 @@ fun LibraryScreen(
                 }
                 else -> {
                     when (state.filterState.viewMode) {
-                        LibraryViewMode.GRID -> {
+                        LibraryViewMode.POSTER -> {
                             LibraryGridContent(
                                 state = state,
                                 gridState = gridState,
@@ -218,7 +218,7 @@ fun LibraryScreen(
                                 onItemClick = onItemClick,
                             )
                         }
-                        LibraryViewMode.LIST -> {
+                        LibraryViewMode.THUMBNAIL -> {
                             LibraryListContent(
                                 state = state,
                                 listState = listState,

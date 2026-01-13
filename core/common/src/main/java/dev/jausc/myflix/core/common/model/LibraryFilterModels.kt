@@ -33,16 +33,16 @@ enum class SortOrder(val jellyfinValue: String, val label: String) {
 }
 
 /**
- * Library view mode - grid of posters or list with details.
+ * Library view mode - poster grid (2:3) or thumbnail grid (16:9).
  */
 enum class LibraryViewMode {
-    GRID,
-    LIST,
+    POSTER,    // 7 columns, 2:3 aspect ratio
+    THUMBNAIL, // 4 columns, 16:9 aspect ratio
     ;
 
     companion object {
         fun fromString(value: String): LibraryViewMode =
-            entries.find { it.name == value } ?: GRID
+            entries.find { it.name == value } ?: POSTER
     }
 }
 
@@ -95,7 +95,7 @@ data class YearRange(
 data class LibraryFilterState(
     val sortBy: LibrarySortOption = LibrarySortOption.TITLE,
     val sortOrder: SortOrder = SortOrder.ASCENDING,
-    val viewMode: LibraryViewMode = LibraryViewMode.GRID,
+    val viewMode: LibraryViewMode = LibraryViewMode.POSTER,
     val selectedGenres: Set<String> = emptySet(),
     val watchedFilter: WatchedFilter = WatchedFilter.ALL,
     val yearRange: YearRange = YearRange(),

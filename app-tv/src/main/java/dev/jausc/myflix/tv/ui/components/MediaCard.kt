@@ -59,13 +59,63 @@ fun MediaCard(
     onLongClick: (() -> Unit)? = null,
     onItemFocused: ((JellyfinItem) -> Unit)? = null,
 ) {
+    MediaCardInternal(
+        item = item,
+        imageUrl = imageUrl,
+        onClick = onClick,
+        aspectRatio = 2f / 3f,
+        modifier = modifier.width(CardSizes.MediaCardWidth),
+        showLabel = showLabel,
+        onLongClick = onLongClick,
+        onItemFocused = onItemFocused,
+    )
+}
+
+/**
+ * Media card with configurable aspect ratio for library grid views.
+ * Poster mode: 2:3 aspect ratio (7 columns)
+ * Thumbnail mode: 16:9 aspect ratio (4 columns)
+ */
+@Composable
+fun MediaCard(
+    item: JellyfinItem,
+    imageUrl: String,
+    onClick: () -> Unit,
+    aspectRatio: Float,
+    modifier: Modifier = Modifier,
+    showLabel: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+    onItemFocused: ((JellyfinItem) -> Unit)? = null,
+) {
+    MediaCardInternal(
+        item = item,
+        imageUrl = imageUrl,
+        onClick = onClick,
+        aspectRatio = aspectRatio,
+        modifier = modifier,
+        showLabel = showLabel,
+        onLongClick = onLongClick,
+        onItemFocused = onItemFocused,
+    )
+}
+
+@Composable
+private fun MediaCardInternal(
+    item: JellyfinItem,
+    imageUrl: String,
+    onClick: () -> Unit,
+    aspectRatio: Float,
+    modifier: Modifier = Modifier,
+    showLabel: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onItemFocused: ((JellyfinItem) -> Unit)? = null,
+) {
     var isFocused by remember { mutableStateOf(false) }
 
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
-            .width(CardSizes.MediaCardWidth)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
                 if (focusState.isFocused) {
@@ -93,7 +143,7 @@ fun MediaCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(2f / 3f),
+                    .aspectRatio(aspectRatio),
             ) {
                 AsyncImage(
                     model = imageUrl,

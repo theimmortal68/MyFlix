@@ -1158,6 +1158,16 @@ LaunchedEffect(contentReady) {
 - **State:** Compose state hoisting, remember + mutableStateOf patterns
 - **Networking:** Ktor with Result<T> return types
 
+## Git Commit Guidelines
+
+- **Do NOT include other project names** in commit messages (e.g., VoidTV, Wholphin, Plex, Jellyfin Web)
+- Reference data from other projects should only be documented in CLAUDE.md, not in commits
+- Commit messages should describe what was changed, not what inspired the change
+- Use conventional commit format: `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`
+
+**Good:** `feat: Add icon-only filter bar to library screen`
+**Bad:** `feat: Add VoidTV-style filter bar to library screen`
+
 ## Design Principles
 
 1. **Multi-platform** - Shared core logic, platform-specific UI

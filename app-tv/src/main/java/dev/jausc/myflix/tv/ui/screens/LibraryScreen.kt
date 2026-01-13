@@ -16,22 +16,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -40,26 +37,26 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.TopNavigationBar
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterDialog
-import dev.jausc.myflix.tv.ui.components.library.LibraryListItem
 import dev.jausc.myflix.tv.ui.components.library.LibrarySortDialog
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 
 @Composable
 fun LibraryScreen(
@@ -69,7 +66,7 @@ fun LibraryScreen(
     preferences: AppPreferences,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
-    onBack: () -> Unit,
+    onNavigate: (NavItem) -> Unit,
 ) {
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
@@ -86,22 +83,64 @@ fun LibraryScreen(
 
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
+    val homeButtonFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
-    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // Calculate available letters from items
+    val availableLetters by remember(state.items) {
+        derivedStateOf {
+            state.items
+                .mapNotNull { item ->
+                    item.name.firstOrNull()?.uppercaseChar()
+                }
+                .toSet()
+        }
+    }
+
+    // Map letter to first item index
+    val letterIndexMap by remember(state.items) {
+        derivedStateOf {
+            val map = mutableMapOf<Char, Int>()
+            state.items.forEachIndexed { index, item ->
+                val letter = item.name.firstOrNull()?.uppercaseChar()
+                    ?: return@forEachIndexed
+
+                val normalizedLetter = if (letter.isLetter()) letter else '#'
+                if (normalizedLetter !in map) {
+                    map[normalizedLetter] = index
+                }
+            }
+            map.toMap()
+        }
+    }
+
+    // Determine which NavItem is selected based on library type
+    val selectedNavItem = remember(libraryName) {
+        when {
+            libraryName.contains("Movie", ignoreCase = true) -> NavItem.MOVIES
+            libraryName.contains("TV", ignoreCase = true) ||
+                libraryName.contains("Show", ignoreCase = true) -> NavItem.SHOWS
+            libraryName.contains("Collection", ignoreCase = true) -> NavItem.COLLECTIONS
+            else -> NavItem.HOME
+        }
+    }
+
+    // Grid columns based on view mode
+    val columns = when (state.filterState.viewMode) {
+        LibraryViewMode.POSTER -> 7
+        LibraryViewMode.THUMBNAIL -> 4
+    }
+
+    // Aspect ratio based on view mode
+    val aspectRatio = when (state.filterState.viewMode) {
+        LibraryViewMode.POSTER -> 2f / 3f
+        LibraryViewMode.THUMBNAIL -> 16f / 9f
+    }
 
     // Pagination - load more when near end
     LaunchedEffect(gridState) {
         snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .filterNotNull()
-            .collectLatest { lastVisibleIndex ->
-                if (lastVisibleIndex >= state.items.lastIndex - 4 && state.canLoadMore) {
-                    viewModel.loadMore()
-                }
-            }
-    }
-
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
             .collectLatest { lastVisibleIndex ->
                 if (lastVisibleIndex >= state.items.lastIndex - 4 && state.canLoadMore) {
@@ -116,59 +155,33 @@ fun LibraryScreen(
             .background(TvColors.Background),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header row with back button and title
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Button(
-                    onClick = onBack,
-                    modifier = Modifier.height(20.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    scale = ButtonDefaults.scale(focusedScale = 1f),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                        contentColor = TvColors.TextPrimary,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Back",
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = libraryName,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = TvColors.TextPrimary,
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                // Item count
-                if (!state.isLoading && state.items.isNotEmpty()) {
-                    Text(
-                        text = "${state.items.size} of ${state.totalRecordCount} items",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TvColors.TextSecondary,
-                    )
-                }
-            }
+            // Top Navigation Bar
+            TopNavigationBar(
+                selectedItem = selectedNavItem,
+                onItemSelected = onNavigate,
+                homeButtonFocusRequester = homeButtonFocusRequester,
+                downFocusRequester = firstItemFocusRequester,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Filter bar
             LibraryFilterBar(
+                libraryName = libraryName,
+                totalItems = state.totalRecordCount,
+                loadedItems = state.items.size,
                 filterState = state.filterState,
-                availableGenres = state.availableGenres,
                 onViewModeChange = { viewModel.setViewMode(it) },
-                onGenreToggle = { viewModel.toggleGenre(it) },
+                onFilterClick = { showFilterDialog = true },
                 onSortClick = { showSortDialog = true },
-                onFiltersClick = { showFilterDialog = true },
                 onShuffleClick = {
                     viewModel.getShuffleItemId()?.let { itemId ->
                         onPlayClick(itemId)
+                    }
+                },
+                onScrollToTopClick = {
+                    scope.launch {
+                        gridState.animateScrollToItem(0)
                     }
                 },
                 modifier = Modifier.padding(horizontal = 24.dp),
@@ -176,7 +189,7 @@ fun LibraryScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Content
+            // Content with alphabet scroll bar
             when {
                 state.isLoading -> {
                     Box(
@@ -226,25 +239,32 @@ fun LibraryScreen(
                     }
                 }
                 else -> {
-                    when (state.filterState.viewMode) {
-                        LibraryViewMode.GRID -> {
-                            LibraryGridContent(
-                                state = state,
-                                gridState = gridState,
-                                jellyfinClient = jellyfinClient,
-                                firstItemFocusRequester = firstItemFocusRequester,
-                                onItemClick = onItemClick,
-                            )
-                        }
-                        LibraryViewMode.LIST -> {
-                            LibraryListContent(
-                                state = state,
-                                listState = listState,
-                                jellyfinClient = jellyfinClient,
-                                firstItemFocusRequester = firstItemFocusRequester,
-                                onItemClick = onItemClick,
-                            )
-                        }
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Main grid content
+                        LibraryGridContent(
+                            state = state,
+                            gridState = gridState,
+                            columns = columns,
+                            aspectRatio = aspectRatio,
+                            jellyfinClient = jellyfinClient,
+                            firstItemFocusRequester = firstItemFocusRequester,
+                            onItemClick = onItemClick,
+                            modifier = Modifier.weight(1f),
+                        )
+
+                        // Alphabet scroll bar on right edge
+                        AlphabetScrollBar(
+                            availableLetters = availableLetters,
+                            onLetterClick = { letter ->
+                                val targetLetter = if (!letter.isLetter()) '#' else letter
+                                letterIndexMap[targetLetter]?.let { index ->
+                                    scope.launch {
+                                        gridState.animateScrollToItem(index)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        )
                     }
                 }
             }
@@ -283,23 +303,37 @@ fun LibraryScreen(
 private fun LibraryGridContent(
     state: LibraryUiState,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    columns: Int,
+    aspectRatio: Float,
     jellyfinClient: JellyfinClient,
     firstItemFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Fixed(7),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+        columns = GridCells.Fixed(columns),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
+            val imageUrl = if (aspectRatio > 1f) {
+                // Thumbnail mode - prefer backdrop
+                jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull())
+                    .takeIf { item.backdropImageTags?.isNotEmpty() == true }
+                    ?: jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+            } else {
+                // Poster mode - use primary
+                jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+            }
+
             MediaCard(
                 item = item,
-                imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
+                imageUrl = imageUrl,
                 onClick = { onItemClick(item.id) },
+                aspectRatio = aspectRatio,
                 modifier = if (index == 0) {
                     Modifier.focusRequester(firstItemFocusRequester)
                 } else {
@@ -311,51 +345,6 @@ private fun LibraryGridContent(
         // Loading more indicator
         if (state.isLoadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    TvLoadingIndicator()
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LibraryListContent(
-    state: LibraryUiState,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    jellyfinClient: JellyfinClient,
-    firstItemFocusRequester: FocusRequester,
-    onItemClick: (String) -> Unit,
-) {
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-            LibraryListItem(
-                item = item,
-                imageUrl = jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull())
-                    .takeIf { item.backdropImageTags?.isNotEmpty() == true }
-                    ?: jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
-                onClick = { onItemClick(item.id) },
-                modifier = if (index == 0) {
-                    Modifier.focusRequester(firstItemFocusRequester)
-                } else {
-                    Modifier
-                },
-            )
-        }
-
-        // Loading more indicator
-        if (state.isLoadingMore) {
-            item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

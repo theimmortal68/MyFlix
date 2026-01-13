@@ -53,16 +53,16 @@ fun MobileLibraryFilterBar(
         IconButton(
             onClick = {
                 val newMode = when (filterState.viewMode) {
-                    LibraryViewMode.GRID -> LibraryViewMode.LIST
-                    LibraryViewMode.LIST -> LibraryViewMode.GRID
+                    LibraryViewMode.POSTER -> LibraryViewMode.THUMBNAIL
+                    LibraryViewMode.THUMBNAIL -> LibraryViewMode.POSTER
                 }
                 onViewModeChange(newMode)
             },
         ) {
             Icon(
                 imageVector = when (filterState.viewMode) {
-                    LibraryViewMode.GRID -> Icons.Outlined.GridView
-                    LibraryViewMode.LIST -> Icons.AutoMirrored.Outlined.ViewList
+                    LibraryViewMode.POSTER -> Icons.Outlined.GridView
+                    LibraryViewMode.THUMBNAIL -> Icons.AutoMirrored.Outlined.ViewList
                 },
                 contentDescription = "Toggle view mode",
             )

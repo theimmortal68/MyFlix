@@ -10,45 +10,44 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterAlt
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.outlined.ViewModule
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ViewList
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.FilterChip
-import androidx.tv.material3.FilterChipDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.LibraryFilterState
-import dev.jausc.myflix.core.common.model.LibrarySortOption
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
- * Plex-style filter bar for library screens.
+ * Icon-based filter bar for library screens.
  *
- * Layout: [Grid][List] | Genre chips... | [Sort] [Filters] [Shuffle]
+ * Layout: Title | ItemCount | Spacer | [Poster][Thumbnail] | [Filter][Sort][Shuffle][ScrollUp]
  */
 @Composable
 fun LibraryFilterBar(
+    libraryName: String,
+    totalItems: Int,
+    loadedItems: Int,
     filterState: LibraryFilterState,
-    availableGenres: List<String>,
     onViewModeChange: (LibraryViewMode) -> Unit,
-    onGenreToggle: (String) -> Unit,
+    onFilterClick: () -> Unit,
     onSortClick: () -> Unit,
-    onFiltersClick: () -> Unit,
     onShuffleClick: () -> Unit,
+    onScrollToTopClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -56,47 +55,60 @@ fun LibraryFilterBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Library title
+        Text(
+            text = libraryName,
+            style = MaterialTheme.typography.headlineSmall,
+            color = TvColors.TextPrimary,
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Item count
+        Text(
+            text = "$loadedItems of $totalItems items",
+            style = MaterialTheme.typography.bodySmall,
+            color = TvColors.TextSecondary,
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
         // View mode toggle buttons
         ViewModeButtons(
             currentMode = filterState.viewMode,
             onModeChange = onViewModeChange,
         )
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
-        // Genre chips (scrollable)
-        LazyRow(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-        ) {
-            items(availableGenres) { genre ->
-                val isSelected = filterState.selectedGenres.contains(genre)
-                GenreChip(
-                    genre = genre,
-                    isSelected = isSelected,
-                    onClick = { onGenreToggle(genre) },
-                )
-            }
-        }
+        // Action buttons (icon-only): Filter, Sort, Shuffle, Scroll Up
+        ActionIconButton(
+            icon = Icons.Outlined.FilterAlt,
+            contentDescription = "Filter",
+            hasActiveState = filterState.hasActiveFilters,
+            onClick = onFilterClick,
+        )
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Sort button
-        SortChip(
-            sortDisplayText = filterState.sortDisplayText,
-            isNonDefault = filterState.sortBy != LibrarySortOption.TITLE,
+        ActionIconButton(
+            icon = Icons.AutoMirrored.Outlined.Sort,
+            contentDescription = "Sort",
+            hasActiveState = false,
             onClick = onSortClick,
         )
 
-        // Filters button
-        FiltersChip(
-            activeFilterCount = filterState.activeFilterCount,
-            onClick = onFiltersClick,
+        ActionIconButton(
+            icon = Icons.Outlined.Shuffle,
+            contentDescription = "Shuffle",
+            hasActiveState = false,
+            onClick = onShuffleClick,
         )
 
-        // Shuffle button
-        ShuffleButton(onClick = onShuffleClick)
+        ActionIconButton(
+            icon = Icons.Outlined.KeyboardArrowUp,
+            contentDescription = "Scroll to Top",
+            hasActiveState = false,
+            onClick = onScrollToTopClick,
+        )
     }
 }
 
@@ -106,19 +118,19 @@ private fun ViewModeButtons(
     onModeChange: (LibraryViewMode) -> Unit,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        // Grid button
+        // Poster button (grid icon)
         Button(
-            onClick = { onModeChange(LibraryViewMode.GRID) },
+            onClick = { onModeChange(LibraryViewMode.POSTER) },
             modifier = Modifier.height(20.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
             scale = ButtonDefaults.scale(focusedScale = 1f),
             colors = ButtonDefaults.colors(
-                containerColor = if (currentMode == LibraryViewMode.GRID) {
+                containerColor = if (currentMode == LibraryViewMode.POSTER) {
                     TvColors.BluePrimary.copy(alpha = 0.3f)
                 } else {
                     TvColors.SurfaceElevated.copy(alpha = 0.8f)
                 },
-                contentColor = if (currentMode == LibraryViewMode.GRID) {
+                contentColor = if (currentMode == LibraryViewMode.POSTER) {
                     TvColors.BluePrimary
                 } else {
                     TvColors.TextSecondary
@@ -129,24 +141,24 @@ private fun ViewModeButtons(
         ) {
             Icon(
                 imageVector = Icons.Outlined.GridView,
-                contentDescription = "Grid View",
+                contentDescription = "Poster View",
                 modifier = Modifier.size(14.dp),
             )
         }
 
-        // List button
+        // Thumbnail button (wide view icon)
         Button(
-            onClick = { onModeChange(LibraryViewMode.LIST) },
+            onClick = { onModeChange(LibraryViewMode.THUMBNAIL) },
             modifier = Modifier.height(20.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
             scale = ButtonDefaults.scale(focusedScale = 1f),
             colors = ButtonDefaults.colors(
-                containerColor = if (currentMode == LibraryViewMode.LIST) {
+                containerColor = if (currentMode == LibraryViewMode.THUMBNAIL) {
                     TvColors.BluePrimary.copy(alpha = 0.3f)
                 } else {
                     TvColors.SurfaceElevated.copy(alpha = 0.8f)
                 },
-                contentColor = if (currentMode == LibraryViewMode.LIST) {
+                contentColor = if (currentMode == LibraryViewMode.THUMBNAIL) {
                     TvColors.BluePrimary
                 } else {
                     TvColors.TextSecondary
@@ -156,8 +168,8 @@ private fun ViewModeButtons(
             ),
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ViewList,
-                contentDescription = "List View",
+                imageVector = Icons.Outlined.ViewModule,
+                contentDescription = "Thumbnail View",
                 modifier = Modifier.size(14.dp),
             )
         }
@@ -165,132 +177,36 @@ private fun ViewModeButtons(
 }
 
 @Composable
-private fun GenreChip(
-    genre: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    FilterChip(
-        selected = isSelected,
-        onClick = onClick,
-        leadingIcon = if (isSelected) {
-            {
-                Icon(
-                    imageVector = Icons.Outlined.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        } else {
-            null
-        },
-        colors = FilterChipDefaults.colors(
-            containerColor = TvColors.Surface,
-            contentColor = TvColors.TextSecondary,
-            focusedContainerColor = TvColors.SurfaceElevated,
-            focusedContentColor = TvColors.TextPrimary,
-            selectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.2f),
-            selectedContentColor = Color(0xFF8B5CF6),
-            focusedSelectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.3f),
-            focusedSelectedContentColor = Color(0xFF8B5CF6),
-        ),
-    ) {
-        Text(genre, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-private fun SortChip(
-    sortDisplayText: String,
-    isNonDefault: Boolean,
-    onClick: () -> Unit,
-) {
-    FilterChip(
-        selected = isNonDefault,
-        onClick = onClick,
-        leadingIcon = if (isNonDefault) {
-            {
-                Icon(
-                    imageVector = Icons.Outlined.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        } else {
-            null
-        },
-        colors = FilterChipDefaults.colors(
-            containerColor = TvColors.Surface,
-            contentColor = TvColors.TextSecondary,
-            focusedContainerColor = TvColors.SurfaceElevated,
-            focusedContentColor = TvColors.TextPrimary,
-            selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
-            selectedContentColor = TvColors.BluePrimary,
-            focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-            focusedSelectedContentColor = TvColors.BluePrimary,
-        ),
-    ) {
-        Text("Sort: $sortDisplayText", style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-private fun FiltersChip(
-    activeFilterCount: Int,
-    onClick: () -> Unit,
-) {
-    val hasFilters = activeFilterCount > 0
-
-    FilterChip(
-        selected = hasFilters,
-        onClick = onClick,
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Outlined.FilterList,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-        },
-        colors = FilterChipDefaults.colors(
-            containerColor = TvColors.Surface,
-            contentColor = TvColors.TextSecondary,
-            focusedContainerColor = TvColors.SurfaceElevated,
-            focusedContentColor = TvColors.TextPrimary,
-            selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
-            selectedContentColor = TvColors.BluePrimary,
-            focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-            focusedSelectedContentColor = TvColors.BluePrimary,
-        ),
-    ) {
-        Text(
-            text = if (hasFilters) "Filters ($activeFilterCount)" else "Filters",
-            style = MaterialTheme.typography.labelMedium,
-        )
-    }
-}
-
-@Composable
-private fun ShuffleButton(
+private fun ActionIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    hasActiveState: Boolean,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
         modifier = Modifier.height(20.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         colors = ButtonDefaults.colors(
-            containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-            contentColor = TvColors.TextSecondary,
+            containerColor = if (hasActiveState) {
+                TvColors.BluePrimary.copy(alpha = 0.3f)
+            } else {
+                TvColors.SurfaceElevated.copy(alpha = 0.8f)
+            },
+            contentColor = if (hasActiveState) {
+                TvColors.BluePrimary
+            } else {
+                TvColors.TextSecondary
+            },
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),
     ) {
         Icon(
-            imageVector = Icons.Outlined.Shuffle,
-            contentDescription = "Shuffle Play",
+            imageVector = icon,
+            contentDescription = contentDescription,
             modifier = Modifier.size(14.dp),
         )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text("Shuffle", style = MaterialTheme.typography.labelSmall)
     }
 }

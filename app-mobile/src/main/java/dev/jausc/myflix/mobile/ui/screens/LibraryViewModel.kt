@@ -169,13 +169,13 @@ class LibraryViewModel(
     }
 
     /**
-     * Toggle view mode between grid and list.
+     * Toggle view mode between poster and thumbnail.
      */
     fun toggleViewMode() {
         updateFilterState { state ->
             val newMode = when (state.viewMode) {
-                LibraryViewMode.GRID -> LibraryViewMode.LIST
-                LibraryViewMode.LIST -> LibraryViewMode.GRID
+                LibraryViewMode.POSTER -> LibraryViewMode.THUMBNAIL
+                LibraryViewMode.THUMBNAIL -> LibraryViewMode.POSTER
             }
             state.copy(viewMode = newMode)
         }
