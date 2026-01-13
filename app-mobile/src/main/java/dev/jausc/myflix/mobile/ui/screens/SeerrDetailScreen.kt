@@ -638,35 +638,53 @@ fun SeerrDetailScreen(
                         }
                     }
 
-                    // Trailers
-                    val trailers = currentMedia.relatedVideos?.filter { video ->
-                        video.site?.equals("YouTube", ignoreCase = true) == true &&
-                            (
-                                video.type?.equals("Trailer", ignoreCase = true) == true ||
-                                    video.type?.equals("Teaser", ignoreCase = true) == true
-                                )
+                    // Videos - organized by category
+                    val youtubeVideos = currentMedia.relatedVideos?.filter { video ->
+                        video.site?.equals("YouTube", ignoreCase = true) == true
                     } ?: emptyList()
 
-                    if (trailers.isNotEmpty()) {
-                        item {
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text(
-                                text = "Trailers",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                    // Get the official trailer (last one, usually newest) - excluded from video sections
+                    val officialTrailer = youtubeVideos
+                        .filter { it.type?.equals("Trailer", ignoreCase = true) == true }
+                        .lastOrNull()
+
+                    val videoCategories = listOf(
+                        "Trailer" to "Trailers",
+                        "Teaser" to "Teasers",
+                        "Clip" to "Clips",
+                        "Featurette" to "Featurettes",
+                        "Behind the Scenes" to "Behind the Scenes",
+                        "Blooper" to "Bloopers",
+                    )
+
+                    videoCategories.forEach { (apiType, displayTitle) ->
+                        val videosInCategory = youtubeVideos.filter { video ->
+                            video.type?.equals(apiType, ignoreCase = true) == true &&
+                                // Exclude the official trailer from the Trailers section
+                                (apiType != "Trailer" || video.key != officialTrailer?.key)
                         }
 
-                        item {
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                items(trailers, key = { it.key ?: it.name ?: "" }) { video ->
-                                    MobileSeerrTrailerCard(video = video)
+                        if (videosInCategory.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    text = displayTitle,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            item {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    items(videosInCategory, key = { it.key ?: it.name ?: "" }) { video ->
+                                        MobileSeerrVideoCard(video = video)
+                                    }
                                 }
                             }
                         }
@@ -1058,7 +1076,7 @@ private fun MobileSeerrRelatedCard(
 }
 
 @Composable
-private fun MobileSeerrTrailerCard(video: SeerrVideo) {
+private fun MobileSeerrVideoCard(video: SeerrVideo) {
     val context = LocalContext.current
 
     Box(
@@ -1094,7 +1112,7 @@ private fun MobileSeerrTrailerCard(video: SeerrVideo) {
         ) {
             Icon(
                 imageVector = Icons.Outlined.PlayCircle,
-                contentDescription = "Play trailer",
+                contentDescription = "Play video",
                 modifier = Modifier.size(48.dp),
                 tint = Color.White,
             )

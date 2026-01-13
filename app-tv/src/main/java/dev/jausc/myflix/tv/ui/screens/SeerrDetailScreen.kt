@@ -76,6 +76,7 @@ import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeason
 import dev.jausc.myflix.core.seerr.SeerrStatusColors
+import dev.jausc.myflix.core.seerr.SeerrVideo
 import dev.jausc.myflix.core.seerr.buildQuotaText
 import dev.jausc.myflix.tv.ui.components.TvIconButton
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
@@ -493,10 +494,10 @@ fun SeerrDetailScreen(
                                             isLoading = isBlacklisting,
                                         )
 
-                                        // Trailer button (if available)
-                                        val trailer = currentMedia.relatedVideos?.find {
-                                            it.type == "Trailer" && it.site == "YouTube"
-                                        }
+                                        // Trailer button (use newest trailer - last in list)
+                                        val trailer = currentMedia.relatedVideos
+                                            ?.filter { it.type == "Trailer" && it.site == "YouTube" }
+                                            ?.lastOrNull()
                                         trailer?.key?.let { videoKey ->
                                             TvIconTextButton(
                                                 icon = Icons.Outlined.PlayArrow,
@@ -796,6 +797,59 @@ fun SeerrDetailScreen(
                                                 onMediaClick(targetType, item.tmdbId ?: item.id)
                                             },
                                         )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Videos - organized by category
+                    val youtubeVideos = currentMedia.relatedVideos?.filter { video ->
+                        video.site?.equals("YouTube", ignoreCase = true) == true
+                    } ?: emptyList()
+
+                    // Get the official trailer (last one, usually newest) for the hero button
+                    val officialTrailer = youtubeVideos
+                        .filter { it.type?.equals("Trailer", ignoreCase = true) == true }
+                        .lastOrNull()
+
+                    val videoCategories = listOf(
+                        "Trailer" to "Trailers",
+                        "Teaser" to "Teasers",
+                        "Clip" to "Clips",
+                        "Featurette" to "Featurettes",
+                        "Behind the Scenes" to "Behind the Scenes",
+                        "Blooper" to "Bloopers",
+                    )
+
+                    videoCategories.forEach { (apiType, displayTitle) ->
+                        val videosInCategory = youtubeVideos.filter { video ->
+                            video.type?.equals(apiType, ignoreCase = true) == true &&
+                                // Exclude the official trailer from the Trailers section
+                                (apiType != "Trailer" || video.key != officialTrailer?.key)
+                        }
+
+                        if (videosInCategory.isNotEmpty()) {
+                            item {
+                                Column(modifier = Modifier.padding(vertical = 16.dp)) {
+                                    Text(
+                                        text = displayTitle,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TvColors.TextPrimary,
+                                        modifier = Modifier.padding(horizontal = 48.dp),
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 48.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        items(
+                                            videosInCategory,
+                                            key = { it.key ?: it.name ?: "" },
+                                        ) { video ->
+                                            TvSeerrVideoCard(video = video)
+                                        }
                                     }
                                 }
                             }
@@ -1208,5 +1262,85 @@ private fun SeasonLegendItem(color: Color, label: String) {
             style = MaterialTheme.typography.labelSmall,
             color = TvColors.TextSecondary,
         )
+    }
+}
+
+@Composable
+private fun TvSeerrVideoCard(video: SeerrVideo) {
+    val context = LocalContext.current
+
+    Surface(
+        onClick = {
+            video.key?.let { key ->
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://www.youtube.com/watch?v=$key"),
+                )
+                context.startActivity(intent)
+            }
+        },
+        modifier = Modifier
+            .width(210.dp)
+            .aspectRatio(16f / 9f),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
+            shape = RoundedCornerShape(8.dp),
+        ),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.FocusedSurface,
+        ),
+        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = RoundedCornerShape(8.dp),
+            ),
+        ),
+        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // YouTube thumbnail
+            AsyncImage(
+                model = "https://img.youtube.com/vi/${video.key}/hqdefault.jpg",
+                contentDescription = video.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+
+            // Play icon overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PlayArrow,
+                    contentDescription = "Play video",
+                    modifier = Modifier.size(48.dp),
+                    tint = Color.White,
+                )
+            }
+
+            // Video name
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                        ),
+                    )
+                    .padding(8.dp),
+            ) {
+                Text(
+                    text = video.name ?: "",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
