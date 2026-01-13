@@ -13,18 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,8 +41,9 @@ import dev.jausc.myflix.core.common.model.isHdr
 import dev.jausc.myflix.core.network.JellyfinClient
 
 /**
- * Detail screen hero section for mobile.
- * Shows backdrop with gradient, title, metadata, and action buttons.
+ * Hero section for Plex/VoidTV-style detail screens on mobile.
+ * Shows full backdrop with gradient overlay, title, metadata with genre dropdown,
+ * synopsis, quality badges, and action buttons.
  */
 @Composable
 fun MobileDetailHeroSection(
@@ -55,6 +51,10 @@ fun MobileDetailHeroSection(
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onBackClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onMarkWatchedClick: () -> Unit,
+    onMarkUnwatchedClick: () -> Unit,
+    onGenreSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val backdropUrl = buildBackdropUrl(item, jellyfinClient)
@@ -62,9 +62,9 @@ fun MobileDetailHeroSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(300.dp),
+            .height(380.dp),
     ) {
-        // Backdrop image with gradient overlay
+        // Full backdrop with gradient overlay
         AsyncImage(
             model = backdropUrl,
             contentDescription = item.name,
@@ -78,8 +78,9 @@ fun MobileDetailHeroSection(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0.0f to Color.Transparent,
-                                0.4f to Color.Transparent,
-                                0.7f to Color.Black.copy(alpha = 0.6f),
+                                0.3f to Color.Transparent,
+                                0.6f to Color.Black.copy(alpha = 0.5f),
+                                0.8f to Color.Black.copy(alpha = 0.8f),
                                 1.0f to Color.Black.copy(alpha = 0.95f),
                             ),
                         ),
@@ -121,14 +122,17 @@ fun MobileDetailHeroSection(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Metadata row
-            MetadataRow(item)
+            // Metadata row with genres dropdown
+            MetadataRow(
+                item = item,
+                onGenreSelected = onGenreSelected,
+            )
 
             // Tagline if available
             item.taglines?.firstOrNull()?.let { tagline ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = tagline,
+                    text = "\"$tagline\"",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontStyle = FontStyle.Italic,
                     ),
@@ -138,48 +142,57 @@ fun MobileDetailHeroSection(
                 )
             }
 
+            // Synopsis/Overview
+            item.overview?.let { overview ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = overview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            // Quality badges row
+            val badges = mutableListOf<String>()
+            if (item.is4K) badges.add("4K")
+            if (item.isDolbyVision) badges.add("DV")
+            else if (item.isHdr) badges.add("HDR")
+
+            if (badges.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    badges.forEach { badge ->
+                        QualityBadge(badge)
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             // Action buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                // Play button
-                Button(
-                    onClick = onPlayClick,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Play")
-                }
-
-                // Add to list button
-                OutlinedButton(
-                    onClick = { /* TODO: Add to list */ },
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("My List")
-                }
-            }
+            MobileDetailActionsRow(
+                item = item,
+                onPlayClick = onPlayClick,
+                onFavoriteClick = onFavoriteClick,
+                onMarkWatchedClick = onMarkWatchedClick,
+                onMarkUnwatchedClick = onMarkUnwatchedClick,
+            )
         }
     }
 }
 
 /**
- * Metadata row showing year, rating, runtime, content rating, and quality badges.
+ * Metadata row showing year, genres dropdown, rating, runtime, content rating.
  */
 @Composable
-private fun MetadataRow(item: JellyfinItem) {
+private fun MetadataRow(
+    item: JellyfinItem,
+    onGenreSelected: (String) -> Unit,
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -190,6 +203,14 @@ private fun MetadataRow(item: JellyfinItem) {
                 text = year.toString(),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.9f),
+            )
+        }
+
+        // Genres dropdown button
+        if (!item.genres.isNullOrEmpty()) {
+            MobileGenreDropdown(
+                genres = item.genres!!,
+                onGenreSelected = onGenreSelected,
             )
         }
 
@@ -248,16 +269,6 @@ private fun MetadataRow(item: JellyfinItem) {
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }
-        }
-
-        // Quality badges
-        if (item.is4K) {
-            QualityBadge("4K")
-        }
-        if (item.isDolbyVision) {
-            QualityBadge("DV")
-        } else if (item.isHdr) {
-            QualityBadge("HDR")
         }
     }
 }

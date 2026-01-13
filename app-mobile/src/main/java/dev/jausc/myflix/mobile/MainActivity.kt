@@ -289,6 +289,13 @@ fun MyFlixMobileContent() {
                 onNavigateToDetail = { relatedItemId ->
                     navController.navigate("detail/$relatedItemId")
                 },
+                onNavigateToGenre = { genre, libraryType ->
+                    // TODO: Navigate to library filtered by genre
+                    // For now, navigate back to home
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                },
             )
         }
 

@@ -12,16 +12,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Detail screen tabs.
- */
-enum class DetailTab(val title: String) {
-    OVERVIEW("Overview"),
-    EPISODES("Episodes"),
-    RELATED("More Like This"),
-    DETAILS("Details"),
-}
-
-/**
  * UI state for the detail screen.
  */
 data class DetailUiState(
@@ -32,29 +22,13 @@ data class DetailUiState(
     val isLoading: Boolean = true,
     val isLoadingEpisodes: Boolean = false,
     val error: String? = null,
-    val selectedTabIndex: Int = 0,
     val similarItems: List<JellyfinItem> = emptyList(),
     val isLoadingSimilar: Boolean = false,
 ) {
     val hasSeasons: Boolean get() = seasons.isNotEmpty()
     val hasEpisodes: Boolean get() = episodes.isNotEmpty()
     val isSeries: Boolean get() = item?.type == "Series"
-
-    /**
-     * Get available tabs based on item type.
-     * Movies: Overview, Related, Details
-     * Series: Overview, Episodes, Related, Details
-     */
-    val availableTabs: List<DetailTab>
-        get() = buildList {
-            add(DetailTab.OVERVIEW)
-            if (isSeries) add(DetailTab.EPISODES)
-            add(DetailTab.RELATED)
-            add(DetailTab.DETAILS)
-        }
-
-    val selectedTab: DetailTab
-        get() = availableTabs.getOrNull(selectedTabIndex) ?: DetailTab.OVERVIEW
+    val isMovie: Boolean get() = item?.type == "Movie"
 }
 
 /**
@@ -102,6 +76,9 @@ class DetailViewModel(
                     } else {
                         _uiState.update { it.copy(isLoading = false) }
                     }
+
+                    // Load similar items in parallel
+                    loadSimilarItems()
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -207,6 +184,43 @@ class DetailViewModel(
     }
 
     /**
+     * Toggle the main item's favorite status.
+     */
+    fun toggleItemFavorite() {
+        val currentItem = _uiState.value.item ?: return
+        val isFavorite = currentItem.userData?.isFavorite == true
+
+        viewModelScope.launch {
+            jellyfinClient.setFavorite(currentItem.id, !isFavorite)
+            refreshItem()
+        }
+    }
+
+    /**
+     * Mark the main item as watched/unwatched.
+     */
+    fun setItemPlayed(played: Boolean) {
+        val currentItem = _uiState.value.item ?: return
+
+        viewModelScope.launch {
+            jellyfinClient.setPlayed(currentItem.id, played)
+            refreshItem()
+        }
+    }
+
+    /**
+     * Refresh the main item's data.
+     */
+    private fun refreshItem() {
+        viewModelScope.launch {
+            jellyfinClient.getItem(itemId)
+                .onSuccess { item ->
+                    _uiState.update { it.copy(item = item) }
+                }
+        }
+    }
+
+    /**
      * Reload the item details.
      */
     fun refresh() {
@@ -214,22 +228,7 @@ class DetailViewModel(
     }
 
     /**
-     * Select a tab by index.
-     */
-    fun selectTab(index: Int) {
-        val tabs = _uiState.value.availableTabs
-        if (index in tabs.indices) {
-            _uiState.update { it.copy(selectedTabIndex = index) }
-
-            // Load similar items when Related tab is selected (lazy load)
-            if (tabs[index] == DetailTab.RELATED && _uiState.value.similarItems.isEmpty()) {
-                loadSimilarItems()
-            }
-        }
-    }
-
-    /**
-     * Load similar items for the Related tab.
+     * Load similar items for the Related section.
      */
     private fun loadSimilarItems() {
         val currentItem = _uiState.value.item ?: return

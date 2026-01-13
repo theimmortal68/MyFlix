@@ -1,25 +1,15 @@
-@file:Suppress(
-    "LongMethod",
-    "CognitiveComplexMethod",
-    "CyclomaticComplexMethod",
-    "MagicNumber",
-)
+@file:Suppress("MagicNumber")
 
 package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,19 +31,17 @@ import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.buildDetailMenuItems
-import dev.jausc.myflix.mobile.ui.components.detail.MobileDetailsTabContent
+import dev.jausc.myflix.mobile.ui.components.detail.MobileCastCrewRow
 import dev.jausc.myflix.mobile.ui.components.detail.MobileDetailHeroSection
-import dev.jausc.myflix.mobile.ui.components.detail.MobileEpisodesTabContent
-import dev.jausc.myflix.mobile.ui.components.detail.MobileOverviewTabContent
-import dev.jausc.myflix.mobile.ui.components.detail.MobileRelatedTabContent
+import dev.jausc.myflix.mobile.ui.components.detail.MobileDetailsSection
+import dev.jausc.myflix.mobile.ui.components.detail.MobileEpisodeRow
+import dev.jausc.myflix.mobile.ui.components.detail.MobileRelatedRow
+import dev.jausc.myflix.mobile.ui.components.detail.MobileSeasonBar
 import kotlinx.coroutines.launch
 
 /**
- * Netflix-style detail screen with fixed hero section, swipeable tab bar, and tab content.
- * Layout:
- * - Hero section with backdrop, title, metadata, and buttons
- * - Tab bar (swipeable)
- * - Tab content (pager)
+ * Plex/VoidTV-style detail screen with single scrolling page layout.
+ * Shows hero section, season bar (TV shows), episodes, cast, related items, and details.
  */
 @Composable
 fun DetailScreen(
@@ -63,6 +51,7 @@ fun DetailScreen(
     onEpisodeClick: (String) -> Unit,
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -125,26 +114,6 @@ fun DetailScreen(
         )
     }
 
-    // Pager state for swipeable tabs
-    val pagerState = rememberPagerState(
-        initialPage = state.selectedTabIndex,
-        pageCount = { state.availableTabs.size },
-    )
-
-    // Sync pager state with ViewModel
-    LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage != state.selectedTabIndex) {
-            viewModel.selectTab(pagerState.currentPage)
-        }
-    }
-
-    // Sync ViewModel state with pager
-    LaunchedEffect(state.selectedTabIndex) {
-        if (state.selectedTabIndex != pagerState.currentPage) {
-            pagerState.animateScrollToPage(state.selectedTabIndex)
-        }
-    }
-
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -158,83 +127,99 @@ fun DetailScreen(
                 CircularProgressIndicator()
             }
         } else {
-            Column(
+            // Single scrolling page
+            LazyColumn(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                // Fixed Hero Section
-                MobileDetailHeroSection(
-                    item = currentItem,
-                    jellyfinClient = jellyfinClient,
-                    onPlayClick = onPlayClick,
-                    onBackClick = onBack,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                // Hero Section
+                item(key = "hero") {
+                    MobileDetailHeroSection(
+                        item = currentItem,
+                        jellyfinClient = jellyfinClient,
+                        onPlayClick = onPlayClick,
+                        onBackClick = onBack,
+                        onFavoriteClick = { viewModel.toggleItemFavorite() },
+                        onMarkWatchedClick = { viewModel.setItemPlayed(true) },
+                        onMarkUnwatchedClick = { viewModel.setItemPlayed(false) },
+                        onGenreSelected = { genre ->
+                            // Navigate to library filtered by genre
+                            val libraryType = if (currentItem.type == "Movie") "Movies" else "Shows"
+                            onNavigateToGenre(genre, libraryType)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
-                // Tab Row
-                if (state.availableTabs.isNotEmpty()) {
-                    ScrollableTabRow(
-                        selectedTabIndex = state.selectedTabIndex,
-                        edgePadding = 16.dp,
-                    ) {
-                        state.availableTabs.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = index == state.selectedTabIndex,
-                                onClick = {
-                                    scope.launch {
-                                        pagerState.animateScrollToPage(index)
-                                    }
-                                },
-                                text = { Text(tab.title) },
+                // Season Bar (TV shows only)
+                if (state.isSeries && state.hasSeasons) {
+                    item(key = "seasonBar") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        MobileSeasonBar(
+                            seasons = state.seasons,
+                            selectedSeason = state.selectedSeason,
+                            onSeasonSelected = { viewModel.selectSeason(it) },
+                        )
+                    }
+
+                    // Episodes Row
+                    item(key = "episodes") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        MobileEpisodeRow(
+                            episodes = state.episodes,
+                            jellyfinClient = jellyfinClient,
+                            onEpisodeClick = onEpisodeClick,
+                            onEpisodeLongClick = { episode ->
+                                popupMenuParams = BottomSheetParams(
+                                    title = episode.name,
+                                    subtitle = "Episode ${episode.indexNumber ?: ""}",
+                                    items = buildDetailMenuItems(episode, menuActions),
+                                )
+                            },
+                            isLoading = state.isLoadingEpisodes,
+                        )
+                    }
+                }
+
+                // Cast & Crew Row
+                val castAndCrew = currentItem.people?.filter {
+                    it.type in listOf("Actor", "Director", "Writer", "Producer")
+                } ?: emptyList()
+                if (castAndCrew.isNotEmpty()) {
+                    item(key = "castCrew") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        MobileCastCrewRow(
+                            people = castAndCrew,
+                            jellyfinClient = jellyfinClient,
+                            onPersonClick = { _ ->
+                                // TODO: Navigate to person detail or search
+                            },
+                        )
+                    }
+                }
+
+                // Related/Similar Items Row
+                item(key = "related") {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    MobileRelatedRow(
+                        items = state.similarItems,
+                        jellyfinClient = jellyfinClient,
+                        onItemClick = onNavigateToDetail,
+                        onItemLongClick = { item ->
+                            popupMenuParams = BottomSheetParams(
+                                title = item.name,
+                                subtitle = item.productionYear?.toString() ?: "",
+                                items = buildDetailMenuItems(item, menuActions),
                             )
-                        }
-                    }
+                        },
+                        isLoading = state.isLoadingSimilar,
+                    )
+                }
 
-                    // Tab Content (Pager)
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                    ) { page ->
-                        val tab = state.availableTabs.getOrNull(page) ?: return@HorizontalPager
-
-                        when (tab) {
-                            DetailTab.OVERVIEW -> {
-                                MobileOverviewTabContent(
-                                    item = currentItem,
-                                    jellyfinClient = jellyfinClient,
-                                )
-                            }
-                            DetailTab.EPISODES -> {
-                                MobileEpisodesTabContent(
-                                    state = state,
-                                    jellyfinClient = jellyfinClient,
-                                    onSeasonSelected = { viewModel.selectSeason(it) },
-                                    onEpisodeClick = onEpisodeClick,
-                                    onEpisodeLongClick = { episode ->
-                                        popupMenuParams = BottomSheetParams(
-                                            title = episode.name,
-                                            subtitle = "Episode ${episode.indexNumber ?: ""}",
-                                            items = buildDetailMenuItems(episode, menuActions),
-                                        )
-                                    },
-                                )
-                            }
-                            DetailTab.RELATED -> {
-                                MobileRelatedTabContent(
-                                    similarItems = state.similarItems,
-                                    isLoading = state.isLoadingSimilar,
-                                    jellyfinClient = jellyfinClient,
-                                    onItemClick = onNavigateToDetail,
-                                )
-                            }
-                            DetailTab.DETAILS -> {
-                                MobileDetailsTabContent(
-                                    item = currentItem,
-                                )
-                            }
-                        }
-                    }
+                // Details Section
+                item(key = "details") {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    MobileDetailsSection(item = currentItem)
+                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }

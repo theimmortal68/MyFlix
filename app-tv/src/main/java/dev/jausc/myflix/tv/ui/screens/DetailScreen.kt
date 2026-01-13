@@ -1,17 +1,14 @@
-@file:Suppress(
-    "LongMethod",
-    "CognitiveComplexMethod",
-    "CyclomaticComplexMethod",
-    "MagicNumber",
-)
+@file:Suppress("MagicNumber")
 
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,9 +20,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.JellyfinPerson
 import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
@@ -36,21 +35,18 @@ import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.buildDetailDialogItems
+import dev.jausc.myflix.tv.ui.components.detail.CastCrewRow
 import dev.jausc.myflix.tv.ui.components.detail.DetailHeroSection
-import dev.jausc.myflix.tv.ui.components.detail.DetailTabRow
-import dev.jausc.myflix.tv.ui.components.detail.DetailsTabContent
-import dev.jausc.myflix.tv.ui.components.detail.EpisodesTabContent
-import dev.jausc.myflix.tv.ui.components.detail.OverviewTabContent
-import dev.jausc.myflix.tv.ui.components.detail.RelatedTabContent
+import dev.jausc.myflix.tv.ui.components.detail.DetailsSection
+import dev.jausc.myflix.tv.ui.components.detail.EpisodeRow
+import dev.jausc.myflix.tv.ui.components.detail.RelatedRow
+import dev.jausc.myflix.tv.ui.components.detail.SeasonBar
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
 
 /**
- * Netflix-style detail screen with fixed hero section, tab bar, and scrollable tab content.
- * Layout:
- * - Hero section (40% - fixed)
- * - Tab bar (fixed)
- * - Tab content (60% - scrollable)
+ * Plex/VoidTV-style detail screen with single scrolling page layout.
+ * Shows hero section, season bar (TV shows), episodes, cast, related items, and details.
  */
 @Composable
 fun DetailScreen(
@@ -60,6 +56,7 @@ fun DetailScreen(
     onEpisodeClick: (String) -> Unit,
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -72,15 +69,14 @@ fun DetailScreen(
     val scope = rememberCoroutineScope()
 
     // Focus requesters for D-pad navigation
-    val playButtonFocusRequester = remember { FocusRequester() }
-    val tabRowFocusRequester = remember { FocusRequester() }
-    val contentFocusRequester = remember { FocusRequester() }
+    val actionsFocusRequester = remember { FocusRequester() }
+    val seasonBarFocusRequester = remember { FocusRequester() }
 
-    // Long-press dialog state (TV-specific)
+    // Long-press dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
-    // Dialog actions (TV-specific)
+    // Dialog actions for episodes
     val dialogActions = remember(viewModel, scope) {
         DetailDialogActions(
             onPlay = { episodeId -> onEpisodeClick(episodeId) },
@@ -127,11 +123,11 @@ fun DetailScreen(
         )
     }
 
-    // Request initial focus on play button when content loads
+    // Request initial focus on actions when content loads
     LaunchedEffect(state.item) {
         if (state.item != null) {
             try {
-                playButtonFocusRequester.requestFocus()
+                actionsFocusRequester.requestFocus()
             } catch (_: Exception) {
                 // Focus requester may not be ready yet
             }
@@ -157,77 +153,101 @@ fun DetailScreen(
         } else {
             val currentItem = state.item!!
 
-            Column(
+            // Single scrolling page
+            LazyColumn(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                // Fixed Hero Section (~40%)
-                DetailHeroSection(
-                    item = currentItem,
-                    jellyfinClient = jellyfinClient,
-                    onPlayClick = onPlayClick,
-                    onBackClick = onBack,
-                    playButtonFocusRequester = playButtonFocusRequester,
-                    tabRowFocusRequester = tabRowFocusRequester,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                // Hero Section
+                item(key = "hero") {
+                    DetailHeroSection(
+                        item = currentItem,
+                        jellyfinClient = jellyfinClient,
+                        onPlayClick = onPlayClick,
+                        onBackClick = onBack,
+                        onFavoriteClick = { viewModel.toggleItemFavorite() },
+                        onMarkWatchedClick = { viewModel.setItemPlayed(true) },
+                        onMarkUnwatchedClick = { viewModel.setItemPlayed(false) },
+                        onGenreSelected = { genre ->
+                            // Navigate to library filtered by genre
+                            val libraryType = if (currentItem.type == "Movie") "Movies" else "Shows"
+                            onNavigateToGenre(genre, libraryType)
+                        },
+                        actionsFocusRequester = actionsFocusRequester,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
-                // Fixed Tab Bar
-                DetailTabRow(
-                    tabs = state.availableTabs,
-                    selectedIndex = state.selectedTabIndex,
-                    onTabSelected = { viewModel.selectTab(it) },
-                    tabRowFocusRequester = tabRowFocusRequester,
-                    heroFocusRequester = playButtonFocusRequester,
-                    contentFocusRequester = contentFocusRequester,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                // Tab Content (~60% - scrollable)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                ) {
-                    when (state.selectedTab) {
-                        DetailTab.OVERVIEW -> {
-                            OverviewTabContent(
-                                item = currentItem,
-                                jellyfinClient = jellyfinClient,
-                                contentFocusRequester = contentFocusRequester,
-                            )
-                        }
-                        DetailTab.EPISODES -> {
-                            EpisodesTabContent(
-                                state = state,
-                                jellyfinClient = jellyfinClient,
-                                onSeasonSelected = { viewModel.selectSeason(it) },
-                                onEpisodeClick = onEpisodeClick,
-                                onEpisodeLongClick = { episode ->
-                                    dialogParams = DialogParams(
-                                        title = episode.name,
-                                        items = buildDetailDialogItems(episode, dialogActions),
-                                        fromLongClick = true,
-                                    )
-                                },
-                                contentFocusRequester = contentFocusRequester,
-                            )
-                        }
-                        DetailTab.RELATED -> {
-                            RelatedTabContent(
-                                similarItems = state.similarItems,
-                                isLoading = state.isLoadingSimilar,
-                                jellyfinClient = jellyfinClient,
-                                onItemClick = onNavigateToDetail,
-                                contentFocusRequester = contentFocusRequester,
-                            )
-                        }
-                        DetailTab.DETAILS -> {
-                            DetailsTabContent(
-                                item = currentItem,
-                                contentFocusRequester = contentFocusRequester,
-                            )
-                        }
+                // Season Bar (TV shows only)
+                if (state.isSeries && state.hasSeasons) {
+                    item(key = "seasonBar") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SeasonBar(
+                            seasons = state.seasons,
+                            selectedSeason = state.selectedSeason,
+                            onSeasonSelected = { viewModel.selectSeason(it) },
+                            focusRequester = seasonBarFocusRequester,
+                        )
                     }
+
+                    // Episodes Row
+                    item(key = "episodes") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        EpisodeRow(
+                            episodes = state.episodes,
+                            jellyfinClient = jellyfinClient,
+                            onEpisodeClick = onEpisodeClick,
+                            onEpisodeLongClick = { episode ->
+                                dialogParams = DialogParams(
+                                    title = episode.name,
+                                    items = buildDetailDialogItems(episode, dialogActions),
+                                    fromLongClick = true,
+                                )
+                            },
+                            isLoading = state.isLoadingEpisodes,
+                        )
+                    }
+                }
+
+                // Cast & Crew Row
+                val castAndCrew = currentItem.people?.filter {
+                    it.type in listOf("Actor", "Director", "Writer", "Producer")
+                } ?: emptyList()
+                if (castAndCrew.isNotEmpty()) {
+                    item(key = "castCrew") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        CastCrewRow(
+                            people = castAndCrew,
+                            jellyfinClient = jellyfinClient,
+                            onPersonClick = { _ ->
+                                // TODO: Navigate to person detail or search
+                            },
+                        )
+                    }
+                }
+
+                // Related/Similar Items Row
+                item(key = "related") {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    RelatedRow(
+                        items = state.similarItems,
+                        jellyfinClient = jellyfinClient,
+                        onItemClick = onNavigateToDetail,
+                        onItemLongClick = { item ->
+                            dialogParams = DialogParams(
+                                title = item.name,
+                                items = buildDetailDialogItems(item, dialogActions),
+                                fromLongClick = true,
+                            )
+                        },
+                        isLoading = state.isLoadingSimilar,
+                    )
+                }
+
+                // Details Section
+                item(key = "details") {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    DetailsSection(item = currentItem)
+                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }

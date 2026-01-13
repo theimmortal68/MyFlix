@@ -14,12 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,13 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,9 +51,10 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlin.math.roundToInt
 
 /**
- * Fixed hero section for detail screens.
- * Shows backdrop with title, metadata, quality badges, and action buttons.
- * Designed for Netflix-style tabbed layout with fixed height (~40% of screen).
+ * Hero section for Plex/VoidTV-style detail screens.
+ * Shows full backdrop with gradient overlay, title, metadata with genre dropdown,
+ * synopsis, quality badges, and action buttons.
+ * Designed for single-scrolling layout (NOT tabbed).
  */
 @Composable
 fun DetailHeroSection(
@@ -64,18 +62,21 @@ fun DetailHeroSection(
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onBackClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onMarkWatchedClick: () -> Unit,
+    onMarkUnwatchedClick: () -> Unit,
+    onGenreSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
-    playButtonFocusRequester: FocusRequester = FocusRequester(),
-    tabRowFocusRequester: FocusRequester? = null,
+    actionsFocusRequester: FocusRequester = FocusRequester(),
 ) {
     val backdropUrl = buildBackdropUrl(item, jellyfinClient)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(320.dp),
+            .height(400.dp),
     ) {
-        // Backdrop image with edge fading
+        // Full backdrop with gradient overlay
         AsyncImage(
             model = backdropUrl,
             contentDescription = item.name,
@@ -90,20 +91,22 @@ fun DetailHeroSection(
                         brush = Brush.horizontalGradient(
                             colorStops = arrayOf(
                                 0.0f to Color.Transparent,
-                                0.1f to Color.Black.copy(alpha = 0.6f),
-                                0.25f to Color.Black.copy(alpha = 0.9f),
-                                0.4f to Color.Black,
+                                0.05f to Color.Black.copy(alpha = 0.4f),
+                                0.15f to Color.Black.copy(alpha = 0.7f),
+                                0.35f to Color.Black.copy(alpha = 0.95f),
+                                0.5f to Color.Black,
                             ),
                         ),
                         blendMode = BlendMode.DstIn,
                     )
-                    // Bottom edge fade for tab blending
+                    // Bottom gradient for content blending
                     drawRect(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0.0f to Color.Black,
-                                0.6f to Color.Black,
-                                0.85f to Color.Black.copy(alpha = 0.7f),
+                                0.5f to Color.Black,
+                                0.75f to Color.Black.copy(alpha = 0.8f),
+                                0.9f to Color.Black.copy(alpha = 0.5f),
                                 1.0f to Color.Transparent,
                             ),
                         ),
@@ -116,137 +119,107 @@ fun DetailHeroSection(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 48.dp, top = 24.dp, bottom = 16.dp, end = 48.dp),
+                .padding(start = 48.dp, top = 24.dp, bottom = 24.dp, end = 48.dp),
         ) {
-            // Back button row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            // Back button
+            Button(
+                onClick = onBackClick,
+                modifier = Modifier.height(20.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                scale = ButtonDefaults.scale(focusedScale = 1f),
+                colors = ButtonDefaults.colors(
+                    containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                    contentColor = TvColors.TextPrimary,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
+                ),
             ) {
-                Button(
-                    onClick = onBackClick,
-                    modifier = Modifier.height(20.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    scale = ButtonDefaults.scale(focusedScale = 1f),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                        contentColor = TvColors.TextPrimary,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Back",
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(14.dp),
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Title
             Text(
                 text = item.name,
-                style = MaterialTheme.typography.headlineMedium.copy(
+                style = MaterialTheme.typography.headlineLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
+                    fontSize = 32.sp,
                 ),
                 color = TvColors.TextPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(0.55f),
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Metadata row: Year, Rating, Runtime, Content Rating, Quality badges
-            MetadataRow(item)
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Tagline if available
+            // Metadata row with genres dropdown
+            MetadataRow(
+                item = item,
+                onGenreSelected = onGenreSelected,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Tagline
             item.taglines?.firstOrNull()?.let { tagline ->
                 Text(
-                    text = tagline,
+                    text = "\"$tagline\"",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        fontStyle = FontStyle.Italic,
                     ),
                     color = TvColors.TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(0.5f),
+                    modifier = Modifier.fillMaxWidth(0.55f),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
+            // Synopsis/Overview
+            item.overview?.let { overview ->
+                Text(
+                    text = overview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextSecondary,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(0.55f),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Quality badges row
+            QualityBadgesRow(item)
+
             Spacer(modifier = Modifier.weight(1f))
 
             // Action buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                // Play button
-                Button(
-                    onClick = onPlayClick,
-                    modifier = Modifier
-                        .height(20.dp)
-                        .focusRequester(playButtonFocusRequester)
-                        .focusProperties {
-                            tabRowFocusRequester?.let { down = it }
-                        },
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                        contentColor = TvColors.TextPrimary,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Play", style = MaterialTheme.typography.labelSmall)
-                }
-
-                // Add to List button
-                Button(
-                    onClick = { /* TODO: Implement add to list */ },
-                    modifier = Modifier
-                        .height(20.dp)
-                        .focusProperties {
-                            tabRowFocusRequester?.let { down = it }
-                        },
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                        contentColor = TvColors.TextPrimary,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.FavoriteBorder,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("My List", style = MaterialTheme.typography.labelSmall)
-                }
-            }
+            DetailActionsRow(
+                item = item,
+                onPlayClick = onPlayClick,
+                onFavoriteClick = onFavoriteClick,
+                onMarkWatchedClick = onMarkWatchedClick,
+                onMarkUnwatchedClick = onMarkUnwatchedClick,
+                focusRequester = actionsFocusRequester,
+            )
         }
     }
 }
 
 /**
- * Metadata row showing year, rating, runtime, content rating, and quality badges.
+ * Metadata row showing year, genres dropdown, rating, runtime, content rating.
  */
 @Composable
-private fun MetadataRow(item: JellyfinItem) {
+private fun MetadataRow(
+    item: JellyfinItem,
+    onGenreSelected: (String) -> Unit,
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -260,7 +233,15 @@ private fun MetadataRow(item: JellyfinItem) {
             )
         }
 
-        // Community rating (star)
+        // Genres dropdown button
+        if (!item.genres.isNullOrEmpty()) {
+            GenresButton(
+                genres = item.genres!!,
+                onGenreSelected = onGenreSelected,
+            )
+        }
+
+        // Community rating
         item.communityRating?.let { rating ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -290,7 +271,11 @@ private fun MetadataRow(item: JellyfinItem) {
             ) {
                 Icon(
                     painter = painterResource(
-                        id = if (isFresh) R.drawable.ic_rotten_tomatoes_fresh else R.drawable.ic_rotten_tomatoes_rotten,
+                        id = if (isFresh) {
+                            R.drawable.ic_rotten_tomatoes_fresh
+                        } else {
+                            R.drawable.ic_rotten_tomatoes_rotten
+                        },
                     ),
                     contentDescription = if (isFresh) "Fresh" else "Rotten",
                     modifier = Modifier.size(16.dp),
@@ -323,7 +308,7 @@ private fun MetadataRow(item: JellyfinItem) {
             }
         }
 
-        // Official rating badge (PG-13, TV-MA, etc.)
+        // Official rating badge
         item.officialRating?.let { rating ->
             Box(
                 modifier = Modifier
@@ -338,15 +323,26 @@ private fun MetadataRow(item: JellyfinItem) {
                 )
             }
         }
+    }
+}
 
-        // Quality badges (4K, HDR, Dolby Vision)
-        if (item.is4K) {
-            QualityBadge("4K")
-        }
-        if (item.isDolbyVision) {
-            QualityBadge("DV")
-        } else if (item.isHdr) {
-            QualityBadge("HDR")
+/**
+ * Quality badges row (4K, HDR, Dolby Vision).
+ */
+@Composable
+private fun QualityBadgesRow(item: JellyfinItem) {
+    val badges = mutableListOf<String>()
+    if (item.is4K) badges.add("4K")
+    if (item.isDolbyVision) badges.add("DV")
+    else if (item.isHdr) badges.add("HDR")
+
+    if (badges.isNotEmpty()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            badges.forEach { badge ->
+                QualityBadge(badge)
+            }
         }
     }
 }
@@ -371,7 +367,7 @@ private fun QualityBadge(text: String) {
 }
 
 /**
- * Build the backdrop URL for an item, using series backdrop for episodes.
+ * Build the backdrop URL for an item.
  */
 private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient): String {
     val backdropId = if (!item.backdropImageTags.isNullOrEmpty()) {
