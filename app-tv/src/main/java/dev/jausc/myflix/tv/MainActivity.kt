@@ -29,6 +29,7 @@ import dev.jausc.myflix.core.common.ui.SplashScreen
 import dev.jausc.myflix.core.common.ui.SplashScreenTvConfig
 import dev.jausc.myflix.core.common.util.NavigationHelper
 import dev.jausc.myflix.core.data.AppState
+import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
@@ -89,6 +90,29 @@ fun MyFlixTvApp() {
     LaunchedEffect(Unit) {
         appState.initialize()
         isLoggedIn = appState.isLoggedIn
+
+        // Auto-login with debug credentials if available and not already logged in
+        if (!isLoggedIn && BuildConfig.DEBUG) {
+            DebugCredentials.read(context)?.let { creds ->
+                android.util.Log.d("MyFlix", "Auto-login with debug credentials to ${creds.server}")
+                jellyfinClient.login(creds.server, creds.username, creds.password)
+                    .onSuccess { authResponse ->
+                        appState.login(
+                            serverUrl = creds.server,
+                            accessToken = authResponse.accessToken,
+                            userId = authResponse.user.id,
+                            username = creds.username,
+                            password = creds.password,
+                        )
+                        isLoggedIn = true
+                        android.util.Log.d("MyFlix", "Auto-login successful")
+                    }
+                    .onFailure { e ->
+                        android.util.Log.e("MyFlix", "Auto-login failed: ${e.message}")
+                    }
+            }
+        }
+
         isInitialized = true
     }
 

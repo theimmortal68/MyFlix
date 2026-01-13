@@ -33,6 +33,10 @@ local.properties
 # Secrets
 secrets.properties
 google-services.json
+debug.credentials
+# Debug credentials in assets (for auto-login)
+app-tv/src/main/assets/debug.credentials
+app-mobile/src/main/assets/debug.credentials
 
 # OS
 Thumbs.db
