@@ -74,8 +74,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -116,6 +114,7 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
+import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import java.time.LocalDate
@@ -412,50 +411,22 @@ fun SeerrHomeScreen(
                                 modifier = Modifier.padding(start = 48.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Button(
+                                TvIconTextButton(
+                                    icon = Icons.Outlined.Search,
+                                    text = "Search",
                                     onClick = onNavigateSeerrSearch,
-                                    modifier = Modifier
-                                        .height(20.dp)
-                                        .onFocusChanged { quickActionsHasFocus = it.hasFocus },
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                                    scale = ButtonDefaults.scale(focusedScale = 1f),
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                                        contentColor = TvColors.TextPrimary,
-                                        focusedContainerColor = TvColors.BluePrimary,
-                                        focusedContentColor = Color.White,
-                                    ),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Search,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Search", style = MaterialTheme.typography.labelSmall)
-                                }
-                                Button(
+                                    modifier = Modifier.onFocusChanged {
+                                        quickActionsHasFocus = it.hasFocus
+                                    },
+                                )
+                                TvIconTextButton(
+                                    icon = Icons.AutoMirrored.Outlined.FormatListBulleted,
+                                    text = "Requests",
                                     onClick = onNavigateSeerrRequests,
-                                    modifier = Modifier
-                                        .height(20.dp)
-                                        .onFocusChanged { quickActionsHasFocus = it.hasFocus },
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                                    scale = ButtonDefaults.scale(focusedScale = 1f),
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                                        contentColor = TvColors.TextPrimary,
-                                        focusedContainerColor = TvColors.BluePrimary,
-                                        focusedContentColor = Color.White,
-                                    ),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.FormatListBulleted,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Requests", style = MaterialTheme.typography.labelSmall)
-                                }
+                                    modifier = Modifier.onFocusChanged {
+                                        quickActionsHasFocus = it.hasFocus
+                                    },
+                                )
                             }
                         }
 

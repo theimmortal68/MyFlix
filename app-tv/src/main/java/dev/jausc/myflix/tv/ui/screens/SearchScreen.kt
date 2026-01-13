@@ -49,7 +49,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -58,6 +57,7 @@ import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -183,12 +183,12 @@ fun SearchScreen(
                 )
             }
 
-            Button(
+            TvTextButton(
+                text = "Search",
                 onClick = { viewModel.performSearch() },
                 enabled = state.canSearch,
-            ) {
-                Text("Search")
-            }
+                isPrimary = true,
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

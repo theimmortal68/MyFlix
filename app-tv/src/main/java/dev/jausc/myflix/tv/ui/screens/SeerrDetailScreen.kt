@@ -74,6 +74,8 @@ import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeason
+import dev.jausc.myflix.tv.ui.components.TvIconButton
+import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
@@ -319,27 +321,14 @@ fun SeerrDetailScreen(
                             )
 
                             // Back button
-                            Button(
+                            TvIconButton(
+                                icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Back",
                                 onClick = onBack,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
-                                    .padding(24.dp)
-                                    .height(20.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                scale = ButtonDefaults.scale(focusedScale = 1f),
-                                colors = ButtonDefaults.colors(
-                                    containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                                    contentColor = TvColors.TextPrimary,
-                                    focusedContainerColor = TvColors.BluePrimary,
-                                    focusedContentColor = Color.White,
-                                ),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                    contentDescription = "Back",
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            }
+                                    .padding(24.dp),
+                            )
 
                             // Content overlay
                             Row(
@@ -459,117 +448,56 @@ fun SeerrDetailScreen(
                                         // Request/Available button (uses mediaInfo.status for availability)
                                         when (currentMedia.availabilityStatus) {
                                             SeerrMediaStatus.AVAILABLE -> {
-                                                Button(
+                                                TvIconTextButton(
+                                                    icon = Icons.Outlined.PlayArrow,
+                                                    text = "Play",
                                                     onClick = { /* Play in Jellyfin */ },
-                                                    modifier = Modifier
-                                                        .height(20.dp)
-                                                        .focusRequester(actionButtonFocusRequester),
-                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                                                    colors = ButtonDefaults.colors(
-                                                        containerColor = Color(0xFF22C55E),
-                                                    ),
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Outlined.PlayArrow,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(14.dp),
-                                                    )
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Play", style = MaterialTheme.typography.labelSmall)
-                                                }
+                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
+                                                    containerColor = Color(0xFF22C55E),
+                                                )
                                             }
 
                                             SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> {
-                                                Button(
+                                                TvIconTextButton(
+                                                    icon = Icons.Outlined.Schedule,
+                                                    text = "Requested",
                                                     onClick = { },
-                                                    modifier = Modifier
-                                                        .height(20.dp)
-                                                        .focusRequester(actionButtonFocusRequester),
-                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
                                                     enabled = false,
-                                                    colors = ButtonDefaults.colors(
-                                                        containerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
-                                                        disabledContainerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
-                                                    ),
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Outlined.Schedule,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(14.dp),
-                                                    )
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Requested", style = MaterialTheme.typography.labelSmall)
-                                                }
+                                                    containerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
+                                                )
                                             }
 
                                             else -> {
-                                                Button(
+                                                TvIconTextButton(
+                                                    icon = Icons.Outlined.Add,
+                                                    text = if (isRequesting) "Requesting..." else "Request",
                                                     onClick = { handleRequest() },
-                                                    modifier = Modifier
-                                                        .height(20.dp)
-                                                        .focusRequester(actionButtonFocusRequester),
-                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                                    modifier = Modifier.focusRequester(actionButtonFocusRequester),
                                                     enabled = !isRequesting && statusAllowsRequest && quotaAllowsRequest,
-                                                    colors = ButtonDefaults.colors(
-                                                        containerColor = Color(0xFF8B5CF6),
-                                                    ),
-                                                ) {
-                                                    if (isRequesting) {
-                                                        TvLoadingIndicator(
-                                                            modifier = Modifier.size(14.dp),
-                                                            color = TvColors.TextPrimary,
-                                                            strokeWidth = 2.dp,
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            imageVector = Icons.Outlined.Add,
-                                                            contentDescription = null,
-                                                            modifier = Modifier.size(14.dp),
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text(
-                                                        if (isRequesting) "Requesting..." else "Request",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                    )
-                                                }
+                                                    isLoading = isRequesting,
+                                                    containerColor = Color(0xFF8B5CF6),
+                                                )
                                             }
                                         }
 
                                         // Blacklist button - hide from discover
-                                        Button(
+                                        TvIconTextButton(
+                                            icon = Icons.Outlined.Block,
+                                            text = "Hide from Discover",
                                             onClick = { handleBlacklist() },
-                                            modifier = Modifier.height(20.dp),
-                                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                             enabled = !isBlacklisting,
-                                            colors = ButtonDefaults.colors(
-                                                containerColor = TvColors.Surface,
-                                            ),
-                                        ) {
-                                            if (isBlacklisting) {
-                                                TvLoadingIndicator(
-                                                    modifier = Modifier.size(14.dp),
-                                                    color = TvColors.TextPrimary,
-                                                    strokeWidth = 2.dp,
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Block,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(14.dp),
-                                                    tint = TvColors.Error,
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Hide from Discover", style = MaterialTheme.typography.labelSmall)
-                                        }
+                                            isLoading = isBlacklisting,
+                                        )
 
                                         // Trailer button (if available)
                                         val trailer = currentMedia.relatedVideos?.find {
                                             it.type == "Trailer" && it.site == "YouTube"
                                         }
                                         trailer?.key?.let { videoKey ->
-                                            Button(
+                                            TvIconTextButton(
+                                                icon = Icons.Outlined.PlayArrow,
+                                                text = "Trailer",
                                                 onClick = {
                                                     val intent = Intent(
                                                         Intent.ACTION_VIEW,
@@ -577,20 +505,8 @@ fun SeerrDetailScreen(
                                                     )
                                                     context.startActivity(intent)
                                                 },
-                                                modifier = Modifier.height(20.dp),
-                                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                                                colors = ButtonDefaults.colors(
-                                                    containerColor = Color(0xFFFF0000),
-                                                ),
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.PlayArrow,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(14.dp),
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Trailer", style = MaterialTheme.typography.labelSmall)
-                                            }
+                                                containerColor = Color(0xFFFF0000),
+                                            )
                                         }
                                     }
 

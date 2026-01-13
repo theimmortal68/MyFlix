@@ -33,11 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -49,6 +46,7 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
@@ -225,15 +223,10 @@ fun LibraryScreen(
                                 color = TvColors.Error,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
+                            TvTextButton(
+                                text = "Retry",
                                 onClick = { viewModel.refresh() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = TvColors.BluePrimary,
-                                    contentColor = Color.White,
-                                ),
-                            ) {
-                                Text("Retry")
-                            }
+                            )
                         }
                     }
                 }

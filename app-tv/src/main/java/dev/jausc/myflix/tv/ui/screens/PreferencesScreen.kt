@@ -42,8 +42,6 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Checkbox
 import androidx.tv.material3.CheckboxDefaults
 import androidx.tv.material3.Icon
@@ -58,6 +56,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
@@ -737,26 +736,17 @@ private fun SelectionDialog(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(
+                TvTextButton(
+                    text = "Cancel",
                     onClick = onDismiss,
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceLight,
-                        contentColor = TvColors.TextPrimary,
-                    ),
                     modifier = Modifier.padding(end = 8.dp),
-                ) {
-                    Text("Cancel")
-                }
+                )
 
-                Button(
+                TvTextButton(
+                    text = "Save",
                     onClick = { onConfirm(localSelection) },
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color(0xFF34D399),
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Text("Save")
-                }
+                    containerColor = Color(0xFF34D399),
+                )
             }
         }
     }

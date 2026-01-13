@@ -57,7 +57,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.TvPreferences
+import dev.jausc.myflix.tv.ui.components.TvIconButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
 
@@ -302,24 +304,11 @@ fun SeerrSetupScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(
+                TvIconButton(
+                    icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
                     onClick = onBack,
-                    modifier = Modifier.height(20.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    scale = ButtonDefaults.scale(focusedScale = 1f),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                        contentColor = TvColors.TextPrimary,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Back",
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
+                )
 
                 Spacer(modifier = Modifier.width(16.dp))
 
@@ -500,7 +489,8 @@ fun SeerrSetupScreen(
                                 serverUrl.isNotBlank()
                             }
 
-                            Button(
+                            TvTextButton(
+                                text = if (serverUrl.isNotBlank() && needsManualCredentials) "Login" else "Connect",
                                 onClick = {
                                     // Only use loginOnly if server was connected by autodiscovery
                                     if (serverConnected && needsManualCredentials) {
@@ -510,28 +500,9 @@ fun SeerrSetupScreen(
                                     }
                                 },
                                 enabled = canProceed && !isLoading,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.colors(containerColor = Color(0xFF8B5CF6)),
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                ) {
-                                    if (isLoading) {
-                                        TvLoadingIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            color = TvColors.TextPrimary,
-                                            strokeWidth = 2.dp,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Connecting...")
-                                    } else {
-                                        Text(
-                                            text = if (serverUrl.isNotBlank() && needsManualCredentials) "Login" else "Connect",
-                                        )
-                                    }
-                                }
-                            }
+                                isLoading = isLoading,
+                                containerColor = Color(0xFF8B5CF6),
+                            )
 
                             // Error message
                             errorMessage?.let { error ->
@@ -642,13 +613,11 @@ fun SeerrSetupScreen(
 
                             Spacer(modifier = Modifier.height(32.dp))
 
-                            Button(
+                            TvTextButton(
+                                text = "Get Started",
                                 onClick = onSetupComplete,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.colors(containerColor = Color(0xFF8B5CF6)),
-                            ) {
-                                Text("Get Started")
-                            }
+                                containerColor = Color(0xFF8B5CF6),
+                            )
                         }
                     }
                 }

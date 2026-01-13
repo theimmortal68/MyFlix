@@ -63,7 +63,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -94,6 +93,7 @@ import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -289,11 +289,10 @@ fun HomeScreen(
                         color = TvColors.Error,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(
+                    TvTextButton(
+                        text = "Retry",
                         onClick = { viewModel.refresh() },
-                    ) {
-                        Text("Retry")
-                    }
+                    )
                 }
             } else {
                 // Key forces complete recomposition when content changes

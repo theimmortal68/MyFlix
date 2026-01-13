@@ -49,6 +49,7 @@ import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.QuickConnectFlowState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -222,37 +223,23 @@ private fun ServerSelectScreen(
                 Spacer(Modifier.height(24.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(
+                    TvTextButton(
+                        text = "Connect",
                         onClick = {
                             viewModel.connectToServer(manualAddress) { _, users ->
                                 onServerConnected(users)
                             }
                         },
                         enabled = manualAddress.isNotBlank() && !state.isConnecting,
-                        modifier = Modifier.height(40.dp),
-                        colors = ButtonDefaults.colors(
-                            containerColor = TvColors.BluePrimary,
-                            focusedContainerColor = TvColors.BlueLight,
-                        ),
-                    ) {
-                        if (state.isConnecting) {
-                            TvLoadingIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                        } else {
-                            Text("Connect", style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
+                        isLoading = state.isConnecting,
+                        isPrimary = true,
+                    )
 
-                    Button(
+                    TvTextButton(
+                        text = "Back",
                         onClick = { showManualEntry = false },
                         enabled = !state.isConnecting,
-                        modifier = Modifier.height(40.dp),
-                        colors = ButtonDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            focusedContainerColor = TvColors.FocusedSurface,
-                        ),
-                    ) {
-                        Text("Back", style = MaterialTheme.typography.bodyMedium)
-                    }
+                    )
                 }
             } else {
                 Text("Select Server", style = MaterialTheme.typography.titleLarge, color = TvColors.TextPrimary)
@@ -283,30 +270,18 @@ private fun ServerSelectScreen(
                 Spacer(Modifier.height(32.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(
+                    TvTextButton(
+                        text = "Enter Manually",
                         onClick = { showManualEntry = true },
                         enabled = !state.isConnecting,
-                        modifier = Modifier.height(40.dp),
-                        colors = ButtonDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            focusedContainerColor = TvColors.FocusedSurface,
-                        ),
-                    ) {
-                        Text("Enter Manually", style = MaterialTheme.typography.bodyMedium)
-                    }
+                    )
 
                     if (!state.isSearching) {
-                        Button(
+                        TvTextButton(
+                            text = "Refresh",
                             onClick = { viewModel.discoverServers() },
                             enabled = !state.isConnecting,
-                            modifier = Modifier.height(40.dp),
-                            colors = ButtonDefaults.colors(
-                                containerColor = TvColors.Surface,
-                                focusedContainerColor = TvColors.FocusedSurface,
-                            ),
-                        ) {
-                            Text("Refresh", style = MaterialTheme.typography.bodyMedium)
-                        }
+                        )
                     }
                 }
 
@@ -395,16 +370,10 @@ private fun UserSelectScreen(
             )
             Spacer(Modifier.height(32.dp))
 
-            Button(
+            TvTextButton(
+                text = "Change Server",
                 onClick = onBack,
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.Surface,
-                    focusedContainerColor = TvColors.FocusedSurface,
-                ),
-            ) {
-                Text("Change Server", style = MaterialTheme.typography.bodyMedium)
-            }
+            )
         }
 
         // Right - Users
@@ -657,36 +626,21 @@ private fun AuthMethodScreen(
                 Spacer(Modifier.height(32.dp))
             }
 
-            Button(
+            TvTextButton(
+                text = "Sign in with Password",
                 onClick = onPasswordLogin,
-                modifier = Modifier.width(200.dp).height(40.dp),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.BluePrimary,
-                    focusedContainerColor = TvColors.BlueLight,
-                ),
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Sign in with Password", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
+                isPrimary = true,
+            )
 
             Spacer(Modifier.height(12.dp))
 
-            Button(
+            TvTextButton(
+                text = "Back",
                 onClick = {
                     quickConnectJob?.cancel()
                     onBack()
                 },
-                modifier = Modifier.width(200.dp).height(40.dp),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.Surface,
-                    focusedContainerColor = TvColors.FocusedSurface,
-                ),
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Back", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
+            )
         }
     }
 }
@@ -755,33 +709,19 @@ private fun PasswordEntryScreen(
             Spacer(Modifier.height(32.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(
+                TvTextButton(
+                    text = "Sign In",
                     onClick = { viewModel.login(username, password, onLoginSuccess) },
                     enabled = !state.isAuthenticating && username.isNotBlank(),
-                    modifier = Modifier.height(40.dp),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.BluePrimary,
-                        focusedContainerColor = TvColors.BlueLight,
-                    ),
-                ) {
-                    if (state.isAuthenticating) {
-                        TvLoadingIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                    } else {
-                        Text("Sign In", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
+                    isLoading = state.isAuthenticating,
+                    isPrimary = true,
+                )
 
-                Button(
+                TvTextButton(
+                    text = "Back",
                     onClick = onBack,
                     enabled = !state.isAuthenticating,
-                    modifier = Modifier.height(40.dp),
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.Surface,
-                        focusedContainerColor = TvColors.FocusedSurface,
-                    ),
-                ) {
-                    Text("Back", style = MaterialTheme.typography.bodyMedium)
-                }
+                )
             }
         }
     }
