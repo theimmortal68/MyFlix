@@ -89,18 +89,11 @@ fun LibraryScreen(
     val scope = rememberCoroutineScope()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
-    // Available letters from ViewModel (covers entire library)
-    // Falls back to loaded items if alphabet index hasn't loaded yet
-    val availableLetters = if (state.availableLetters.isNotEmpty()) {
-        state.availableLetters
-    } else {
-        // Fallback: compute from loaded items while alphabet index loads
-        state.items
-            .mapNotNull { item ->
-                val firstChar = item.name.firstOrNull()?.uppercaseChar() ?: return@mapNotNull null
-                if (firstChar.isLetter()) firstChar else '#'
-            }
-            .toSet()
+    // All letters are always available - the API handles filtering
+    // If a letter has no items, the user will see "0 items" which is acceptable
+    // This provides immediate responsiveness rather than waiting for slow alphabet index
+    val availableLetters = remember {
+        setOf('#') + ('A'..'Z').toSet()
     }
 
     // Determine which NavItem is selected based on library type

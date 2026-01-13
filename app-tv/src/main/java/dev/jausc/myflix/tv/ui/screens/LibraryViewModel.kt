@@ -35,10 +35,6 @@ data class LibraryUiState(
     val filterState: LibraryFilterState = LibraryFilterState.DEFAULT,
     val availableGenres: List<String> = emptyList(),
     val availableParentalRatings: List<String> = emptyList(),
-    /** Set of letters that have items in the library (for alphabet bar display) */
-    val availableLetters: Set<Char> = emptySet(),
-    /** Whether alphabet index is still loading */
-    val isLoadingAlphabetIndex: Boolean = true,
     /** Current letter filter for alphabet navigation (null = show all) */
     val currentLetter: Char? = null,
 ) {
@@ -84,35 +80,8 @@ class LibraryViewModel(
         loadGenres()
         loadLibraryItems(resetList = true)
 
-        // Load alphabet index in background (for full library navigation)
-        loadAlphabetIndex()
-    }
-
-    /**
-     * Load available letters for the alphabet bar.
-     * This loads minimal item data to determine which letters have content.
-     */
-    private fun loadAlphabetIndex() {
-        viewModelScope.launch {
-            val filterState = _uiState.value.filterState
-            jellyfinClient.getLibraryAlphabetIndex(
-                libraryId = libraryId,
-                sortBy = filterState.sortBy.jellyfinValue,
-                sortOrder = filterState.sortOrder.jellyfinValue,
-            ).onSuccess { response ->
-                // Collect all unique first letters
-                val letters = response.items.map { it.indexChar }.toSet()
-                _uiState.update { state ->
-                    state.copy(
-                        availableLetters = letters,
-                        isLoadingAlphabetIndex = false,
-                    )
-                }
-            }.onFailure {
-                // Alphabet index failed - fall back to loaded items only
-                _uiState.update { it.copy(isLoadingAlphabetIndex = false) }
-            }
-        }
+        // Note: Alphabet index loading removed - all letters are now always available
+        // The API handles filtering via nameStartsWith, returning 0 items if no matches
     }
 
     /**
@@ -384,10 +353,6 @@ class LibraryViewModel(
         val filtersChanged = newState.copy(viewMode = currentState.viewMode) !=
             currentState.copy(viewMode = currentState.viewMode)
 
-        // Check if sort changed (requires alphabet index reload)
-        val sortChanged = newState.sortBy != currentState.sortBy ||
-            newState.sortOrder != currentState.sortOrder
-
         // Clear letter filter when filters change (user is exploring differently)
         _uiState.update { it.copy(filterState = newState, currentLetter = null) }
 
@@ -397,12 +362,6 @@ class LibraryViewModel(
         // Reload items if filters changed
         if (filtersChanged) {
             loadLibraryItems(resetList = true)
-        }
-
-        // Reload alphabet index if sort changed
-        if (sortChanged) {
-            _uiState.update { it.copy(isLoadingAlphabetIndex = true) }
-            loadAlphabetIndex()
         }
     }
 }

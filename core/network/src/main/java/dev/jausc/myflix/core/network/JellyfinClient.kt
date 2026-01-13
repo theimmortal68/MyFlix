@@ -1,8 +1,6 @@
 package dev.jausc.myflix.core.network
 
 import android.content.Context
-import dev.jausc.myflix.core.common.model.AlphabetIndexItem
-import dev.jausc.myflix.core.common.model.AlphabetIndexResponse
 import dev.jausc.myflix.core.common.model.AuthResponse
 import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
@@ -194,9 +192,6 @@ class JellyfinClient(
     // Only request fields we actually need to minimize data transfer
 
     private object Fields {
-        // Ultra-minimal fields for alphabet index (just need SortName for ordering)
-        const val ALPHABET_INDEX = "SortName"
-
         // Minimal fields for card display (home screen rows)
         const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating"
 
@@ -686,64 +681,6 @@ class JellyfinClient(
         }
     }
 
-    /**
-     * Get lightweight alphabet index for a library.
-     * Returns all items with minimal data (id, name, sortName) for building alphabet navigation.
-     * Uses pagination to handle large libraries without timeout issues.
-     * Results are aggressively cached (30 min) since titles rarely change.
-     *
-     * @param libraryId The parent library ID
-     * @param sortBy Jellyfin sort field (default: SortName)
-     * @param sortOrder Sort direction (default: Ascending)
-     * @return List of AlphabetIndexItem with id, name, and first character for indexing
-     */
-    suspend fun getLibraryAlphabetIndex(
-        libraryId: String,
-        sortBy: String = "SortName",
-        sortOrder: String = "Ascending",
-    ): Result<AlphabetIndexResponse> {
-        val key = CacheKeys.alphabetIndex(libraryId, sortBy)
-        getCached<AlphabetIndexResponse>(key, CacheKeys.Ttl.ALPHABET_INDEX)?.let {
-            return Result.success(it)
-        }
-
-        return runCatching {
-            val pageSize = 500
-            val allItems = mutableListOf<AlphabetIndexItem>()
-            var startIndex = 0
-            var totalRecordCount = 0
-
-            // Paginate through all items
-            while (true) {
-                val response = httpClient.get("$baseUrl/Users/$userId/Items") {
-                    header("Authorization", authHeader())
-                    parameter("parentId", libraryId)
-                    parameter("sortBy", sortBy)
-                    parameter("sortOrder", sortOrder)
-                    parameter("fields", Fields.ALPHABET_INDEX)
-                    parameter("enableImageTypes", "") // No images needed
-                    parameter("recursive", true)
-                    parameter("limit", pageSize)
-                    parameter("startIndex", startIndex)
-                    timeout {
-                        requestTimeoutMillis = 30_000 // 30s per page
-                    }
-                }.body<AlphabetIndexResponse>()
-
-                allItems.addAll(response.items)
-                totalRecordCount = response.totalRecordCount
-
-                // Check if we've loaded all items
-                if (allItems.size >= totalRecordCount || response.items.isEmpty()) {
-                    break
-                }
-                startIndex += pageSize
-            }
-
-            AlphabetIndexResponse(allItems, totalRecordCount).also { putCache(key, it) }
-        }
-    }
-
     suspend fun getLibraryItems(
         libraryId: String,
         limit: Int = 100,
@@ -846,8 +783,14 @@ class JellyfinClient(
                 officialRatings?.takeIf { it.isNotEmpty() }?.let {
                     parameter("OfficialRatings", it.joinToString(","))
                 }
-                nameStartsWith?.takeIf { it.isNotEmpty() }?.let {
-                    parameter("nameStartsWith", it)
+                // Handle letter filter - "#" means items starting with numbers/symbols
+                nameStartsWith?.takeIf { it.isNotEmpty() }?.let { letter ->
+                    if (letter == "#") {
+                        // Use nameLessThan to get items that sort before "A" (numbers, symbols)
+                        parameter("nameLessThan", "A")
+                    } else {
+                        parameter("nameStartsWith", letter)
+                    }
                 }
             }.body<ItemsResponse>().also {
                 if (sortBy != "Random") {
