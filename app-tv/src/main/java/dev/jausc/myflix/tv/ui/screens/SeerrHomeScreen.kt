@@ -709,12 +709,12 @@ private fun SeerrHeroSection(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth(0.45f)
                 .background(
                     Brush.horizontalGradient(
                         colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.7f),
-                            0.7f to Color.Black.copy(alpha = 0.4f),
+                            0.0f to Color.Black.copy(alpha = 0.35f),
+                            0.6f to Color.Black.copy(alpha = 0.2f),
                             1.0f to Color.Transparent,
                         ),
                     ),
@@ -722,7 +722,7 @@ private fun SeerrHeroSection(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(start = 48.dp, top = 36.dp, bottom = 0.dp),
                 verticalArrangement = Arrangement.Top,
             ) {
@@ -867,7 +867,6 @@ private fun SeerrHeroSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     maxLines = 3,
-                    modifier = Modifier.fillMaxWidth(0.8f),
                 )
             }
             }
