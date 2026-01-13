@@ -18,15 +18,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.outlined.FilterAlt
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,6 +38,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -45,6 +53,8 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRequest
 import dev.jausc.myflix.core.seerr.SeerrRequestStatus
+import dev.jausc.myflix.tv.ui.components.TvDropdownMenu
+import dev.jausc.myflix.tv.ui.components.TvDropdownMenuItemWithCheck
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
@@ -72,6 +82,14 @@ fun SeerrRequestsScreen(
     var page by remember { mutableStateOf(1) }
     var totalPages by remember { mutableStateOf(1) }
     var updatingRequestId by remember { mutableStateOf<Int?>(null) }
+
+    // Cache for media titles (tmdbId -> title)
+    val mediaTitleCache = remember { mutableStateMapOf<String, String>() }
+
+    // Dropdown states
+    var showFilterDropdown by remember { mutableStateOf(false) }
+    var showSortDropdown by remember { mutableStateOf(false) }
+    var showScopeDropdown by remember { mutableStateOf(false) }
 
     suspend fun loadRequests(pageToLoad: Int, append: Boolean) {
         if (append) {
@@ -126,6 +144,25 @@ fun SeerrRequestsScreen(
         }
     }
 
+    // Fetch media title for a request
+    suspend fun fetchMediaTitle(request: SeerrRequest) {
+        val mediaType = request.media?.mediaType ?: return
+        val tmdbId = request.media?.tmdbId ?: return
+        val cacheKey = "$mediaType:$tmdbId"
+
+        if (mediaTitleCache.containsKey(cacheKey)) return
+
+        val result = when (mediaType) {
+            "movie" -> seerrClient.getMovie(tmdbId)
+            "tv" -> seerrClient.getTVShow(tmdbId)
+            else -> return
+        }
+
+        result.onSuccess { media ->
+            mediaTitleCache[cacheKey] = media.displayTitle
+        }
+    }
+
     fun handleApprove(request: SeerrRequest) {
         scope.launch {
             updatingRequestId = request.id
@@ -172,6 +209,15 @@ fun SeerrRequestsScreen(
         loadRequests(pageToLoad = 1, append = false)
     }
 
+    // Fetch titles for visible requests
+    LaunchedEffect(requests) {
+        requests.forEach { request ->
+            scope.launch {
+                fetchMediaTitle(request)
+            }
+        }
+    }
+
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
@@ -190,7 +236,11 @@ fun SeerrRequestsScreen(
             .background(TvColors.Background)
             .padding(24.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Header row with back button, title, and filter/sort dropdowns
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Button(
                 onClick = onBack,
                 modifier = Modifier.height(20.dp),
@@ -215,99 +265,162 @@ fun SeerrRequestsScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 color = TvColors.TextPrimary,
             )
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-        if (canViewAllRequests != false) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SeerrRequestScope.entries.forEach { scopeItem ->
-                    val isSelected = requestScope == scopeItem
+            // Scope dropdown (Mine/All)
+            if (canViewAllRequests != false) {
+                Box {
                     Button(
-                        onClick = { requestScope = scopeItem },
+                        onClick = { showScopeDropdown = true },
                         modifier = Modifier.height(20.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        colors = if (isSelected) {
-                            ButtonDefaults.colors(
-                                containerColor = TvColors.BluePrimary,
-                                contentColor = TvColors.TextPrimary,
-                                focusedContainerColor = TvColors.BluePrimary,
-                            )
-                        } else {
-                            ButtonDefaults.colors(
-                                containerColor = TvColors.Surface,
-                                contentColor = TvColors.TextPrimary,
-                                focusedContainerColor = TvColors.FocusedSurface,
-                            )
-                        },
+                        scale = ButtonDefaults.scale(focusedScale = 1f),
+                        colors = ButtonDefaults.colors(
+                            containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                            contentColor = TvColors.TextPrimary,
+                            focusedContainerColor = TvColors.BluePrimary,
+                            focusedContentColor = Color.White,
+                        ),
                     ) {
-                        Text(scopeItem.label, style = MaterialTheme.typography.labelSmall)
+                        Icon(
+                            imageVector = Icons.Outlined.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = requestScope.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    TvDropdownMenu(
+                        expanded = showScopeDropdown,
+                        onDismissRequest = { showScopeDropdown = false },
+                        offset = DpOffset(0.dp, 4.dp),
+                    ) {
+                        SeerrRequestScope.entries.forEach { scopeItem ->
+                            TvDropdownMenuItemWithCheck(
+                                text = scopeItem.label,
+                                isSelected = requestScope == scopeItem,
+                                onClick = {
+                                    requestScope = scopeItem
+                                    showScopeDropdown = false
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            // Filter dropdown
+            Box {
+                Button(
+                    onClick = { showFilterDropdown = true },
+                    modifier = Modifier.height(20.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                    colors = ButtonDefaults.colors(
+                        containerColor = if (selectedFilter != SeerrRequestFilter.ALL) {
+                            TvColors.BluePrimary.copy(alpha = 0.3f)
+                        } else {
+                            TvColors.SurfaceElevated.copy(alpha = 0.8f)
+                        },
+                        contentColor = TvColors.TextPrimary,
+                        focusedContainerColor = TvColors.BluePrimary,
+                        focusedContentColor = Color.White,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.FilterAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = selectedFilter.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                TvDropdownMenu(
+                    expanded = showFilterDropdown,
+                    onDismissRequest = { showFilterDropdown = false },
+                    offset = DpOffset(0.dp, 4.dp),
+                ) {
+                    SeerrRequestFilter.entries.forEach { filter ->
+                        TvDropdownMenuItemWithCheck(
+                            text = filter.label,
+                            isSelected = selectedFilter == filter,
+                            onClick = {
+                                selectedFilter = filter
+                                showFilterDropdown = false
+                            },
+                        )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SeerrRequestFilter.entries.forEach { filter ->
-                val isSelected = selectedFilter == filter
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Sort dropdown
+            Box {
                 Button(
-                    onClick = { selectedFilter = filter },
+                    onClick = { showSortDropdown = true },
                     modifier = Modifier.height(20.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    colors = if (isSelected) {
-                        ButtonDefaults.colors(
-                            containerColor = TvColors.BluePrimary,
-                            contentColor = TvColors.TextPrimary,
-                            focusedContainerColor = TvColors.BluePrimary,
-                        )
-                    } else {
-                        ButtonDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            contentColor = TvColors.TextPrimary,
-                            focusedContainerColor = TvColors.FocusedSurface,
-                        )
-                    },
+                    scale = ButtonDefaults.scale(focusedScale = 1f),
+                    colors = ButtonDefaults.colors(
+                        containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                        contentColor = TvColors.TextPrimary,
+                        focusedContainerColor = TvColors.BluePrimary,
+                        focusedContentColor = Color.White,
+                    ),
                 ) {
-                    Text(filter.label, style = MaterialTheme.typography.labelSmall)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Sort,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = selectedSort.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                TvDropdownMenu(
+                    expanded = showSortDropdown,
+                    onDismissRequest = { showSortDropdown = false },
+                    offset = DpOffset(0.dp, 4.dp),
+                ) {
+                    SeerrRequestSort.entries.forEach { sort ->
+                        TvDropdownMenuItemWithCheck(
+                            text = sort.label,
+                            isSelected = selectedSort == sort,
+                            onClick = {
+                                selectedSort = sort
+                                showSortDropdown = false
+                            },
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SeerrRequestSort.entries.forEach { sort ->
-                val isSelected = selectedSort == sort
-                Button(
-                    onClick = { selectedSort = sort },
-                    modifier = Modifier.height(20.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    colors = if (isSelected) {
-                        ButtonDefaults.colors(
-                            containerColor = TvColors.BluePrimary,
-                            contentColor = TvColors.TextPrimary,
-                            focusedContainerColor = TvColors.BluePrimary,
-                        )
-                    } else {
-                        ButtonDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            contentColor = TvColors.TextPrimary,
-                            focusedContainerColor = TvColors.FocusedSurface,
-                        )
-                    },
-                ) {
-                    Text(sort.label, style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (actionMessage != null) {
             Text(
                 text = actionMessage ?: "",
                 color = TvColors.TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(vertical = 8.dp),
+                modifier = Modifier.padding(vertical = 4.dp),
             )
         }
 
@@ -346,11 +459,17 @@ fun SeerrRequestsScreen(
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     itemsIndexed(requests, key = { _, request -> request.id }) { _, request ->
-                        SeerrRequestRow(
+                        val mediaType = request.media?.mediaType ?: "unknown"
+                        val tmdbId = request.media?.tmdbId
+                        val cacheKey = "$mediaType:$tmdbId"
+                        val mediaTitle = mediaTitleCache[cacheKey]
+
+                        CompactRequestRow(
                             request = request,
+                            mediaTitle = mediaTitle,
                             showAdminActions = requestScope == SeerrRequestScope.ALL,
                             isUpdating = updatingRequestId == request.id,
                             onApprove = { handleApprove(request) },
@@ -376,19 +495,35 @@ fun SeerrRequestsScreen(
     }
 }
 
+/**
+ * Compact single/two-line request row.
+ * Shows: Title | Type Badge | Status Badge | Requester | Actions
+ */
 @Composable
-private fun SeerrRequestRow(
+private fun CompactRequestRow(
     request: SeerrRequest,
+    mediaTitle: String?,
     showAdminActions: Boolean,
     isUpdating: Boolean,
     onApprove: () -> Unit,
     onDecline: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val statusText = SeerrRequestStatus.toDisplayString(request.status)
+    val statusColor = when (request.status) {
+        SeerrRequestStatus.PENDING_APPROVAL -> Color(0xFFFBBF24) // Yellow
+        SeerrRequestStatus.APPROVED -> Color(0xFF22C55E) // Green
+        SeerrRequestStatus.DECLINED -> Color(0xFFEF4444) // Red
+        else -> TvColors.TextSecondary
+    }
+    val statusText = request.statusText
     val mediaType = request.media?.mediaType ?: "unknown"
-    val mediaId = request.media?.tmdbId ?: request.media?.id
-    val mediaStatusText = SeerrMediaStatus.toDisplayString(request.media?.status)
+    val availabilityColor = when (request.media?.status) {
+        SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
+        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
+        SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
+        else -> TvColors.TextSecondary
+    }
+    val availabilityText = SeerrMediaStatus.toDisplayString(request.media?.status)
     val canApprove = showAdminActions && request.isPendingApproval
     val canDecline = showAdminActions && request.isPendingApproval
     val canCancel = request.status != SeerrRequestStatus.DECLINED
@@ -396,55 +531,105 @@ private fun SeerrRequestRow(
     Surface(
         onClick = {},
         modifier = Modifier.fillMaxWidth(),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
             focusedContainerColor = TvColors.FocusedSurface,
         ),
         scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Title (or loading placeholder)
             Text(
-                text = "Request #${request.id}",
-                style = MaterialTheme.typography.titleMedium,
-                color = TvColors.TextPrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "$mediaType • ${mediaId ?: "unknown"}",
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary,
-            )
-            request.requestedBy?.name?.let { requester ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Requested by $requester",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TvColors.TextSecondary,
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = statusText,
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.BluePrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Availability: $mediaStatusText",
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary,
+                text = mediaTitle ?: "Loading...",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (mediaTitle != null) TvColors.TextPrimary else TvColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
 
+            // Media type badge
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = if (mediaType == "movie") Color(0xFF8B5CF6) else Color(0xFF60A5FA),
+                        shape = RoundedCornerShape(4.dp),
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = if (mediaType == "movie") "Movie" else "TV",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+
+            // Request status badge
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = statusColor.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(4.dp),
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = statusColor,
+                )
+            }
+
+            // Availability badge
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = availabilityColor.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(4.dp),
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = availabilityText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = availabilityColor,
+                )
+            }
+
+            // Requester
+            request.requestedBy?.name?.let { requester ->
+                Text(
+                    text = requester,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TvColors.TextSecondary,
+                    maxLines = 1,
+                )
+            }
+
+            // Action buttons (inline)
             if (canApprove || canDecline || canCancel) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (canApprove) {
                         Button(
                             onClick = onApprove,
                             enabled = !isUpdating,
                             modifier = Modifier.height(20.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
+                                contentColor = Color(0xFF22C55E),
+                                focusedContainerColor = Color(0xFF22C55E),
+                                focusedContentColor = Color.White,
+                            ),
                         ) {
                             Text("Approve", style = MaterialTheme.typography.labelSmall)
                         }
@@ -454,7 +639,14 @@ private fun SeerrRequestRow(
                             onClick = onDecline,
                             enabled = !isUpdating,
                             modifier = Modifier.height(20.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                                contentColor = Color(0xFFEF4444),
+                                focusedContainerColor = Color(0xFFEF4444),
+                                focusedContentColor = Color.White,
+                            ),
                         ) {
                             Text("Decline", style = MaterialTheme.typography.labelSmall)
                         }
@@ -464,7 +656,14 @@ private fun SeerrRequestRow(
                             onClick = onCancel,
                             enabled = !isUpdating,
                             modifier = Modifier.height(20.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                                contentColor = TvColors.TextPrimary,
+                                focusedContainerColor = TvColors.BluePrimary,
+                                focusedContentColor = Color.White,
+                            ),
                         ) {
                             Text("Cancel", style = MaterialTheme.typography.labelSmall)
                         }

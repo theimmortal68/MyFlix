@@ -16,19 +16,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,7 +50,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
@@ -75,6 +83,14 @@ fun SeerrRequestsScreen(
     var page by remember { mutableStateOf(1) }
     var totalPages by remember { mutableStateOf(1) }
     var updatingRequestId by remember { mutableStateOf<Int?>(null) }
+
+    // Cache for media titles (tmdbId -> title)
+    val mediaTitleCache = remember { mutableStateMapOf<String, String>() }
+
+    // Dropdown states
+    var showFilterDropdown by remember { mutableStateOf(false) }
+    var showSortDropdown by remember { mutableStateOf(false) }
+    var showScopeDropdown by remember { mutableStateOf(false) }
 
     suspend fun loadRequests(pageToLoad: Int, append: Boolean) {
         if (append) {
@@ -129,8 +145,23 @@ fun SeerrRequestsScreen(
         }
     }
 
-    fun refreshRequests() {
-        scope.launch { loadRequests(pageToLoad = 1, append = false) }
+    // Fetch media title for a request
+    suspend fun fetchMediaTitle(request: SeerrRequest) {
+        val mediaType = request.media?.mediaType ?: return
+        val tmdbId = request.media?.tmdbId ?: return
+        val cacheKey = "$mediaType:$tmdbId"
+
+        if (mediaTitleCache.containsKey(cacheKey)) return
+
+        val result = when (mediaType) {
+            "movie" -> seerrClient.getMovie(tmdbId)
+            "tv" -> seerrClient.getTVShow(tmdbId)
+            else -> return
+        }
+
+        result.onSuccess { media ->
+            mediaTitleCache[cacheKey] = media.displayTitle
+        }
     }
 
     fun handleApprove(request: SeerrRequest) {
@@ -179,6 +210,15 @@ fun SeerrRequestsScreen(
         loadRequests(pageToLoad = 1, append = false)
     }
 
+    // Fetch titles for visible requests
+    LaunchedEffect(requests) {
+        requests.forEach { request ->
+            scope.launch {
+                fetchMediaTitle(request)
+            }
+        }
+    }
+
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
@@ -196,6 +236,7 @@ fun SeerrRequestsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
+        // Header row with back button and title
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -218,51 +259,110 @@ fun SeerrRequestsScreen(
             )
         }
 
-        if (canViewAllRequests != false) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(SeerrRequestScope.entries) { scopeItem ->
-                    FilterChip(
-                        selected = requestScope == scopeItem,
-                        onClick = { requestScope = scopeItem },
-                        label = { Text(scopeItem.label) },
+        // Filter chips row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // Scope dropdown (Mine/All)
+            if (canViewAllRequests != false) {
+                Box {
+                    AssistChip(
+                        onClick = { showScopeDropdown = true },
+                        label = { Text(requestScope.label) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
                     )
+
+                    DropdownMenu(
+                        expanded = showScopeDropdown,
+                        onDismissRequest = { showScopeDropdown = false },
+                    ) {
+                        SeerrRequestScope.entries.forEach { scopeItem ->
+                            DropdownMenuItem(
+                                text = { Text(scopeItem.label) },
+                                onClick = {
+                                    requestScope = scopeItem
+                                    showScopeDropdown = false
+                                },
+                            )
+                        }
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-        }
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(SeerrRequestFilter.entries) { filter ->
-                FilterChip(
-                    selected = selectedFilter == filter,
-                    onClick = { selectedFilter = filter },
-                    label = { Text(filter.label) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        selectedLabelColor = MaterialTheme.colorScheme.primary,
-                    ),
+            // Filter dropdown
+            Box {
+                AssistChip(
+                    onClick = { showFilterDropdown = true },
+                    label = { Text(selectedFilter.label) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.FilterAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    colors = if (selectedFilter != SeerrRequestFilter.ALL) {
+                        AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                    } else {
+                        AssistChipDefaults.assistChipColors()
+                    },
                 )
+
+                DropdownMenu(
+                    expanded = showFilterDropdown,
+                    onDismissRequest = { showFilterDropdown = false },
+                ) {
+                    SeerrRequestFilter.entries.forEach { filter ->
+                        DropdownMenuItem(
+                            text = { Text(filter.label) },
+                            onClick = {
+                                selectedFilter = filter
+                                showFilterDropdown = false
+                            },
+                        )
+                    }
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(SeerrRequestSort.entries) { sort ->
-                FilterChip(
-                    selected = selectedSort == sort,
-                    onClick = { selectedSort = sort },
-                    label = { Text(sort.label) },
+            // Sort dropdown
+            Box {
+                AssistChip(
+                    onClick = { showSortDropdown = true },
+                    label = { Text(selectedSort.label) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
                 )
+
+                DropdownMenu(
+                    expanded = showSortDropdown,
+                    onDismissRequest = { showSortDropdown = false },
+                ) {
+                    SeerrRequestSort.entries.forEach { sort ->
+                        DropdownMenuItem(
+                            text = { Text(sort.label) },
+                            onClick = {
+                                selectedSort = sort
+                                showSortDropdown = false
+                            },
+                        )
+                    }
+                }
             }
         }
 
@@ -271,7 +371,7 @@ fun SeerrRequestsScreen(
                 text = actionMessage ?: "",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
 
@@ -310,12 +410,18 @@ fun SeerrRequestsScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     itemsIndexed(requests, key = { _, request -> request.id }) { _, request ->
-                        SeerrRequestCard(
+                        val mediaType = request.media?.mediaType ?: "unknown"
+                        val tmdbId = request.media?.tmdbId
+                        val cacheKey = "$mediaType:$tmdbId"
+                        val mediaTitle = mediaTitleCache[cacheKey]
+
+                        CompactRequestCard(
                             request = request,
+                            mediaTitle = mediaTitle,
                             showAdminActions = requestScope == SeerrRequestScope.ALL,
                             isUpdating = updatingRequestId == request.id,
                             onApprove = { handleApprove(request) },
@@ -341,25 +447,40 @@ fun SeerrRequestsScreen(
     }
 }
 
+/**
+ * Compact request card showing title, badges, and actions.
+ */
 @Composable
-private fun SeerrRequestCard(
+private fun CompactRequestCard(
     request: SeerrRequest,
+    mediaTitle: String?,
     showAdminActions: Boolean,
     isUpdating: Boolean,
     onApprove: () -> Unit,
     onDecline: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val statusText = SeerrRequestStatus.toDisplayString(request.status)
+    val statusColor = when (request.status) {
+        SeerrRequestStatus.PENDING_APPROVAL -> Color(0xFFFBBF24) // Yellow
+        SeerrRequestStatus.APPROVED -> Color(0xFF22C55E) // Green
+        SeerrRequestStatus.DECLINED -> Color(0xFFEF4444) // Red
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val statusText = request.statusText
     val mediaType = request.media?.mediaType ?: "unknown"
-    val mediaId = request.media?.tmdbId ?: request.media?.id
-    val mediaStatusText = SeerrMediaStatus.toDisplayString(request.media?.status)
+    val availabilityColor = when (request.media?.status) {
+        SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
+        SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
+        SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val availabilityText = SeerrMediaStatus.toDisplayString(request.media?.status)
     val canApprove = showAdminActions && request.isPendingApproval
     val canDecline = showAdminActions && request.isPendingApproval
     val canCancel = request.status != SeerrRequestStatus.DECLINED
 
     Card(
-        shape = CardDefaults.shape,
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -368,54 +489,128 @@ private fun SeerrRequestCard(
                 .fillMaxWidth()
                 .padding(12.dp),
         ) {
-            Text(
-                text = "Request #${request.id}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "$mediaType • ${mediaId ?: "unknown"}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            request.requestedBy?.name?.let { requester ->
-                Spacer(modifier = Modifier.height(4.dp))
+            // Title row with badges
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Title (or loading placeholder)
                 Text(
-                    text = "Requested by $requester",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = mediaTitle ?: "Loading...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (mediaTitle != null) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = statusText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Availability: $mediaStatusText",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
+                // Media type badge
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = if (mediaType == "movie") Color(0xFF8B5CF6) else Color(0xFF60A5FA),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = if (mediaType == "movie") "Movie" else "TV",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Status row
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Request status badge
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = statusColor.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                    )
+                }
+
+                // Availability badge
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = availabilityColor.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = availabilityText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = availabilityColor,
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Requester
+                request.requestedBy?.name?.let { requester ->
+                    Text(
+                        text = requester,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+
+            // Action buttons
             if (canApprove || canDecline || canCancel) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (canApprove) {
-                        OutlinedButton(onClick = onApprove, enabled = !isUpdating) {
-                            Text("Approve")
+                        OutlinedButton(
+                            onClick = onApprove,
+                            enabled = !isUpdating,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                        ) {
+                            Text("Approve", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     if (canDecline) {
-                        OutlinedButton(onClick = onDecline, enabled = !isUpdating) {
-                            Text("Decline")
+                        OutlinedButton(
+                            onClick = onDecline,
+                            enabled = !isUpdating,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                        ) {
+                            Text("Decline", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     if (canCancel) {
-                        OutlinedButton(onClick = onCancel, enabled = !isUpdating) {
-                            Text("Cancel")
+                        OutlinedButton(
+                            onClick = onCancel,
+                            enabled = !isUpdating,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                        ) {
+                            Text("Cancel", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }

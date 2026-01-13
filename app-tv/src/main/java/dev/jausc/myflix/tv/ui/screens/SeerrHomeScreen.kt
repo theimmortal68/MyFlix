@@ -705,14 +705,27 @@ private fun SeerrHeroSection(
         label = "seerr_hero_content",
         modifier = modifier,
     ) { currentMedia ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(0.5f)
-                .padding(start = 48.dp, top = 36.dp, bottom = 0.dp),
-            verticalArrangement = Arrangement.Top,
+                .background(
+                    Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black.copy(alpha = 0.7f),
+                            0.7f to Color.Black.copy(alpha = 0.4f),
+                            1.0f to Color.Transparent,
+                        ),
+                    ),
+                ),
         ) {
-            // Status badge
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 48.dp, top = 36.dp, bottom = 0.dp),
+                verticalArrangement = Arrangement.Top,
+            ) {
+                // Status badge
             val statusColor = when (currentMedia.availabilityStatus) {
                 SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
                 SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
@@ -855,6 +868,7 @@ private fun SeerrHeroSection(
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth(0.8f),
                 )
+            }
             }
         }
     }
