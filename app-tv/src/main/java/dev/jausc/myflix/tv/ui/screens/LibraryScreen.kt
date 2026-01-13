@@ -130,13 +130,22 @@ fun LibraryScreen(
             }
     }
 
-    LaunchedEffect(state.isLoading, state.items) {
-        if (!didRequestInitialFocus && !state.isLoading && state.items.isNotEmpty()) {
-            didRequestInitialFocus = true
-            delay(100)
-            try {
-                firstItemFocusRequester.requestFocus()
-            } catch (_: Exception) {
+    // Track which letter filter we last focused for (to detect changes)
+    var lastFocusedLetter by remember { mutableStateOf<Char?>(null) }
+
+    // Focus on first item when items load (initial load or after letter filter change)
+    LaunchedEffect(state.isLoading, state.items, state.currentLetter) {
+        if (!state.isLoading && state.items.isNotEmpty()) {
+            // Focus on first item if this is initial load OR letter filter changed
+            val shouldFocus = !didRequestInitialFocus || lastFocusedLetter != state.currentLetter
+            if (shouldFocus) {
+                didRequestInitialFocus = true
+                lastFocusedLetter = state.currentLetter
+                delay(100)
+                try {
+                    firstItemFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
             }
         }
     }
@@ -171,10 +180,12 @@ fun LibraryScreen(
                 onClearParentalRatings = { viewModel.clearParentalRatings() },
                 onShuffleClick = {
                     viewModel.getShuffleItemId()?.let { itemId ->
-                        onPlayClick(itemId)
+                        onItemClick(itemId)
                     }
                 },
                 onScrollToTopClick = {
+                    // Clear any letter filter and reload the full library
+                    viewModel.clearLetterFilter()
                     scope.launch {
                         gridState.animateScrollToItem(0)
                     }
@@ -268,6 +279,7 @@ fun LibraryScreen(
                                 viewModel.clearLetterFilter()
                             },
                             focusRequester = alphabetFocusRequester,
+                            gridFocusRequester = firstItemFocusRequester,
                             modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
                         )
                     }

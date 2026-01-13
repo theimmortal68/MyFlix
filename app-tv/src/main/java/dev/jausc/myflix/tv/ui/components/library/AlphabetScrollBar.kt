@@ -4,23 +4,34 @@ package dev.jausc.myflix.tv.ui.components.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
@@ -37,6 +48,7 @@ fun AlphabetScrollBar(
     currentLetter: Char? = null,
     onClearFilter: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    gridFocusRequester: FocusRequester? = null,
 ) {
     val alphabet = remember { listOf('#') + ('A'..'Z').toList() }
     val firstAvailableIndex = alphabet.indexOfFirst { letter ->
@@ -46,11 +58,12 @@ fun AlphabetScrollBar(
     Column(
         modifier = modifier
             .width(24.dp)
+            .fillMaxHeight()
             .background(
                 color = TvColors.SurfaceElevated.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(4.dp),
             )
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -75,6 +88,7 @@ fun AlphabetScrollBar(
                 } else {
                     Modifier
                 },
+                gridFocusRequester = gridFocusRequester,
             )
         }
     }
@@ -87,36 +101,56 @@ private fun AlphabetLetter(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    gridFocusRequester: FocusRequester? = null,
 ) {
-    val fontSize = (MaterialTheme.typography.labelSmall.fontSize.value - 1f).coerceAtLeast(8f).sp
+    var isFocused by remember { mutableStateOf(false) }
 
-    // Selected letters show in highlight color even when not focused
-    val containerColor = if (isSelected) TvColors.BluePrimary.copy(alpha = 0.7f) else Color.Transparent
+    // Colors based on state
+    val containerColor = when {
+        isFocused -> TvColors.BluePrimary
+        isSelected -> TvColors.BluePrimary.copy(alpha = 0.7f)
+        else -> Color.Transparent
+    }
     val contentColor = when {
+        isFocused -> Color.White
         isSelected -> Color.White
         isAvailable -> TvColors.TextPrimary
         else -> TvColors.TextSecondary.copy(alpha = 0.3f)
     }
 
-    Button(
+    Surface(
         onClick = { if (isAvailable) onClick() },
         enabled = isAvailable,
-        modifier = modifier.padding(vertical = 1.dp),
-        shape = ButtonDefaults.shape(shape = RoundedCornerShape(2.dp)),
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 1.dp),
-        scale = ButtonDefaults.scale(focusedScale = 1.1f),
-        colors = ButtonDefaults.colors(
+        modifier = modifier
+            .onFocusChanged { isFocused = it.isFocused }
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.key == Key.DirectionLeft && keyEvent.type == KeyEventType.KeyDown) {
+                    gridFocusRequester?.requestFocus()
+                    true
+                } else {
+                    false
+                }
+            },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(2.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
+        colors = ClickableSurfaceDefaults.colors(
             containerColor = containerColor,
             contentColor = contentColor,
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),
     ) {
-        Text(
-            text = letter.toString(),
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = fontSize,
-            ),
-        )
+        Box(
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = letter.toString(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    lineHeight = 10.sp,
+                ),
+            )
+        }
     }
 }
