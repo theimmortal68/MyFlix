@@ -329,6 +329,9 @@ private fun LibraryGridContent(
     onUpNavigation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Dummy focus requester to block focus movement (requests to unattached requester fail)
+    val focusTrap = remember { FocusRequester() }
+
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Fixed(columns),
@@ -348,9 +351,18 @@ private fun LibraryGridContent(
                 jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
             }
 
-            // First row items navigate up to filter bar
+            // Calculate row position
             val isFirstRow = index < columns
             val isLastColumn = (index + 1) % columns == 0
+
+            // Calculate if this item is in the last row
+            val totalRows = (state.items.size + columns - 1) / columns
+            val itemRow = index / columns
+            val isLastRow = itemRow == totalRows - 1
+
+            // Block down navigation when loading more and on last row
+            val shouldBlockDown = state.isLoadingMore && isLastRow
+
             MediaCard(
                 item = item,
                 imageUrl = imageUrl,
@@ -365,20 +377,17 @@ private fun LibraryGridContent(
                             Modifier
                         },
                     )
-                    .then(
+                    .focusProperties {
                         if (isFirstRow) {
-                            Modifier.focusProperties { up = filterBarFocusRequester }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .then(
+                            up = filterBarFocusRequester
+                        }
                         if (isLastColumn) {
-                            Modifier.focusProperties { right = alphabetFocusRequester }
-                        } else {
-                            Modifier
-                        },
-                    ),
+                            right = alphabetFocusRequester
+                        }
+                        if (shouldBlockDown) {
+                            down = focusTrap
+                        }
+                    },
             )
         }
 
