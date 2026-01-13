@@ -15,6 +15,7 @@ import dev.jausc.myflix.core.common.model.YearRange
 import dev.jausc.myflix.core.common.model.isMovie
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 100
+private const val PREFETCH_DELAY_MS = 200L
 
 /**
  * UI state for the library screen with filter support.
@@ -80,8 +82,94 @@ class LibraryViewModel(
         loadGenres()
         loadLibraryItems(resetList = true)
 
-        // Note: Alphabet index loading removed - all letters are now always available
-        // The API handles filtering via nameStartsWith, returning 0 items if no matches
+        // Start background pre-fetching after initial load
+        startBackgroundPrefetch()
+    }
+
+    /**
+     * Pre-fetch library items in background for faster navigation.
+     * Loads remaining pages of the main library, then pre-fetches each letter.
+     */
+    private fun startBackgroundPrefetch() {
+        viewModelScope.launch {
+            // Wait for initial load to complete
+            while (_uiState.value.isLoading) {
+                delay(100)
+            }
+
+            // Only prefetch if we have items and no error
+            val initialState = _uiState.value
+            if (initialState.items.isEmpty() || initialState.error != null) return@launch
+
+            val filterState = initialState.filterState
+
+            // Phase 1: Load remaining pages of main library
+            val totalItems = initialState.totalRecordCount
+            var loadedCount = initialState.items.size
+
+            while (loadedCount < totalItems) {
+                delay(PREFETCH_DELAY_MS)
+
+                // Pause if user is actively filtering
+                if (_uiState.value.currentLetter != null || _uiState.value.isLoading) {
+                    delay(500)
+                    continue
+                }
+
+                prefetchPage(
+                    startIndex = loadedCount,
+                    sortBy = filterState.sortBy.jellyfinValue,
+                    sortOrder = filterState.sortOrder.jellyfinValue,
+                    nameStartsWith = null,
+                )
+                loadedCount += PAGE_SIZE
+            }
+
+            // Phase 2: Pre-fetch first page of each letter for instant alphabet navigation
+            val alphabet = listOf('#') + ('A'..'Z').toList()
+            for (letter in alphabet) {
+                delay(PREFETCH_DELAY_MS)
+
+                // Pause if user is actively using the library
+                if (_uiState.value.currentLetter != null || _uiState.value.isLoading) {
+                    delay(500)
+                    continue
+                }
+
+                prefetchPage(
+                    startIndex = 0,
+                    sortBy = filterState.sortBy.jellyfinValue,
+                    sortOrder = filterState.sortOrder.jellyfinValue,
+                    nameStartsWith = if (letter == '#') "#" else letter.toString(),
+                )
+            }
+        }
+    }
+
+    /**
+     * Prefetch a page of items into cache without updating UI.
+     */
+    private suspend fun prefetchPage(
+        startIndex: Int,
+        sortBy: String,
+        sortOrder: String,
+        nameStartsWith: String?,
+    ) {
+        // Make the API call - result gets cached by JellyfinClient
+        jellyfinClient.getLibraryItemsFiltered(
+            libraryId = libraryId,
+            limit = PAGE_SIZE,
+            startIndex = startIndex,
+            sortBy = sortBy,
+            sortOrder = sortOrder,
+            genres = null,
+            isPlayed = null,
+            minCommunityRating = null,
+            years = null,
+            officialRatings = null,
+            nameStartsWith = nameStartsWith,
+        )
+        // Result is cached - we don't need to do anything with it
     }
 
     /**
