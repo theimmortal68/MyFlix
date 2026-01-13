@@ -62,6 +62,21 @@ enum class WatchedFilter(val label: String) {
 }
 
 /**
+ * Filter for series status (TV shows only).
+ */
+enum class SeriesStatusFilter(val jellyfinValue: String?, val label: String) {
+    ALL(null, "All"),
+    CONTINUING("Continuing", "Continuing"),
+    ENDED("Ended", "Ended"),
+    ;
+
+    companion object {
+        fun fromString(value: String): SeriesStatusFilter =
+            entries.find { it.name == value } ?: ALL
+    }
+}
+
+/**
  * Year range filter.
  */
 data class YearRange(
@@ -101,6 +116,7 @@ data class LibraryFilterState(
     val watchedFilter: WatchedFilter = WatchedFilter.ALL,
     val yearRange: YearRange = YearRange(),
     val ratingFilter: Float? = null,
+    val seriesStatus: SeriesStatusFilter = SeriesStatusFilter.ALL,
 ) {
     /**
      * Check if any filters are active (beyond default sort).
@@ -110,7 +126,8 @@ data class LibraryFilterState(
             selectedParentalRatings.isNotEmpty() ||
             watchedFilter != WatchedFilter.ALL ||
             yearRange.isActive ||
-            ratingFilter != null
+            ratingFilter != null ||
+            seriesStatus != SeriesStatusFilter.ALL
 
     /**
      * Count of active filters for badge display.
@@ -123,6 +140,7 @@ data class LibraryFilterState(
             if (watchedFilter != WatchedFilter.ALL) count++
             if (yearRange.isActive) count++
             if (ratingFilter != null) count++
+            if (seriesStatus != SeriesStatusFilter.ALL) count++
             return count
         }
 

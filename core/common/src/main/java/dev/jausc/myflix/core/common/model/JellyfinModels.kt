@@ -66,6 +66,10 @@ data class JellyfinItem(
     @SerialName("Taglines") val taglines: List<String>? = null,
     // External IDs
     @SerialName("ExternalUrls") val externalUrls: List<ExternalUrl>? = null,
+    // Child count (number of seasons for a series, number of episodes for a season)
+    @SerialName("ChildCount") val childCount: Int? = null,
+    // Recursive item count (total episodes for a series)
+    @SerialName("RecursiveItemCount") val recursiveItemCount: Int? = null,
 )
 
 @Serializable

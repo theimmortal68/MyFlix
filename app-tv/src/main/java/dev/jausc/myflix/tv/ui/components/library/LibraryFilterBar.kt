@@ -14,11 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.ViewModule
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +49,7 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.LibraryFilterState
 import dev.jausc.myflix.core.common.model.LibrarySortOption
 import dev.jausc.myflix.core.common.model.LibraryViewMode
+import dev.jausc.myflix.core.common.model.SeriesStatusFilter
 import dev.jausc.myflix.core.common.model.SortOrder
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
@@ -72,9 +71,10 @@ fun LibraryFilterBar(
     filterState: LibraryFilterState,
     availableGenres: List<String>,
     availableParentalRatings: List<String>,
+    collectionType: String?,
     onViewModeChange: (LibraryViewMode) -> Unit,
     onSortChange: (LibrarySortOption, SortOrder) -> Unit,
-    onFilterChange: (WatchedFilter, Float?, YearRange) -> Unit,
+    onFilterChange: (WatchedFilter, Float?, YearRange, SeriesStatusFilter) -> Unit,
     onGenreToggle: (String) -> Unit,
     onClearGenres: () -> Unit,
     onParentalRatingToggle: (String) -> Unit,
@@ -190,19 +190,24 @@ fun LibraryFilterBar(
                 currentWatchedFilter = filterState.watchedFilter,
                 currentRatingFilter = filterState.ratingFilter,
                 currentYearRange = filterState.yearRange,
+                currentSeriesStatus = filterState.seriesStatus,
                 availableGenres = availableGenres,
                 selectedGenres = filterState.selectedGenres,
                 availableParentalRatings = availableParentalRatings,
                 selectedParentalRatings = filterState.selectedParentalRatings,
+                showSeriesStatusFilter = collectionType == "tvshows",
                 onGenreToggle = onGenreToggle,
                 onClearGenres = onClearGenres,
                 onParentalRatingToggle = onParentalRatingToggle,
                 onClearParentalRatings = onClearParentalRatings,
                 onFilterChange = { watched, rating ->
-                    onFilterChange(watched, rating, filterState.yearRange)
+                    onFilterChange(watched, rating, filterState.yearRange, filterState.seriesStatus)
                 },
                 onYearRangeChange = { range ->
-                    onFilterChange(filterState.watchedFilter, filterState.ratingFilter, range)
+                    onFilterChange(filterState.watchedFilter, filterState.ratingFilter, range, filterState.seriesStatus)
+                },
+                onSeriesStatusChange = { status ->
+                    onFilterChange(filterState.watchedFilter, filterState.ratingFilter, filterState.yearRange, status)
                 },
                 onDismiss = { showFilterDropdown = false },
             )
@@ -308,16 +313,19 @@ private fun FilterDropdownMenu(
     currentWatchedFilter: WatchedFilter,
     currentRatingFilter: Float?,
     currentYearRange: YearRange,
+    currentSeriesStatus: SeriesStatusFilter,
     availableGenres: List<String>,
     selectedGenres: Set<String>,
     availableParentalRatings: List<String>,
     selectedParentalRatings: Set<String>,
+    showSeriesStatusFilter: Boolean,
     onGenreToggle: (String) -> Unit,
     onClearGenres: () -> Unit,
     onParentalRatingToggle: (String) -> Unit,
     onClearParentalRatings: () -> Unit,
     onFilterChange: (WatchedFilter, Float?) -> Unit,
     onYearRangeChange: (YearRange) -> Unit,
+    onSeriesStatusChange: (SeriesStatusFilter) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val headerStyle = MaterialTheme.typography.titleSmall
@@ -328,6 +336,7 @@ private fun FilterDropdownMenu(
     var showYearMenu by remember { mutableStateOf(false) }
     var showGenreMenu by remember { mutableStateOf(false) }
     var showParentalMenu by remember { mutableStateOf(false) }
+    var showSeriesStatusMenu by remember { mutableStateOf(false) }
 
     val closeAllSubmenus = {
         showWatchedMenu = false
@@ -335,6 +344,7 @@ private fun FilterDropdownMenu(
         showYearMenu = false
         showGenreMenu = false
         showParentalMenu = false
+        showSeriesStatusMenu = false
     }
     val ratingOptions = listOf(
         null to "Any Rating",
@@ -556,6 +566,39 @@ private fun FilterDropdownMenu(
                 }
             }
         }
+
+        // Series Status filter (only shown for TV shows library)
+        if (showSeriesStatusFilter) {
+            Box {
+                SubMenuItem(
+                    label = "Series Status",
+                    headerStyle = headerStyle,
+                    onClick = {
+                        closeAllSubmenus()
+                        showSeriesStatusMenu = true
+                    },
+                )
+                TvDropdownMenu(
+                    expanded = showSeriesStatusMenu,
+                    onDismissRequest = { showSeriesStatusMenu = false },
+                    offset = submenuOffset,
+                ) {
+                    SeriesStatusFilter.entries.forEach { status ->
+                        val isSelected = status == currentSeriesStatus
+                        TvDropdownMenuItemWithCheck(
+                            text = status.label,
+                            isSelected = isSelected,
+                            textStyle = itemTextStyle,
+                            onLeftPressed = { showSeriesStatusMenu = false },
+                            onClick = {
+                                onSeriesStatusChange(status)
+                                onDismiss()
+                            },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -572,7 +615,7 @@ private fun SubMenuItem(
         onRightPressed = onClick,
         trailingIcon = {
             Icon(
-                imageVector = Icons.Outlined.KeyboardArrowRight,
+                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
             )

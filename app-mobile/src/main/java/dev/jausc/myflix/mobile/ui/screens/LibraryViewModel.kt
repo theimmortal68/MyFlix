@@ -9,9 +9,12 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryFilterState
 import dev.jausc.myflix.core.common.model.LibrarySortOption
 import dev.jausc.myflix.core.common.model.LibraryViewMode
+import dev.jausc.myflix.core.common.model.SeriesStatusFilter
 import dev.jausc.myflix.core.common.model.SortOrder
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
+import dev.jausc.myflix.core.common.model.isMovie
+import dev.jausc.myflix.core.common.model.isSeries
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -141,13 +144,25 @@ class LibraryViewModel(
                 years = years,
                 officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
                 includeItemTypes = includeItemTypes,
+                seriesStatus = filterState.seriesStatus.jellyfinValue,
             )
                 .onSuccess { result ->
                     _uiState.update { state ->
+                        val filteredItems = result.items.filterNot { item ->
+                            // Filter out folders
+                            item.type == "Folder" ||
+                                // Filter out movies without media sources/images
+                                (item.isMovie &&
+                                    item.mediaSources.isNullOrEmpty() &&
+                                    item.imageTags?.primary == null &&
+                                    item.backdropImageTags.isNullOrEmpty()) ||
+                                // Filter out series without episodes (like upcoming shows)
+                                (item.isSeries && (item.recursiveItemCount ?: 0) == 0)
+                        }
                         val newItems = if (resetList) {
-                            result.items
+                            filteredItems
                         } else {
-                            (state.items + result.items).distinctBy { it.id }
+                            (state.items + filteredItems).distinctBy { it.id }
                         }
                         val parentalRatings = newItems
                             .mapNotNull { item ->
@@ -249,14 +264,27 @@ class LibraryViewModel(
     }
 
     /**
+     * Update series status filter (Continuing/Ended).
+     */
+    fun updateSeriesStatus(status: SeriesStatusFilter) {
+        updateFilterState { it.copy(seriesStatus = status) }
+    }
+
+    /**
      * Apply multiple filter changes at once (from filter sheet).
      */
-    fun applyFilters(watchedFilter: WatchedFilter, ratingFilter: Float?, yearRange: YearRange) {
+    fun applyFilters(
+        watchedFilter: WatchedFilter,
+        ratingFilter: Float?,
+        yearRange: YearRange,
+        seriesStatus: SeriesStatusFilter = SeriesStatusFilter.ALL,
+    ) {
         updateFilterState { state ->
             state.copy(
                 watchedFilter = watchedFilter,
                 ratingFilter = ratingFilter,
                 yearRange = yearRange,
+                seriesStatus = seriesStatus,
             )
         }
     }

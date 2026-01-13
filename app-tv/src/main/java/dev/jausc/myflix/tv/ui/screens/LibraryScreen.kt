@@ -176,12 +176,13 @@ fun LibraryScreen(
                 filterState = state.filterState,
                 availableGenres = state.availableGenres,
                 availableParentalRatings = state.availableParentalRatings,
+                collectionType = collectionType,
                 onViewModeChange = { viewModel.setViewMode(it) },
                 onSortChange = { sortBy, sortOrder ->
                     viewModel.updateSort(sortBy, sortOrder)
                 },
-                onFilterChange = { watchedFilter, ratingFilter, yearRange ->
-                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange)
+                onFilterChange = { watchedFilter, ratingFilter, yearRange, seriesStatus ->
+                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange, seriesStatus)
                 },
                 onGenreToggle = { viewModel.toggleGenre(it) },
                 onClearGenres = { viewModel.clearGenres() },

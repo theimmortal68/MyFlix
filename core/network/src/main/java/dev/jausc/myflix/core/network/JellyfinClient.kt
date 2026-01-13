@@ -193,7 +193,8 @@ class JellyfinClient(
 
     private object Fields {
         // Minimal fields for card display (home screen rows)
-        const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating"
+        // ChildCount/RecursiveItemCount needed to filter shows without episodes
+        const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating,ChildCount,RecursiveItemCount"
 
         // Fields for episode cards (need series info)
         const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CriticRating"
@@ -719,6 +720,7 @@ class JellyfinClient(
      * @param years Optional comma-separated years to filter by
      * @param officialRatings Optional list of parental ratings to filter by
      * @param includeItemTypes Optional list of item types to include (e.g., "Movie", "Series")
+     * @param seriesStatus Optional series status filter ("Continuing", "Ended")
      */
     @Suppress("LongParameterList")
     suspend fun getLibraryItemsFiltered(
@@ -734,6 +736,7 @@ class JellyfinClient(
         officialRatings: List<String>? = null,
         nameStartsWith: String? = null,
         includeItemTypes: List<String>? = null,
+        seriesStatus: String? = null,
     ): Result<ItemsResponse> {
         // Build cache key including filter parameters
         val filterSuffix = buildString {
@@ -744,6 +747,7 @@ class JellyfinClient(
             officialRatings?.let { append("_o${it.hashCode()}") }
             nameStartsWith?.let { append("_l$it") }
             includeItemTypes?.let { append("_t${it.hashCode()}") }
+            seriesStatus?.let { append("_s$it") }
         }
         val key = CacheKeys.library(libraryId, limit, startIndex, sortBy) + filterSuffix
 
@@ -798,6 +802,10 @@ class JellyfinClient(
                 // Filter by item types (e.g., "Movie" for movies, "Series" for TV shows)
                 includeItemTypes?.takeIf { it.isNotEmpty() }?.let {
                     parameter("IncludeItemTypes", it.joinToString(","))
+                }
+                // Filter by series status (Continuing, Ended) - TV shows only
+                seriesStatus?.let {
+                    parameter("SeriesStatus", it)
                 }
             }.body<ItemsResponse>().also {
                 if (sortBy != "Random") {
