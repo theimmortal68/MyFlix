@@ -2,7 +2,6 @@
 
 package dev.jausc.myflix.tv.ui.components.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,10 +53,6 @@ fun AlphabetScrollBar(
         modifier = modifier
             .width(24.dp)
             .fillMaxHeight()
-            .background(
-                color = TvColors.SurfaceElevated.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(4.dp),
-            )
             .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly,
