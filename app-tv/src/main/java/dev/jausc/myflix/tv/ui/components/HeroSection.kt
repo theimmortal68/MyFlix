@@ -552,6 +552,7 @@ private fun HeroActionButtons(
             Text(
                 text = "Play",
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
             )
         }
 
@@ -588,6 +589,7 @@ private fun HeroActionButtons(
             Text(
                 text = "More Info",
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
