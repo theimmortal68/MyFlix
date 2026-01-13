@@ -230,8 +230,10 @@ fun MyFlixMobileContent() {
                 jellyfinClient = jellyfinClient,
                 preferences = mobilePreferences,
                 seerrClient = if (isSeerrAuthenticated) seerrClient else null,
-                onLibraryClick = { libraryId, libraryName ->
-                    navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
+                onLibraryClick = { libraryId, libraryName, collectionType ->
+                    navController.navigate(
+                        NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
+                    )
                 },
                 onItemClick = { itemId ->
                     navController.navigate("detail/$itemId")
@@ -273,18 +275,23 @@ fun MyFlixMobileContent() {
         }
 
         composable(
-            route = "library/{libraryId}/{libraryName}",
+            route = "library/{libraryId}/{libraryName}/{collectionType}",
             arguments = listOf(
                 navArgument("libraryId") { type = NavType.StringType },
                 navArgument("libraryName") { type = NavType.StringType },
+                navArgument("collectionType") { type = NavType.StringType },
             ),
         ) { backStackEntry ->
             val libraryId = backStackEntry.arguments?.getString("libraryId") ?: return@composable
             val libraryNameEncoded = backStackEntry.arguments?.getString("libraryName") ?: ""
             val libraryName = NavigationHelper.decodeNavArg(libraryNameEncoded)
+            val collectionTypeEncoded = backStackEntry.arguments?.getString("collectionType") ?: ""
+            val collectionType = NavigationHelper.decodeNavArg(collectionTypeEncoded)
+                .takeIf { it.isNotEmpty() }
             LibraryScreen(
                 libraryId = libraryId,
                 libraryName = libraryName,
+                collectionType = collectionType,
                 jellyfinClient = jellyfinClient,
                 preferences = mobilePreferences,
                 onItemClick = { itemId ->

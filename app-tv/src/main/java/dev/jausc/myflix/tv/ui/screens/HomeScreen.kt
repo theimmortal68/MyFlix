@@ -114,7 +114,7 @@ private data class RowColumn(val row: Int, val column: Int)
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
     preferences: TvPreferences,
-    onLibraryClick: (String, String) -> Unit,
+    onLibraryClick: (libraryId: String, libraryName: String, collectionType: String?) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit = {},
@@ -210,9 +210,13 @@ fun HomeScreen(
             NavItem.HOME -> Unit // Already on home
             NavItem.SEARCH -> onSearchClick()
             NavItem.MOVIES ->
-                LibraryFinder.findMoviesLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findMoviesLibrary(state.libraries)?.let {
+                    onLibraryClick(it.id, it.name, it.collectionType)
+                }
             NavItem.SHOWS ->
-                LibraryFinder.findShowsLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findShowsLibrary(state.libraries)?.let {
+                    onLibraryClick(it.id, it.name, it.collectionType)
+                }
             NavItem.DISCOVER -> onDiscoverClick()
             NavItem.COLLECTIONS -> Unit // TODO: Navigate to collections
             NavItem.UNIVERSES -> Unit // TODO: Placeholder for future feature

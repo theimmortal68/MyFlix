@@ -76,6 +76,7 @@ import kotlinx.coroutines.flow.filterNotNull
 fun LibraryScreen(
     libraryId: String,
     libraryName: String,
+    collectionType: String?,
     jellyfinClient: JellyfinClient,
     preferences: AppPreferences,
     onItemClick: (String) -> Unit,
@@ -85,7 +86,7 @@ fun LibraryScreen(
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
         key = libraryId,
-        factory = LibraryViewModel.Factory(libraryId, jellyfinClient, preferences),
+        factory = LibraryViewModel.Factory(libraryId, collectionType, jellyfinClient, preferences),
     )
 
     // Collect UI state from ViewModel

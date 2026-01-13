@@ -53,9 +53,12 @@ data class LibraryUiState(
 /**
  * ViewModel for the TV library screen with Plex-style filtering.
  * Manages library items loading, filtering, sorting, and pagination.
+ *
+ * @param collectionType The library type ("movies", "tvshows", etc.) used for filtering
  */
 class LibraryViewModel(
     private val libraryId: String,
+    private val collectionType: String?,
     private val jellyfinClient: JellyfinClient,
     private val preferences: AppPreferences,
 ) : ViewModel() {
@@ -65,12 +68,24 @@ class LibraryViewModel(
      */
     class Factory(
         private val libraryId: String,
+        private val collectionType: String?,
         private val jellyfinClient: JellyfinClient,
         private val preferences: AppPreferences,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            LibraryViewModel(libraryId, jellyfinClient, preferences) as T
+            LibraryViewModel(libraryId, collectionType, jellyfinClient, preferences) as T
+    }
+
+    /**
+     * Determine include item types based on collection type.
+     * For TV shows: only include "Series" to filter out extras
+     * For movies: only include "Movie" to filter out non-movie content
+     */
+    private val includeItemTypes: List<String>? = when (collectionType) {
+        "tvshows" -> listOf("Series")
+        "movies" -> listOf("Movie")
+        else -> null
     }
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -187,6 +202,7 @@ class LibraryViewModel(
             years = null,
             officialRatings = null,
             nameStartsWith = nameStartsWith,
+            includeItemTypes = includeItemTypes,
         )
         // Result is cached - we don't need to do anything with it
     }
@@ -246,6 +262,7 @@ class LibraryViewModel(
                 years = years,
                 officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
                 nameStartsWith = nameStartsWith,
+                includeItemTypes = includeItemTypes,
             )
                 .onSuccess { result ->
                     _uiState.update { state ->

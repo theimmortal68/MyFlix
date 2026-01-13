@@ -142,7 +142,8 @@ fun SeerrHomeScreen(
     onNavigateShows: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
     jellyfinClient: JellyfinClient? = null,
-    onNavigateLibrary: (String, String) -> Unit = { _, _ -> },
+    onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
+        { _, _, _ -> },
     onNavigateSeerrSearch: () -> Unit = {},
     onNavigateSeerrRequests: () -> Unit = {},
     onNavigateDiscoverTrending: () -> Unit = {},
@@ -291,12 +292,12 @@ fun SeerrHomeScreen(
             NavItem.SEARCH -> { onNavigateSearch() }
             NavItem.MOVIES -> {
                 LibraryFinder.findMoviesLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name)
+                    onNavigateLibrary(it.id, it.name, it.collectionType)
                 } ?: onNavigateMovies()
             }
             NavItem.SHOWS -> {
                 LibraryFinder.findShowsLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name)
+                    onNavigateLibrary(it.id, it.name, it.collectionType)
                 } ?: onNavigateShows()
             }
             NavItem.DISCOVER -> { /* Already here */ }

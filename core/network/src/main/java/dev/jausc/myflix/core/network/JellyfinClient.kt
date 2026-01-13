@@ -718,6 +718,7 @@ class JellyfinClient(
      * @param minCommunityRating Optional minimum community rating (0-10)
      * @param years Optional comma-separated years to filter by
      * @param officialRatings Optional list of parental ratings to filter by
+     * @param includeItemTypes Optional list of item types to include (e.g., "Movie", "Series")
      */
     @Suppress("LongParameterList")
     suspend fun getLibraryItemsFiltered(
@@ -732,6 +733,7 @@ class JellyfinClient(
         years: String? = null,
         officialRatings: List<String>? = null,
         nameStartsWith: String? = null,
+        includeItemTypes: List<String>? = null,
     ): Result<ItemsResponse> {
         // Build cache key including filter parameters
         val filterSuffix = buildString {
@@ -741,6 +743,7 @@ class JellyfinClient(
             years?.let { append("_y${it.hashCode()}") }
             officialRatings?.let { append("_o${it.hashCode()}") }
             nameStartsWith?.let { append("_l$it") }
+            includeItemTypes?.let { append("_t${it.hashCode()}") }
         }
         val key = CacheKeys.library(libraryId, limit, startIndex, sortBy) + filterSuffix
 
@@ -791,6 +794,10 @@ class JellyfinClient(
                     } else {
                         parameter("nameStartsWith", letter)
                     }
+                }
+                // Filter by item types (e.g., "Movie" for movies, "Series" for TV shows)
+                includeItemTypes?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("IncludeItemTypes", it.joinToString(","))
                 }
             }.body<ItemsResponse>().also {
                 if (sortBy != "Random") {

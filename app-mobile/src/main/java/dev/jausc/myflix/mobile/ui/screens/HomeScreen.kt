@@ -93,7 +93,7 @@ fun HomeScreen(
     jellyfinClient: JellyfinClient,
     preferences: MobilePreferences,
     seerrClient: SeerrClient? = null,
-    onLibraryClick: (String, String) -> Unit,
+    onLibraryClick: (libraryId: String, libraryName: String, collectionType: String?) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit,
@@ -214,9 +214,13 @@ fun HomeScreen(
             MobileNavItem.HOME -> Unit // Already on home
             MobileNavItem.SEARCH -> onSearchClick()
             MobileNavItem.MOVIES ->
-                LibraryFinder.findMoviesLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findMoviesLibrary(state.libraries)?.let {
+                    onLibraryClick(it.id, it.name, it.collectionType)
+                }
             MobileNavItem.SHOWS ->
-                LibraryFinder.findShowsLibrary(state.libraries)?.let { onLibraryClick(it.id, it.name) }
+                LibraryFinder.findShowsLibrary(state.libraries)?.let {
+                    onLibraryClick(it.id, it.name, it.collectionType)
+                }
             MobileNavItem.DISCOVER -> onDiscoverClick()
             MobileNavItem.SETTINGS -> onSettingsClick()
         }

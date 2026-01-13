@@ -76,7 +76,8 @@ fun PreferencesScreen(
     onNavigateMovies: () -> Unit,
     onNavigateShows: () -> Unit,
     onNavigateDiscover: () -> Unit = {},
-    onNavigateLibrary: (String, String) -> Unit = { _, _ -> },
+    onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
+        { _, _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
@@ -134,12 +135,12 @@ fun PreferencesScreen(
             NavItem.SEARCH -> { onNavigateSearch() }
             NavItem.MOVIES -> {
                 LibraryFinder.findMoviesLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name)
+                    onNavigateLibrary(it.id, it.name, it.collectionType)
                 } ?: onNavigateMovies()
             }
             NavItem.SHOWS -> {
                 LibraryFinder.findShowsLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name)
+                    onNavigateLibrary(it.id, it.name, it.collectionType)
                 } ?: onNavigateShows()
             }
             NavItem.DISCOVER -> { onNavigateDiscover() }

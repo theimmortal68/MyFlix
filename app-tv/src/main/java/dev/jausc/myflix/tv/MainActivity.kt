@@ -231,8 +231,10 @@ fun MyFlixTvApp() {
                     jellyfinClient = jellyfinClient,
                     preferences = tvPreferences,
                     seerrClient = if (isSeerrAuthenticated) seerrClient else null,
-                    onLibraryClick = { libraryId, libraryName ->
-                        navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
+                    onLibraryClick = { libraryId, libraryName, collectionType ->
+                        navController.navigate(
+                            NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
+                        )
                     },
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
@@ -300,8 +302,10 @@ fun MyFlixTvApp() {
                     onNavigateDiscover = {
                         navController.navigate("seerr")
                     },
-                    onNavigateLibrary = { libraryId, libraryName ->
-                        navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
+                    onNavigateLibrary = { libraryId, libraryName, collectionType ->
+                        navController.navigate(
+                            NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
+                        )
                     },
                 )
             }
@@ -346,8 +350,10 @@ fun MyFlixTvApp() {
                             navController.navigate("settings")
                         },
                         jellyfinClient = jellyfinClient,
-                        onNavigateLibrary = { libraryId, libraryName ->
-                            navController.navigate(NavigationHelper.buildLibraryRoute(libraryId, libraryName))
+                        onNavigateLibrary = { libraryId, libraryName, collectionType ->
+                            navController.navigate(
+                                NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
+                            )
                         },
                         onNavigateDiscoverTrending = {
                             navController.navigate("seerr/trending")
@@ -597,18 +603,23 @@ fun MyFlixTvApp() {
             }
 
             composable(
-                route = "library/{libraryId}/{libraryName}",
+                route = "library/{libraryId}/{libraryName}/{collectionType}",
                 arguments = listOf(
                     navArgument("libraryId") { type = NavType.StringType },
                     navArgument("libraryName") { type = NavType.StringType },
+                    navArgument("collectionType") { type = NavType.StringType },
                 ),
             ) { backStackEntry ->
                 val libraryId = backStackEntry.arguments?.getString("libraryId") ?: return@composable
                 val libraryNameEncoded = backStackEntry.arguments?.getString("libraryName") ?: ""
                 val libraryName = NavigationHelper.decodeNavArg(libraryNameEncoded)
+                val collectionTypeEncoded = backStackEntry.arguments?.getString("collectionType") ?: ""
+                val collectionType = NavigationHelper.decodeNavArg(collectionTypeEncoded)
+                    .takeIf { it.isNotEmpty() }
                 LibraryScreen(
                     libraryId = libraryId,
                     libraryName = libraryName,
+                    collectionType = collectionType,
                     jellyfinClient = jellyfinClient,
                     preferences = tvPreferences,
                     onItemClick = { itemId ->

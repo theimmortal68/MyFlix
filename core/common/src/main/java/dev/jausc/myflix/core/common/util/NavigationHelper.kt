@@ -31,9 +31,10 @@ object NavigationHelper {
 
     /**
      * Builds a library route with properly encoded arguments.
+     * @param collectionType The library type (e.g., "movies", "tvshows", null for unknown)
      */
-    fun buildLibraryRoute(libraryId: String, libraryName: String): String =
-        "library/$libraryId/${encodeNavArg(libraryName)}"
+    fun buildLibraryRoute(libraryId: String, libraryName: String, collectionType: String? = null): String =
+        "library/$libraryId/${encodeNavArg(libraryName)}/${encodeNavArg(collectionType ?: "")}"
 
     /**
      * Base routes for Seerr navigation.
