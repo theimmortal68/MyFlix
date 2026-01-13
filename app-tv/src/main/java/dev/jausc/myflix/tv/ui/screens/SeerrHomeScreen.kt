@@ -704,6 +704,7 @@ private fun SeerrHeroSection(
         },
         label = "seerr_hero_content",
         modifier = modifier,
+        contentAlignment = Alignment.TopStart,
     ) { currentMedia ->
         Box(
             modifier = Modifier
