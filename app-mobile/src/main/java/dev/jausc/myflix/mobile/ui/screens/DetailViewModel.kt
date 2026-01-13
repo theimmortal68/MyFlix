@@ -12,6 +12,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
+ * Detail screen tabs.
+ */
+enum class DetailTab(val title: String) {
+    OVERVIEW("Overview"),
+    EPISODES("Episodes"),
+    RELATED("More Like This"),
+    DETAILS("Details"),
+}
+
+/**
  * UI state for the detail screen.
  */
 data class DetailUiState(
@@ -22,9 +32,29 @@ data class DetailUiState(
     val isLoading: Boolean = true,
     val isLoadingEpisodes: Boolean = false,
     val error: String? = null,
+    val selectedTabIndex: Int = 0,
+    val similarItems: List<JellyfinItem> = emptyList(),
+    val isLoadingSimilar: Boolean = false,
 ) {
     val hasSeasons: Boolean get() = seasons.isNotEmpty()
     val hasEpisodes: Boolean get() = episodes.isNotEmpty()
+    val isSeries: Boolean get() = item?.type == "Series"
+
+    /**
+     * Get available tabs based on item type.
+     * Movies: Overview, Related, Details
+     * Series: Overview, Episodes, Related, Details
+     */
+    val availableTabs: List<DetailTab>
+        get() = buildList {
+            add(DetailTab.OVERVIEW)
+            if (isSeries) add(DetailTab.EPISODES)
+            add(DetailTab.RELATED)
+            add(DetailTab.DETAILS)
+        }
+
+    val selectedTab: DetailTab
+        get() = availableTabs.getOrNull(selectedTabIndex) ?: DetailTab.OVERVIEW
 }
 
 /**
@@ -181,5 +211,44 @@ class DetailViewModel(
      */
     fun refresh() {
         loadItem()
+    }
+
+    /**
+     * Select a tab by index.
+     */
+    fun selectTab(index: Int) {
+        val tabs = _uiState.value.availableTabs
+        if (index in tabs.indices) {
+            _uiState.update { it.copy(selectedTabIndex = index) }
+
+            // Load similar items when Related tab is selected (lazy load)
+            if (tabs[index] == DetailTab.RELATED && _uiState.value.similarItems.isEmpty()) {
+                loadSimilarItems()
+            }
+        }
+    }
+
+    /**
+     * Load similar items for the Related tab.
+     */
+    private fun loadSimilarItems() {
+        val currentItem = _uiState.value.item ?: return
+
+        _uiState.update { it.copy(isLoadingSimilar = true) }
+
+        viewModelScope.launch {
+            jellyfinClient.getSimilarItems(currentItem.id, limit = 18)
+                .onSuccess { items ->
+                    _uiState.update {
+                        it.copy(
+                            similarItems = items,
+                            isLoadingSimilar = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(isLoadingSimilar = false) }
+                }
+        }
     }
 }

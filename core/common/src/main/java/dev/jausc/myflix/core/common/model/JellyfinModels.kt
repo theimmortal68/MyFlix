@@ -56,6 +56,16 @@ data class JellyfinItem(
     @SerialName("CollectionType") val collectionType: String? = null,
     // PremiereDate for upcoming episodes (ISO 8601 format)
     @SerialName("PremiereDate") val premiereDate: String? = null,
+    // People (cast and crew)
+    @SerialName("People") val people: List<JellyfinPerson>? = null,
+    // Studios (production companies)
+    @SerialName("Studios") val studios: List<JellyfinStudio>? = null,
+    // Genres as list of strings
+    @SerialName("Genres") val genres: List<String>? = null,
+    // Taglines
+    @SerialName("Taglines") val taglines: List<String>? = null,
+    // External IDs
+    @SerialName("ExternalUrls") val externalUrls: List<ExternalUrl>? = null,
 )
 
 @Serializable
@@ -270,3 +280,57 @@ data class JellyfinGenre(
     @SerialName("Id") val id: String,
     @SerialName("Name") val name: String,
 )
+
+/**
+ * Person model for cast and crew information
+ */
+@Serializable
+data class JellyfinPerson(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String? = null,
+    @SerialName("Role") val role: String? = null,
+    @SerialName("Type") val type: String = "Unknown",
+    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
+)
+
+/**
+ * Studio model for production companies
+ */
+@Serializable
+data class JellyfinStudio(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String? = null,
+)
+
+/**
+ * External URL model for links to IMDb, TMDb, etc.
+ */
+@Serializable
+data class ExternalUrl(
+    @SerialName("Name") val name: String? = null,
+    @SerialName("Url") val url: String? = null,
+)
+
+/**
+ * Get actors from the people list
+ */
+val JellyfinItem.actors: List<JellyfinPerson>
+    get() = people?.filter { it.type == "Actor" } ?: emptyList()
+
+/**
+ * Get directors from the people list
+ */
+val JellyfinItem.directors: List<JellyfinPerson>
+    get() = people?.filter { it.type == "Director" } ?: emptyList()
+
+/**
+ * Get writers from the people list
+ */
+val JellyfinItem.writers: List<JellyfinPerson>
+    get() = people?.filter { it.type == "Writer" } ?: emptyList()
+
+/**
+ * Get creators/showrunners from the people list (typically for TV series)
+ */
+val JellyfinItem.creators: List<JellyfinPerson>
+    get() = people?.filter { it.type == "Creator" || it.type == "Producer" } ?: emptyList()

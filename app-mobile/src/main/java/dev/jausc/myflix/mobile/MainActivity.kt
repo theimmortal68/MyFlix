@@ -286,6 +286,9 @@ fun MyFlixMobileContent() {
                     navController.navigate("player/$episodeId")
                 },
                 onBack = { navController.popBackStack() },
+                onNavigateToDetail = { relatedItemId ->
+                    navController.navigate("detail/$relatedItemId")
+                },
             )
         }
 

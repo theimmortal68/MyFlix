@@ -3,44 +3,55 @@
     "CognitiveComplexMethod",
     "CyclomaticComplexMethod",
     "MagicNumber",
-    "WildcardImport",
-    "NoWildcardImports",
-    "LabeledExpression",
 )
 
 package dev.jausc.myflix.tv.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tv.material3.*
-import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.common.model.*
+import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
-import kotlinx.coroutines.launch
 import dev.jausc.myflix.tv.ui.components.DetailDialogActions
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.buildDetailDialogItems
+import dev.jausc.myflix.tv.ui.components.detail.DetailHeroSection
+import dev.jausc.myflix.tv.ui.components.detail.DetailTabRow
+import dev.jausc.myflix.tv.ui.components.detail.DetailsTabContent
+import dev.jausc.myflix.tv.ui.components.detail.EpisodesTabContent
+import dev.jausc.myflix.tv.ui.components.detail.OverviewTabContent
+import dev.jausc.myflix.tv.ui.components.detail.RelatedTabContent
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.launch
 
-@Suppress("UnusedParameter")
+/**
+ * Netflix-style detail screen with fixed hero section, tab bar, and scrollable tab content.
+ * Layout:
+ * - Hero section (40% - fixed)
+ * - Tab bar (fixed)
+ * - Tab content (60% - scrollable)
+ */
 @Composable
 fun DetailScreen(
     itemId: String,
@@ -48,16 +59,22 @@ fun DetailScreen(
     onPlayClick: () -> Unit,
     onEpisodeClick: (String) -> Unit,
     onBack: () -> Unit,
+    onNavigateToDetail: (String) -> Unit = {},
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
-        key = itemId, // Use itemId as key so ViewModel is recreated for different items
+        key = itemId,
         factory = DetailViewModel.Factory(itemId, jellyfinClient),
     )
 
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Focus requesters for D-pad navigation
+    val playButtonFocusRequester = remember { FocusRequester() }
+    val tabRowFocusRequester = remember { FocusRequester() }
+    val contentFocusRequester = remember { FocusRequester() }
 
     // Long-press dialog state (TV-specific)
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -74,19 +91,17 @@ fun DetailScreen(
                 viewModel.setFavorite(episodeId, favorite)
             },
             onShowMediaInfo = { episode -> mediaInfoItem = episode },
-            onGoToSeries = null, // Already on series page
+            onGoToSeries = null,
             onPlayAllFromEpisode = { data: PlayAllData ->
                 scope.launch {
                     jellyfinClient.getEpisodes(data.seriesId, data.seasonId)
                         .onSuccess { episodes ->
-                            // Filter to episodes from the selected one onwards
                             val sortedEpisodes = episodes.sortedBy { it.indexNumber ?: 0 }
                             val startIndex = sortedEpisodes.indexOfFirst { it.id == data.itemId }
                                 .coerceAtLeast(0)
                             val episodesToPlay = sortedEpisodes.drop(startIndex)
 
                             if (episodesToPlay.isNotEmpty()) {
-                                // Build queue items
                                 val queueItems = episodesToPlay.map { episode ->
                                     QueueItem(
                                         itemId = episode.id,
@@ -99,7 +114,6 @@ fun DetailScreen(
                                     )
                                 }
 
-                                // Set queue and navigate to first item
                                 PlayQueueManager.setQueue(
                                     items = queueItems,
                                     source = QueueSource.EPISODE_PLAY_ALL,
@@ -113,12 +127,24 @@ fun DetailScreen(
         )
     }
 
+    // Request initial focus on play button when content loads
+    LaunchedEffect(state.item) {
+        if (state.item != null) {
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {
+                // Focus requester may not be ready yet
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
         if (state.isLoading || state.item == null) {
+            // Loading state
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -131,148 +157,75 @@ fun DetailScreen(
         } else {
             val currentItem = state.item!!
 
-            Row(modifier = Modifier.fillMaxSize()) {
-                Column(
+            Column(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                // Fixed Hero Section (~40%)
+                DetailHeroSection(
+                    item = currentItem,
+                    jellyfinClient = jellyfinClient,
+                    onPlayClick = onPlayClick,
+                    onBackClick = onBack,
+                    playButtonFocusRequester = playButtonFocusRequester,
+                    tabRowFocusRequester = tabRowFocusRequester,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // Fixed Tab Bar
+                DetailTabRow(
+                    tabs = state.availableTabs,
+                    selectedIndex = state.selectedTabIndex,
+                    onTabSelected = { viewModel.selectTab(it) },
+                    tabRowFocusRequester = tabRowFocusRequester,
+                    heroFocusRequester = playButtonFocusRequester,
+                    contentFocusRequester = contentFocusRequester,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // Tab Content (~60% - scrollable)
+                Box(
                     modifier = Modifier
-                        .weight(0.4f)
-                        .fillMaxHeight()
-                        .padding(48.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .fillMaxWidth()
+                        .weight(1f),
                 ) {
-                    AsyncImage(
-                        model = jellyfinClient.getPrimaryImageUrl(currentItem.id, currentItem.imageTags?.primary, 400),
-                        contentDescription = currentItem.name,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(2f / 3f)
-                            .clip(MaterialTheme.shapes.medium),
-                        contentScale = ContentScale.Crop,
-                    )
-
-                    Button(
-                        onClick = onPlayClick,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("▶ Play")
-                    }
-                }
-
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(0.6f)
-                        .fillMaxHeight()
-                        .padding(end = 48.dp, top = 48.dp, bottom = 48.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    item {
-                        Text(
-                            text = currentItem.name,
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = TvColors.TextPrimary,
-                        )
-                    }
-
-                    item {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            currentItem.productionYear?.let { year ->
-                                Text(
-                                    text = year.toString(),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = TvColors.TextSecondary,
-                                )
-                            }
-                            currentItem.runtimeMinutes?.let { runtime ->
-                                Text(
-                                    text = "$runtime min",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = TvColors.TextSecondary,
-                                )
-                            }
-                            currentItem.communityRating?.let { rating ->
-                                Text(
-                                    text = "★ %.1f".format(rating),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = TvColors.BluePrimary,
-                                )
-                            }
-                        }
-                    }
-
-                    currentItem.overview?.let { overview ->
-                        item {
-                            Text(
-                                text = overview,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TvColors.TextSecondary,
+                    when (state.selectedTab) {
+                        DetailTab.OVERVIEW -> {
+                            OverviewTabContent(
+                                item = currentItem,
+                                jellyfinClient = jellyfinClient,
+                                contentFocusRequester = contentFocusRequester,
                             )
                         }
-                    }
-
-                    if (state.hasSeasons) {
-                        item {
-                            Text(
-                                text = "Seasons",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = TvColors.TextPrimary,
+                        DetailTab.EPISODES -> {
+                            EpisodesTabContent(
+                                state = state,
+                                jellyfinClient = jellyfinClient,
+                                onSeasonSelected = { viewModel.selectSeason(it) },
+                                onEpisodeClick = onEpisodeClick,
+                                onEpisodeLongClick = { episode ->
+                                    dialogParams = DialogParams(
+                                        title = episode.name,
+                                        items = buildDetailDialogItems(episode, dialogActions),
+                                        fromLongClick = true,
+                                    )
+                                },
+                                contentFocusRequester = contentFocusRequester,
                             )
                         }
-
-                        item {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                items(state.seasons, key = { it.id }) { season ->
-                                    val isSelected = state.selectedSeason?.id == season.id
-                                    Surface(
-                                        onClick = { viewModel.selectSeason(season) },
-                                        shape = ClickableSurfaceDefaults.shape(
-                                            shape = MaterialTheme.shapes.small,
-                                        ),
-                                        colors = ClickableSurfaceDefaults.colors(
-                                            containerColor = if (isSelected) TvColors.BluePrimary else TvColors.Surface,
-                                            focusedContainerColor = TvColors.FocusedSurface,
-                                        ),
-                                    ) {
-                                        Text(
-                                            text = season.name,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = TvColors.TextPrimary,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        )
-                                    }
-                                }
-                            }
+                        DetailTab.RELATED -> {
+                            RelatedTabContent(
+                                similarItems = state.similarItems,
+                                isLoading = state.isLoadingSimilar,
+                                jellyfinClient = jellyfinClient,
+                                onItemClick = onNavigateToDetail,
+                                contentFocusRequester = contentFocusRequester,
+                            )
                         }
-
-                        if (state.hasEpisodes) {
-                            item {
-                                Text(
-                                    text = "Episodes",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = TvColors.TextPrimary,
-                                )
-                            }
-
-                            items(state.episodes, key = { it.id }) { episode ->
-                                EpisodeCard(
-                                    episode = episode,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        episode.id,
-                                        episode.imageTags?.primary,
-                                    ),
-                                    onClick = { onEpisodeClick(episode.id) },
-                                    onLongClick = {
-                                        dialogParams = DialogParams(
-                                            title = episode.name,
-                                            items = buildDetailDialogItems(episode, dialogActions),
-                                            fromLongClick = true,
-                                        )
-                                    },
-                                )
-                            }
+                        DetailTab.DETAILS -> {
+                            DetailsTabContent(
+                                item = currentItem,
+                                contentFocusRequester = contentFocusRequester,
+                            )
                         }
                     }
                 }
@@ -294,71 +247,5 @@ fun DetailScreen(
             item = episode,
             onDismiss = { mediaInfoItem = null },
         )
-    }
-}
-
-@Composable
-private fun EpisodeCard(
-    episode: JellyfinItem,
-    imageUrl: String,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
-) {
-    Surface(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = MaterialTheme.shapes.medium,
-            ),
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = episode.name,
-                modifier = Modifier
-                    .width(160.dp)
-                    .aspectRatio(16f / 9f)
-                    .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop,
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = "Episode ${episode.indexNumber ?: ""}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TvColors.BluePrimary,
-                )
-                Text(
-                    text = episode.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TvColors.TextPrimary,
-                )
-                episode.runtimeMinutes?.let { runtime ->
-                    Text(
-                        text = "$runtime min",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TvColors.TextSecondary,
-                    )
-                }
-            }
-        }
     }
 }

@@ -195,7 +195,7 @@ class JellyfinClient(
         const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CriticRating"
 
         // Full fields for detail screens
-        const val DETAIL = "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People,ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CriticRating"
+        const val DETAIL = "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People,ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CriticRating,Taglines"
 
         // Fields for episode listing
         const val EPISODE_LIST = "Overview,ImageTags,UserData,MediaSources"
@@ -1257,6 +1257,19 @@ class JellyfinClient(
     }
 
     fun getUserImageUrl(userId: String) = "$baseUrl/Users/$userId/Images/Primary?quality=90&format=Webp"
+
+    /**
+     * Get person image URL for cast/crew photos.
+     */
+    fun getPersonImageUrl(personId: String, tag: String?, maxWidth: Int = 200): String {
+        val params = buildString {
+            append("maxWidth=$maxWidth")
+            append("&quality=90")
+            append("&format=Webp")
+            if (tag != null) append("&tag=$tag")
+        }
+        return "$baseUrl/Items/$personId/Images/Primary?$params"
+    }
 
     // ==================== Playback Reporting ====================
 
