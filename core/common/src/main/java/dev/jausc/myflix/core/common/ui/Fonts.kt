@@ -48,6 +48,17 @@ object MyFlixFonts {
     )
 
     /**
+     * Montserrat - geometric, elegant, Netflix-like feel
+     * Popular for streaming and media applications
+     */
+    val Montserrat = FontFamily(
+        Font(R.font.montserrat_regular, FontWeight.Normal),
+        Font(R.font.montserrat_medium, FontWeight.Medium),
+        Font(R.font.montserrat_semibold, FontWeight.SemiBold),
+        Font(R.font.montserrat_bold, FontWeight.Bold),
+    )
+
+    /**
      * Logo font alias
      */
     val Logo = BebasNeue
@@ -60,5 +71,5 @@ object MyFlixFonts {
     /**
      * Body/UI font alias
      */
-    val Body = Outfit
+    val Body = Montserrat
 }
