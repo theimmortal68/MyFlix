@@ -30,6 +30,37 @@ data class ItemsResponse(
     @SerialName("TotalRecordCount") val totalRecordCount: Int,
 )
 
+/**
+ * Lightweight response for alphabet index loading.
+ * Contains minimal item data (id, name, sortName) for all library items.
+ */
+@Serializable
+data class AlphabetIndexResponse(
+    @SerialName("Items") val items: List<AlphabetIndexItem>,
+    @SerialName("TotalRecordCount") val totalRecordCount: Int,
+)
+
+/**
+ * Minimal item data for alphabet navigation.
+ * Only contains fields needed to build letter-to-index mapping.
+ */
+@Serializable
+data class AlphabetIndexItem(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String,
+    @SerialName("SortName") val sortName: String? = null,
+) {
+    /**
+     * Get the character used for alphabet indexing.
+     * Returns '#' for non-letter characters (numbers, symbols).
+     */
+    val indexChar: Char
+        get() {
+            val firstChar = (sortName ?: name).firstOrNull()?.uppercaseChar() ?: '#'
+            return if (firstChar.isLetter()) firstChar else '#'
+        }
+}
+
 @Serializable
 data class JellyfinItem(
     @SerialName("Id") val id: String,

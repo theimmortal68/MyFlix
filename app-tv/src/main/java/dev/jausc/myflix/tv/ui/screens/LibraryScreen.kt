@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +33,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -47,16 +47,16 @@ import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBar
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
-import dev.jausc.myflix.tv.ui.components.library.LibraryFilterDialog
-import dev.jausc.myflix.tv.ui.components.library.LibrarySortDialog
+import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @Composable
 fun LibraryScreen(
@@ -77,41 +77,45 @@ fun LibraryScreen(
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Dialog state
-    var showSortDialog by remember { mutableStateOf(false) }
-    var showFilterDialog by remember { mutableStateOf(false) }
+    // Nav bar popup state (auto-hides after 5 seconds like HomeScreen)
+    val navBarState = rememberNavBarPopupState()
 
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
-    val homeButtonFocusRequester = remember { FocusRequester() }
+    val filterBarFocusRequester = remember { FocusRequester() }
+    val filterBarFirstButtonFocusRequester = remember { FocusRequester() }
+    val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
+    var didRequestInitialFocus by remember { mutableStateOf(false) }
 
-    // Calculate available letters from items
-    val availableLetters by remember(state.items) {
-        derivedStateOf {
-            state.items
-                .mapNotNull { item ->
-                    item.name.firstOrNull()?.uppercaseChar()
-                }
-                .toSet()
-        }
+    // Use alphabet index from ViewModel (covers entire library, not just loaded items)
+    // Falls back to loaded items if alphabet index hasn't loaded yet
+    val availableLetters = if (state.availableLetters.isNotEmpty()) {
+        state.availableLetters
+    } else {
+        // Fallback: compute from loaded items while alphabet index loads
+        state.items
+            .mapNotNull { item ->
+                val firstChar = item.name.firstOrNull()?.uppercaseChar() ?: return@mapNotNull null
+                if (firstChar.isLetter()) firstChar else '#'
+            }
+            .toSet()
     }
 
-    // Map letter to first item index
-    val letterIndexMap by remember(state.items) {
-        derivedStateOf {
-            val map = mutableMapOf<Char, Int>()
+    // Use alphabet index from ViewModel (maps letter -> index in full library)
+    val letterIndexMap = if (state.alphabetIndex.isNotEmpty()) {
+        state.alphabetIndex
+    } else {
+        // Fallback: compute from loaded items while alphabet index loads
+        buildMap {
             state.items.forEachIndexed { index, item ->
-                val letter = item.name.firstOrNull()?.uppercaseChar()
-                    ?: return@forEachIndexed
-
+                val letter = item.name.firstOrNull()?.uppercaseChar() ?: return@forEachIndexed
                 val normalizedLetter = if (letter.isLetter()) letter else '#'
-                if (normalizedLetter !in map) {
-                    map[normalizedLetter] = index
+                if (normalizedLetter !in this) {
+                    put(normalizedLetter, index)
                 }
             }
-            map.toMap()
         }
     }
 
@@ -149,31 +153,45 @@ fun LibraryScreen(
             }
     }
 
+    LaunchedEffect(state.isLoading, state.items) {
+        if (!didRequestInitialFocus && !state.isLoading && state.items.isNotEmpty()) {
+            didRequestInitialFocus = true
+            delay(100)
+            try {
+                firstItemFocusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top Navigation Bar
-            TopNavigationBar(
-                selectedItem = selectedNavItem,
-                onItemSelected = onNavigate,
-                homeButtonFocusRequester = homeButtonFocusRequester,
-                downFocusRequester = firstItemFocusRequester,
-            )
+            // Space for nav bar (content starts below where nav bar would be)
+            Spacer(modifier = Modifier.height(40.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Filter bar
+            // Filter bar - shows nav bar when navigating up
             LibraryFilterBar(
                 libraryName = libraryName,
                 totalItems = state.totalRecordCount,
                 loadedItems = state.items.size,
                 filterState = state.filterState,
+                availableGenres = state.availableGenres,
+                availableParentalRatings = state.availableParentalRatings,
                 onViewModeChange = { viewModel.setViewMode(it) },
-                onFilterClick = { showFilterDialog = true },
-                onSortClick = { showSortDialog = true },
+                onSortChange = { sortBy, sortOrder ->
+                    viewModel.updateSort(sortBy, sortOrder)
+                },
+                onFilterChange = { watchedFilter, ratingFilter, yearRange ->
+                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange)
+                },
+                onGenreToggle = { viewModel.toggleGenre(it) },
+                onClearGenres = { viewModel.clearGenres() },
+                onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
+                onClearParentalRatings = { viewModel.clearParentalRatings() },
                 onShuffleClick = {
                     viewModel.getShuffleItemId()?.let { itemId ->
                         onPlayClick(itemId)
@@ -184,7 +202,13 @@ fun LibraryScreen(
                         gridState.animateScrollToItem(0)
                     }
                 },
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .focusRequester(filterBarFocusRequester),
+                onUpNavigation = { navBarState.show() },
+                firstButtonFocusRequester = filterBarFirstButtonFocusRequester,
+                gridFocusRequester = firstItemFocusRequester,
+                alphabetFocusRequester = alphabetFocusRequester,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -248,7 +272,10 @@ fun LibraryScreen(
                             aspectRatio = aspectRatio,
                             jellyfinClient = jellyfinClient,
                             firstItemFocusRequester = firstItemFocusRequester,
+                            filterBarFocusRequester = filterBarFirstButtonFocusRequester,
+                            alphabetFocusRequester = alphabetFocusRequester,
                             onItemClick = onItemClick,
+                            onUpNavigation = { navBarState.show() },
                             modifier = Modifier.weight(1f),
                         )
 
@@ -258,11 +285,11 @@ fun LibraryScreen(
                             onLetterClick = { letter ->
                                 val targetLetter = if (!letter.isLetter()) '#' else letter
                                 letterIndexMap[targetLetter]?.let { index ->
-                                    scope.launch {
-                                        gridState.animateScrollToItem(index)
-                                    }
+                                    // Jump to the target index - this reloads items from that position
+                                    viewModel.jumpToIndex(index)
                                 }
                             },
+                            focusRequester = alphabetFocusRequester,
                             modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
                         )
                     }
@@ -270,32 +297,25 @@ fun LibraryScreen(
             }
         }
 
-        // Sort dialog
-        if (showSortDialog) {
-            LibrarySortDialog(
-                currentSortBy = state.filterState.sortBy,
-                currentSortOrder = state.filterState.sortOrder,
-                onSortSelected = { sortBy, sortOrder ->
-                    viewModel.updateSort(sortBy, sortOrder)
-                    showSortDialog = false
-                },
-                onDismiss = { showSortDialog = false },
-            )
-        }
+        // Top Navigation Bar Popup (overlay, auto-hides)
+        TopNavigationBarPopup(
+            visible = navBarState.isVisible,
+            selectedItem = selectedNavItem,
+            onItemSelected = onNavigate,
+            onDismiss = {
+                navBarState.hide()
+                try {
+                    filterBarFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                    try {
+                        firstItemFocusRequester.requestFocus()
+                    } catch (_: Exception) {
+                    }
+                }
+            },
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
 
-        // Filter dialog
-        if (showFilterDialog) {
-            LibraryFilterDialog(
-                currentWatchedFilter = state.filterState.watchedFilter,
-                currentRatingFilter = state.filterState.ratingFilter,
-                currentYearRange = state.filterState.yearRange,
-                onApply = { watchedFilter, ratingFilter, yearRange ->
-                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange)
-                    showFilterDialog = false
-                },
-                onDismiss = { showFilterDialog = false },
-            )
-        }
     }
 }
 
@@ -307,7 +327,10 @@ private fun LibraryGridContent(
     aspectRatio: Float,
     jellyfinClient: JellyfinClient,
     firstItemFocusRequester: FocusRequester,
+    filterBarFocusRequester: FocusRequester,
+    alphabetFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
+    onUpNavigation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -329,16 +352,37 @@ private fun LibraryGridContent(
                 jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
             }
 
+            // First row items navigate up to filter bar
+            val isFirstRow = index < columns
+            val isLastColumn = (index + 1) % columns == 0
             MediaCard(
                 item = item,
                 imageUrl = imageUrl,
                 onClick = { onItemClick(item.id) },
                 aspectRatio = aspectRatio,
-                modifier = if (index == 0) {
-                    Modifier.focusRequester(firstItemFocusRequester)
-                } else {
-                    Modifier
-                },
+                showLabel = true,
+                modifier = Modifier
+                    .then(
+                        if (index == 0) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .then(
+                        if (isFirstRow) {
+                            Modifier.focusProperties { up = filterBarFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .then(
+                        if (isLastColumn) {
+                            Modifier.focusProperties { right = alphabetFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
         }
 

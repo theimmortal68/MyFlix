@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -126,14 +128,8 @@ private fun MediaCardInternal(
             shape = MaterialTheme.shapes.medium,
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = MaterialTheme.shapes.medium,
-            ),
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
         ),
         scale = ClickableSurfaceDefaults.scale(
             focusedScale = 1f,
@@ -150,7 +146,17 @@ private fun MediaCardInternal(
                     contentDescription = item.name,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(MaterialTheme.shapes.medium),
+                        .clip(MaterialTheme.shapes.medium)
+                        .then(
+                            if (isFocused) {
+                                Modifier.border(
+                                    BorderStroke(2.dp, TvColors.BluePrimary),
+                                    MaterialTheme.shapes.medium,
+                                )
+                            } else {
+                                Modifier
+                            },
+                        ),
                     contentScale = ContentScale.Crop,
                 )
 
@@ -180,20 +186,22 @@ private fun MediaCardInternal(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                 ) {
+                    // Title with marquee when focused
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.labelMedium,
                         color = TvColors.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = if (isFocused) Modifier.basicMarquee() else Modifier,
                     )
+                    // Year on separate line
                     item.productionYear?.let { year ->
                         Text(
                             text = year.toString(),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = TvColors.TextSecondary,
                         )
                     }

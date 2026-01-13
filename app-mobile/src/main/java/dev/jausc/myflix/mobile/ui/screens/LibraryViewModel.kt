@@ -33,6 +33,7 @@ data class LibraryUiState(
     val error: String? = null,
     val filterState: LibraryFilterState = LibraryFilterState.DEFAULT,
     val availableGenres: List<String> = emptyList(),
+    val availableParentalRatings: List<String> = emptyList(),
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty() && error == null
@@ -123,6 +124,7 @@ class LibraryViewModel(
                 isPlayed = isPlayed,
                 minCommunityRating = filterState.ratingFilter,
                 years = years,
+                officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
             )
                 .onSuccess { result ->
                     _uiState.update { state ->
@@ -131,11 +133,18 @@ class LibraryViewModel(
                         } else {
                             (state.items + result.items).distinctBy { it.id }
                         }
+                        val parentalRatings = newItems
+                            .mapNotNull { item ->
+                                item.officialRating?.takeIf { it.isNotBlank() && it != "0" }
+                            }
+                            .distinct()
+                            .sorted()
                         state.copy(
                             items = newItems,
                             totalRecordCount = result.totalRecordCount,
                             isLoading = false,
                             isLoadingMore = false,
+                            availableParentalRatings = parentalRatings,
                         )
                     }
                 }

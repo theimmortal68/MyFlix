@@ -5,6 +5,7 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.jausc.myflix.core.common.model.AlphabetIndexItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryFilterState
 import dev.jausc.myflix.core.common.model.LibrarySortOption
@@ -12,6 +13,7 @@ import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.model.SortOrder
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
+import dev.jausc.myflix.core.common.model.isMovie
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,13 @@ data class LibraryUiState(
     val error: String? = null,
     val filterState: LibraryFilterState = LibraryFilterState.DEFAULT,
     val availableGenres: List<String> = emptyList(),
+    val availableParentalRatings: List<String> = emptyList(),
+    /** Full alphabet index from all library items (letter -> index mapping) */
+    val alphabetIndex: Map<Char, Int> = emptyMap(),
+    /** Set of letters that have items in the library */
+    val availableLetters: Set<Char> = emptySet(),
+    /** Whether alphabet index is still loading */
+    val isLoadingAlphabetIndex: Boolean = true,
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty() && error == null
@@ -75,6 +84,47 @@ class LibraryViewModel(
         // Load genres and items
         loadGenres()
         loadLibraryItems(resetList = true)
+
+        // Load alphabet index in background (for full library navigation)
+        loadAlphabetIndex()
+    }
+
+    /**
+     * Load lightweight alphabet index for the entire library.
+     * This loads just names/IDs for all items to enable letter-based scrolling.
+     */
+    private fun loadAlphabetIndex() {
+        viewModelScope.launch {
+            val filterState = _uiState.value.filterState
+            jellyfinClient.getLibraryAlphabetIndex(
+                libraryId = libraryId,
+                sortBy = filterState.sortBy.jellyfinValue,
+                sortOrder = filterState.sortOrder.jellyfinValue,
+            ).onSuccess { response ->
+                // Build letter -> first index map
+                val indexMap = mutableMapOf<Char, Int>()
+                val letters = mutableSetOf<Char>()
+
+                response.items.forEachIndexed { index, item ->
+                    val letter = item.indexChar
+                    letters.add(letter)
+                    if (letter !in indexMap) {
+                        indexMap[letter] = index
+                    }
+                }
+
+                _uiState.update { state ->
+                    state.copy(
+                        alphabetIndex = indexMap.toMap(),
+                        availableLetters = letters.toSet(),
+                        isLoadingAlphabetIndex = false,
+                    )
+                }
+            }.onFailure {
+                // Alphabet index failed - fall back to loaded items only
+                _uiState.update { it.copy(isLoadingAlphabetIndex = false) }
+            }
+        }
     }
 
     /**
@@ -123,19 +173,34 @@ class LibraryViewModel(
                 isPlayed = isPlayed,
                 minCommunityRating = filterState.ratingFilter,
                 years = years,
+                officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
             )
                 .onSuccess { result ->
                     _uiState.update { state ->
-                        val newItems = if (resetList) {
-                            result.items
-                        } else {
-                            (state.items + result.items).distinctBy { it.id }
+                        val filteredItems = result.items.filterNot { item ->
+                            item.type == "Folder" ||
+                                (item.isMovie &&
+                                    item.mediaSources.isNullOrEmpty() &&
+                                    item.imageTags?.primary == null &&
+                                    item.backdropImageTags.isNullOrEmpty())
                         }
+                        val newItems = if (resetList) {
+                            filteredItems
+                        } else {
+                            (state.items + filteredItems).distinctBy { it.id }
+                        }
+                        val parentalRatings = newItems
+                            .mapNotNull { item ->
+                                item.officialRating?.takeIf { it.isNotBlank() && it != "0" }
+                            }
+                            .distinct()
+                            .sorted()
                         state.copy(
                             items = newItems,
                             totalRecordCount = result.totalRecordCount,
                             isLoading = false,
                             isLoadingMore = false,
+                            availableParentalRatings = parentalRatings,
                         )
                     }
                 }
@@ -217,6 +282,34 @@ class LibraryViewModel(
     }
 
     /**
+     * Toggle parental rating selection.
+     */
+    fun toggleParentalRating(rating: String) {
+        updateFilterState { state ->
+            val newRatings = if (state.selectedParentalRatings.contains(rating)) {
+                state.selectedParentalRatings - rating
+            } else {
+                state.selectedParentalRatings + rating
+            }
+            state.copy(selectedParentalRatings = newRatings)
+        }
+    }
+
+    /**
+     * Clear all selected genres.
+     */
+    fun clearGenres() {
+        updateFilterState { it.copy(selectedGenres = emptySet()) }
+    }
+
+    /**
+     * Clear all selected parental ratings.
+     */
+    fun clearParentalRatings() {
+        updateFilterState { it.copy(selectedParentalRatings = emptySet()) }
+    }
+
+    /**
      * Update year range filter.
      */
     fun updateYearRange(range: YearRange) {
@@ -264,6 +357,18 @@ class LibraryViewModel(
     }
 
     /**
+     * Jump to a specific index in the library.
+     * Clears current items and loads items starting from the specified index.
+     * Used for alphabet navigation to jump to any position in a large library.
+     */
+    fun jumpToIndex(index: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, items = emptyList()) }
+            loadLibraryItems(resetList = true, startIndex = index)
+        }
+    }
+
+    /**
      * Update filter state and reload items.
      */
     private fun updateFilterState(update: (LibraryFilterState) -> LibraryFilterState) {
@@ -274,6 +379,10 @@ class LibraryViewModel(
         val filtersChanged = newState.copy(viewMode = currentState.viewMode) !=
             currentState.copy(viewMode = currentState.viewMode)
 
+        // Check if sort changed (requires alphabet index reload)
+        val sortChanged = newState.sortBy != currentState.sortBy ||
+            newState.sortOrder != currentState.sortOrder
+
         _uiState.update { it.copy(filterState = newState) }
 
         // Save to preferences
@@ -282,6 +391,12 @@ class LibraryViewModel(
         // Reload items if filters changed
         if (filtersChanged) {
             loadLibraryItems(resetList = true)
+        }
+
+        // Reload alphabet index if sort changed
+        if (sortChanged) {
+            _uiState.update { it.copy(isLoadingAlphabetIndex = true) }
+            loadAlphabetIndex()
         }
     }
 }

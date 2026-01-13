@@ -310,12 +310,23 @@ abstract class AppPreferences(context: Context) {
             -1f,
         ).takeIf { it > 0 }
 
+        val parentalRatingsString = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_PARENTAL_RATINGS_PREFIX + libraryId,
+            null,
+        )
+        val selectedParentalRatings = if (parentalRatingsString.isNullOrBlank()) {
+            emptySet()
+        } else {
+            parentalRatingsString.split(",").toSet()
+        }
+
         return LibraryFilterState(
             sortBy = LibrarySortOption.fromJellyfinValue(sortByValue),
             sortOrder = SortOrder.fromJellyfinValue(sortOrderValue),
             viewMode = LibraryViewMode.fromString(viewModeValue),
             watchedFilter = WatchedFilter.fromString(watchedFilterValue),
             selectedGenres = selectedGenres,
+            selectedParentalRatings = selectedParentalRatings,
             yearRange = YearRange(from = yearFrom, to = yearTo),
             ratingFilter = ratingFilter,
         )
@@ -345,6 +356,10 @@ abstract class AppPreferences(context: Context) {
             .putString(
                 PreferenceKeys.Prefs.LIBRARY_GENRES_PREFIX + libraryId,
                 state.selectedGenres.joinToString(","),
+            )
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_PARENTAL_RATINGS_PREFIX + libraryId,
+                state.selectedParentalRatings.joinToString(","),
             )
             .apply()
 
@@ -382,6 +397,7 @@ abstract class AppPreferences(context: Context) {
             .remove(PreferenceKeys.Prefs.LIBRARY_YEAR_FROM_PREFIX + libraryId)
             .remove(PreferenceKeys.Prefs.LIBRARY_YEAR_TO_PREFIX + libraryId)
             .remove(PreferenceKeys.Prefs.LIBRARY_RATING_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_PARENTAL_RATINGS_PREFIX + libraryId)
             .apply()
     }
 }

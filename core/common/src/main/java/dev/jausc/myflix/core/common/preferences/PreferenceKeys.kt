@@ -130,6 +130,9 @@ object PreferenceKeys {
 
         /** Prefix for library rating filter (append libraryId) */
         const val LIBRARY_RATING_PREFIX = "library_rating_"
+
+        /** Prefix for library parental ratings (append libraryId) */
+        const val LIBRARY_PARENTAL_RATINGS_PREFIX = "library_parental_ratings_"
     }
 
     // ==================== Default Values ====================

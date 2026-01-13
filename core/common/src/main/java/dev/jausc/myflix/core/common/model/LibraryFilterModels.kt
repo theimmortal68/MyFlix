@@ -97,6 +97,7 @@ data class LibraryFilterState(
     val sortOrder: SortOrder = SortOrder.ASCENDING,
     val viewMode: LibraryViewMode = LibraryViewMode.POSTER,
     val selectedGenres: Set<String> = emptySet(),
+    val selectedParentalRatings: Set<String> = emptySet(),
     val watchedFilter: WatchedFilter = WatchedFilter.ALL,
     val yearRange: YearRange = YearRange(),
     val ratingFilter: Float? = null,
@@ -106,6 +107,7 @@ data class LibraryFilterState(
      */
     val hasActiveFilters: Boolean
         get() = selectedGenres.isNotEmpty() ||
+            selectedParentalRatings.isNotEmpty() ||
             watchedFilter != WatchedFilter.ALL ||
             yearRange.isActive ||
             ratingFilter != null
@@ -117,6 +119,7 @@ data class LibraryFilterState(
         get() {
             var count = 0
             if (selectedGenres.isNotEmpty()) count++
+            if (selectedParentalRatings.isNotEmpty()) count++
             if (watchedFilter != WatchedFilter.ALL) count++
             if (yearRange.isActive) count++
             if (ratingFilter != null) count++

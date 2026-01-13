@@ -37,6 +37,9 @@ object CacheKeys {
 
         /** DNS cache for network resilience - 5 minutes */
         const val DNS = 300_000L
+
+        /** Alphabet index - titles rarely change - 30 minutes */
+        const val ALPHABET_INDEX = 1_800_000L
     }
 
     // ==================== Cache Key Builders ====================
@@ -47,6 +50,10 @@ object CacheKeys {
     /** Library items with pagination */
     fun library(libraryId: String, limit: Int, startIndex: Int, sortBy: String): String =
         "library:$libraryId:$limit:$startIndex:$sortBy"
+
+    /** Library alphabet index (lightweight, all items) */
+    fun alphabetIndex(libraryId: String, sortBy: String): String =
+        "alphabetIndex:$libraryId:$sortBy"
 
     /** Single item details */
     fun item(itemId: String): String = "item:$itemId"
