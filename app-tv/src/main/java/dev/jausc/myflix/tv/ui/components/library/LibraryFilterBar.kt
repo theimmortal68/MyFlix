@@ -114,7 +114,7 @@ fun LibraryFilterBar(
         // Library title
         Text(
             text = libraryName,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = TvColors.TextPrimary,
         )
 

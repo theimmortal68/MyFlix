@@ -276,7 +276,7 @@ private fun NavTabButton(
                 NavItem.UNIVERSES -> "Universes"
             },
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
