@@ -15,6 +15,8 @@ import dev.jausc.myflix.core.common.model.YearRange
 import dev.jausc.myflix.core.common.model.isMovie
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 100
-private const val PREFETCH_DELAY_MS = 200L
+private const val PREFETCH_DELAY_MS = 50L
+private const val PREFETCH_PARALLEL_PAGES = 3
 
 /**
  * UI state for the library screen with filter support.
@@ -88,7 +91,8 @@ class LibraryViewModel(
 
     /**
      * Pre-fetch library items in background for faster navigation.
-     * Loads remaining pages of the main library, then pre-fetches each letter.
+     * Loads remaining pages of the main library in parallel batches,
+     * then pre-fetches each letter for instant alphabet navigation.
      */
     private fun startBackgroundPrefetch() {
         viewModelScope.launch {
@@ -102,46 +106,61 @@ class LibraryViewModel(
             if (initialState.items.isEmpty() || initialState.error != null) return@launch
 
             val filterState = initialState.filterState
-
-            // Phase 1: Load remaining pages of main library
             val totalItems = initialState.totalRecordCount
-            var loadedCount = initialState.items.size
 
-            while (loadedCount < totalItems) {
-                delay(PREFETCH_DELAY_MS)
+            // Phase 1: Load remaining pages of main library in parallel batches
+            // Start from PAGE_SIZE (first page already loaded), not items.size
+            // because client-side filtering may have reduced visible items
+            var apiStartIndex = PAGE_SIZE
 
+            while (apiStartIndex < totalItems) {
                 // Pause if user is actively filtering
                 if (_uiState.value.currentLetter != null || _uiState.value.isLoading) {
                     delay(500)
                     continue
                 }
 
-                prefetchPage(
-                    startIndex = loadedCount,
-                    sortBy = filterState.sortBy.jellyfinValue,
-                    sortOrder = filterState.sortOrder.jellyfinValue,
-                    nameStartsWith = null,
-                )
-                loadedCount += PAGE_SIZE
+                // Prefetch multiple pages in parallel
+                val pagesToFetch = (0 until PREFETCH_PARALLEL_PAGES)
+                    .map { apiStartIndex + (it * PAGE_SIZE) }
+                    .filter { it < totalItems }
+
+                pagesToFetch.map { startIndex ->
+                    async {
+                        prefetchPage(
+                            startIndex = startIndex,
+                            sortBy = filterState.sortBy.jellyfinValue,
+                            sortOrder = filterState.sortOrder.jellyfinValue,
+                            nameStartsWith = null,
+                        )
+                    }
+                }.awaitAll()
+
+                apiStartIndex += PREFETCH_PARALLEL_PAGES * PAGE_SIZE
+                delay(PREFETCH_DELAY_MS)
             }
 
-            // Phase 2: Pre-fetch first page of each letter for instant alphabet navigation
+            // Phase 2: Pre-fetch first page of each letter in parallel batches
             val alphabet = listOf('#') + ('A'..'Z').toList()
-            for (letter in alphabet) {
-                delay(PREFETCH_DELAY_MS)
-
+            alphabet.chunked(PREFETCH_PARALLEL_PAGES).forEach { letterBatch ->
                 // Pause if user is actively using the library
                 if (_uiState.value.currentLetter != null || _uiState.value.isLoading) {
                     delay(500)
-                    continue
+                    return@forEach
                 }
 
-                prefetchPage(
-                    startIndex = 0,
-                    sortBy = filterState.sortBy.jellyfinValue,
-                    sortOrder = filterState.sortOrder.jellyfinValue,
-                    nameStartsWith = if (letter == '#') "#" else letter.toString(),
-                )
+                letterBatch.map { letter ->
+                    async {
+                        prefetchPage(
+                            startIndex = 0,
+                            sortBy = filterState.sortBy.jellyfinValue,
+                            sortOrder = filterState.sortOrder.jellyfinValue,
+                            nameStartsWith = if (letter == '#') "#" else letter.toString(),
+                        )
+                    }
+                }.awaitAll()
+
+                delay(PREFETCH_DELAY_MS)
             }
         }
     }

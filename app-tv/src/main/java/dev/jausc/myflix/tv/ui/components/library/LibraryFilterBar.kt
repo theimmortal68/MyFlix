@@ -19,7 +19,6 @@ import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.ViewModule
 import androidx.compose.material3.HorizontalDivider
@@ -63,7 +62,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 /**
  * Icon-based filter bar for library screens with inline dropdown menus.
  *
- * Layout: Title | ItemCount | Spacer | [Poster][Thumbnail] | [Filter][Sort][Shuffle][ScrollUp]
+ * Layout: Title | ItemCount | Spacer | [Poster][Thumbnail] | [Filter][Sort][Shuffle]
  */
 @Composable
 fun LibraryFilterBar(
@@ -81,7 +80,6 @@ fun LibraryFilterBar(
     onParentalRatingToggle: (String) -> Unit,
     onClearParentalRatings: () -> Unit,
     onShuffleClick: () -> Unit,
-    onScrollToTopClick: () -> Unit,
     modifier: Modifier = Modifier,
     onUpNavigation: () -> Unit = {},
     firstButtonFocusRequester: FocusRequester? = null,
@@ -94,7 +92,6 @@ fun LibraryFilterBar(
     val filterFocusRequester = remember { FocusRequester() }
     val sortFocusRequester = remember { FocusRequester() }
     val shuffleFocusRequester = remember { FocusRequester() }
-    val scrollUpFocusRequester = remember { FocusRequester() }
 
     // Dropdown states
     var showSortDropdown by remember { mutableStateOf(false) }
@@ -246,21 +243,6 @@ fun LibraryFilterBar(
                 .focusRequester(shuffleFocusRequester)
                 .focusProperties {
                     left = sortFocusRequester
-                    right = scrollUpFocusRequester
-                    down = gridFocusRequester ?: FocusRequester.Default
-                },
-        )
-
-        // Scroll to top button
-        FilterBarButton(
-            icon = Icons.Outlined.KeyboardArrowUp,
-            contentDescription = "Scroll to Top",
-            isSelected = false,
-            onClick = onScrollToTopClick,
-            modifier = Modifier
-                .focusRequester(scrollUpFocusRequester)
-                .focusProperties {
-                    left = shuffleFocusRequester
                     right = alphabetFocusRequester ?: FocusRequester.Cancel
                     down = gridFocusRequester ?: FocusRequester.Default
                 },

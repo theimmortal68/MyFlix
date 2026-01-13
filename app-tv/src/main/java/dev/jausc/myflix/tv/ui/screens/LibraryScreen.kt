@@ -27,7 +27,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -53,10 +52,9 @@ import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 
 @Composable
 fun LibraryScreen(
@@ -86,7 +84,6 @@ fun LibraryScreen(
     val filterBarFirstButtonFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
-    val scope = rememberCoroutineScope()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
     // All letters are always available - the API handles filtering
@@ -187,13 +184,6 @@ fun LibraryScreen(
                 onShuffleClick = {
                     viewModel.getShuffleItemId()?.let { itemId ->
                         onItemClick(itemId)
-                    }
-                },
-                onScrollToTopClick = {
-                    // Clear any letter filter and reload the full library
-                    viewModel.clearLetterFilter()
-                    scope.launch {
-                        gridState.animateScrollToItem(0)
                     }
                 },
                 modifier = Modifier
