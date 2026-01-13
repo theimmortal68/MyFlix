@@ -26,6 +26,17 @@ object MyFlixFonts {
     )
 
     /**
+     * Plus Jakarta Sans - modern, clean sans-serif for body text
+     * Popular choice for streaming apps
+     */
+    val PlusJakartaSans = FontFamily(
+        Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
+        Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
+        Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
+        Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
+    )
+
+    /**
      * Logo font alias
      */
     val Logo = BebasNeue
@@ -34,4 +45,9 @@ object MyFlixFonts {
      * Header font alias
      */
     val Header = Anton
+
+    /**
+     * Body/UI font alias
+     */
+    val Body = PlusJakartaSans
 }
