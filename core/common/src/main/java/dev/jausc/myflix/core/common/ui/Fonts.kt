@@ -37,6 +37,17 @@ object MyFlixFonts {
     )
 
     /**
+     * Outfit - modern geometric sans-serif with distinctive character
+     * Clean, contemporary look perfect for media apps
+     */
+    val Outfit = FontFamily(
+        Font(R.font.outfit_regular, FontWeight.Normal),
+        Font(R.font.outfit_medium, FontWeight.Medium),
+        Font(R.font.outfit_semibold, FontWeight.SemiBold),
+        Font(R.font.outfit_bold, FontWeight.Bold),
+    )
+
+    /**
      * Logo font alias
      */
     val Logo = BebasNeue
@@ -49,5 +60,5 @@ object MyFlixFonts {
     /**
      * Body/UI font alias
      */
-    val Body = PlusJakartaSans
+    val Body = Outfit
 }
