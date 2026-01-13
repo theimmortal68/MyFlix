@@ -56,10 +56,14 @@ import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
+import dev.jausc.myflix.core.seerr.DiscoverFilterConfig
+import dev.jausc.myflix.core.seerr.MediaTypeFilter
+import dev.jausc.myflix.core.seerr.ReleaseStatusFilter
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SortFilter
 import dev.jausc.myflix.core.seerr.filterDiscoverable
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemDivider
@@ -76,39 +80,6 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-
-/**
- * Filter configuration for discover screens.
- */
-data class DiscoverFilterConfig(
-    val showMediaTypeFilter: Boolean = false,
-    val showGenreFilter: Boolean = false,
-    val showReleaseStatusFilter: Boolean = false,
-    val defaultMediaType: MediaTypeFilter = MediaTypeFilter.ALL,
-)
-
-enum class MediaTypeFilter(val label: String, val apiValue: String?) {
-    ALL("All", null),
-    MOVIES("Movies", "movie"),
-    TV_SHOWS("TV Shows", "tv"),
-}
-
-enum class ReleaseStatusFilter(val label: String) {
-    ALL("All"),
-    RELEASED("Released"),
-    UPCOMING("Upcoming"),
-}
-
-enum class SortFilter(val label: String, val movieValue: String, val tvValue: String) {
-    POPULARITY_DESC("Most Popular", "popularity.desc", "popularity.desc"),
-    POPULARITY_ASC("Least Popular", "popularity.asc", "popularity.asc"),
-    RATING_DESC("Highest Rated", "vote_average.desc", "vote_average.desc"),
-    RATING_ASC("Lowest Rated", "vote_average.asc", "vote_average.asc"),
-    RELEASE_DESC("Newest First", "primary_release_date.desc", "first_air_date.desc"),
-    RELEASE_ASC("Oldest First", "primary_release_date.asc", "first_air_date.asc"),
-    TITLE_ASC("Title A-Z", "title.asc", "name.asc"),
-    TITLE_DESC("Title Z-A", "title.desc", "name.desc"),
-}
 
 @Composable
 fun SeerrDiscoverTrendingScreen(

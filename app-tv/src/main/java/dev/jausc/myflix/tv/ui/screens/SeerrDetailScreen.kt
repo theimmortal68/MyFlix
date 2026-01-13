@@ -75,6 +75,8 @@ import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeason
+import dev.jausc.myflix.core.seerr.SeerrStatusColors
+import dev.jausc.myflix.core.seerr.buildQuotaText
 import dev.jausc.myflix.tv.ui.components.TvIconButton
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
@@ -968,20 +970,6 @@ private fun ImdbRatingBadge(rating: Double) {
     }
 }
 
-private fun buildQuotaText(quotaDetails: SeerrQuotaDetails?): String? {
-    val limit = quotaDetails?.limit ?: return null
-    val days = quotaDetails.days
-    val remaining = quotaDetails.remaining
-    val used = quotaDetails.used
-
-    val windowText = days?.let { " per $it days" } ?: ""
-    return if (remaining != null) {
-        "Quota: $remaining/$limit remaining$windowText"
-    } else {
-        "Quota: $used/$limit used$windowText"
-    }
-}
-
 @Composable
 private fun CastCard(
     member: SeerrCastMember,
@@ -1186,10 +1174,10 @@ private fun GenreChip(
 }
 
 private fun getSeasonStatusColor(status: Int?): Color = when (status) {
-    SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E) // Green
-    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA) // Blue
-    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24) // Yellow
-    else -> TvColors.Surface // Default gray
+    SeerrMediaStatus.AVAILABLE -> Color(SeerrStatusColors.AVAILABLE)
+    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(SeerrStatusColors.PARTIALLY_AVAILABLE)
+    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(SeerrStatusColors.REQUESTED)
+    else -> TvColors.Surface // TV uses theme surface for default
 }
 
 @Composable
@@ -1198,8 +1186,8 @@ private fun SeasonStatusLegend() {
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SeasonLegendItem(color = Color(0xFF22C55E), label = "Available")
-        SeasonLegendItem(color = Color(0xFFFBBF24), label = "Requested")
+        SeasonLegendItem(color = Color(SeerrStatusColors.AVAILABLE), label = "Available")
+        SeasonLegendItem(color = Color(SeerrStatusColors.REQUESTED), label = "Requested")
         SeasonLegendItem(color = TvColors.Surface, label = "Not Requested")
     }
 }

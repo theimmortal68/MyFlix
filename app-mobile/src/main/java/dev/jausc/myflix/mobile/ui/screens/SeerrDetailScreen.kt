@@ -79,7 +79,9 @@ import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeasonStatus
+import dev.jausc.myflix.core.seerr.SeerrStatusColors
 import dev.jausc.myflix.core.seerr.SeerrVideo
+import dev.jausc.myflix.core.seerr.buildQuotaText
 import dev.jausc.myflix.core.common.util.DateFormatter
 import kotlinx.coroutines.launch
 
@@ -929,20 +931,6 @@ private fun MobileSeerrRequestSection(
     }
 }
 
-private fun buildQuotaText(quotaDetails: SeerrQuotaDetails?): String? {
-    val limit = quotaDetails?.limit ?: return null
-    val days = quotaDetails.days
-    val remaining = quotaDetails.remaining
-    val used = quotaDetails.used
-
-    val windowText = days?.let { " per $it days" } ?: ""
-    return if (remaining != null) {
-        "Quota: $remaining/$limit remaining$windowText"
-    } else {
-        "Quota: $used/$limit used$windowText"
-    }
-}
-
 @Composable
 private fun MobileSeerrCastCard(
     castMember: SeerrCastMember,
@@ -1258,12 +1246,8 @@ private fun MobileGenreChip(
     }
 }
 
-private fun getMobileSeasonStatusColor(status: Int?): Color = when (status) {
-    SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E) // Green
-    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA) // Blue
-    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24) // Yellow
-    else -> Color(0xFF6B7280) // Default gray
-}
+private fun getMobileSeasonStatusColor(status: Int?): Color =
+    Color(SeerrStatusColors.getColorForStatus(status))
 
 @Composable
 private fun MobileSeasonStatusLegend() {
@@ -1271,9 +1255,9 @@ private fun MobileSeasonStatusLegend() {
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MobileSeasonLegendItem(color = Color(0xFF22C55E), label = "Available")
-        MobileSeasonLegendItem(color = Color(0xFFFBBF24), label = "Requested")
-        MobileSeasonLegendItem(color = Color(0xFF6B7280), label = "Not Requested")
+        MobileSeasonLegendItem(color = Color(SeerrStatusColors.AVAILABLE), label = "Available")
+        MobileSeasonLegendItem(color = Color(SeerrStatusColors.REQUESTED), label = "Requested")
+        MobileSeasonLegendItem(color = Color(SeerrStatusColors.NOT_REQUESTED), label = "Not Requested")
     }
 }
 

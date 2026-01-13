@@ -60,10 +60,14 @@ import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
+import dev.jausc.myflix.core.seerr.DiscoverFilterConfig
+import dev.jausc.myflix.core.seerr.MediaTypeFilter
+import dev.jausc.myflix.core.seerr.ReleaseStatusFilter
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SortFilter
 import dev.jausc.myflix.core.seerr.filterDiscoverable
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MenuItem
@@ -73,43 +77,6 @@ import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-
-// ============================================================================
-// Filter Configuration (shared types)
-// ============================================================================
-
-/**
- * Filter configuration for discover screens.
- */
-data class MobileDiscoverFilterConfig(
-    val showMediaTypeFilter: Boolean = false,
-    val showGenreFilter: Boolean = false,
-    val showReleaseStatusFilter: Boolean = false,
-    val defaultMediaType: MobileMediaTypeFilter = MobileMediaTypeFilter.ALL,
-)
-
-enum class MobileMediaTypeFilter(val label: String, val apiValue: String?) {
-    ALL("All", null),
-    MOVIES("Movies", "movie"),
-    TV_SHOWS("TV Shows", "tv"),
-}
-
-enum class MobileReleaseStatusFilter(val label: String) {
-    ALL("All"),
-    RELEASED("Released"),
-    UPCOMING("Upcoming"),
-}
-
-enum class MobileSortFilter(val label: String, val movieValue: String, val tvValue: String) {
-    POPULARITY_DESC("Most Popular", "popularity.desc", "popularity.desc"),
-    POPULARITY_ASC("Least Popular", "popularity.asc", "popularity.asc"),
-    RATING_DESC("Highest Rated", "vote_average.desc", "vote_average.desc"),
-    RATING_ASC("Lowest Rated", "vote_average.asc", "vote_average.asc"),
-    RELEASE_DESC("Newest First", "primary_release_date.desc", "first_air_date.desc"),
-    RELEASE_ASC("Oldest First", "primary_release_date.asc", "first_air_date.asc"),
-    TITLE_ASC("Title A-Z", "title.asc", "name.asc"),
-    TITLE_DESC("Title Z-A", "title.desc", "name.desc"),
-}
 
 @Composable
 fun SeerrDiscoverTrendingScreen(
@@ -122,7 +89,7 @@ fun SeerrDiscoverTrendingScreen(
         onBack = onBack,
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
-        filterConfig = MobileDiscoverFilterConfig(
+        filterConfig = DiscoverFilterConfig(
             showMediaTypeFilter = true,
             showGenreFilter = true,
             showReleaseStatusFilter = true,
@@ -144,10 +111,10 @@ fun SeerrDiscoverMoviesScreen(
         onBack = onBack,
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
-        filterConfig = MobileDiscoverFilterConfig(
+        filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
             showReleaseStatusFilter = true,
-            defaultMediaType = MobileMediaTypeFilter.MOVIES,
+            defaultMediaType = MediaTypeFilter.MOVIES,
         ),
         loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
             loadMobileMoviesWithFilters(seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
@@ -167,10 +134,10 @@ fun SeerrDiscoverTvScreen(
         onBack = onBack,
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
-        filterConfig = MobileDiscoverFilterConfig(
+        filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
             showReleaseStatusFilter = true,
-            defaultMediaType = MobileMediaTypeFilter.TV_SHOWS,
+            defaultMediaType = MediaTypeFilter.TV_SHOWS,
         ),
         loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
             loadMobileTvWithFilters(seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
@@ -190,12 +157,12 @@ fun SeerrDiscoverUpcomingMoviesScreen(
         onBack = onBack,
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
-        filterConfig = MobileDiscoverFilterConfig(
+        filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
-            defaultMediaType = MobileMediaTypeFilter.MOVIES,
+            defaultMediaType = MediaTypeFilter.MOVIES,
         ),
         loadItems = { page, _, genreIds, _, _, _, _, _ ->
-            loadMobileUpcomingWithFilters(seerrClient, page, MobileMediaTypeFilter.MOVIES, genreIds)
+            loadMobileUpcomingWithFilters(seerrClient, page, MediaTypeFilter.MOVIES, genreIds)
         },
         genreMediaType = "movie",
     )
@@ -212,12 +179,12 @@ fun SeerrDiscoverUpcomingTvScreen(
         onBack = onBack,
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
-        filterConfig = MobileDiscoverFilterConfig(
+        filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
-            defaultMediaType = MobileMediaTypeFilter.TV_SHOWS,
+            defaultMediaType = MediaTypeFilter.TV_SHOWS,
         ),
         loadItems = { page, _, genreIds, _, _, _, _, _ ->
-            loadMobileUpcomingWithFilters(seerrClient, page, MobileMediaTypeFilter.TV_SHOWS, genreIds)
+            loadMobileUpcomingWithFilters(seerrClient, page, MediaTypeFilter.TV_SHOWS, genreIds)
         },
         genreMediaType = "tv",
     )
@@ -237,10 +204,10 @@ fun SeerrDiscoverByGenreScreen(
         onBack = onBack,
         seerrClient = seerrClient,
         onMediaClick = onMediaClick,
-        filterConfig = MobileDiscoverFilterConfig(
+        filterConfig = DiscoverFilterConfig(
             showReleaseStatusFilter = true,
-            defaultMediaType = if (mediaType == "movie") MobileMediaTypeFilter.MOVIES
-                else MobileMediaTypeFilter.TV_SHOWS,
+            defaultMediaType = if (mediaType == "movie") MediaTypeFilter.MOVIES
+                else MediaTypeFilter.TV_SHOWS,
         ),
         loadItems = { page, _, _, releaseStatus, sort, rating, fromYear, toYear ->
             if (mediaType == "movie") {
@@ -568,13 +535,13 @@ private fun SeerrFilterableMediaListScreen(
     onBack: () -> Unit,
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
-    filterConfig: MobileDiscoverFilterConfig,
+    filterConfig: DiscoverFilterConfig,
     loadItems: suspend (
         page: Int,
-        mediaType: MobileMediaTypeFilter,
+        mediaType: MediaTypeFilter,
         genreIds: Set<Int>,
-        releaseStatus: MobileReleaseStatusFilter,
-        sortFilter: MobileSortFilter,
+        releaseStatus: ReleaseStatusFilter,
+        sortFilter: SortFilter,
         minRating: Float?,
         yearFrom: Int?,
         yearTo: Int?,
@@ -594,13 +561,13 @@ private fun SeerrFilterableMediaListScreen(
 
     // Filter state
     var mediaTypeFilter by remember { mutableStateOf(filterConfig.defaultMediaType) }
-    var releaseStatusFilter by remember { mutableStateOf(MobileReleaseStatusFilter.ALL) }
+    var releaseStatusFilter by remember { mutableStateOf(ReleaseStatusFilter.ALL) }
     var selectedGenreIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var genres by remember { mutableStateOf<List<SeerrGenre>>(emptyList()) }
     var filterTrigger by remember { mutableIntStateOf(0) }
 
     // Advanced filter state
-    var sortFilter by remember { mutableStateOf(MobileSortFilter.POPULARITY_DESC) }
+    var sortFilter by remember { mutableStateOf(SortFilter.POPULARITY_DESC) }
     var minRating by remember { mutableStateOf<Float?>(null) }
     var yearFrom by remember { mutableStateOf<Int?>(null) }
     var yearTo by remember { mutableStateOf<Int?>(null) }
@@ -638,8 +605,8 @@ private fun SeerrFilterableMediaListScreen(
     LaunchedEffect(Unit) {
         if (filterConfig.showGenreFilter) {
             val genreType = genreMediaType ?: when (filterConfig.defaultMediaType) {
-                MobileMediaTypeFilter.MOVIES -> "movie"
-                MobileMediaTypeFilter.TV_SHOWS -> "tv"
+                MediaTypeFilter.MOVIES -> "movie"
+                MediaTypeFilter.TV_SHOWS -> "tv"
                 else -> "movie"
             }
             val genreResult = if (genreType == "tv") {
@@ -735,7 +702,7 @@ private fun SeerrFilterableMediaListScreen(
             ) {
                 // Media type filter chips
                 if (filterConfig.showMediaTypeFilter) {
-                    items(MobileMediaTypeFilter.entries) { filter ->
+                    items(MediaTypeFilter.entries) { filter ->
                         FilterChip(
                             selected = mediaTypeFilter == filter,
                             onClick = {
@@ -767,7 +734,7 @@ private fun SeerrFilterableMediaListScreen(
 
                 // Release status filter chips
                 if (filterConfig.showReleaseStatusFilter) {
-                    items(MobileReleaseStatusFilter.entries) { filter ->
+                    items(ReleaseStatusFilter.entries) { filter ->
                         FilterChip(
                             selected = releaseStatusFilter == filter,
                             onClick = {
@@ -835,10 +802,10 @@ private fun SeerrFilterableMediaListScreen(
                 // Sort filter chip
                 item {
                     FilterChip(
-                        selected = sortFilter != MobileSortFilter.POPULARITY_DESC,
+                        selected = sortFilter != SortFilter.POPULARITY_DESC,
                         onClick = { showSortSheet = true },
                         label = { Text("Sort: ${sortFilter.label}") },
-                        leadingIcon = if (sortFilter != MobileSortFilter.POPULARITY_DESC) {
+                        leadingIcon = if (sortFilter != SortFilter.POPULARITY_DESC) {
                             {
                                 Icon(
                                     imageVector = Icons.Outlined.Check,
@@ -1000,7 +967,7 @@ private fun SeerrFilterableMediaListScreen(
             PopupMenu(
                 params = BottomSheetParams(
                     title = "Sort By",
-                    items = MobileSortFilter.entries.map { option ->
+                    items = SortFilter.entries.map { option ->
                         MenuItem(
                             text = option.label,
                             icon = if (sortFilter == option) Icons.Outlined.Check else null,
@@ -1153,15 +1120,15 @@ private fun SeerrFilterableMediaListScreen(
 private suspend fun loadMobileTrendingWithFilters(
     seerrClient: SeerrClient,
     page: Int,
-    mediaType: MobileMediaTypeFilter,
+    mediaType: MediaTypeFilter,
     genreIds: Set<Int>,
-    releaseStatus: MobileReleaseStatusFilter,
+    releaseStatus: ReleaseStatusFilter,
 ): Result<SeerrDiscoverResult> {
     return seerrClient.getTrending(page).map { result ->
         var filtered = result.results
 
         // Filter by media type
-        if (mediaType != MobileMediaTypeFilter.ALL) {
+        if (mediaType != MediaTypeFilter.ALL) {
             filtered = filtered.filter { it.mediaType == mediaType.apiValue }
         }
 
@@ -1176,8 +1143,8 @@ private suspend fun loadMobileMoviesWithFilters(
     seerrClient: SeerrClient,
     page: Int,
     genreIds: Set<Int>,
-    releaseStatus: MobileReleaseStatusFilter,
-    sortFilter: MobileSortFilter,
+    releaseStatus: ReleaseStatusFilter,
+    sortFilter: SortFilter,
     minRating: Float?,
     yearFrom: Int?,
     yearTo: Int?,
@@ -1185,7 +1152,7 @@ private suspend fun loadMobileMoviesWithFilters(
     val params = mutableMapOf<String, String>()
 
     // Add sort filter
-    if (sortFilter != MobileSortFilter.POPULARITY_DESC) {
+    if (sortFilter != SortFilter.POPULARITY_DESC) {
         params["sortBy"] = sortFilter.movieValue
     }
 
@@ -1204,13 +1171,13 @@ private suspend fun loadMobileMoviesWithFilters(
     // Add release status filter (may override year filters for upcoming)
     val today = java.time.LocalDate.now().toString()
     when (releaseStatus) {
-        MobileReleaseStatusFilter.RELEASED -> {
+        ReleaseStatusFilter.RELEASED -> {
             params["primaryReleaseDateLte"] = today
         }
-        MobileReleaseStatusFilter.UPCOMING -> {
+        ReleaseStatusFilter.UPCOMING -> {
             params["primaryReleaseDateGte"] = today
         }
-        MobileReleaseStatusFilter.ALL -> { /* No filter */ }
+        ReleaseStatusFilter.ALL -> { /* No filter */ }
     }
 
     return if (params.isEmpty()) {
@@ -1224,8 +1191,8 @@ private suspend fun loadMobileTvWithFilters(
     seerrClient: SeerrClient,
     page: Int,
     genreIds: Set<Int>,
-    releaseStatus: MobileReleaseStatusFilter,
-    sortFilter: MobileSortFilter,
+    releaseStatus: ReleaseStatusFilter,
+    sortFilter: SortFilter,
     minRating: Float?,
     yearFrom: Int?,
     yearTo: Int?,
@@ -1233,7 +1200,7 @@ private suspend fun loadMobileTvWithFilters(
     val params = mutableMapOf<String, String>()
 
     // Add sort filter
-    if (sortFilter != MobileSortFilter.POPULARITY_DESC) {
+    if (sortFilter != SortFilter.POPULARITY_DESC) {
         params["sortBy"] = sortFilter.tvValue
     }
 
@@ -1252,13 +1219,13 @@ private suspend fun loadMobileTvWithFilters(
     // Add release status filter (may override year filters for upcoming)
     val today = java.time.LocalDate.now().toString()
     when (releaseStatus) {
-        MobileReleaseStatusFilter.RELEASED -> {
+        ReleaseStatusFilter.RELEASED -> {
             params["firstAirDateLte"] = today
         }
-        MobileReleaseStatusFilter.UPCOMING -> {
+        ReleaseStatusFilter.UPCOMING -> {
             params["firstAirDateGte"] = today
         }
-        MobileReleaseStatusFilter.ALL -> { /* No filter */ }
+        ReleaseStatusFilter.ALL -> { /* No filter */ }
     }
 
     return if (params.isEmpty()) {
@@ -1271,13 +1238,13 @@ private suspend fun loadMobileTvWithFilters(
 private suspend fun loadMobileUpcomingWithFilters(
     seerrClient: SeerrClient,
     page: Int,
-    mediaType: MobileMediaTypeFilter,
+    mediaType: MediaTypeFilter,
     genreIds: Set<Int>,
 ): Result<SeerrDiscoverResult> {
     val today = java.time.LocalDate.now().toString()
 
     return when (mediaType) {
-        MobileMediaTypeFilter.MOVIES, MobileMediaTypeFilter.ALL -> {
+        MediaTypeFilter.MOVIES, MediaTypeFilter.ALL -> {
             val params = mutableMapOf<String, String>()
             params["primaryReleaseDateGte"] = today
             if (genreIds.isNotEmpty()) {
@@ -1285,7 +1252,7 @@ private suspend fun loadMobileUpcomingWithFilters(
             }
             seerrClient.discoverMoviesWithParams(params, page)
         }
-        MobileMediaTypeFilter.TV_SHOWS -> {
+        MediaTypeFilter.TV_SHOWS -> {
             val params = mutableMapOf<String, String>()
             params["firstAirDateGte"] = today
             if (genreIds.isNotEmpty()) {
@@ -1298,9 +1265,9 @@ private suspend fun loadMobileUpcomingWithFilters(
 
 private fun filterMobileByReleaseStatus(
     items: List<SeerrMedia>,
-    releaseStatus: MobileReleaseStatusFilter,
+    releaseStatus: ReleaseStatusFilter,
 ): List<SeerrMedia> {
-    if (releaseStatus == MobileReleaseStatusFilter.ALL) return items
+    if (releaseStatus == ReleaseStatusFilter.ALL) return items
 
     val today = java.time.LocalDate.now()
     return items.filter { media ->
@@ -1313,9 +1280,9 @@ private fun filterMobileByReleaseStatus(
         }
 
         when (releaseStatus) {
-            MobileReleaseStatusFilter.RELEASED -> releaseDate == null || releaseDate <= today
-            MobileReleaseStatusFilter.UPCOMING -> releaseDate != null && releaseDate > today
-            MobileReleaseStatusFilter.ALL -> true
+            ReleaseStatusFilter.RELEASED -> releaseDate == null || releaseDate <= today
+            ReleaseStatusFilter.UPCOMING -> releaseDate != null && releaseDate > today
+            ReleaseStatusFilter.ALL -> true
         }
     }
 }
