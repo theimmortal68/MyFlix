@@ -19,13 +19,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,13 +43,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Check
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.FilterChip
-import androidx.tv.material3.FilterChipDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -72,6 +67,11 @@ import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrFilterBar
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrFilterState
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrMediaTypeOption
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrReleaseStatusOption
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrSortOption
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -581,23 +581,20 @@ private fun SeerrFilterableMediaGridScreen(
     var totalPages by remember { mutableIntStateOf(1) }
     val firstItemFocusRequester = remember { FocusRequester() }
 
-    // Filter state
-    var mediaTypeFilter by remember { mutableStateOf(filterConfig.defaultMediaType) }
-    var releaseStatusFilter by remember { mutableStateOf(ReleaseStatusFilter.ALL) }
-    var selectedGenreIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    // Filter state using SeerrFilterState
+    var filterState by remember {
+        mutableStateOf(
+            SeerrFilterState(
+                mediaType = when (filterConfig.defaultMediaType) {
+                    MediaTypeFilter.ALL -> SeerrMediaTypeOption.ALL
+                    MediaTypeFilter.MOVIES -> SeerrMediaTypeOption.MOVIES
+                    MediaTypeFilter.TV_SHOWS -> SeerrMediaTypeOption.TV_SHOWS
+                },
+            ),
+        )
+    }
     var genres by remember { mutableStateOf<List<SeerrGenre>>(emptyList()) }
     var filterTrigger by remember { mutableIntStateOf(0) }
-
-    // Advanced filter state
-    var sortFilter by remember { mutableStateOf(SortFilter.POPULARITY_DESC) }
-    var minRating by remember { mutableStateOf<Float?>(null) }
-    var yearFrom by remember { mutableStateOf<Int?>(null) }
-    var yearTo by remember { mutableStateOf<Int?>(null) }
-
-    // Dialog state for advanced filters
-    var showSortDialog by remember { mutableStateOf(false) }
-    var showRatingDialog by remember { mutableStateOf(false) }
-    var showYearDialog by remember { mutableStateOf(false) }
 
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -623,14 +620,37 @@ private fun SeerrFilterableMediaGridScreen(
         )
     }
 
+    // Convert SeerrFilterState to legacy filter types for loadItems
+    fun toMediaTypeFilter(opt: SeerrMediaTypeOption) = when (opt) {
+        SeerrMediaTypeOption.ALL -> MediaTypeFilter.ALL
+        SeerrMediaTypeOption.MOVIES -> MediaTypeFilter.MOVIES
+        SeerrMediaTypeOption.TV_SHOWS -> MediaTypeFilter.TV_SHOWS
+    }
+
+    fun toReleaseStatusFilter(opt: SeerrReleaseStatusOption) = when (opt) {
+        SeerrReleaseStatusOption.ALL -> ReleaseStatusFilter.ALL
+        SeerrReleaseStatusOption.RELEASED -> ReleaseStatusFilter.RELEASED
+        SeerrReleaseStatusOption.UPCOMING -> ReleaseStatusFilter.UPCOMING
+    }
+
+    fun toSortFilter(opt: SeerrSortOption) = when (opt) {
+        SeerrSortOption.POPULARITY_DESC -> SortFilter.POPULARITY_DESC
+        SeerrSortOption.POPULARITY_ASC -> SortFilter.POPULARITY_ASC
+        SeerrSortOption.RATING_DESC -> SortFilter.RATING_DESC
+        SeerrSortOption.RATING_ASC -> SortFilter.RATING_ASC
+        SeerrSortOption.RELEASE_DESC -> SortFilter.RELEASE_DESC
+        SeerrSortOption.RELEASE_ASC -> SortFilter.RELEASE_ASC
+        SeerrSortOption.TITLE_ASC -> SortFilter.TITLE_ASC
+        SeerrSortOption.TITLE_DESC -> SortFilter.TITLE_DESC
+    }
+
     // Load genres on first composition
     LaunchedEffect(Unit) {
         if (filterConfig.showGenreFilter) {
-            // Determine which genres to load based on genreMediaType or default
             val genreType = genreMediaType ?: when (filterConfig.defaultMediaType) {
                 MediaTypeFilter.MOVIES -> "movie"
                 MediaTypeFilter.TV_SHOWS -> "tv"
-                else -> "movie" // Default to movie genres for mixed
+                else -> "movie"
             }
             val genreResult = if (genreType == "tv") {
                 seerrClient.getTVGenres()
@@ -651,13 +671,13 @@ private fun SeerrFilterableMediaGridScreen(
 
         loadItems(
             pageToLoad,
-            mediaTypeFilter,
-            selectedGenreIds,
-            releaseStatusFilter,
-            sortFilter,
-            minRating,
-            yearFrom,
-            yearTo,
+            toMediaTypeFilter(filterState.mediaType),
+            filterState.selectedGenreIds,
+            toReleaseStatusFilter(filterState.releaseStatus),
+            toSortFilter(filterState.sortOption),
+            filterState.minRating,
+            filterState.yearFrom,
+            filterState.yearTo,
         )
             .onSuccess { result ->
                 val filtered = result.results.filterDiscoverable()
@@ -709,270 +729,52 @@ private fun SeerrFilterableMediaGridScreen(
             .background(TvColors.Background)
             .padding(24.dp),
     ) {
-        // Header row with back button and title
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                onClick = onBack,
-                modifier = Modifier.height(20.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                scale = ButtonDefaults.scale(focusedScale = 1f),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                    contentColor = TvColors.TextPrimary,
-                    focusedContainerColor = TvColors.BluePrimary,
-                    focusedContentColor = Color.White,
-                ),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Back",
-                    modifier = Modifier.size(14.dp),
+        // Filter bar with back button, title, and dropdown filters
+        SeerrFilterBar(
+            title = title,
+            filterState = filterState,
+            genres = genres,
+            showMediaTypeFilter = filterConfig.showMediaTypeFilter,
+            showGenreFilter = filterConfig.showGenreFilter,
+            showReleaseStatusFilter = filterConfig.showReleaseStatusFilter,
+            onBack = onBack,
+            onMediaTypeChange = { opt ->
+                filterState = filterState.copy(mediaType = opt)
+                filterTrigger++
+            },
+            onReleaseStatusChange = { opt ->
+                filterState = filterState.copy(releaseStatus = opt)
+                filterTrigger++
+            },
+            onSortChange = { opt ->
+                filterState = filterState.copy(sortOption = opt)
+                filterTrigger++
+            },
+            onRatingChange = { rating ->
+                filterState = filterState.copy(minRating = rating)
+                filterTrigger++
+            },
+            onYearChange = { from, to ->
+                filterState = filterState.copy(yearFrom = from, yearTo = to)
+                filterTrigger++
+            },
+            onGenreToggle = { genreId ->
+                filterState = filterState.copy(
+                    selectedGenreIds = if (filterState.selectedGenreIds.contains(genreId)) {
+                        filterState.selectedGenreIds - genreId
+                    } else {
+                        filterState.selectedGenreIds + genreId
+                    },
                 )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = TvColors.TextPrimary,
-            )
-        }
+                filterTrigger++
+            },
+            onClearGenres = {
+                filterState = filterState.copy(selectedGenreIds = emptySet())
+                filterTrigger++
+            },
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
-
-        // Filter row
-        val hasActiveFilters = filterConfig.showMediaTypeFilter ||
-            filterConfig.showGenreFilter ||
-            filterConfig.showReleaseStatusFilter
-
-        if (hasActiveFilters) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                // Media type filter chips
-                if (filterConfig.showMediaTypeFilter) {
-                    items(MediaTypeFilter.entries) { filter ->
-                        FilterChip(
-                            selected = mediaTypeFilter == filter,
-                            onClick = {
-                                if (mediaTypeFilter != filter) {
-                                    mediaTypeFilter = filter
-                                    filterTrigger++
-                                }
-                            },
-                            leadingIcon = if (mediaTypeFilter == filter) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.Surface,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = TvColors.SurfaceElevated,
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
-                                selectedContentColor = TvColors.BluePrimary,
-                                focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-                                focusedSelectedContentColor = TvColors.BluePrimary,
-                            ),
-                        ) {
-                            Text(filter.label, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-
-                // Release status filter chips
-                if (filterConfig.showReleaseStatusFilter) {
-                    items(ReleaseStatusFilter.entries) { filter ->
-                        FilterChip(
-                            selected = releaseStatusFilter == filter,
-                            onClick = {
-                                if (releaseStatusFilter != filter) {
-                                    releaseStatusFilter = filter
-                                    filterTrigger++
-                                }
-                            },
-                            leadingIcon = if (releaseStatusFilter == filter) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.Surface,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = TvColors.SurfaceElevated,
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
-                                selectedContentColor = TvColors.BluePrimary,
-                                focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-                                focusedSelectedContentColor = TvColors.BluePrimary,
-                            ),
-                        ) {
-                            Text(filter.label, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-
-                // Genre filter chips (multi-select)
-                if (filterConfig.showGenreFilter && genres.isNotEmpty()) {
-                    items(genres) { genre ->
-                        val isSelected = selectedGenreIds.contains(genre.id)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                selectedGenreIds = if (isSelected) {
-                                    selectedGenreIds - genre.id
-                                } else {
-                                    selectedGenreIds + genre.id
-                                }
-                                filterTrigger++
-                            },
-                            leadingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.Surface,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = TvColors.SurfaceElevated,
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.2f),
-                                selectedContentColor = Color(0xFF8B5CF6),
-                                focusedSelectedContainerColor = Color(0xFF8B5CF6).copy(alpha = 0.3f),
-                                focusedSelectedContentColor = Color(0xFF8B5CF6),
-                            ),
-                        ) {
-                            Text(genre.name, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-
-                // Sort filter chip
-                item {
-                    FilterChip(
-                        selected = sortFilter != SortFilter.POPULARITY_DESC,
-                        onClick = { showSortDialog = true },
-                        leadingIcon = if (sortFilter != SortFilter.POPULARITY_DESC) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        colors = FilterChipDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            contentColor = TvColors.TextSecondary,
-                            focusedContainerColor = TvColors.SurfaceElevated,
-                            focusedContentColor = TvColors.TextPrimary,
-                            selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
-                            selectedContentColor = TvColors.BluePrimary,
-                            focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-                            focusedSelectedContentColor = TvColors.BluePrimary,
-                        ),
-                    ) {
-                        Text("Sort: ${sortFilter.label}", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-
-                // Rating filter chip
-                item {
-                    FilterChip(
-                        selected = minRating != null,
-                        onClick = { showRatingDialog = true },
-                        leadingIcon = if (minRating != null) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        colors = FilterChipDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            contentColor = TvColors.TextSecondary,
-                            focusedContainerColor = TvColors.SurfaceElevated,
-                            focusedContentColor = TvColors.TextPrimary,
-                            selectedContainerColor = Color(0xFFFBBF24).copy(alpha = 0.2f),
-                            selectedContentColor = Color(0xFFFBBF24),
-                            focusedSelectedContainerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
-                            focusedSelectedContentColor = Color(0xFFFBBF24),
-                        ),
-                    ) {
-                        Text(
-                            text = minRating?.let { "Rating: ${it.toInt()}+" } ?: "Rating",
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-
-                // Year filter chip
-                item {
-                    FilterChip(
-                        selected = yearFrom != null || yearTo != null,
-                        onClick = { showYearDialog = true },
-                        leadingIcon = if (yearFrom != null || yearTo != null) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        colors = FilterChipDefaults.colors(
-                            containerColor = TvColors.Surface,
-                            contentColor = TvColors.TextSecondary,
-                            focusedContainerColor = TvColors.SurfaceElevated,
-                            focusedContentColor = TvColors.TextPrimary,
-                            selectedContainerColor = Color(0xFF34D399).copy(alpha = 0.2f),
-                            selectedContentColor = Color(0xFF34D399),
-                            focusedSelectedContainerColor = Color(0xFF34D399).copy(alpha = 0.3f),
-                            focusedSelectedContentColor = Color(0xFF34D399),
-                        ),
-                    ) {
-                        Text(
-                            text = when {
-                                yearFrom != null && yearTo != null -> "Year: $yearFrom-$yearTo"
-                                yearFrom != null -> "Year: $yearFrom+"
-                                yearTo != null -> "Year: -$yearTo"
-                                else -> "Year"
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-        }
 
         // Content grid
         when {
@@ -1067,354 +869,12 @@ private fun SeerrFilterableMediaGridScreen(
             }
         }
 
-        // Sort selection dialog
-        if (showSortDialog) {
-            SortSelectionDialog(
-                currentSort = sortFilter,
-                onSortSelected = { selected ->
-                    sortFilter = selected
-                    filterTrigger++
-                    showSortDialog = false
-                },
-                onDismiss = { showSortDialog = false },
-            )
-        }
-
-        // Rating selection dialog
-        if (showRatingDialog) {
-            RatingSelectionDialog(
-                currentRating = minRating,
-                onRatingSelected = { selected ->
-                    minRating = selected
-                    filterTrigger++
-                    showRatingDialog = false
-                },
-                onDismiss = { showRatingDialog = false },
-            )
-        }
-
-        // Year range dialog
-        if (showYearDialog) {
-            YearRangeDialog(
-                yearFrom = yearFrom,
-                yearTo = yearTo,
-                onConfirm = { from, to ->
-                    yearFrom = from
-                    yearTo = to
-                    filterTrigger++
-                    showYearDialog = false
-                },
-                onDismiss = { showYearDialog = false },
-            )
-        }
-
         // Long-press context menu dialog
         dialogParams?.let { params ->
             DialogPopup(
                 params = params,
                 onDismissRequest = { dialogParams = null },
             )
-        }
-    }
-}
-
-// ============================================================================
-// Advanced Filter Dialogs
-// ============================================================================
-
-@Composable
-private fun SortSelectionDialog(
-    currentSort: SortFilter,
-    onSortSelected: (SortFilter) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sortOptions = SortFilter.entries
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .width(300.dp)
-                .background(TvColors.Surface, MaterialTheme.shapes.medium)
-                .padding(16.dp),
-        ) {
-            Text(
-                text = "Sort By",
-                style = MaterialTheme.typography.titleMedium,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
-
-            sortOptions.forEachIndexed { index, option ->
-                val isSelected = option == currentSort
-                Surface(
-                    onClick = { onSortSelected(option) },
-                    modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
-                    shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = if (isSelected) TvColors.BluePrimary.copy(alpha = 0.2f) else Color.Transparent,
-                        focusedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = option.label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) TvColors.BluePrimary else TvColors.TextPrimary,
-                        )
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Outlined.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = TvColors.BluePrimary,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.End),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated,
-                    contentColor = TvColors.TextPrimary,
-                ),
-            ) {
-                Text("Cancel")
-            }
-        }
-    }
-}
-
-@Composable
-private fun RatingSelectionDialog(
-    currentRating: Float?,
-    onRatingSelected: (Float?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val ratingOptions = listOf(
-        null to "Any",
-        5f to "5+",
-        6f to "6+",
-        7f to "7+",
-        8f to "8+",
-        9f to "9+",
-    )
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .width(250.dp)
-                .background(TvColors.Surface, MaterialTheme.shapes.medium)
-                .padding(16.dp),
-        ) {
-            Text(
-                text = "Minimum Rating",
-                style = MaterialTheme.typography.titleMedium,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
-
-            ratingOptions.forEachIndexed { index, (rating, label) ->
-                val isSelected = rating == currentRating
-                Surface(
-                    onClick = { onRatingSelected(rating) },
-                    modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
-                    shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = if (isSelected) Color(0xFFFBBF24).copy(alpha = 0.2f) else Color.Transparent,
-                        focusedContainerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) Color(0xFFFBBF24) else TvColors.TextPrimary,
-                        )
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Outlined.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = Color(0xFFFBBF24),
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.End),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated,
-                    contentColor = TvColors.TextPrimary,
-                ),
-            ) {
-                Text("Cancel")
-            }
-        }
-    }
-}
-
-@Composable
-private fun YearRangeDialog(
-    yearFrom: Int?,
-    yearTo: Int?,
-    onConfirm: (Int?, Int?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var from by remember { mutableStateOf(yearFrom) }
-    var to by remember { mutableStateOf(yearTo) }
-    val currentYear = java.time.Year.now().value
-    val yearOptions = listOf(null) + (currentYear downTo 1950).toList()
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .width(500.dp)
-                .background(TvColors.Surface, MaterialTheme.shapes.medium)
-                .padding(16.dp),
-        ) {
-            Text(
-                text = "Year Range",
-                style = MaterialTheme.typography.titleMedium,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
-
-            // From year
-            Text(
-                text = "From:",
-                style = MaterialTheme.typography.labelMedium,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 16.dp),
-            ) {
-                items(yearOptions.take(30)) { year ->
-                    val isFirst = year == null
-                    FilterChip(
-                        selected = from == year,
-                        onClick = { from = year },
-                        modifier = if (isFirst) Modifier.focusRequester(focusRequester) else Modifier,
-                        colors = FilterChipDefaults.colors(
-                            containerColor = TvColors.SurfaceElevated,
-                            contentColor = TvColors.TextSecondary,
-                            selectedContainerColor = Color(0xFF34D399).copy(alpha = 0.2f),
-                            selectedContentColor = Color(0xFF34D399),
-                            focusedContainerColor = TvColors.SurfaceElevated,
-                            focusedSelectedContainerColor = Color(0xFF34D399).copy(alpha = 0.3f),
-                        ),
-                    ) {
-                        Text(year?.toString() ?: "Any", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-
-            // To year
-            Text(
-                text = "To:",
-                style = MaterialTheme.typography.labelMedium,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 16.dp),
-            ) {
-                items(yearOptions.take(30)) { year ->
-                    FilterChip(
-                        selected = to == year,
-                        onClick = { to = year },
-                        colors = FilterChipDefaults.colors(
-                            containerColor = TvColors.SurfaceElevated,
-                            contentColor = TvColors.TextSecondary,
-                            selectedContainerColor = Color(0xFF34D399).copy(alpha = 0.2f),
-                            selectedContentColor = Color(0xFF34D399),
-                            focusedContainerColor = TvColors.SurfaceElevated,
-                            focusedSelectedContainerColor = Color(0xFF34D399).copy(alpha = 0.3f),
-                        ),
-                    ) {
-                        Text(year?.toString() ?: "Any", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Button(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated,
-                        contentColor = TvColors.TextPrimary,
-                    ),
-                ) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { onConfirm(from, to) },
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color(0xFF34D399),
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Text("Apply")
-                }
-            }
         }
     }
 }

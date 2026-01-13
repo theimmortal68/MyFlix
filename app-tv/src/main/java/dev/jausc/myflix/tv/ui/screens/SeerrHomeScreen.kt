@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -709,20 +710,21 @@ private fun SeerrHeroSection(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.45f)
+                .fillMaxWidth()
                 .background(
                     Brush.horizontalGradient(
                         colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.35f),
-                            0.6f to Color.Black.copy(alpha = 0.2f),
-                            1.0f to Color.Transparent,
+                            0.0f to Color.Black.copy(alpha = 0.15f),
+                            0.3f to Color.Black.copy(alpha = 0.1f),
+                            0.5f to Color.Transparent,
                         ),
                     ),
                 ),
+            contentAlignment = Alignment.TopStart,
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .widthIn(max = 500.dp)
                     .padding(start = 48.dp, top = 36.dp, bottom = 0.dp),
                 verticalArrangement = Arrangement.Top,
             ) {
