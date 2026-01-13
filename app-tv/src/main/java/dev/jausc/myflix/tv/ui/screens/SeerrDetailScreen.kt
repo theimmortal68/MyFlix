@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -1104,7 +1105,7 @@ private fun RelatedMediaCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(160.dp).height(240.dp),
+        modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
             shape = RoundedCornerShape(8.dp),
         ),

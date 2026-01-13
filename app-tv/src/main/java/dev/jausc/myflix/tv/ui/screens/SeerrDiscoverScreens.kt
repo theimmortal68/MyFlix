@@ -350,7 +350,7 @@ private fun SeerrMediaGridScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .padding(24.dp),
+            .padding(horizontal = 48.dp, vertical = 24.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -727,7 +727,7 @@ private fun SeerrFilterableMediaGridScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .padding(24.dp),
+            .padding(horizontal = 48.dp, vertical = 24.dp),
     ) {
         // Filter bar with back button, title, and dropdown filters
         SeerrFilterBar(

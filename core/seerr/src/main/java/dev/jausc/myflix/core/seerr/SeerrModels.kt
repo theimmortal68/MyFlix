@@ -999,42 +999,136 @@ object NetworkColors {
 
 /**
  * Popular movie studios for browsing.
- * TMDB production company IDs.
+ * TMDB production company IDs with logo paths from TMDb.
+ * Logo URLs use duotone filter: https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa){logoPath}
  */
 object PopularStudios {
     val studios = listOf(
-        SeerrStudio(420, "Marvel Studios", "/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"),
-        SeerrStudio(174, "Warner Bros. Pictures", "/zhD3hhtKB5qyv7ZeL4uLpNxgMVU.png"),
-        SeerrStudio(2, "Walt Disney Pictures", "/wdrCwmRnLFJhEoH8GSfymY85KHT.png"),
-        SeerrStudio(33, "Universal Pictures", "/8lvHyhjr8oUKOOy2dKXoALWKdp0.png"),
-        SeerrStudio(4, "Paramount Pictures", "/gz66EfNoYPqHTYI4q9UEN4CbHRc.png"),
+        SeerrStudio(2, "Disney", "/wdrCwmRnLFJhEoH8GSfymY85KHT.png"),
+        SeerrStudio(127928, "20th Century Studios", "/h0rjX5vjW5r8yEnUBStFarjcLT4.png"),
+        SeerrStudio(34, "Sony Pictures", "/GagSvqWlyPdkFHMfQ3pNq6ix9P.png"),
+        SeerrStudio(174, "Warner Bros. Pictures", "/ky0xOc5OrhzkZ1N6KyUxacfQsCk.png"),
+        SeerrStudio(33, "Universal", "/8lvHyhjr8oUKOOy2dKXoALWKdp0.png"),
+        SeerrStudio(4, "Paramount", "/fycMZt242LVjagMByZOLUGbCvv3.png"),
         SeerrStudio(3, "Pixar", "/1TjvGVDMYsj6JBxOAkUHpPEwLf7.png"),
-        SeerrStudio(429, "Lucasfilm", "/o86DbpburjxrqAzEDhXZcyE8pDb.png"),
-        SeerrStudio(9993, "DC Studios", "/2Tc1P3Ac8M479naPp1kYT3izLS5.png"),
-        SeerrStudio(7, "DreamWorks Animation", "/vru2SssLX3FPhnKZGtYw00pVIS9.png"),
-        SeerrStudio(5, "Columbia Pictures", "/71BqEFAF4V3qjjMPCpLuyJFB9A.png"),
-        SeerrStudio(127928, "A24", "/9aotxauvc9685tq9pTcRJszuT06.png"),
-        SeerrStudio(923, "Legendary Pictures", "/8M99Dkt23MjQMTTWukq4m5XsEuo.png"),
+        SeerrStudio(521, "DreamWorks", "/kP7t6RwGz2AvvTkvnI1uteEwHet.png"),
+        SeerrStudio(420, "Marvel Studios", "/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"),
+        SeerrStudio(9993, "DC", "/2Tc1P3Ac8M479naPp1kYT3izLS5.png"),
+        SeerrStudio(41077, "A24", "/1ZXsGaFPgrgS6ZZGS37AqD5uU12.png"),
     )
+
+    /** Build the duotone filtered image URL for a logo */
+    fun getLogoUrl(logoPath: String): String =
+        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
 }
 
 /**
  * Popular TV networks for browsing.
- * TMDB network IDs.
+ * TMDB network IDs with logo paths from TMDb.
+ * Logo URLs use duotone filter: https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa){logoPath}
  */
 object PopularNetworks {
     val networks = listOf(
         SeerrNetwork(213, "Netflix", "/wwemzKWzjKYJFfCeiB57q3r4Bcm.png"),
-        SeerrNetwork(49, "HBO", "/tuomPhY2UtuPTqqFnKMVHvSb724.png"),
-        SeerrNetwork(2739, "Disney+", "/gJ8VX6JSu3ciXHuC2dDGAo2lvwM.png"),
         SeerrNetwork(1024, "Amazon", "/ifhbNuuVnlwYy5oXA5VIb2YR8AZ.png"),
-        SeerrNetwork(2552, "Apple TV+", "/4KAy34EHvRM25Ih8wb82AuiWN41.png"),
-        SeerrNetwork(67, "Showtime", "/Allse9kbjiP6ExaQrnSpIhkurEi.png"),
-        SeerrNetwork(174, "AMC", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png"),
-        SeerrNetwork(4330, "Paramount+", "/fi83B1oztoS47xxcemFdPMhIzK.png"),
-        SeerrNetwork(88, "FX", "/aexGjtcs42DgRtZh7zOxayiry4J.png"),
+        SeerrNetwork(2739, "Disney+", "/gJ8VX6JSu3ciXHuC2dDGAo2lvwM.png"),
         SeerrNetwork(453, "Hulu", "/pqUTCleNUiTLAVlelGxUgWn1ELh.png"),
-        SeerrNetwork(318, "Starz", "/8GJjw3HHsAJYwIWKIPBPfqMxlEa.png"),
+        SeerrNetwork(3186, "Max", "/xEJItn5XWPvziq2iNxeEIyqezZI.png"),
+        SeerrNetwork(2552, "Apple TV+", "/4KAy34EHvRM25Ih8wb82AuiWN41.png"),
+        SeerrNetwork(4330, "Paramount+", "/fi83B1oztoS47xxcemFdPMhIzK.png"),
+        SeerrNetwork(3353, "Peacock", "/xTHltMrZPAJFLQ6qyCBjAnXSmZt.png"),
         SeerrNetwork(16, "CBS", "/nm8d7P7MJNiBLdgIzUK0gkuEA4r.png"),
+        SeerrNetwork(2, "ABC", "/ndAvF4JLsliGreX87jAc9GdjmJY.png"),
+        SeerrNetwork(6, "NBC", "/o3OedEP0f9mfZr33jz2BfXOUK5.png"),
+        SeerrNetwork(19, "Fox", "/1DSpHrWyOORkL9N2QHX7Adt31mQ.png"),
+        SeerrNetwork(174, "AMC", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png"),
+        SeerrNetwork(71, "The CW", "/ge9hzeaU7nMtQ4PjkFlc68dGAJ9.png"),
+        SeerrNetwork(88, "FX", "/aexGjtcs42DgRtZh7zOxayiry4J.png"),
+        SeerrNetwork(41, "TNT", "/6ISsKwa2XUhSC6oBtHZjxf0u8FJ.png"),
+        SeerrNetwork(30, "USA Network", "/g1e0H0Ka97IG5SyInMXdJkHGKiH.png"),
+        SeerrNetwork(84, "TBS", "/x1KIiZmYINmYFcIqMVLc1J7TBQn.png"),
+        SeerrNetwork(80, "Adult Swim", "/9AKyspxVzywuaMuZ1Bvilu8sXly.png"),
+        SeerrNetwork(56, "Cartoon Network", "/c5OC6oVCg6QP4eqzW6XIq17CQjI.png"),
+        SeerrNetwork(4, "BBC One", "/mVn7xESaTNmjBUyUtGNvDQd3CT1.png"),
+        SeerrNetwork(14, "PBS", "/qs66Qaw2OwTgVqfff2LPAAOxypG.png"),
     )
+
+    /** Build the duotone filtered image URL for a logo */
+    fun getLogoUrl(logoPath: String): String =
+        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
+}
+
+/**
+ * Genre backdrop color tones for duotone filter.
+ * Maps genre IDs to color pairs [dark, light] for the TMDB duotone filter.
+ * URL format: https://image.tmdb.org/t/p/w1280_filter(duotone,{dark},{light}){backdropPath}
+ */
+object GenreBackdropColors {
+    // Color tone pairs [dark color, light color] for duotone filter
+    private val colorTones = mapOf(
+        "red" to ("991B1B" to "FCA5A5"),
+        "darkred" to ("1F2937" to "F87171"),
+        "blue" to ("032541" to "01b4e4"),
+        "lightblue" to ("1F2937" to "60A5FA"),
+        "darkblue" to ("1F2937" to "2864d2"),
+        "orange" to ("92400E" to "FCD34D"),
+        "lightgreen" to ("065F46" to "6EE7B7"),
+        "green" to ("087d29" to "21cb51"),
+        "purple" to ("5B21B6" to "C4B5FD"),
+        "yellow" to ("777e0d" to "e4ed55"),
+        "darkorange" to ("552c01" to "d47c1d"),
+        "black" to ("1F2937" to "D1D5DB"),
+        "pink" to ("9D174D" to "F9A8D4"),
+        "darkpurple" to ("480c8b" to "a96bef"),
+    )
+
+    // Genre ID to color tone name mapping (from seerr source)
+    private val genreColorMap = mapOf(
+        // Movie Genres
+        28 to "red",           // Action
+        12 to "darkpurple",    // Adventure
+        16 to "blue",          // Animation
+        35 to "orange",        // Comedy
+        80 to "darkblue",      // Crime
+        99 to "lightgreen",    // Documentary
+        18 to "pink",          // Drama
+        10751 to "yellow",     // Family
+        14 to "lightblue",     // Fantasy
+        36 to "orange",        // History
+        27 to "black",         // Horror
+        10402 to "blue",       // Music
+        9648 to "purple",      // Mystery
+        10749 to "pink",       // Romance
+        878 to "lightblue",    // Science Fiction
+        10770 to "red",        // TV Movie
+        53 to "black",         // Thriller
+        10752 to "darkred",    // War
+        37 to "orange",        // Western
+        // TV Genres
+        10759 to "darkpurple", // Action & Adventure
+        10762 to "blue",       // Kids
+        10763 to "black",      // News
+        10764 to "darkorange", // Reality
+        10765 to "lightblue",  // Sci-Fi & Fantasy
+        10766 to "pink",       // Soap
+        10767 to "lightgreen", // Talk
+        10768 to "darkred",    // War & Politics
+    )
+
+    /**
+     * Get duotone color pair for a genre.
+     * Returns pair of (darkColor, lightColor) hex strings without # prefix.
+     */
+    fun getColorPair(genreId: Int): Pair<String, String> {
+        val colorName = genreColorMap[genreId] ?: "black"
+        return colorTones[colorName] ?: ("1F2937" to "D1D5DB")
+    }
+
+    /**
+     * Build duotone filtered backdrop URL for a genre.
+     */
+    fun getBackdropUrl(backdropPath: String, genreId: Int): String {
+        val (dark, light) = getColorPair(genreId)
+        return "https://image.tmdb.org/t/p/w1280_filter(duotone,$dark,$light)$backdropPath"
+    }
 }

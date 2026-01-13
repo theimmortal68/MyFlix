@@ -68,6 +68,9 @@ import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
+import dev.jausc.myflix.core.seerr.GenreBackdropColors
+import dev.jausc.myflix.core.seerr.PopularNetworks
+import dev.jausc.myflix.core.seerr.PopularStudios
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
@@ -78,10 +81,9 @@ import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrNetwork
 import dev.jausc.myflix.core.seerr.SeerrNetworkRow
+import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.core.seerr.SeerrStudio
 import dev.jausc.myflix.core.seerr.SeerrStudioRow
-import dev.jausc.myflix.core.seerr.getColor
-import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MenuItem
 import dev.jausc.myflix.mobile.ui.components.MenuItemDivider
@@ -737,34 +739,81 @@ private fun MobileSeerrGenreBrowseRow(
 }
 
 /**
- * A card displaying a genre with a colored gradient background.
+ * A card displaying a genre with duotone-filtered backdrop image.
  */
 @Composable
 private fun MobileSeerrGenreCard(
     genre: SeerrGenre,
     onClick: () -> Unit,
 ) {
-    val genreColor = Color(genre.getColor())
+    // Get the first backdrop from the genre's backdrops list
+    val backdropPath = genre.backdrops?.firstOrNull()
+    val backdropUrl = backdropPath?.let { GenreBackdropColors.getBackdropUrl(it, genre.id) }
+
+    // Fallback colors if no backdrop available
+    val (darkHex, lightHex) = GenreBackdropColors.getColorPair(genre.id)
+    val darkColor = Color(android.graphics.Color.parseColor("#$darkHex"))
+    val lightColor = Color(android.graphics.Color.parseColor("#$lightHex"))
 
     Card(
         onClick = onClick,
         modifier = Modifier
-            .width(140.dp)
-            .height(70.dp),
+            .width(160.dp)
+            .height(80.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = genreColor,
+            containerColor = Color.Transparent,
         ),
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp)),
         ) {
+            // Background: backdrop image with duotone filter, or gradient fallback
+            if (backdropUrl != null) {
+                AsyncImage(
+                    model = backdropUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                // Fallback gradient based on genre colors
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                colors = listOf(darkColor, lightColor),
+                            ),
+                        ),
+                )
+            }
+
+            // Gradient overlay for text readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f),
+                            ),
+                        ),
+                    ),
+            )
+
+            // Genre name
             Text(
                 text = genre.name,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp),
             )
         }
     }
@@ -816,14 +865,14 @@ private fun MobileSeerrStudioBrowseRow(
 }
 
 /**
- * A card displaying a studio with a colored gradient background.
+ * A card displaying a studio with TMDb logo using duotone filter.
  */
 @Composable
 private fun MobileSeerrStudioCard(
     studio: SeerrStudio,
     onClick: () -> Unit,
 ) {
-    val studioColor = Color(studio.getColor())
+    val logoUrl = studio.logoPath?.let { PopularStudios.getLogoUrl(it) }
 
     Card(
         onClick = onClick,
@@ -832,21 +881,32 @@ private fun MobileSeerrStudioCard(
             .height(70.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = studioColor,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = studio.name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp),
-                maxLines = 2,
-            )
+            if (logoUrl != null) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = studio.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                Text(
+                    text = studio.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    maxLines = 2,
+                )
+            }
         }
     }
 }
@@ -897,14 +957,14 @@ private fun MobileSeerrNetworkBrowseRow(
 }
 
 /**
- * A card displaying a network with a colored gradient background.
+ * A card displaying a network with TMDb logo using duotone filter.
  */
 @Composable
 private fun MobileSeerrNetworkCard(
     network: SeerrNetwork,
     onClick: () -> Unit,
 ) {
-    val networkColor = Color(network.getColor())
+    val logoUrl = network.logoPath?.let { PopularNetworks.getLogoUrl(it) }
 
     Card(
         onClick = onClick,
@@ -913,21 +973,32 @@ private fun MobileSeerrNetworkCard(
             .height(70.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = networkColor,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = network.name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp),
-                maxLines = 2,
-            )
+            if (logoUrl != null) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = network.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                Text(
+                    text = network.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    maxLines = 2,
+                )
+            }
         }
     }
 }

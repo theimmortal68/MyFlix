@@ -96,7 +96,7 @@ fun SeerrCollectionDetailScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .padding(24.dp),
+            .padding(horizontal = 48.dp, vertical = 24.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(
@@ -191,7 +191,7 @@ private fun SeerrCollectionPosterCard(
 
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(160.dp).height(300.dp),
+        modifier = Modifier.width(120.dp),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
@@ -209,7 +209,7 @@ private fun SeerrCollectionPosterCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp),
+                    .height(180.dp),
             ) {
                 AsyncImage(
                     model = posterUrl,

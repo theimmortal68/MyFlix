@@ -234,7 +234,7 @@ fun SeerrRequestsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .padding(24.dp),
+            .padding(horizontal = 48.dp, vertical = 24.dp),
     ) {
         // Header row with back button, title, and filter/sort dropdowns
         Row(

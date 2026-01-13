@@ -88,6 +88,9 @@ import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
+import dev.jausc.myflix.core.seerr.GenreBackdropColors
+import dev.jausc.myflix.core.seerr.PopularNetworks
+import dev.jausc.myflix.core.seerr.PopularStudios
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
@@ -95,12 +98,11 @@ import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrImdbRating
+import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrNetwork
 import dev.jausc.myflix.core.seerr.SeerrNetworkRow
 import dev.jausc.myflix.core.seerr.SeerrStudio
 import dev.jausc.myflix.core.seerr.SeerrStudioRow
-import dev.jausc.myflix.core.seerr.getColor
-import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRequest
 import dev.jausc.myflix.core.seerr.SeerrRequestRow
@@ -1100,20 +1102,27 @@ private fun SeerrGenreBrowseRow(
 }
 
 /**
- * A card displaying a genre with a colored gradient background.
+ * A card displaying a genre with duotone-filtered backdrop image.
  */
 @Composable
 private fun SeerrGenreCard(
     genre: SeerrGenre,
     onClick: () -> Unit,
 ) {
-    val genreColor = Color(genre.getColor())
+    // Get the first backdrop from the genre's backdrops list
+    val backdropPath = genre.backdrops?.firstOrNull()
+    val backdropUrl = backdropPath?.let { GenreBackdropColors.getBackdropUrl(it, genre.id) }
+
+    // Fallback colors if no backdrop available
+    val (darkHex, lightHex) = GenreBackdropColors.getColorPair(genre.id)
+    val darkColor = Color(android.graphics.Color.parseColor("#$darkHex"))
+    val lightColor = Color(android.graphics.Color.parseColor("#$lightHex"))
 
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .width(160.dp)
-            .height(80.dp),
+            .width(200.dp)
+            .height(100.dp),
         shape = ClickableSurfaceDefaults.shape(
             shape = RoundedCornerShape(12.dp),
         ),
@@ -1134,22 +1143,52 @@ private fun SeerrGenreCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            genreColor,
-                            genreColor.copy(alpha = 0.7f),
+                .clip(RoundedCornerShape(12.dp)),
+        ) {
+            // Background: backdrop image with duotone filter, or gradient fallback
+            if (backdropUrl != null) {
+                AsyncImage(
+                    model = backdropUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                // Fallback gradient based on genre colors
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(darkColor, lightColor),
+                            ),
+                        ),
+                )
+            }
+
+            // Gradient overlay for text readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f),
+                            ),
                         ),
                     ),
-                    shape = RoundedCornerShape(12.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
+            )
+
+            // Genre name
             Text(
                 text = genre.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp),
             )
         }
     }
@@ -1203,14 +1242,14 @@ private fun SeerrStudioBrowseRow(
 }
 
 /**
- * A card displaying a studio with a colored gradient background.
+ * A card displaying a studio with TMDb logo using duotone filter.
  */
 @Composable
 private fun SeerrStudioCard(
     studio: SeerrStudio,
     onClick: () -> Unit,
 ) {
-    val studioColor = Color(studio.getColor())
+    val logoUrl = studio.logoPath?.let { PopularStudios.getLogoUrl(it) }
 
     Surface(
         onClick = onClick,
@@ -1221,8 +1260,8 @@ private fun SeerrStudioCard(
             shape = RoundedCornerShape(12.dp),
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.SurfaceLight,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1235,27 +1274,28 @@ private fun SeerrStudioCard(
         ),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            studioColor,
-                            studioColor.copy(alpha = 0.7f),
-                        ),
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                ),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = studio.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp),
-                maxLines = 2,
-            )
+            if (logoUrl != null) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = studio.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                Text(
+                    text = studio.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = TvColors.TextPrimary,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    maxLines = 2,
+                )
+            }
         }
     }
 }
@@ -1308,14 +1348,14 @@ private fun SeerrNetworkBrowseRow(
 }
 
 /**
- * A card displaying a network with a colored gradient background.
+ * A card displaying a network with TMDb logo using duotone filter.
  */
 @Composable
 private fun SeerrNetworkCard(
     network: SeerrNetwork,
     onClick: () -> Unit,
 ) {
-    val networkColor = Color(network.getColor())
+    val logoUrl = network.logoPath?.let { PopularNetworks.getLogoUrl(it) }
 
     Surface(
         onClick = onClick,
@@ -1326,8 +1366,8 @@ private fun SeerrNetworkCard(
             shape = RoundedCornerShape(12.dp),
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.SurfaceLight,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1340,27 +1380,28 @@ private fun SeerrNetworkCard(
         ),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            networkColor,
-                            networkColor.copy(alpha = 0.7f),
-                        ),
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                ),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = network.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp),
-                maxLines = 2,
-            )
+            if (logoUrl != null) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = network.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                Text(
+                    text = network.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = TvColors.TextPrimary,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    maxLines = 2,
+                )
+            }
         }
     }
 }
