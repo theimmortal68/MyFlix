@@ -17,7 +17,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Detail screen router that shows MovieDetailScreen or SeriesDetailScreen
- * based on the item type. Wholphin-style text-based detail screens.
+ * based on the item type. Plex-style detail screens with backdrop hero.
  */
 @Composable
 fun DetailScreen(
@@ -28,7 +28,6 @@ fun DetailScreen(
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
-    onNavigateToSeason: (String, String) -> Unit = { _, _ -> },
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -97,12 +96,10 @@ fun DetailScreen(
                             onEpisodeClick(randomEpisode.id)
                         }
                     },
-                    onSeasonClick = { season ->
-                        // Navigate to season detail (episodes view)
+                    onEpisodeClick = onEpisodeClick,
+                    onSeasonSelected = { season ->
+                        // Select season and load its episodes
                         viewModel.selectSeason(season)
-                        // Could also navigate to a dedicated season screen
-                        val seriesId = state.item?.id ?: return@SeriesDetailScreen
-                        onNavigateToSeason(seriesId, season.id)
                     },
                     onNavigateToDetail = onNavigateToDetail,
                     onWatchedClick = {

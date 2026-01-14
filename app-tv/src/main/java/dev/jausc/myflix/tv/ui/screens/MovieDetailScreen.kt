@@ -2,11 +2,11 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -33,12 +33,13 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.JellyfinPerson
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
+import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
@@ -46,7 +47,7 @@ import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
-import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
 
 // Row indices for focus management
@@ -55,8 +56,8 @@ private const val PEOPLE_ROW = HEADER_ROW + 1
 private const val SIMILAR_ROW = PEOPLE_ROW + 1
 
 /**
- * Wholphin-style movie detail screen with text-based header.
- * No backdrop hero image - just clean text layout with title, metadata, and action buttons.
+ * Plex-style movie detail screen with backdrop hero.
+ * Features layered UI with dynamic background, backdrop image, and left-aligned metadata.
  */
 @Composable
 fun MovieDetailScreen(
@@ -99,11 +100,31 @@ fun MovieDetailScreen(
             ?.joinToString(", ") { it.name!! }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(TvColors.Background),
-    ) {
+    // Backdrop URL and dynamic gradient colors
+    val backdropUrl = remember(movie.id) {
+        jellyfinClient.getBackdropUrl(movie.id, movie.backdropImageTags?.firstOrNull())
+    }
+    val gradientColors = rememberGradientColors(backdropUrl)
+
+    // Layered UI: DynamicBackground → DetailBackdropLayer → Content
+    Box(modifier = modifier.fillMaxSize()) {
+        // Layer 1: Dynamic gradient background
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Layer 2: Backdrop image (right side, behind content)
+        DetailBackdropLayer(
+            item = movie,
+            jellyfinClient = jellyfinClient,
+            modifier = Modifier
+                .fillMaxWidth(0.65f)
+                .fillMaxHeight(0.9f)
+                .align(Alignment.TopEnd),
+        )
+
+        // Layer 3: Content
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 8.dp),
@@ -243,7 +264,7 @@ fun MovieDetailScreen(
 
 /**
  * Movie details header with title, quick details, genres, tagline, overview, and director.
- * Wholphin-style text-based header without backdrop image.
+ * Left-aligned content (45% width) to work with backdrop on the right.
  */
 @Composable
 private fun MovieDetailsHeader(
@@ -267,12 +288,12 @@ private fun MovieDetailsHeader(
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(0.75f),
+            modifier = Modifier.fillMaxWidth(0.50f),
         )
 
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth(0.60f),
+            modifier = Modifier.fillMaxWidth(0.45f),
         ) {
             val padding = 4.dp
 
