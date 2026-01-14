@@ -13,6 +13,8 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -46,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -84,6 +87,7 @@ import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.ExitConfirmationDialog
 import dev.jausc.myflix.tv.ui.components.FirstRunTip
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
@@ -125,6 +129,15 @@ fun HomeScreen(
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Exit confirmation dialog state
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // Handle back button press - show exit confirmation
+    BackHandler(enabled = !showExitDialog) {
+        showExitDialog = true
+    }
 
     // ViewModel with manual DI
     val viewModel: HomeViewModel = viewModel(
@@ -359,6 +372,18 @@ fun HomeScreen(
         MediaInfoDialog(
             item = item,
             onDismiss = { mediaInfoItem = null },
+        )
+    }
+
+    // Exit confirmation dialog
+    if (showExitDialog) {
+        ExitConfirmationDialog(
+            onConfirmExit = {
+                (context as? Activity)?.finish()
+            },
+            onCancel = {
+                showExitDialog = false
+            },
         )
     }
 }

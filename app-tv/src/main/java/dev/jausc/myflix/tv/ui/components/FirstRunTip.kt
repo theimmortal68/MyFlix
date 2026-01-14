@@ -23,10 +23,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
@@ -133,16 +131,11 @@ fun FirstRunTip(
                             .focusRequester(buttonFocusRequester)
                             .height(36.dp)
                             .onPreviewKeyEvent { event ->
-                                if (event.type == KeyEventType.KeyDown) {
-                                    when (event.key) {
-                                        // Allow Enter/Select to trigger onClick
-                                        Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> false
-                                        // Block ALL other keys (D-pad, Back, etc.)
-                                        else -> true
-                                    }
-                                } else {
-                                    // Block key up events too to prevent any side effects
-                                    true
+                                when (event.key) {
+                                    // Allow Enter/Select through (both KeyDown and KeyUp needed for click)
+                                    Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> false
+                                    // Block ALL other keys (D-pad, Back, etc.)
+                                    else -> true
                                 }
                             },
                         contentPadding = PaddingValues(horizontal = 32.dp, vertical = 0.dp),
