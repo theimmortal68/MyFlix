@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
@@ -47,6 +48,11 @@ data class PlayerUiState(
     val error: String? = null,
     val playerReady: Boolean = false,
     val showControls: Boolean = true,
+    val mediaSourceId: String? = null,
+    val audioStreams: List<MediaStream> = emptyList(),
+    val subtitleStreams: List<MediaStream> = emptyList(),
+    val selectedAudioStreamIndex: Int? = null,
+    val selectedSubtitleStreamIndex: Int? = null,
     // Queue/Auto-play state
     val showAutoPlayCountdown: Boolean = false,
     val nextQueueItem: QueueItem? = null,
@@ -135,6 +141,13 @@ class PlayerViewModel(
             jellyfinClient.getItem(itemId)
                 .onSuccess { loadedItem ->
                     val streamUrl = jellyfinClient.getStreamUrl(itemId)
+                    val mediaSource = loadedItem.mediaSources?.firstOrNull()
+                    val mediaStreams = mediaSource?.mediaStreams.orEmpty()
+                    val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
+                    val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }.sortedBy { it.index }
+                    val defaultAudioIndex = audioStreams.firstOrNull { it.isDefault }?.index
+                        ?: audioStreams.firstOrNull()?.index
+                    val defaultSubtitleIndex = subtitleStreams.firstOrNull { it.isDefault }?.index
                     val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L
@@ -147,6 +160,11 @@ class PlayerViewModel(
                             streamUrl = streamUrl,
                             startPositionMs = startPositionMs,
                             isLoading = false,
+                            mediaSourceId = mediaSource?.id,
+                            audioStreams = audioStreams,
+                            subtitleStreams = subtitleStreams,
+                            selectedAudioStreamIndex = defaultAudioIndex,
+                            selectedSubtitleStreamIndex = defaultSubtitleIndex,
                         )
                     }
                 }
@@ -178,7 +196,12 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            jellyfinClient.reportPlaybackStart(currentItemId, positionTicks = positionTicks)
+            val mediaSourceId = _uiState.value.mediaSourceId
+            jellyfinClient.reportPlaybackStart(
+                currentItemId,
+                mediaSourceId = mediaSourceId,
+                positionTicks = positionTicks,
+            )
         }
     }
 
@@ -194,7 +217,13 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            jellyfinClient.reportPlaybackProgress(currentItemId, positionTicks, isPaused)
+            val mediaSourceId = _uiState.value.mediaSourceId
+            jellyfinClient.reportPlaybackProgress(
+                currentItemId,
+                positionTicks,
+                isPaused,
+                mediaSourceId = mediaSourceId,
+            )
         }
     }
 
@@ -206,7 +235,13 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            jellyfinClient.reportPlaybackProgress(currentItemId, positionTicks, isPaused)
+            val mediaSourceId = _uiState.value.mediaSourceId
+            jellyfinClient.reportPlaybackProgress(
+                currentItemId,
+                positionTicks,
+                isPaused,
+                mediaSourceId = mediaSourceId,
+            )
         }
     }
 
@@ -231,7 +266,16 @@ class PlayerViewModel(
      */
     suspend fun reportPlaybackStopped(positionMs: Long) {
         val positionTicks = positionMs * TICKS_PER_MS
-        jellyfinClient.reportPlaybackStopped(currentItemId, positionTicks)
+        val mediaSourceId = _uiState.value.mediaSourceId
+        jellyfinClient.reportPlaybackStopped(currentItemId, positionTicks, mediaSourceId = mediaSourceId)
+    }
+
+    fun setAudioStreamIndex(index: Int?) {
+        _uiState.update { it.copy(selectedAudioStreamIndex = index) }
+    }
+
+    fun setSubtitleStreamIndex(index: Int?) {
+        _uiState.update { it.copy(selectedSubtitleStreamIndex = index) }
     }
 
     /**
@@ -367,6 +411,13 @@ class PlayerViewModel(
             jellyfinClient.getItem(newItemId)
                 .onSuccess { loadedItem ->
                     val streamUrl = jellyfinClient.getStreamUrl(newItemId)
+                    val mediaSource = loadedItem.mediaSources?.firstOrNull()
+                    val mediaStreams = mediaSource?.mediaStreams.orEmpty()
+                    val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
+                    val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }.sortedBy { it.index }
+                    val defaultAudioIndex = audioStreams.firstOrNull { it.isDefault }?.index
+                        ?: audioStreams.firstOrNull()?.index
+                    val defaultSubtitleIndex = subtitleStreams.firstOrNull { it.isDefault }?.index
                     val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L
@@ -377,6 +428,11 @@ class PlayerViewModel(
                             streamUrl = streamUrl,
                             startPositionMs = startPositionMs,
                             isLoading = false,
+                            mediaSourceId = mediaSource?.id,
+                            audioStreams = audioStreams,
+                            subtitleStreams = subtitleStreams,
+                            selectedAudioStreamIndex = defaultAudioIndex,
+                            selectedSubtitleStreamIndex = defaultSubtitleIndex,
                         )
                     }
                 }

@@ -239,7 +239,11 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
 
     override fun setSubtitleTrack(trackId: Int) {
         if (!initialized) return
-        MPVLib.setPropertyInt("sid", trackId)
+        if (trackId == PlayerConstants.TRACK_DISABLED) {
+            MPVLib.setPropertyString("sid", "no")
+        } else {
+            MPVLib.setPropertyInt("sid", trackId)
+        }
     }
 
     override fun release() {

@@ -16,7 +16,19 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,13 +44,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaStream
+import dev.jausc.myflix.core.common.model.audioLabel
+import dev.jausc.myflix.core.common.model.subtitleLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
+import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogItemEntry
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
@@ -54,6 +75,7 @@ fun PlayerScreen(
 ) {
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
+    val playPauseFocusRequester = remember { FocusRequester() }
 
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
@@ -69,11 +91,27 @@ fun PlayerScreen(
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
+    var displayMode by remember { mutableStateOf(PlayerDisplayMode.FIT) }
+    val selectedAudioIndex = state.selectedAudioStreamIndex
+    val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
+    val effectiveStreamUrl = remember(state.streamUrl, state.item?.id, selectedAudioIndex, selectedSubtitleIndex) {
+        val item = state.item
+        if (state.streamUrl == null || item == null) {
+            null
+        } else {
+            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex)
+        }
+    }
+    var currentStartPositionMs by remember(state.item?.id) { mutableLongStateOf(state.startPositionMs) }
+
+    LaunchedEffect(state.item?.id, state.startPositionMs) {
+        currentStartPositionMs = state.startPositionMs
+    }
 
     // Initialize player when item is loaded
-    LaunchedEffect(state.item, state.streamUrl) {
+    LaunchedEffect(state.item, effectiveStreamUrl) {
         val mediaInfo = state.mediaInfo
-        if (mediaInfo != null && state.streamUrl != null) {
+        if (mediaInfo != null && effectiveStreamUrl != null) {
             // Create MediaInfo for DV-aware player selection
             val coreMediaInfo = MediaInfo(
                 title = mediaInfo.title,
@@ -86,6 +124,13 @@ fun PlayerScreen(
             )
             viewModel.setPlayerReady(playerController.initializeForMedia(coreMediaInfo))
             focusRequester.requestFocus()
+        }
+    }
+
+    LaunchedEffect(state.showControls) {
+        if (state.showControls) {
+            delay(100)
+            playPauseFocusRequester.requestFocus()
         }
     }
 
@@ -146,46 +191,56 @@ fun PlayerScreen(
             .focusable()
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
-                    when (event.key) {
-                        Key.DirectionCenter, Key.Enter -> {
-                            if (state.showControls) {
-                                playerController.togglePause()
-                            } else {
+                    if (state.showControls) {
+                        when (event.key) {
+                            Key.Back -> {
+                                if (state.showAutoPlayCountdown) {
+                                    viewModel.cancelQueue()
+                                } else {
+                                    viewModel.hideControls()
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        when (event.key) {
+                            Key.DirectionCenter, Key.Enter -> {
                                 viewModel.showControls()
+                                true
                             }
-                            true
-                        }
-                        Key.DirectionLeft -> {
-                            playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS)
-                            viewModel.showControls()
-                            true
-                        }
-                        Key.DirectionRight -> {
-                            playerController.seekRelative(PlayerConstants.SEEK_STEP_MS)
-                            viewModel.showControls()
-                            true
-                        }
-                        Key.DirectionUp -> {
-                            playerController.seekRelative(PlayerConstants.SEEK_STEP_LONG_MS)
-                            viewModel.showControls()
-                            true
-                        }
-                        Key.DirectionDown -> {
-                            playerController.seekRelative(-PlayerConstants.SEEK_STEP_LONG_MS)
-                            viewModel.showControls()
-                            true
-                        }
-                        Key.Back -> {
-                            if (state.showAutoPlayCountdown) {
-                                viewModel.cancelQueue()
-                            } else {
-                                onBack()
+                            Key.DirectionLeft -> {
+                                playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS)
+                                viewModel.showControls()
+                                true
                             }
-                            true
-                        }
-                        else -> {
-                            viewModel.showControls()
-                            false
+                            Key.DirectionRight -> {
+                                playerController.seekRelative(PlayerConstants.SEEK_STEP_MS)
+                                viewModel.showControls()
+                                true
+                            }
+                            Key.DirectionUp -> {
+                                playerController.seekRelative(PlayerConstants.SEEK_STEP_LONG_MS)
+                                viewModel.showControls()
+                                true
+                            }
+                            Key.DirectionDown -> {
+                                playerController.seekRelative(-PlayerConstants.SEEK_STEP_LONG_MS)
+                                viewModel.showControls()
+                                true
+                            }
+                            Key.Back -> {
+                                if (state.showAutoPlayCountdown) {
+                                    viewModel.cancelQueue()
+                                } else {
+                                    onBack()
+                                }
+                                true
+                            }
+                            else -> {
+                                viewModel.showControls()
+                                false
+                            }
                         }
                     }
                 } else {
@@ -193,7 +248,7 @@ fun PlayerScreen(
                 }
             },
     ) {
-        if (state.isLoading || !state.playerReady || state.streamUrl == null) {
+        if (state.isLoading || !state.playerReady || effectiveStreamUrl == null) {
             LoadingIndicator("Loading...")
         } else {
             // Render appropriate surface based on backend
@@ -201,16 +256,18 @@ fun PlayerScreen(
                 PlayerBackend.MPV -> {
                     MpvSurfaceView(
                         playerController = playerController,
-                        url = state.streamUrl!!,
-                        startPositionMs = state.startPositionMs,
+                        url = effectiveStreamUrl,
+                        startPositionMs = currentStartPositionMs,
+                        displayMode = displayMode,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
                 PlayerBackend.EXOPLAYER -> {
                     ExoPlayerSurfaceView(
                         playerController = playerController,
-                        url = state.streamUrl!!,
-                        startPositionMs = state.startPositionMs,
+                        url = effectiveStreamUrl,
+                        startPositionMs = currentStartPositionMs,
+                        displayMode = displayMode,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -237,10 +294,30 @@ fun PlayerScreen(
 
             // Controls overlay
             if (state.showControls && !state.showAutoPlayCountdown) {
-                PlayerControlsOverlay(
+                TvPlayerControlsOverlay(
                     item = state.item,
                     playbackState = playbackState,
                     onPlayPause = { playerController.togglePause() },
+                    audioStreams = state.audioStreams,
+                    subtitleStreams = state.subtitleStreams,
+                    selectedAudioIndex = selectedAudioIndex,
+                    selectedSubtitleIndex = selectedSubtitleIndex,
+                    onAudioSelected = { index ->
+                        currentStartPositionMs = playbackState.position
+                        viewModel.setAudioStreamIndex(index)
+                    },
+                    onSubtitleSelected = { index ->
+                        currentStartPositionMs = playbackState.position
+                        viewModel.setSubtitleStreamIndex(index)
+                    },
+                    onPlayNext = if (state.isQueueMode) viewModel::playNextNow else null,
+                    onSeekRelative = { offset -> playerController.seekRelative(offset) },
+                    onSeekTo = { position -> playerController.seekTo(position) },
+                    onSpeedChanged = { speed -> playerController.setSpeed(speed) },
+                    displayMode = displayMode,
+                    onDisplayModeChanged = { displayMode = it },
+                    onUserInteraction = { viewModel.resetControlsHideTimer() },
+                    playPauseFocusRequester = playPauseFocusRequester,
                 )
             }
 
@@ -264,6 +341,7 @@ private fun MpvSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
+    displayMode: PlayerDisplayMode,
     modifier: Modifier = Modifier,
 ) {
     var surfaceReady by remember { mutableStateOf(false) }
@@ -295,12 +373,27 @@ private fun MpvSurfaceView(
 
         // Calculate size maintaining aspect ratio (letterbox/pillarbox)
         val containerAspect = containerWidth / containerHeight
-        val (surfaceWidth, surfaceHeight) = if (videoAspect > containerAspect) {
-            // Video is wider than container - fit width, letterbox top/bottom
-            containerWidth to containerWidth / videoAspect
-        } else {
-            // Video is taller than container - fit height, pillarbox left/right
-            containerHeight * videoAspect to containerHeight
+        val (surfaceWidth, surfaceHeight) = when (displayMode) {
+            PlayerDisplayMode.FIT -> if (videoAspect > containerAspect) {
+                containerWidth to containerWidth / videoAspect
+            } else {
+                containerHeight * videoAspect to containerHeight
+            }
+            PlayerDisplayMode.FILL -> if (videoAspect > containerAspect) {
+                containerHeight * videoAspect to containerHeight
+            } else {
+                containerWidth to containerWidth / videoAspect
+            }
+            PlayerDisplayMode.ZOOM -> {
+                val zoomFactor = 1.1f
+                val base = if (videoAspect > containerAspect) {
+                    containerHeight * videoAspect to containerHeight
+                } else {
+                    containerWidth to containerWidth / videoAspect
+                }
+                base.first * zoomFactor to base.second * zoomFactor
+            }
+            PlayerDisplayMode.STRETCH -> containerWidth to containerHeight
         }
 
         AndroidView(
@@ -339,6 +432,7 @@ private fun ExoPlayerSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
+    displayMode: PlayerDisplayMode,
     modifier: Modifier = Modifier,
 ) {
     // Start playback
@@ -351,6 +445,12 @@ private fun ExoPlayerSurfaceView(
             PlayerView(ctx).apply {
                 player = playerController.exoPlayer
                 useController = false
+                resizeMode = when (displayMode) {
+                    PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                }
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -359,6 +459,12 @@ private fun ExoPlayerSurfaceView(
         },
         update = { view ->
             view.player = playerController.exoPlayer
+            view.resizeMode = when (displayMode) {
+                PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+            }
         },
         modifier = modifier,
     )
@@ -379,124 +485,130 @@ private fun LoadingIndicator(text: String) {
 }
 
 @Composable
-private fun PlayerControlsOverlay(
+private fun TvPlayerControlsOverlay(
     item: JellyfinItem?,
     playbackState: dev.jausc.myflix.core.player.PlaybackState,
     onPlayPause: () -> Unit,
+    audioStreams: List<MediaStream>,
+    subtitleStreams: List<MediaStream>,
+    selectedAudioIndex: Int?,
+    selectedSubtitleIndex: Int?,
+    onAudioSelected: (Int?) -> Unit,
+    onSubtitleSelected: (Int?) -> Unit,
+    onPlayNext: (() -> Unit)?,
+    onSeekRelative: (Long) -> Unit,
+    onSeekTo: (Long) -> Unit,
+    onSpeedChanged: (Float) -> Unit,
+    displayMode: PlayerDisplayMode,
+    onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
+    onUserInteraction: () -> Unit,
+    playPauseFocusRequester: FocusRequester,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val playerType = playbackState.playerType
-
-    // Determine colors based on content type
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var showMediaInfo by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f)),
     ) {
-        // Top bar - title and info badges
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp),
         ) {
-            // Title row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Text(
+                text = item?.name ?: "",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
+            val subtitleText = buildString {
+                item?.seriesName?.let { append(it) }
+                if (item?.parentIndexNumber != null && item.indexNumber != null) {
+                    if (isNotEmpty()) append(" • ")
+                    append("S${item.parentIndexNumber}E${item.indexNumber}")
+                }
+            }
+            if (subtitleText.isNotBlank()) {
                 Text(
-                    text = item?.name ?: "",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    modifier = Modifier.weight(1f),
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f),
                 )
             }
-
-            // Quality and player badges row
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Player type badge
                 PlayerBadge(
                     text = playerType,
                     backgroundColor = when (playerType) {
-                        "MPV" -> Color(0xFF9C27B0) // Purple for MPV
-                        "ExoPlayer" -> Color(0xFF2196F3) // Blue for ExoPlayer
+                        "MPV" -> Color(0xFF9C27B0)
+                        "ExoPlayer" -> Color(0xFF2196F3)
                         else -> Color.Gray
                     },
                 )
-
-                // Video quality badges
-                if (videoQuality.isNotEmpty()) {
-                    // Resolution badge
-                    val resolution = when {
-                        videoQuality.contains("4K") -> "4K"
-                        videoQuality.contains("1080p") -> "1080p"
-                        videoQuality.contains("720p") -> "720p"
-                        else -> null
-                    }
-                    resolution?.let {
-                        PlayerBadge(
-                            text = it,
-                            backgroundColor = Color.White.copy(alpha = 0.2f),
-                            textColor = Color.White,
-                        )
-                    }
-
-                    // HDR type badge
-                    when {
-                        isDV -> PlayerBadge(
-                            text = "Dolby Vision",
-                            backgroundColor = Color(0xFFE50914), // DV red
-                            textColor = Color.White,
-                        )
-                        isHDR -> PlayerBadge(
-                            text = "HDR",
-                            backgroundColor = Color(0xFFFFD700), // Gold
-                            textColor = Color.Black,
-                        )
-                    }
+                if (videoQuality.isNotBlank()) {
+                    PlayerBadge(
+                        text = videoQuality,
+                        backgroundColor = Color.White.copy(alpha = 0.2f),
+                    )
+                }
+                when {
+                    isDV -> PlayerBadge(
+                        text = "Dolby Vision",
+                        backgroundColor = Color(0xFFE50914),
+                    )
+                    isHDR -> PlayerBadge(
+                        text = "HDR",
+                        backgroundColor = Color(0xFFFFD700),
+                        textColor = Color.Black,
+                    )
                 }
             }
         }
 
-        // Center play/pause
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+        // Center controls
+        Row(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                shape = ClickableSurfaceDefaults.shape(
-                    shape = MaterialTheme.shapes.extraLarge,
-                ),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.Black.copy(alpha = 0.7f),
-                ),
-                onClick = onPlayPause,
+            TvControlButton(label = "-10s") {
+                onUserInteraction()
+                onSeekRelative(-PlayerConstants.SEEK_STEP_MS)
+            }
+            TvControlButton(
+                label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
+                focusRequester = playPauseFocusRequester,
             ) {
-                Text(
-                    text = if (playbackState.isPlaying && !playbackState.isPaused) "⏸" else "▶",
-                    style = MaterialTheme.typography.displayLarge,
-                    color = Color.White,
-                    modifier = Modifier.padding(32.dp),
-                )
+                onUserInteraction()
+                onPlayPause()
+            }
+            TvControlButton(label = "+10s") {
+                onUserInteraction()
+                onSeekRelative(PlayerConstants.SEEK_STEP_MS)
+            }
+            if (onPlayNext != null) {
+                TvControlButton(label = "Next") {
+                    onUserInteraction()
+                    onPlayNext()
+                }
             }
         }
 
-        // Bottom progress
+        // Bottom bar
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .padding(24.dp),
         ) {
-            // Progress bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -510,10 +622,7 @@ private fun PlayerControlsOverlay(
                         .background(TvColors.BluePrimary, MaterialTheme.shapes.small),
                 )
             }
-
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Time
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -524,14 +633,134 @@ private fun PlayerControlsOverlay(
                     color = Color.White,
                 )
                 Text(
+                    text = "x${"%.2f".format(playbackState.speed)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f),
+                )
+                Text(
                     text = PlayerUtils.formatTime(playbackState.duration),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White,
                 )
             }
 
-            // Hints
             Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                TvActionButton("Audio") {
+                    onUserInteraction()
+                    val items = if (audioStreams.isEmpty()) {
+                        listOf(
+                            DialogItem(
+                                text = "No audio tracks available",
+                                enabled = false,
+                                onClick = {},
+                            ),
+                        )
+                    } else {
+                        audioStreams.map {
+                            DialogItem(
+                                text = it.audioLabel(),
+                                onClick = { onAudioSelected(it.index) },
+                            )
+                        }
+                    }
+                    dialogParams = DialogParams(title = "Audio Tracks", items = items)
+                }
+                TvActionButton("Subtitles") {
+                    onUserInteraction()
+                    val items = if (subtitleStreams.isEmpty()) {
+                        listOf(
+                            DialogItem(
+                                text = "No subtitles available",
+                                enabled = false,
+                                onClick = {},
+                            ),
+                        )
+                    } else {
+                        val entries = mutableListOf<DialogItemEntry>(
+                            DialogItem(
+                                text = "Off",
+                                onClick = { onSubtitleSelected(PlayerConstants.TRACK_DISABLED) },
+                            ),
+                        )
+                        entries.addAll(
+                            subtitleStreams.map {
+                                DialogItem(
+                                    text = it.subtitleLabel(),
+                                    onClick = { onSubtitleSelected(it.index) },
+                                )
+                            },
+                        )
+                        entries
+                    }
+                    dialogParams = DialogParams(title = "Subtitles", items = items)
+                }
+                TvActionButton("Speed") {
+                    onUserInteraction()
+                    val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+                    dialogParams = DialogParams(
+                        title = "Playback Speed",
+                        items = speeds.map { value ->
+                            DialogItem(
+                                text = "x${"%.2f".format(value)}",
+                                onClick = {
+                                    onUserInteraction()
+                                    onSpeedChanged(value)
+                                },
+                            )
+                        },
+                    )
+                }
+                TvActionButton("Display") {
+                    onUserInteraction()
+                    dialogParams = DialogParams(
+                        title = "Display Mode",
+                        items = PlayerDisplayMode.values().map { mode ->
+                            DialogItem(
+                                text = mode.label,
+                                onClick = {
+                                    onUserInteraction()
+                                    onDisplayModeChanged(mode)
+                                },
+                            )
+                        },
+                    )
+                }
+                TvActionButton("Chapters") {
+                    onUserInteraction()
+                    val chapters = item?.chapters.orEmpty()
+                    val items = if (chapters.isEmpty()) {
+                        listOf(
+                            DialogItem(
+                                text = "No chapters available",
+                                enabled = false,
+                                onClick = {},
+                            ),
+                        )
+                    } else {
+                        chapters.map { chapter ->
+                            val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
+                            DialogItem(
+                                text = "${chapter.name ?: "Chapter"} • ${PlayerUtils.formatTime(startMs)}",
+                                onClick = {
+                                    onUserInteraction()
+                                    onSeekTo(startMs)
+                                },
+                            )
+                        }
+                    }
+                    dialogParams = DialogParams(title = "Chapters", items = items)
+                }
+                TvActionButton("Info") {
+                    onUserInteraction()
+                    showMediaInfo = true
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = "◀ -10s  |  ▶ +10s  |  ▲ +1min  |  ▼ -1min  |  OK Play/Pause",
                 style = MaterialTheme.typography.bodySmall,
@@ -539,6 +768,54 @@ private fun PlayerControlsOverlay(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
         }
+    }
+
+    dialogParams?.let { params ->
+        DialogPopup(
+            params = params,
+            onDismissRequest = { dialogParams = null },
+        )
+    }
+
+    if (showMediaInfo && item != null) {
+        MediaInfoDialog(
+            item = item,
+            onDismiss = { showMediaInfo = false },
+        )
+    }
+}
+
+@Composable
+private fun TvControlButton(
+    label: String,
+    focusRequester: FocusRequester? = null,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.7f),
+            focusedContainerColor = TvColors.Surface,
+        ),
+        onClick = onClick,
+        modifier = Modifier
+            .size(width = 120.dp, height = 56.dp)
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun TvActionButton(label: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.height(44.dp),
+        colors = ButtonDefaults.colors(containerColor = TvColors.Surface),
+    ) {
+        Text(text = label, style = MaterialTheme.typography.labelMedium)
     }
 }
 

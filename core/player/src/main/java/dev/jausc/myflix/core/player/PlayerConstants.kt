@@ -31,6 +31,11 @@ object PlayerConstants {
     const val PROGRESS_REPORT_INTERVAL_MS = 10_000L
 
     /**
+     * Sentinel value for disabling subtitle tracks.
+     */
+    const val TRACK_DISABLED = -1
+
+    /**
      * Minimum position (in ms) to consider meaningful for resume.
      * Positions below this are treated as "start from beginning".
      */

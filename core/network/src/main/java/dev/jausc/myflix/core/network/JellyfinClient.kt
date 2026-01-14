@@ -1326,7 +1326,21 @@ class JellyfinClient(
 
     // ==================== URL Helpers ====================
 
-    fun getStreamUrl(itemId: String): String = "$baseUrl/Videos/$itemId/stream?Static=true&api_key=$accessToken"
+    fun getStreamUrl(itemId: String): String = getStreamUrl(itemId, null, null)
+
+    fun getStreamUrl(
+        itemId: String,
+        audioStreamIndex: Int?,
+        subtitleStreamIndex: Int?,
+    ): String {
+        val params = buildList {
+            add("Static=true")
+            add("api_key=$accessToken")
+            audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+            subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+        }
+        return "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
+    }
 
     /**
      * Get primary image URL (posters for movies/series, thumbnails for episodes).

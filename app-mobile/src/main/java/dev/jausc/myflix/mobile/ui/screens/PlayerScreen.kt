@@ -15,20 +15,46 @@ import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -36,12 +62,16 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.ui.PlayerView
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaStream
+import dev.jausc.myflix.core.common.model.audioLabel
+import dev.jausc.myflix.core.common.model.subtitleLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlaybackState
 import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
+import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
@@ -72,11 +102,29 @@ fun PlayerScreen(
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
+    var displayMode by remember { mutableStateOf(PlayerDisplayMode.FIT) }
+
+    val selectedAudioIndex = state.selectedAudioStreamIndex
+    val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
+    val effectiveStreamUrl = remember(state.streamUrl, state.item?.id, selectedAudioIndex, selectedSubtitleIndex) {
+        val item = state.item
+        if (state.streamUrl == null || item == null) {
+            null
+        } else {
+            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex)
+        }
+    }
+
+    var currentStartPositionMs by remember(state.item?.id) { mutableLongStateOf(state.startPositionMs) }
+
+    LaunchedEffect(state.item?.id, state.startPositionMs) {
+        currentStartPositionMs = state.startPositionMs
+    }
 
     // Initialize player when item is loaded
-    LaunchedEffect(state.item, state.streamUrl) {
+    LaunchedEffect(state.item, effectiveStreamUrl) {
         val mediaInfo = state.mediaInfo
-        if (mediaInfo != null && state.streamUrl != null) {
+        if (mediaInfo != null && effectiveStreamUrl != null) {
             // Create MediaInfo for DV-aware player selection
             val coreMediaInfo = MediaInfo(
                 title = mediaInfo.title,
@@ -146,7 +194,7 @@ fun PlayerScreen(
             .background(Color.Black)
             .clickable { viewModel.toggleControls() },
     ) {
-        if (state.isLoading || !state.playerReady || state.streamUrl == null) {
+        if (state.isLoading || !state.playerReady || effectiveStreamUrl == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -159,16 +207,18 @@ fun PlayerScreen(
                 PlayerBackend.MPV -> {
                     MpvSurfaceView(
                         playerController = playerController,
-                        url = state.streamUrl!!,
-                        startPositionMs = state.startPositionMs,
+                        url = effectiveStreamUrl,
+                        startPositionMs = currentStartPositionMs,
+                        displayMode = displayMode,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
                 PlayerBackend.EXOPLAYER -> {
                     ExoPlayerSurfaceView(
                         playerController = playerController,
-                        url = state.streamUrl!!,
-                        startPositionMs = state.startPositionMs,
+                        url = effectiveStreamUrl,
+                        startPositionMs = currentStartPositionMs,
+                        displayMode = displayMode,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -204,6 +254,25 @@ fun PlayerScreen(
                     item = state.item,
                     playbackState = playbackState,
                     playerController = playerController,
+                    audioStreams = state.audioStreams,
+                    subtitleStreams = state.subtitleStreams,
+                    selectedAudioIndex = selectedAudioIndex,
+                    selectedSubtitleIndex = selectedSubtitleIndex,
+                    onAudioSelected = { index ->
+                        currentStartPositionMs = playbackState.position
+                        viewModel.setAudioStreamIndex(index)
+                    },
+                    onSubtitleSelected = { index ->
+                        currentStartPositionMs = playbackState.position
+                        viewModel.setSubtitleStreamIndex(index)
+                    },
+                    onPlayNext = if (state.isQueueMode) viewModel::playNextNow else null,
+                    onSeekRelative = { offset -> playerController.seekRelative(offset) },
+                    onSeekTo = { position -> playerController.seekTo(position) },
+                    onSpeedChanged = { speed -> playerController.setSpeed(speed) },
+                    displayMode = displayMode,
+                    onDisplayModeChanged = { displayMode = it },
+                    onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onBack = onBack,
                 )
             }
@@ -232,6 +301,7 @@ private fun MpvSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
+    displayMode: PlayerDisplayMode,
     modifier: Modifier = Modifier,
 ) {
     var surfaceReady by remember { mutableStateOf(false) }
@@ -263,12 +333,27 @@ private fun MpvSurfaceView(
 
         // Calculate size maintaining aspect ratio (letterbox/pillarbox)
         val containerAspect = containerWidth / containerHeight
-        val (surfaceWidth, surfaceHeight) = if (videoAspect > containerAspect) {
-            // Video is wider than container - fit width, letterbox top/bottom
-            containerWidth to containerWidth / videoAspect
-        } else {
-            // Video is taller than container - fit height, pillarbox left/right
-            containerHeight * videoAspect to containerHeight
+        val (surfaceWidth, surfaceHeight) = when (displayMode) {
+            PlayerDisplayMode.FIT -> if (videoAspect > containerAspect) {
+                containerWidth to containerWidth / videoAspect
+            } else {
+                containerHeight * videoAspect to containerHeight
+            }
+            PlayerDisplayMode.FILL -> if (videoAspect > containerAspect) {
+                containerHeight * videoAspect to containerHeight
+            } else {
+                containerWidth to containerWidth / videoAspect
+            }
+            PlayerDisplayMode.ZOOM -> {
+                val zoomFactor = 1.1f
+                val base = if (videoAspect > containerAspect) {
+                    containerHeight * videoAspect to containerHeight
+                } else {
+                    containerWidth to containerWidth / videoAspect
+                }
+                base.first * zoomFactor to base.second * zoomFactor
+            }
+            PlayerDisplayMode.STRETCH -> containerWidth to containerHeight
         }
 
         AndroidView(
@@ -307,6 +392,7 @@ private fun ExoPlayerSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
+    displayMode: PlayerDisplayMode,
     modifier: Modifier = Modifier,
 ) {
     // Start playback
@@ -319,6 +405,12 @@ private fun ExoPlayerSurfaceView(
             PlayerView(ctx).apply {
                 player = playerController.exoPlayer
                 useController = false
+                resizeMode = when (displayMode) {
+                    PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                }
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -327,21 +419,52 @@ private fun ExoPlayerSurfaceView(
         },
         update = { view ->
             view.player = playerController.exoPlayer
+            view.resizeMode = when (displayMode) {
+                PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+            }
         },
         modifier = modifier,
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MobilePlayerControls(
     item: JellyfinItem?,
     playbackState: PlaybackState,
     playerController: PlayerController,
+    audioStreams: List<MediaStream>,
+    subtitleStreams: List<MediaStream>,
+    selectedAudioIndex: Int?,
+    selectedSubtitleIndex: Int?,
+    onAudioSelected: (Int?) -> Unit,
+    onSubtitleSelected: (Int?) -> Unit,
+    onPlayNext: (() -> Unit)?,
+    onSeekRelative: (Long) -> Unit,
+    onSeekTo: (Long) -> Unit,
+    onSpeedChanged: (Float) -> Unit,
+    displayMode: PlayerDisplayMode,
+    onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
+    onUserInteraction: () -> Unit,
     onBack: () -> Unit,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
+    val showNext = onPlayNext != null
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var activeSheet by remember { mutableStateOf<PlayerSheet?>(null) }
+    val speed = playbackState.speed
+    val subtitleText = buildString {
+        item?.seriesName?.let { append(it) }
+        if (item?.parentIndexNumber != null && item.indexNumber != null) {
+            if (isNotEmpty()) append(" • ")
+            append("S${item.parentIndexNumber}E${item.indexNumber}")
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -357,6 +480,7 @@ private fun MobilePlayerControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
+                onUserInteraction()
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
@@ -370,44 +494,39 @@ private fun MobilePlayerControls(
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
                 )
-                // Quality and player badges
+                if (subtitleText.isNotBlank()) {
+                    Text(
+                        text = subtitleText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f),
+                    )
+                }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 6.dp),
                 ) {
-                    // Player type badge
-                    PlayerBadge(
+                    PlayerPill(
                         text = playbackState.playerType,
                         backgroundColor = when (playbackState.playerType) {
-                            "MPV" -> Color(0xFF9C27B0) // Purple
-                            "ExoPlayer" -> Color(0xFF2196F3) // Blue
+                            "MPV" -> Color(0xFF9C27B0)
+                            "ExoPlayer" -> Color(0xFF2196F3)
                             else -> Color.Gray
                         },
                     )
-
-                    // Resolution badge
-                    val resolution = when {
-                        videoQuality.contains("4K") -> "4K"
-                        videoQuality.contains("1080p") -> "1080p"
-                        videoQuality.contains("720p") -> "720p"
-                        else -> null
-                    }
-                    resolution?.let {
-                        PlayerBadge(
-                            text = it,
-                            backgroundColor = Color.White.copy(alpha = 0.2f),
+                    if (videoQuality.isNotBlank()) {
+                        PlayerPill(
+                            text = videoQuality,
+                            backgroundColor = Color.White.copy(alpha = 0.15f),
                         )
                     }
-
-                    // HDR type badge
                     when {
-                        isDV -> PlayerBadge(
+                        isDV -> PlayerPill(
                             text = "Dolby Vision",
-                            backgroundColor = Color(0xFFE50914), // DV red
+                            backgroundColor = Color(0xFFE50914),
                         )
-                        isHDR -> PlayerBadge(
+                        isHDR -> PlayerPill(
                             text = "HDR",
-                            backgroundColor = Color(0xFFFFD700), // Gold
+                            backgroundColor = Color(0xFFFFD700),
                             textColor = Color.Black,
                         )
                     }
@@ -418,54 +537,80 @@ private fun MobilePlayerControls(
         // Center controls
         Row(
             modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Rewind
             IconButton(
-                onClick = { playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS) },
+                onClick = {
+                    onUserInteraction()
+                    onSeekRelative(-PlayerConstants.SEEK_STEP_MS)
+                },
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastRewind,
                     contentDescription = "Rewind 10s",
                     tint = Color.White,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(34.dp),
                 )
             }
-
-            // Play/Pause
-            IconButton(
-                onClick = { playerController.togglePause() },
-                modifier = Modifier.size(72.dp),
+            Surface(
+                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.15f),
+                modifier = Modifier.size(78.dp),
             ) {
-                Icon(
-                    if (playbackState.isPlaying && !playbackState.isPaused) {
-                        Icons.Default.Pause
-                    } else {
-                        Icons.Default.PlayArrow
+                IconButton(
+                    onClick = {
+                        onUserInteraction()
+                        playerController.togglePause()
                     },
-                    contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(48.dp),
-                )
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Icon(
+                        if (playbackState.isPlaying && !playbackState.isPaused) {
+                            Icons.Default.Pause
+                        } else {
+                            Icons.Default.PlayArrow
+                        },
+                        contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(44.dp),
+                    )
+                }
             }
-
-            // Forward
             IconButton(
-                onClick = { playerController.seekRelative(PlayerConstants.SEEK_STEP_MS) },
+                onClick = {
+                    onUserInteraction()
+                    onSeekRelative(PlayerConstants.SEEK_STEP_MS)
+                },
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastForward,
                     contentDescription = "Forward 10s",
                     tint = Color.White,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(34.dp),
                 )
+            }
+            if (showNext) {
+                IconButton(
+                    onClick = {
+                        onUserInteraction()
+                        onPlayNext()
+                    },
+                    modifier = Modifier.size(56.dp),
+                ) {
+                    Icon(
+                        Icons.Default.SkipNext,
+                        contentDescription = "Next",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
             }
         }
 
-        // Bottom progress
+        // Bottom controls
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -476,7 +621,8 @@ private fun MobilePlayerControls(
             Slider(
                 value = playbackState.progress,
                 onValueChange = {
-                    playerController.seekTo((it * playbackState.duration).toLong())
+                    onUserInteraction()
+                    onSeekTo((it * playbackState.duration).toLong())
                 },
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
@@ -495,26 +641,352 @@ private fun MobilePlayerControls(
                     color = Color.White,
                 )
                 Text(
+                    text = "x${"%.2f".format(speed)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f),
+                )
+                Text(
                     text = PlayerUtils.formatTime(playbackState.duration),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White,
                 )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                PlayerActionButton(
+                    label = "Audio",
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.AUDIO
+                    },
+                )
+                PlayerActionButton(
+                    label = "Subtitles",
+                    icon = Icons.Default.ClosedCaption,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.SUBTITLES
+                    },
+                )
+                PlayerActionButton(
+                    label = "Speed",
+                    icon = Icons.Default.Speed,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.SPEED
+                    },
+                )
+                PlayerActionButton(
+                    label = "Display",
+                    icon = Icons.Default.AspectRatio,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.DISPLAY
+                    },
+                )
+                PlayerActionButton(
+                    label = "Chapters",
+                    icon = Icons.AutoMirrored.Filled.List,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.CHAPTERS
+                    },
+                )
+                PlayerActionButton(
+                    label = "Info",
+                    icon = Icons.Default.Info,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.INFO
+                    },
+                )
+            }
+        }
+    }
+
+    activeSheet?.let { sheet ->
+        ModalBottomSheet(
+            onDismissRequest = { activeSheet = null },
+            sheetState = sheetState,
+            containerColor = Color(0xFF101318),
+        ) {
+            MobilePlayerSheetContent(
+                sheet = sheet,
+                item = item,
+                audioStreams = audioStreams,
+                subtitleStreams = subtitleStreams,
+                selectedAudioIndex = selectedAudioIndex,
+                selectedSubtitleIndex = selectedSubtitleIndex,
+                speed = speed,
+                displayMode = displayMode,
+                onAudioSelected = {
+                    onUserInteraction()
+                    onAudioSelected(it)
+                    activeSheet = null
+                },
+                onSubtitleSelected = {
+                    onUserInteraction()
+                    onSubtitleSelected(it)
+                    activeSheet = null
+                },
+                onSpeedSelected = {
+                    onUserInteraction()
+                    onSpeedChanged(it)
+                    activeSheet = null
+                },
+                onDisplayModeSelected = {
+                    onUserInteraction()
+                    onDisplayModeChanged(it)
+                    activeSheet = null
+                },
+                onChapterSelected = { chapterMs ->
+                    onUserInteraction()
+                    onSeekTo(chapterMs)
+                    activeSheet = null
+                },
+            )
+        }
+    }
+}
+
+private enum class PlayerSheet {
+    AUDIO,
+    SUBTITLES,
+    SPEED,
+    DISPLAY,
+    CHAPTERS,
+    INFO,
+}
+
+@Composable
+private fun PlayerPill(text: String, backgroundColor: Color, textColor: Color = Color.White) {
+    Surface(
+        color = backgroundColor,
+        shape = RoundedCornerShape(10.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlayerActionButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick) {
+        Icon(icon, contentDescription = label, tint = Color.White)
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White,
+        )
+    }
+}
+
+@Composable
+private fun MobilePlayerSheetContent(
+    sheet: PlayerSheet,
+    item: JellyfinItem?,
+    audioStreams: List<MediaStream>,
+    subtitleStreams: List<MediaStream>,
+    selectedAudioIndex: Int?,
+    selectedSubtitleIndex: Int?,
+    speed: Float,
+    displayMode: PlayerDisplayMode,
+    onAudioSelected: (Int?) -> Unit,
+    onSubtitleSelected: (Int?) -> Unit,
+    onSpeedSelected: (Float) -> Unit,
+    onDisplayModeSelected: (PlayerDisplayMode) -> Unit,
+    onChapterSelected: (Long) -> Unit,
+) {
+    when (sheet) {
+        PlayerSheet.AUDIO -> {
+            SheetHeader(title = "Audio Tracks")
+            if (audioStreams.isEmpty()) {
+                SheetEmptyState(message = "No audio tracks available.")
+            } else {
+                LazyColumn {
+                    items(audioStreams, key = { it.index }) { stream ->
+                        SheetRow(
+                            title = stream.audioLabel(),
+                            selected = selectedAudioIndex == stream.index,
+                            onClick = { onAudioSelected(stream.index) },
+                        )
+                    }
+                }
+            }
+        }
+        PlayerSheet.SUBTITLES -> {
+            SheetHeader(title = "Subtitles")
+            if (subtitleStreams.isEmpty()) {
+                SheetEmptyState(message = "No subtitle tracks available.")
+            } else {
+                LazyColumn {
+                    item {
+                        SheetRow(
+                            title = "Off",
+                            selected = selectedSubtitleIndex == PlayerConstants.TRACK_DISABLED,
+                            onClick = { onSubtitleSelected(PlayerConstants.TRACK_DISABLED) },
+                        )
+                    }
+                    items(subtitleStreams, key = { it.index }) { stream ->
+                        SheetRow(
+                            title = stream.subtitleLabel(),
+                            selected = selectedSubtitleIndex == stream.index,
+                            onClick = { onSubtitleSelected(stream.index) },
+                        )
+                    }
+                }
+            }
+        }
+        PlayerSheet.SPEED -> {
+            SheetHeader(title = "Playback Speed")
+            val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+            LazyColumn {
+                items(speeds) { value ->
+                    SheetRow(
+                        title = "x${"%.2f".format(value)}",
+                        selected = speed == value,
+                        onClick = { onSpeedSelected(value) },
+                    )
+                }
+            }
+        }
+        PlayerSheet.DISPLAY -> {
+            SheetHeader(title = "Display Mode")
+            LazyColumn {
+                items(PlayerDisplayMode.values()) { mode ->
+                    SheetRow(
+                        title = mode.label,
+                        selected = displayMode == mode,
+                        onClick = { onDisplayModeSelected(mode) },
+                    )
+                }
+            }
+        }
+        PlayerSheet.CHAPTERS -> {
+            SheetHeader(title = "Chapters")
+            val chapters = item?.chapters.orEmpty()
+            if (chapters.isEmpty()) {
+                SheetEmptyState(message = "No chapters available.")
+            } else {
+                LazyColumn {
+                    items(chapters) { chapter ->
+                        val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
+                        SheetRow(
+                            title = chapter.name ?: "Chapter",
+                            subtitle = PlayerUtils.formatTime(startMs),
+                            selected = false,
+                            onClick = { onChapterSelected(startMs) },
+                        )
+                    }
+                }
+            }
+        }
+        PlayerSheet.INFO -> {
+            SheetHeader(title = "Media Info")
+            val mediaSource = item?.mediaSources?.firstOrNull()
+            val streams = mediaSource?.mediaStreams.orEmpty()
+            LazyColumn {
+                item {
+                    SheetInfoRow("Container", mediaSource?.container?.uppercase() ?: "Unknown")
+                    streams.firstOrNull { it.type == "Video" }?.let { video ->
+                        SheetInfoRow(
+                            "Video",
+                            listOfNotNull(
+                                video.codec?.uppercase(),
+                                video.width?.let { w -> video.height?.let { h -> "${w}x$h" } },
+                                video.videoRangeType,
+                            ).joinToString(" • "),
+                        )
+                    }
+                }
+                items(streams.filter { it.type == "Audio" }) { audio ->
+                    SheetInfoRow("Audio", audio.audioLabel())
+                }
+                items(streams.filter { it.type == "Subtitle" }) { subtitle ->
+                    SheetInfoRow("Subtitle", subtitle.subtitleLabel())
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color = Color.White) {
-    Surface(
-        color = backgroundColor,
-        shape = RoundedCornerShape(4.dp),
+private fun SheetHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = Color.White,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+    )
+}
+
+@Composable
+private fun SheetRow(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    subtitle: String? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .then(
+                if (selected) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                } else {
+                    Modifier
+                },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = textColor,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            subtitle?.let {
+                Text(text = it, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        if (selected) {
+            Text(text = "Selected", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+        }
     }
+}
+
+@Composable
+private fun SheetInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(text = label, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.labelMedium)
+        Text(text = value, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun SheetEmptyState(message: String) {
+    Text(
+        text = message,
+        color = Color.White.copy(alpha = 0.7f),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+    )
 }
