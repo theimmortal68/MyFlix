@@ -97,9 +97,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-unit")
 
     // Navigation
-    implementation("androidx.navigation:navigation-common:2.9.0")
-    implementation("androidx.navigation:navigation-runtime:2.9.0")
-    implementation("androidx.navigation:navigation-compose:2.9.0")
+    implementation("androidx.navigation:navigation-common:${rootProject.extra["navigationVersion"]}")
+    implementation("androidx.navigation:navigation-runtime:${rootProject.extra["navigationVersion"]}")
+    implementation("androidx.navigation:navigation-compose:${rootProject.extra["navigationVersion"]}")
 
     // Compose TV
     val tvVersion = rootProject.extra["tvComposeVersion"] as String
@@ -124,7 +124,7 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${rootProject.extra["coroutinesVersion"]}")
 
     // Lifecycle for ViewModel and collectAsStateWithLifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")

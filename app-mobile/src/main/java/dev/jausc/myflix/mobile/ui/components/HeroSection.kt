@@ -58,6 +58,7 @@ import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.runtimeMinutes
 import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /**
  * Default values for hero section layout and behavior.
@@ -163,16 +164,18 @@ fun MobileHeroSection(
     // Keys include items reference and interval to restart loop when content or timing changes
     LaunchedEffect(featuredItems, autoRotateIntervalMs) {
         if (featuredItems.size > 1) {
-            while (true) {
+            while (isActive) {
                 delay(autoRotateIntervalMs)
                 try {
                     val currentSize = featuredItems.size
-                    if (currentSize > 0) {
+                    if (currentSize > 0 && isActive) {
                         val nextPage = (pagerState.currentPage + 1) % currentSize
                         pagerState.animateScrollToPage(nextPage)
                     }
-                } catch (_: Exception) {
-                    // Ignore animation errors when list changes
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e // Re-throw cancellation exceptions
+                } catch (e: Exception) {
+                    android.util.Log.w("HeroSection", "Carousel animation error: ${e.message}")
                 }
             }
         }

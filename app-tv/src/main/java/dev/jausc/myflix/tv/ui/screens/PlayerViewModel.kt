@@ -114,6 +114,7 @@ class PlayerViewModel(
     private var markedAsPlayed = false
     private var controlsHideJob: Job? = null
     private var countdownJob: Job? = null
+    private var lastKnownPositionMs: Long = 0L
 
     init {
         // Check if we're in queue mode
@@ -183,6 +184,9 @@ class PlayerViewModel(
      */
     fun reportProgress(positionMs: Long, isPaused: Boolean) {
         if (!playbackStarted) return
+
+        // Track position for cleanup reporting
+        lastKnownPositionMs = positionMs
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
@@ -388,6 +392,14 @@ class PlayerViewModel(
         super.onCleared()
         controlsHideJob?.cancel()
         countdownJob?.cancel()
+
+        // Report playback stopped synchronously to ensure it completes
+        if (playbackStarted && lastKnownPositionMs > 0) {
+            kotlinx.coroutines.runBlocking {
+                reportPlaybackStopped(lastKnownPositionMs)
+            }
+        }
+
         // Clear queue when player is destroyed
         PlayQueueManager.clear()
     }

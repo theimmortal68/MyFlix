@@ -74,9 +74,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-unit")
 
     // Navigation
-    implementation("androidx.navigation:navigation-common:2.9.6")
-    implementation("androidx.navigation:navigation-runtime:2.9.6")
-    implementation("androidx.navigation:navigation-compose:2.9.6")
+    implementation("androidx.navigation:navigation-common:${rootProject.extra["navigationVersion"]}")
+    implementation("androidx.navigation:navigation-runtime:${rootProject.extra["navigationVersion"]}")
+    implementation("androidx.navigation:navigation-compose:${rootProject.extra["navigationVersion"]}")
 
     // Coil 3 for image loading
     implementation("io.coil-kt.coil3:coil-compose:${rootProject.extra["coilVersion"]}")
@@ -90,7 +90,7 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${rootProject.extra["coroutinesVersion"]}")
 
     // Guava (used by Media3)
     implementation("com.google.guava:guava:33.3.1-android")

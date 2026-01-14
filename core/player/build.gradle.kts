@@ -40,8 +40,8 @@ dependencies {
     implementation("androidx.annotation:annotation:1.9.1")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
-    runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${rootProject.extra["coroutinesVersion"]}")
+    runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.extra["coroutinesVersion"]}")
 
     // ExoPlayer (Media3) - exposed to consumers
     val media3Version = rootProject.extra["media3Version"] as String

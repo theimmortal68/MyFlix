@@ -63,5 +63,10 @@ buildscript {
         set("coilVersion", "3.3.0")
         set("media3Version", "1.9.0")
         set("desugarVersion", "2.1.4")
+        // Centralized library versions
+        set("coroutinesVersion", "1.10.2")
+        set("serializationVersion", "1.9.0")
+        set("okHttpVersion", "5.1.0")
+        set("navigationVersion", "2.9.6")
     }
 }

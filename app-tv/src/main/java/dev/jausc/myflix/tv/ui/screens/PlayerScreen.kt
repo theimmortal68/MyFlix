@@ -41,13 +41,8 @@ import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 @Composable
 fun PlayerScreen(
@@ -58,8 +53,6 @@ fun PlayerScreen(
 ) {
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
-    val stopReportScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
-    var latestPositionMs by remember { mutableStateOf(0L) }
 
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
@@ -126,7 +119,6 @@ fun PlayerScreen(
 
     // Detect video completion (95% watched = mark as played)
     LaunchedEffect(playbackState.position, playbackState.duration) {
-        latestPositionMs = playbackState.position
         viewModel.checkVideoCompletion(playbackState.position, playbackState.duration)
     }
 
@@ -137,14 +129,9 @@ fun PlayerScreen(
         }
     }
 
-    // Cleanup - report playback stopped
+    // Cleanup player resources (ViewModel handles playback stop reporting)
     DisposableEffect(Unit) {
         onDispose {
-            // Fire-and-forget: don't block main thread, let server handle eventual consistency
-            stopReportScope.launch {
-                viewModel.reportPlaybackStopped(latestPositionMs)
-                stopReportScope.cancel()
-            }
             playerController.stop()
             playerController.release()
         }

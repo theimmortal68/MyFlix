@@ -24,16 +24,16 @@ kotlin {
 
 dependencies {
     // Compose BOM
-    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))
 
     // Core modules
     api(project(":core:seerr"))
 
     // Coroutines - exposed to consumers for StateFlow in preferences
-    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:${rootProject.extra["coroutinesVersion"]}")
 
     // Serialization - exposed to consumers
-    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.0")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-core:${rootProject.extra["serializationVersion"]}")
 
     // DataStore - for preference key definitions
     api("androidx.datastore:datastore-preferences:1.1.6")
@@ -54,12 +54,13 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // YouTube trailer extraction (NewPipe)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:0.24.4")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // v0.24.8 - matching Wholphin; v0.25.0+ requires PoTokenProvider
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.8")
+    implementation("com.squareup.okhttp3:okhttp:${rootProject.extra["okHttpVersion"]}")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${rootProject.extra["coroutinesVersion"]}")
     testImplementation("org.jetbrains.kotlin:kotlin-test:${rootProject.extra["kotlinVersion"]}")
     testImplementation("io.mockk:mockk:1.13.10")
 }

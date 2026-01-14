@@ -1322,13 +1322,14 @@ class JellyfinClient(
         mediaSourceId: String? = null,
         positionTicks: Long = 0,
     ): Result<Unit> = runCatching {
-        currentPlaySessionId = "${itemId}_${System.currentTimeMillis()}"
+        val sessionId = "${itemId}_${System.currentTimeMillis()}"
+        currentPlaySessionId = sessionId
         val body = PlaybackStartInfo(
             itemId = itemId,
             mediaSourceId = mediaSourceId ?: itemId,
             positionTicks = positionTicks,
             playMethod = "DirectPlay",
-            playSessionId = currentPlaySessionId!!,
+            playSessionId = sessionId,
             canSeek = true,
             isPaused = false,
             isMuted = false,

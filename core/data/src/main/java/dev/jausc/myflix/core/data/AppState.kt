@@ -27,7 +27,7 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
     var password: String? = null
         private set
 
-    suspend fun initialize() {
+    suspend fun initialize(): Result<Unit> = runCatching {
         val prefs = context.dataStore.data.first()
         val serverUrl = prefs[PreferenceKeys.DataStore.SERVER_URL]
         val accessToken = prefs[PreferenceKeys.DataStore.ACCESS_TOKEN]
@@ -35,11 +35,21 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         val deviceId = prefs[PreferenceKeys.DataStore.DEVICE_ID] ?: generateDeviceId().also { saveDeviceId(it) }
 
         // Load credentials from encrypted storage
-        username = secureStore.getUsername()
-        password = secureStore.getPassword()
+        try {
+            username = secureStore.getUsername()
+            password = secureStore.getPassword()
+        } catch (e: Exception) {
+            android.util.Log.w("AppState", "Failed to load credentials: ${e.message}")
+            // Continue without credentials - user can re-login if needed
+        }
 
         // Migrate from plain DataStore if present (one-time migration)
-        migrateCredentialsIfNeeded(prefs)
+        try {
+            migrateCredentialsIfNeeded(prefs)
+        } catch (e: Exception) {
+            android.util.Log.w("AppState", "Credential migration failed: ${e.message}")
+            // Non-fatal, continue
+        }
 
         jellyfinClient.deviceId = deviceId
         if (serverUrl != null && accessToken != null && userId != null) {

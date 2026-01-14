@@ -146,7 +146,8 @@ object PreferenceKeys {
     object Defaults {
         const val HIDE_WATCHED_FROM_RECENT = false
         const val USE_MPV_PLAYER = false
-        const val USE_TRAILER_FALLBACK = false
+        // Default to true since NewPipeExtractor requires PoTokenProvider for YouTube's anti-bot measures
+        const val USE_TRAILER_FALLBACK = true
         const val SHOW_SEASON_PREMIERES = true
         const val SHOW_GENRE_ROWS = false
         const val SHOW_COLLECTIONS = true

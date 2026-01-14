@@ -83,12 +83,23 @@ object YouTubeTrailerResolver {
 }
 
 private class OkHttpDownloader : Downloader() {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .build()
 
     override fun execute(request: Request): Response {
         val requestBuilder = okhttp3.Request.Builder().url(request.url())
         request.headers().forEach { (key, values) ->
             values.forEach { value -> requestBuilder.addHeader(key, value) }
+        }
+
+        // Add User-Agent if not present (required by YouTube)
+        if (!request.headers().containsKey("User-Agent")) {
+            requestBuilder.addHeader("User-Agent", USER_AGENT)
         }
 
         val method = request.httpMethod().uppercase(Locale.US)
@@ -109,5 +120,11 @@ private class OkHttpDownloader : Downloader() {
             responseBody,
             response.request.url.toString(),
         )
+    }
+
+    companion object {
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 }
