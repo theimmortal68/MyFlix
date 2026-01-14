@@ -28,6 +28,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Build NewPipeExtractor submodule
+        run: |
+          cd references/NewPipeExtractor
+          chmod +x gradlew
+          ./gradlew :extractor:assemble --no-daemon
+
       - name: Run unit tests
         run: ./gradlew test --no-daemon
 
