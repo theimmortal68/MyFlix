@@ -52,8 +52,11 @@ object YouTubeTrailerResolver {
             val stream = selectBestStream(info)
                 ?: throw IOException("No playable YouTube streams available")
 
+            val streamUrl = stream.content
+                ?: throw IOException("Stream URL is not available")
+
             YouTubeStream(
-                url = stream.url,
+                url = streamUrl,
                 title = info.name,
                 durationMs = info.duration.coerceAtLeast(0) * 1000,
                 isHls = stream.deliveryMethod == DeliveryMethod.HLS,
@@ -82,14 +85,14 @@ object YouTubeTrailerResolver {
 private class OkHttpDownloader : Downloader() {
     private val client = OkHttpClient()
 
-    override fun download(request: Request): Response {
-        val requestBuilder = okhttp3.Request.Builder().url(request.url)
-        request.headers?.forEach { (key, value) ->
-            requestBuilder.addHeader(key, value)
+    override fun execute(request: Request): Response {
+        val requestBuilder = okhttp3.Request.Builder().url(request.url())
+        request.headers().forEach { (key, values) ->
+            values.forEach { value -> requestBuilder.addHeader(key, value) }
         }
 
-        val method = request.httpMethod?.uppercase(Locale.US) ?: "GET"
-        val body = request.data?.toRequestBody("application/x-www-form-urlencoded".toMediaTypeOrNull())
+        val method = request.httpMethod().uppercase(Locale.US)
+        val body = request.dataToSend()?.toRequestBody("application/x-www-form-urlencoded".toMediaTypeOrNull())
 
         when (method) {
             "POST" -> requestBuilder.post(body ?: ByteArray(0).toRequestBody(null))
@@ -102,8 +105,8 @@ private class OkHttpDownloader : Downloader() {
         return Response(
             response.code,
             response.message,
-            responseBody,
             response.headers.toMultimap(),
+            responseBody,
             response.request.url.toString(),
         )
     }

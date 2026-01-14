@@ -6,6 +6,11 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Enable automatic JDK download for toolchains (needed for NewPipeExtractor which requires JDK 11)
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {

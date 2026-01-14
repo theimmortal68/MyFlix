@@ -51,7 +51,8 @@ fun TrailerPlayerScreen(
     title: String?,
     onBack: () -> Unit,
 ) {
-    val playerController = remember { PlayerController(LocalContext.current, useMpv = false) }
+    val context = LocalContext.current
+    val playerController = remember { PlayerController(context, useMpv = false) }
     val playbackState by playerController.state.collectAsState()
 
     var resolvedStream by remember { mutableStateOf<YouTubeStream?>(null) }
