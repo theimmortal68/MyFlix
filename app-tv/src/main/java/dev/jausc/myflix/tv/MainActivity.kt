@@ -52,6 +52,8 @@ import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
+import dev.jausc.myflix.tv.ui.screens.TrailerPlayerScreen
+import dev.jausc.myflix.tv.ui.screens.TrailerWebViewScreen
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -83,6 +85,7 @@ fun MyFlixTvApp() {
 
     // Collect preferences (only ones used outside HomeScreen)
     val useMpvPlayer by tvPreferences.useMpvPlayer.collectAsState()
+    val useTrailerFallback by tvPreferences.useTrailerFallback.collectAsState()
     val seerrEnabled by tvPreferences.seerrEnabled.collectAsState()
     val seerrUrl by tvPreferences.seerrUrl.collectAsState()
     val seerrApiKey by tvPreferences.seerrApiKey.collectAsState()
@@ -467,6 +470,13 @@ fun MyFlixTvApp() {
                     onMediaClick = { relatedMediaType, relatedTmdbId ->
                         navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
                     },
+                    onTrailerClick = { videoKey, videoTitle ->
+                        if (useTrailerFallback) {
+                            navController.navigate(NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, videoTitle))
+                        } else {
+                            navController.navigate(NavigationHelper.buildSeerrTrailerRoute(videoKey, videoTitle))
+                        }
+                    },
                     onBack = { navController.popBackStack() },
                     onActorClick = { personId ->
                         navController.navigate("seerr/person/$personId")
@@ -516,6 +526,42 @@ fun MyFlixTvApp() {
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
+                )
+            }
+
+            composable(
+                route = NavigationHelper.SEERR_TRAILER_ROUTE,
+                arguments = listOf(
+                    navArgument("videoKey") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val videoKeyEncoded = backStackEntry.arguments?.getString("videoKey") ?: return@composable
+                val titleEncoded = backStackEntry.arguments?.getString("title") ?: ""
+                val videoKey = NavigationHelper.decodeNavArg(videoKeyEncoded)
+                val title = NavigationHelper.decodeNavArg(titleEncoded).takeIf { it.isNotBlank() }
+                TrailerPlayerScreen(
+                    videoKey = videoKey,
+                    title = title,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = NavigationHelper.SEERR_TRAILER_FALLBACK_ROUTE,
+                arguments = listOf(
+                    navArgument("videoKey") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val videoKeyEncoded = backStackEntry.arguments?.getString("videoKey") ?: return@composable
+                val titleEncoded = backStackEntry.arguments?.getString("title") ?: ""
+                val videoKey = NavigationHelper.decodeNavArg(videoKeyEncoded)
+                val title = NavigationHelper.decodeNavArg(titleEncoded).takeIf { it.isNotBlank() }
+                TrailerWebViewScreen(
+                    videoKey = videoKey,
+                    title = title,
+                    onBack = { navController.popBackStack() },
                 )
             }
 

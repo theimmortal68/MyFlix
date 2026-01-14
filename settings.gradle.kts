@@ -11,8 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Uncomment to enable MPV library from JitPack:
-        // maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

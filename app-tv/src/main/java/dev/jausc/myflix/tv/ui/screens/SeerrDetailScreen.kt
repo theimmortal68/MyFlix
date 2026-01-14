@@ -101,6 +101,7 @@ fun SeerrDetailScreen(
     seerrClient: SeerrClient,
     onPlayInJellyfin: ((String) -> Unit)? = null, // Jellyfin item ID if available
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null, // Person ID
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
@@ -503,11 +504,7 @@ fun SeerrDetailScreen(
                                                 icon = Icons.Outlined.PlayArrow,
                                                 text = "Trailer",
                                                 onClick = {
-                                                    val intent = Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse("https://www.youtube.com/watch?v=$videoKey"),
-                                                    )
-                                                    context.startActivity(intent)
+                                                    onTrailerClick(videoKey, trailer?.name ?: trailer?.type)
                                                 },
                                                 containerColor = Color(0xFFFF0000),
                                             )
@@ -848,7 +845,12 @@ fun SeerrDetailScreen(
                                             videosInCategory,
                                             key = { it.key ?: it.name ?: "" },
                                         ) { video ->
-                                            TvSeerrVideoCard(video = video)
+                                            TvSeerrVideoCard(
+                                                video = video,
+                                                onClick = { key, name ->
+                                                    onTrailerClick(key, name)
+                                                },
+                                            )
                                         }
                                     }
                                 }
@@ -1266,17 +1268,14 @@ private fun SeasonLegendItem(color: Color, label: String) {
 }
 
 @Composable
-private fun TvSeerrVideoCard(video: SeerrVideo) {
-    val context = LocalContext.current
-
+private fun TvSeerrVideoCard(
+    video: SeerrVideo,
+    onClick: (videoKey: String, title: String?) -> Unit,
+) {
     Surface(
         onClick = {
             video.key?.let { key ->
-                val intent = Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://www.youtube.com/watch?v=$key"),
-                )
-                context.startActivity(intent)
+                onClick(key, video.name ?: video.type)
             }
         },
         modifier = Modifier

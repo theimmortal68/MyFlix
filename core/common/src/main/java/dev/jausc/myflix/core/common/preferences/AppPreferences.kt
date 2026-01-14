@@ -41,6 +41,11 @@ abstract class AppPreferences(context: Context) {
     }
     val useMpvPlayer: StateFlow<Boolean> by lazy { _useMpvPlayer.asStateFlow() }
 
+    private val _useTrailerFallback: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.USE_TRAILER_FALLBACK, PreferenceKeys.Defaults.USE_TRAILER_FALLBACK))
+    }
+    val useTrailerFallback: StateFlow<Boolean> by lazy { _useTrailerFallback.asStateFlow() }
+
     // Home Screen Row Preferences
     private val _showSeasonPremieres: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_SEASON_PREMIERES, PreferenceKeys.Defaults.SHOW_SEASON_PREMIERES))
@@ -130,6 +135,14 @@ abstract class AppPreferences(context: Context) {
     fun setUseMpvPlayer(useMpv: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.USE_MPV_PLAYER, useMpv).apply()
         _useMpvPlayer.value = useMpv
+    }
+
+    /**
+     * Set whether to use the WebView fallback for Seerr trailers.
+     */
+    fun setUseTrailerFallback(useFallback: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.USE_TRAILER_FALLBACK, useFallback).apply()
+        _useTrailerFallback.value = useFallback
     }
 
     // Home screen row setters

@@ -103,6 +103,7 @@ fun SeerrDetailScreen(
     tmdbId: Int,
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null,
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
@@ -683,7 +684,12 @@ fun SeerrDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     items(videosInCategory, key = { it.key ?: it.name ?: "" }) { video ->
-                                        MobileSeerrVideoCard(video = video)
+                                        MobileSeerrVideoCard(
+                                            video = video,
+                                            onClick = { key, name ->
+                                                onTrailerClick(key, name)
+                                            },
+                                        )
                                     }
                                 }
                             }
@@ -1076,9 +1082,10 @@ private fun MobileSeerrRelatedCard(
 }
 
 @Composable
-private fun MobileSeerrVideoCard(video: SeerrVideo) {
-    val context = LocalContext.current
-
+private fun MobileSeerrVideoCard(
+    video: SeerrVideo,
+    onClick: (videoKey: String, title: String?) -> Unit,
+) {
     Box(
         modifier = Modifier
             .width(200.dp)
@@ -1087,11 +1094,7 @@ private fun MobileSeerrVideoCard(video: SeerrVideo) {
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable {
                 video.key?.let { key ->
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://www.youtube.com/watch?v=$key"),
-                    )
-                    context.startActivity(intent)
+                    onClick(key, video.name ?: video.type)
                 }
             },
     ) {

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Visibility
@@ -83,6 +84,7 @@ fun PreferencesScreen(
 
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
+    val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -167,6 +169,8 @@ fun PreferencesScreen(
                 onHideWatchedChanged = { preferences.setHideWatchedFromRecent(it) },
                 useMpvPlayer = useMpvPlayer,
                 onUseMpvPlayerChanged = { preferences.setUseMpvPlayer(it) },
+                useTrailerFallback = useTrailerFallback,
+                onUseTrailerFallbackChanged = { preferences.setUseTrailerFallback(it) },
                 showSeasonPremieres = showSeasonPremieres,
                 onShowSeasonPremieresChanged = { preferences.setShowSeasonPremieres(it) },
                 showGenreRows = showGenreRows,
@@ -249,6 +253,8 @@ private fun PreferencesContent(
     onHideWatchedChanged: (Boolean) -> Unit,
     useMpvPlayer: Boolean,
     onUseMpvPlayerChanged: (Boolean) -> Unit,
+    useTrailerFallback: Boolean,
+    onUseTrailerFallbackChanged: (Boolean) -> Unit,
     showSeasonPremieres: Boolean,
     onShowSeasonPremieresChanged: (Boolean) -> Unit,
     showGenreRows: Boolean,
@@ -387,6 +393,15 @@ private fun PreferencesContent(
                     iconTint = if (useMpvPlayer) Color(0xFF9C27B0) else TvColors.TextSecondary,
                     checked = useMpvPlayer,
                     onCheckedChange = onUseMpvPlayerChanged,
+                )
+                PreferenceDivider()
+                TogglePreferenceItem(
+                    title = "Use WebView Trailer Fallback",
+                    description = "Use the WebView fallback player for Seerr trailers.",
+                    icon = Icons.Outlined.OndemandVideo,
+                    iconTint = if (useTrailerFallback) Color(0xFF38BDF8) else TvColors.TextSecondary,
+                    checked = useTrailerFallback,
+                    onCheckedChange = onUseTrailerFallbackChanged,
                 )
             }
         }

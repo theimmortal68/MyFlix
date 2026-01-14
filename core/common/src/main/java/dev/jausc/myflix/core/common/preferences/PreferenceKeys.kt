@@ -68,6 +68,9 @@ object PreferenceKeys {
         /** Use MPV player instead of ExoPlayer */
         const val USE_MPV_PLAYER = "use_mpv_player"
 
+        /** Use WebView fallback for Seerr trailers */
+        const val USE_TRAILER_FALLBACK = "use_trailer_fallback"
+
         // Home screen row preferences
         /** Show upcoming episodes (Season Premieres) row */
         const val SHOW_SEASON_PREMIERES = "show_season_premieres"
@@ -143,6 +146,7 @@ object PreferenceKeys {
     object Defaults {
         const val HIDE_WATCHED_FROM_RECENT = false
         const val USE_MPV_PLAYER = false
+        const val USE_TRAILER_FALLBACK = false
         const val SHOW_SEASON_PREMIERES = true
         const val SHOW_GENRE_ROWS = false
         const val SHOW_COLLECTIONS = true
