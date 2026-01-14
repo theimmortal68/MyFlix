@@ -30,7 +30,7 @@ jobs:
 
       - name: Build NewPipeExtractor submodule
         run: |
-          cd references/NewPipeExtractor
+          cd NewPipeExtractor
           chmod +x gradlew
           ./gradlew :extractor:assemble --no-daemon
 

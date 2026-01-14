@@ -17,6 +17,13 @@ dependencyResolutionManagement {
 
 rootProject.name = "MyFlix"
 
+includeBuild("NewPipeExtractor") {
+    dependencySubstitution {
+        substitute(module("com.github.TeamNewPipe:NewPipeExtractor"))
+            .using(project(":extractor"))
+    }
+}
+
 // App modules
 include(":app-tv")
 include(":app-mobile")
