@@ -67,4 +67,14 @@ object NavigationHelper {
      */
     fun buildSeerrTrailerFallbackRoute(videoKey: String, title: String?): String =
         "seerr/trailer/fallback/${encodeNavArg(videoKey)}/${encodeNavArg(title ?: "")}"
+
+    /**
+     * Builds a player route with optional start position override.
+     */
+    fun buildPlayerRoute(itemId: String, startPositionMs: Long? = null): String =
+        if (startPositionMs != null) {
+            "player/$itemId?startPositionMs=$startPositionMs"
+        } else {
+            "player/$itemId"
+        }
 }

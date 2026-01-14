@@ -50,6 +50,7 @@ fun MoviePlayButtons(
     watched: Boolean,
     favorite: Boolean,
     onPlayClick: (resumePositionTicks: Long) -> Unit,
+    onRestartClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onMoreClick: () -> Unit,
@@ -81,7 +82,7 @@ fun MoviePlayButtons(
         // Restart button (if in progress)
         if (hasProgress) {
             FilledTonalButton(
-                onClick = { onPlayClick(0L) },
+                onClick = onRestartClick,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Replay,
@@ -134,6 +135,7 @@ fun SeriesActionButtons(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -185,6 +187,14 @@ fun SeriesActionButtons(
                 imageVector = if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = if (favorite) "Remove from favorites" else "Add to favorites",
                 tint = if (favorite) IconColors.Favorite else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+
+        // More options
+        IconButton(onClick = onMoreClick) {
+            Icon(
+                imageVector = Icons.Outlined.MoreVert,
+                contentDescription = "More options",
             )
         }
     }

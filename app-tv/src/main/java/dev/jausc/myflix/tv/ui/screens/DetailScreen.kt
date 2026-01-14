@@ -23,11 +23,13 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 fun DetailScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
-    onPlayClick: () -> Unit,
+    onPlayClick: (String, Long?) -> Unit,
+    onPlayItemClick: (String, Long?) -> Unit,
     onEpisodeClick: (String) -> Unit,
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
+    onNavigateToPerson: (String) -> Unit = {},
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -62,11 +64,12 @@ fun DetailScreen(
                 MovieDetailScreen(
                     state = state,
                     jellyfinClient = jellyfinClient,
-                    onPlayClick = { resumePosition ->
-                        // Play movie at position (convert ticks to seconds or handle in player)
-                        onPlayClick()
+                    onPlayClick = { startPositionMs ->
+                        onPlayClick(itemId, startPositionMs)
                     },
+                    onPlayItemClick = onPlayItemClick,
                     onNavigateToDetail = onNavigateToDetail,
+                    onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {
                         val played = state.item?.userData?.played == true
                         viewModel.setItemPlayed(!played)
@@ -97,11 +100,13 @@ fun DetailScreen(
                         }
                     },
                     onEpisodeClick = onEpisodeClick,
+                    onPlayItemClick = onPlayItemClick,
                     onSeasonSelected = { season ->
                         // Select season and load its episodes
                         viewModel.selectSeason(season)
                     },
                     onNavigateToDetail = onNavigateToDetail,
+                    onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {
                         val played = state.item?.userData?.played == true
                         viewModel.setItemPlayed(!played)

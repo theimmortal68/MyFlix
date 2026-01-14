@@ -91,6 +91,7 @@ data class PlayerMediaInfo(
 class PlayerViewModel(
     private val itemId: String,
     private val jellyfinClient: JellyfinClient,
+    private var startPositionOverrideMs: Long? = null,
 ) : ViewModel() {
 
     /**
@@ -99,10 +100,11 @@ class PlayerViewModel(
     class Factory(
         private val itemId: String,
         private val jellyfinClient: JellyfinClient,
+        private val startPositionMs: Long? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PlayerViewModel(itemId, jellyfinClient) as T
+            PlayerViewModel(itemId, jellyfinClient, startPositionMs) as T
     }
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -133,9 +135,11 @@ class PlayerViewModel(
             jellyfinClient.getItem(currentItemId)
                 .onSuccess { loadedItem ->
                     val streamUrl = jellyfinClient.getStreamUrl(currentItemId)
-                    val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
+                    val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L
+                    val startPositionMs = startPositionOverrideMs ?: defaultStartPositionMs
+                    startPositionOverrideMs = null
 
                     _uiState.update {
                         it.copy(

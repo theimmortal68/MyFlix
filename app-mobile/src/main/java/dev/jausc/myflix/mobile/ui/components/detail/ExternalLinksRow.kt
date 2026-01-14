@@ -8,28 +8,30 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import dev.jausc.myflix.core.common.model.JellyfinPerson
-import dev.jausc.myflix.core.network.JellyfinClient
 
-/**
- * Horizontal row of cast and crew cards.
- */
+data class ExternalLinkItem(
+    val label: String,
+    val url: String,
+)
+
 @Composable
-fun CastCrewSection(
-    people: List<JellyfinPerson>,
-    jellyfinClient: JellyfinClient,
-    onPersonClick: (JellyfinPerson) -> Unit,
-    onPersonLongClick: (Int, JellyfinPerson) -> Unit,
+fun ExternalLinksRow(
+    title: String,
+    links: List<ExternalLinkItem>,
     modifier: Modifier = Modifier,
-    title: String = "Cast & Crew",
 ) {
-    if (people.isEmpty()) return
+    if (links.isEmpty()) return
+
+    val uriHandler = LocalUriHandler.current
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -41,17 +43,19 @@ fun CastCrewSection(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
+
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            itemsIndexed(people) { index, person ->
-                PersonCard(
-                    person = person,
-                    imageUrl = jellyfinClient.getPersonImageUrl(person.id, person.primaryImageTag),
-                    onClick = { onPersonClick(person) },
-                    onLongClick = { onPersonLongClick(index, person) },
+            items(links) { link ->
+                AssistChip(
+                    onClick = { uriHandler.openUri(link.url) },
+                    label = { Text(link.label) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 )
             }
         }

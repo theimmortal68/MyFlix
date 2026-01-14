@@ -51,6 +51,7 @@ import kotlinx.coroutines.isActive
 @Composable
 fun PlayerScreen(
     itemId: String,
+    startPositionMs: Long? = null,
     jellyfinClient: JellyfinClient,
     useMpvPlayer: Boolean = false,
     onBack: () -> Unit,
@@ -60,7 +61,7 @@ fun PlayerScreen(
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
         key = itemId,
-        factory = PlayerViewModel.Factory(itemId, jellyfinClient),
+        factory = PlayerViewModel.Factory(itemId, jellyfinClient, startPositionMs),
     )
 
     // Collect UI state from ViewModel

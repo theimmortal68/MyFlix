@@ -190,6 +190,7 @@ fun SeriesActionButtons(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     onTrailerClick: (() -> Unit)? = null,
@@ -258,6 +259,17 @@ fun SeriesActionButtons(
                 icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
                 onClick = onFavoriteClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // More button
+        item("more") {
+            ExpandablePlayButton(
+                title = "More",
+                icon = Icons.Outlined.MoreVert,
+                iconColor = IconColors.More,
+                onClick = onMoreClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }

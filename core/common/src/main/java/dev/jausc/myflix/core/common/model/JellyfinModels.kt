@@ -50,6 +50,7 @@ data class JellyfinItem(
     @SerialName("CriticRating") val criticRating: Float? = null,
     @SerialName("OfficialRating") val officialRating: String? = null,
     @SerialName("ProductionYear") val productionYear: Int? = null,
+    @SerialName("Status") val status: String? = null,
     @SerialName("UserData") val userData: UserData? = null,
     @SerialName("MediaSources") val mediaSources: List<MediaSource>? = null,
     // CollectionType is returned for library views (e.g., "movies", "tvshows")
@@ -64,8 +65,21 @@ data class JellyfinItem(
     @SerialName("Genres") val genres: List<String>? = null,
     // Taglines
     @SerialName("Taglines") val taglines: List<String>? = null,
+    // Tags
+    @SerialName("Tags") val tags: List<String>? = null,
     // External IDs
+    @SerialName("ProviderIds") val providerIds: Map<String, String>? = null,
     @SerialName("ExternalUrls") val externalUrls: List<ExternalUrl>? = null,
+    // Chapters
+    @SerialName("Chapters") val chapters: List<JellyfinChapter>? = null,
+    // Collections (BoxSets)
+    @SerialName("CollectionIds") val collectionIds: List<String>? = null,
+    @SerialName("CollectionName") val collectionName: String? = null,
+    // Trailers
+    @SerialName("RemoteTrailers") val remoteTrailers: List<JellyfinRemoteTrailer>? = null,
+    @SerialName("LocalTrailerCount") val localTrailerCount: Int? = null,
+    // Production locations
+    @SerialName("ProductionLocations") val productionLocations: List<String>? = null,
     // Child count (number of seasons for a series, number of episodes for a season)
     @SerialName("ChildCount") val childCount: Int? = null,
     // Recursive item count (total episodes for a series)
@@ -77,6 +91,8 @@ data class ImageTags(
     @SerialName("Primary") val primary: String? = null,
     @SerialName("Thumb") val thumb: String? = null,
     @SerialName("Backdrop") val backdrop: String? = null,
+    @SerialName("Logo") val logo: String? = null,
+    @SerialName("Banner") val banner: String? = null,
 )
 
 @Serializable
@@ -113,6 +129,18 @@ data class MediaStream(
     @SerialName("DisplayTitle") val displayTitle: String? = null,
     // Audio-specific fields
     @SerialName("Channels") val channels: Int? = null,
+)
+
+@Serializable
+data class JellyfinChapter(
+    @SerialName("StartPositionTicks") val startPositionTicks: Long? = null,
+    @SerialName("Name") val name: String? = null,
+)
+
+@Serializable
+data class JellyfinRemoteTrailer(
+    @SerialName("Name") val name: String? = null,
+    @SerialName("Url") val url: String? = null,
 )
 
 @Serializable
@@ -338,3 +366,9 @@ val JellyfinItem.writers: List<JellyfinPerson>
  */
 val JellyfinItem.creators: List<JellyfinPerson>
     get() = people?.filter { it.type == "Creator" || it.type == "Producer" } ?: emptyList()
+
+val JellyfinItem.imdbId: String?
+    get() = providerIds?.get("Imdb") ?: providerIds?.get("IMDB")
+
+val JellyfinItem.tmdbId: String?
+    get() = providerIds?.get("Tmdb") ?: providerIds?.get("TMDB")

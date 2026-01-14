@@ -38,6 +38,7 @@ import dev.jausc.myflix.mobile.ui.screens.LibraryScreen
 import dev.jausc.myflix.mobile.ui.screens.LoginScreen
 import dev.jausc.myflix.mobile.ui.screens.PlayerScreen
 import dev.jausc.myflix.mobile.ui.screens.SearchScreen
+import dev.jausc.myflix.mobile.ui.screens.PersonDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrActorDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrCollectionDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverByGenreScreen
@@ -242,7 +243,7 @@ fun MyFlixMobileContent() {
                     navController.navigate("detail/$itemId")
                 },
                 onPlayClick = { itemId ->
-                    navController.navigate("player/$itemId")
+                    navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                 },
                 onSearchClick = {
                     navController.navigate("search")
@@ -301,7 +302,7 @@ fun MyFlixMobileContent() {
                     navController.navigate("detail/$itemId")
                 },
                 onPlayClick = { itemId ->
-                    navController.navigate("player/$itemId")
+                    navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                 },
                 onBack = { navController.popBackStack() },
             )
@@ -315,13 +316,21 @@ fun MyFlixMobileContent() {
             DetailScreen(
                 itemId = itemId,
                 jellyfinClient = jellyfinClient,
-                onPlayClick = { navController.navigate("player/$itemId") },
+                onPlayClick = { id, startPositionMs ->
+                    navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
+                },
+                onPlayItemClick = { id, startPositionMs ->
+                    navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
+                },
                 onEpisodeClick = { episodeId ->
-                    navController.navigate("player/$episodeId")
+                    navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
                 },
                 onBack = { navController.popBackStack() },
                 onNavigateToDetail = { relatedItemId ->
                     navController.navigate("detail/$relatedItemId")
+                },
+                onNavigateToPerson = { personId ->
+                    navController.navigate("person/$personId")
                 },
                 onNavigateToGenre = { genre, libraryType ->
                     // TODO: Navigate to library filtered by genre
@@ -334,12 +343,35 @@ fun MyFlixMobileContent() {
         }
 
         composable(
-            route = "player/{itemId}",
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
+            route = "person/{personId}",
+            arguments = listOf(navArgument("personId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val personId = backStackEntry.arguments?.getString("personId") ?: return@composable
+            PersonDetailScreen(
+                personId = personId,
+                jellyfinClient = jellyfinClient,
+                onItemClick = { itemId ->
+                    navController.navigate("detail/$itemId")
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = "player/{itemId}?startPositionMs={startPositionMs}",
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.StringType },
+                navArgument("startPositionMs") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
+            val startPositionMs = backStackEntry.arguments?.getLong("startPositionMs")
             PlayerScreen(
                 itemId = itemId,
+                startPositionMs = startPositionMs?.takeIf { it >= 0 },
                 jellyfinClient = jellyfinClient,
                 useMpvPlayer = useMpvPlayer,
                 onBack = { navController.popBackStack() },

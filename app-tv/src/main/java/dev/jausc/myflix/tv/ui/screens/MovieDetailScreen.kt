@@ -32,16 +32,26 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.imdbId
+import dev.jausc.myflix.core.common.model.tmdbId
+import dev.jausc.myflix.core.common.model.writers
+import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
+import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
+import dev.jausc.myflix.tv.ui.components.detail.DetailInfoItem
+import dev.jausc.myflix.tv.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
+import dev.jausc.myflix.tv.ui.components.detail.ExternalLinkItem
+import dev.jausc.myflix.tv.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
@@ -49,11 +59,16 @@ import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
-private const val PEOPLE_ROW = HEADER_ROW + 1
-private const val SIMILAR_ROW = PEOPLE_ROW + 1
+private const val CAST_ROW = HEADER_ROW + 1
+private const val CREW_ROW = CAST_ROW + 1
+private const val EXTRAS_ROW = CREW_ROW + 1
+private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
+private const val RECOMMENDED_ROW = COLLECTIONS_ROW + 1
+private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
 
 /**
  * Plex-style movie detail screen with backdrop hero.
@@ -63,8 +78,10 @@ private const val SIMILAR_ROW = PEOPLE_ROW + 1
 fun MovieDetailScreen(
     state: DetailUiState,
     jellyfinClient: JellyfinClient,
-    onPlayClick: (resumePositionTicks: Long) -> Unit,
+    onPlayClick: (Long?) -> Unit,
+    onPlayItemClick: (String, Long?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
+    onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -86,11 +103,12 @@ fun MovieDetailScreen(
     val watched = movie.userData?.played == true
     val favorite = movie.userData?.isFavorite == true
 
-    // Filter cast & crew
-    val castAndCrew = remember(movie.people) {
-        movie.people?.filter {
-            it.type in listOf("Actor", "Director", "Writer", "Producer")
-        } ?: emptyList()
+    // Cast & crew
+    val cast = remember(movie.people) {
+        movie.people?.filter { it.type == "Actor" } ?: emptyList()
+    }
+    val crew = remember(movie.people) {
+        movie.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
     // Get director name
@@ -105,6 +123,71 @@ fun MovieDetailScreen(
         jellyfinClient.getBackdropUrl(movie.id, movie.backdropImageTags?.firstOrNull())
     }
     val gradientColors = rememberGradientColors(backdropUrl)
+
+    val detailInfoItems = remember(movie) {
+        buildList {
+            movie.productionYear?.let { add(DetailInfoItem("Year", it.toString())) }
+            movie.runTimeTicks?.let { ticks ->
+                val minutes = ticks / 600_000_000
+                if (minutes > 0) add(DetailInfoItem("Runtime", "${minutes}m"))
+            }
+            movie.communityRating?.let {
+                add(DetailInfoItem("User Rating", String.format(Locale.US, "%.1f/10", it)))
+            }
+            movie.criticRating?.let {
+                add(DetailInfoItem("Critic Rating", formatCriticRating(it)))
+            }
+            movie.studios?.mapNotNull { it.name }?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Studios", it.joinToString(", ")))
+            }
+            movie.directors.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Director", it.joinToString(", ")))
+            }
+            movie.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Writers", it.joinToString(", ")))
+            }
+            movie.genres?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Genres", it.joinToString(", ")))
+            }
+            movie.tags?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Tags", it.joinToString(", ")))
+            }
+            movie.videoStream?.let { video ->
+                val videoLabel = buildString {
+                    append(video.codec?.uppercase() ?: "Unknown")
+                    video.width?.let { w -> video.height?.let { h -> append(" • ${w}x$h") } }
+                    video.videoRangeType?.let { append(" • $it") }
+                }
+                add(DetailInfoItem("Video", videoLabel))
+            }
+            val audioStream = movie.mediaSources
+                ?.firstOrNull()
+                ?.mediaStreams
+                ?.firstOrNull { it.type == "Audio" }
+            audioStream?.let { audio ->
+                val audioLabel = buildString {
+                    append(audio.codec?.uppercase() ?: "Unknown")
+                    audio.channels?.let { append(" • ${it}ch") }
+                    audio.language?.let { append(" • $it") }
+                }
+                add(DetailInfoItem("Audio", audioLabel))
+            }
+            val subtitleLanguages = movie.mediaSources
+                ?.firstOrNull()
+                ?.mediaStreams
+                ?.filter { it.type == "Subtitle" }
+                ?.mapNotNull { it.language }
+                ?.distinct()
+                .orEmpty()
+            if (subtitleLanguages.isNotEmpty()) {
+                add(DetailInfoItem("Subtitles", subtitleLanguages.joinToString(", ")))
+            }
+        }
+    }
+
+    val externalLinks = remember(movie.externalUrls, movie.imdbId, movie.tmdbId) {
+        buildExternalLinks(movie)
+    }
 
     // Layered UI: DynamicBackground → DetailBackdropLayer → Content
     Box(modifier = modifier.fillMaxSize()) {
@@ -152,9 +235,9 @@ fun MovieDetailScreen(
                         resumePositionTicks = resumePositionTicks,
                         watched = watched,
                         favorite = favorite,
-                        onPlayClick = { position ->
+                        onPlayClick = { resumeTicks ->
                             this@item
-                            onPlayClick(position)
+                            onPlayClick(resumeTicks / 10_000)
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
@@ -177,23 +260,178 @@ fun MovieDetailScreen(
                 }
             }
 
-            // Cast & Crew
-            if (castAndCrew.isNotEmpty()) {
+            // Details
+            if (detailInfoItems.isNotEmpty()) {
+                item(key = "details") {
+                    DetailInfoSection(
+                        title = "Details",
+                        items = detailInfoItems,
+                        modifier = Modifier.fillMaxWidth(0.6f),
+                    )
+                }
+            }
+
+            // External links
+            if (externalLinks.isNotEmpty()) {
+                item(key = "links") {
+                    ExternalLinksRow(
+                        title = "External Links",
+                        links = externalLinks,
+                        modifier = Modifier.fillMaxWidth(0.6f),
+                    )
+                }
+            }
+
+            // Cast
+            if (cast.isNotEmpty()) {
                 item(key = "people") {
                     CastCrewSection(
-                        people = castAndCrew,
+                        title = "Cast",
+                        people = cast,
                         jellyfinClient = jellyfinClient,
-                        onPersonClick = { _ ->
-                            position = PEOPLE_ROW
-                            // TODO: Navigate to person detail
+                        onPersonClick = { person ->
+                            position = CAST_ROW
+                            onNavigateToPerson(person.id)
                         },
                         onPersonLongClick = { _, _ ->
-                            position = PEOPLE_ROW
+                            position = CAST_ROW
                             // TODO: Show person context menu
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .focusRequester(focusRequesters[PEOPLE_ROW]),
+                            .focusRequester(focusRequesters[CAST_ROW]),
+                    )
+                }
+            }
+
+            // Crew
+            if (crew.isNotEmpty()) {
+                item(key = "crew") {
+                    CastCrewSection(
+                        title = "Crew",
+                        people = crew,
+                        jellyfinClient = jellyfinClient,
+                        onPersonClick = { person ->
+                            position = CREW_ROW
+                            onNavigateToPerson(person.id)
+                        },
+                        onPersonLongClick = { _, _ ->
+                            position = CREW_ROW
+                            // TODO: Show person context menu
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[CREW_ROW]),
+                    )
+                }
+            }
+
+            // Extras
+            if (state.specialFeatures.isNotEmpty()) {
+                item(key = "extras") {
+                    ItemRow(
+                        title = "Extras",
+                        items = state.specialFeatures,
+                        onItemClick = { _, item ->
+                            position = EXTRAS_ROW
+                            onPlayItemClick(item.id, null)
+                        },
+                        onItemLongClick = { _, _ ->
+                            position = EXTRAS_ROW
+                            // TODO: Show item context menu
+                        },
+                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
+                            if (item != null) {
+                                WideMediaCard(
+                                    item = item,
+                                    imageUrl = jellyfinClient.getThumbUrl(
+                                        item.id,
+                                        item.imageTags?.thumb ?: item.imageTags?.primary,
+                                    ),
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    modifier = cardModifier,
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[EXTRAS_ROW]),
+                    )
+                }
+            }
+
+            // Collections
+            if (state.collections.isNotEmpty()) {
+                state.collections.forEach { collection ->
+                    val collectionItems = state.collectionItems[collection.id].orEmpty()
+                    if (collectionItems.isNotEmpty()) {
+                        item(key = "collection_${collection.id}") {
+                            ItemRow(
+                                title = "More in ${collection.name}",
+                                items = collectionItems,
+                            onItemClick = { _, item ->
+                                position = COLLECTIONS_ROW
+                                onNavigateToDetail(item.id)
+                            },
+                            onItemLongClick = { _, _ ->
+                                position = COLLECTIONS_ROW
+                                // TODO: Show item context menu
+                            },
+                                cardContent = { _, item, cardModifier, onClick, onLongClick ->
+                                    if (item != null) {
+                                        MediaCard(
+                                            item = item,
+                                            imageUrl = jellyfinClient.getPrimaryImageUrl(
+                                                item.id,
+                                                item.imageTags?.primary,
+                                            ),
+                                            onClick = onClick,
+                                            onLongClick = onLongClick,
+                                            modifier = cardModifier,
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequesters[COLLECTIONS_ROW]),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Recommended Items
+            if (state.recommendations.isNotEmpty()) {
+                item(key = "recommended") {
+                    ItemRow(
+                        title = "Recommended",
+                        items = state.recommendations,
+                        onItemClick = { _, item ->
+                            position = RECOMMENDED_ROW
+                            onNavigateToDetail(item.id)
+                        },
+                        onItemLongClick = { _, _ ->
+                            position = RECOMMENDED_ROW
+                            // TODO: Show item context menu
+                        },
+                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
+                            if (item != null) {
+                                MediaCard(
+                                    item = item,
+                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
+                                        item.id,
+                                        item.imageTags?.primary,
+                                    ),
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    modifier = cardModifier,
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[RECOMMENDED_ROW]),
                     )
                 }
             }
@@ -349,3 +587,38 @@ private fun MovieDetailsHeader(
         }
     }
 }
+
+private fun buildExternalLinks(movie: JellyfinItem): List<ExternalLinkItem> {
+    val links = mutableListOf<ExternalLinkItem>()
+
+    movie.externalUrls?.forEach { url ->
+        val label = url.name?.trim().orEmpty()
+        val link = url.url?.trim().orEmpty()
+        if (label.isNotEmpty() && link.isNotEmpty()) {
+            links.add(ExternalLinkItem(label, link))
+        }
+    }
+
+    movie.imdbId?.let { imdbId ->
+        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
+        if (!hasImdb) {
+            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
+        }
+    }
+
+    movie.tmdbId?.let { tmdbId ->
+        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
+        if (!hasTmdb) {
+            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/movie/$tmdbId"))
+        }
+    }
+
+    return links
+}
+
+private fun formatCriticRating(rating: Float): String =
+    if (rating > 10f) {
+        "${rating.toInt()}%"
+    } else {
+        String.format(Locale.US, "%.1f/10", rating)
+    }
