@@ -26,6 +26,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -108,7 +109,7 @@ fun FirstRunTip(
                             modifier = Modifier.size(24.dp),
                         )
                         Text(
-                            text = "Tip",
+                            text = "Navigation tip",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = TvColors.TextPrimary,
@@ -117,12 +118,29 @@ fun FirstRunTip(
 
                     // Tip message
                     Text(
-                        text = "Press UP to show the navigation bar at any time.",
+                        text = "The menu auto-hides after a moment, but it is always one click away.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TvColors.TextSecondary,
+                        textAlign = TextAlign.Center,
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Keycap("UP")
+                        Text(
+                            text = "Show menu",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TvColors.TextPrimary,
+                        )
+                        Keycap("DOWN")
+                        Text(
+                            text = "Hide menu",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TvColors.TextPrimary,
+                        )
+                    }
 
                     // Got it button - traps ALL key events except Enter/Select
                     Button(
@@ -155,5 +173,28 @@ fun FirstRunTip(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun Keycap(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .background(
+                color = TvColors.Surface.copy(alpha = 0.9f),
+                shape = RoundedCornerShape(6.dp),
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = TvColors.TextPrimary,
+        )
     }
 }

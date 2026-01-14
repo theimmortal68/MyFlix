@@ -39,6 +39,7 @@ object IconColors {
     val Shuffle = Color(0xFF9C27B0) // Purple
     val Watched = Color(0xFF4CAF50) // Green
     val Favorite = Color(0xFFF44336) // Red
+    val Trailer = Color(0xFFF59E0B) // Amber
 }
 
 /**
@@ -133,6 +134,7 @@ fun SeriesActionButtons(
     favorite: Boolean,
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit,
+    onTrailerClick: (() -> Unit)? = null,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onMoreClick: () -> Unit,
@@ -168,6 +170,19 @@ fun SeriesActionButtons(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text("Shuffle")
+        }
+
+        if (onTrailerClick != null) {
+            FilledTonalButton(onClick = onTrailerClick) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = IconColors.Trailer,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Trailer")
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))

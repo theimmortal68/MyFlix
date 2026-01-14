@@ -325,6 +325,14 @@ fun MyFlixMobileContent() {
                 onEpisodeClick = { episodeId ->
                     navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
                 },
+                onTrailerClick = { videoKey, title ->
+                    val route = if (useTrailerFallback) {
+                        NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, title)
+                    } else {
+                        NavigationHelper.buildSeerrTrailerRoute(videoKey, title)
+                    }
+                    navController.navigate(route)
+                },
                 onBack = { navController.popBackStack() },
                 onNavigateToDetail = { relatedItemId ->
                     navController.navigate("detail/$relatedItemId")

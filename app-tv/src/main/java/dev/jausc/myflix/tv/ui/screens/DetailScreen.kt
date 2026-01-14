@@ -26,6 +26,7 @@ fun DetailScreen(
     onPlayClick: (String, Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
     onEpisodeClick: (String) -> Unit,
+    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
@@ -86,9 +87,9 @@ fun DetailScreen(
                     jellyfinClient = jellyfinClient,
                     onPlayClick = {
                         // Play next episode
-                        val firstEpisode = state.episodes.firstOrNull()
-                        if (firstEpisode != null) {
-                            onEpisodeClick(firstEpisode.id)
+                        val nextUpEpisode = state.nextUpEpisode ?: state.episodes.firstOrNull()
+                        if (nextUpEpisode != null) {
+                            onEpisodeClick(nextUpEpisode.id)
                         }
                     },
                     onShuffleClick = {
@@ -99,10 +100,42 @@ fun DetailScreen(
                             onEpisodeClick(randomEpisode.id)
                         }
                     },
+                    onPlayItemClick = onPlayItemClick,
+                    onSeasonClick = { season ->
+                        onNavigateToDetail(season.id)
+                    },
+                    onTrailerClick = onTrailerClick,
+                    onNavigateToDetail = onNavigateToDetail,
+                    onNavigateToPerson = onNavigateToPerson,
+                    onWatchedClick = {
+                        val played = state.item?.userData?.played == true
+                        viewModel.setItemPlayed(!played)
+                    },
+                    onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            state.isSeason -> {
+                SeasonDetailScreen(
+                    state = state,
+                    jellyfinClient = jellyfinClient,
+                    onPlayClick = {
+                        val firstEpisode = state.episodes.firstOrNull()
+                        if (firstEpisode != null) {
+                            onEpisodeClick(firstEpisode.id)
+                        }
+                    },
+                    onShuffleClick = {
+                        val episodes = state.episodes
+                        if (episodes.isNotEmpty()) {
+                            val randomEpisode = episodes.random()
+                            onEpisodeClick(randomEpisode.id)
+                        }
+                    },
                     onEpisodeClick = onEpisodeClick,
                     onPlayItemClick = onPlayItemClick,
                     onSeasonSelected = { season ->
-                        // Select season and load its episodes
                         viewModel.selectSeason(season)
                     },
                     onNavigateToDetail = onNavigateToDetail,

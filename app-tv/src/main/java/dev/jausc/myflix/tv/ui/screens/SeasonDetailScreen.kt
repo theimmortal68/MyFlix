@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,9 +33,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.model.creators
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
+import dev.jausc.myflix.core.common.model.directors
+import dev.jausc.myflix.core.common.model.writers
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -44,23 +48,30 @@ import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
+import dev.jausc.myflix.tv.ui.components.detail.DetailInfoItem
+import dev.jausc.myflix.tv.ui.components.detail.DetailInfoSection
+import dev.jausc.myflix.tv.ui.components.detail.EpisodeGrid
 import dev.jausc.myflix.tv.ui.components.detail.ExternalLinkItem
 import dev.jausc.myflix.tv.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
+import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
-private const val LINKS_ROW = HEADER_ROW + 1
+private const val DETAILS_ROW = HEADER_ROW + 1
+private const val LINKS_ROW = DETAILS_ROW + 1
 private const val NEXT_UP_ROW = LINKS_ROW + 1
 private const val SEASONS_ROW = NEXT_UP_ROW + 1
-private const val CAST_ROW = SEASONS_ROW + 1
+private const val EPISODES_ROW = SEASONS_ROW + 1
+private const val CAST_ROW = EPISODES_ROW + 1
 private const val CREW_ROW = CAST_ROW + 1
 private const val EXTRAS_ROW = CREW_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
@@ -68,19 +79,17 @@ private const val RECOMMENDED_ROW = COLLECTIONS_ROW + 1
 private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
 
 /**
- * Plex-style series detail screen with backdrop hero and season tabs.
- * Features layered UI with dynamic background, backdrop image, and left-aligned metadata.
- * Episodes are displayed inline below season tabs.
+ * Season detail screen with backdrop hero and season tabs.
  */
 @Composable
-fun SeriesDetailScreen(
+fun SeasonDetailScreen(
     state: DetailUiState,
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit,
+    onEpisodeClick: (String) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
-    onSeasonClick: (JellyfinItem) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
+    onSeasonSelected: (JellyfinItem) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
@@ -104,26 +113,6 @@ fun SeriesDetailScreen(
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
 
-    val trailerItem = remember(state.specialFeatures) {
-        state.specialFeatures.lastOrNull { isTrailerFeature(it) }
-    }
-    val trailerVideo = remember(series.remoteTrailers) {
-        series.remoteTrailers
-            ?.firstOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
-    }
-    val trailerAction: (() -> Unit)? = when {
-        trailerItem != null -> {
-            { onPlayItemClick(trailerItem.id, null) }
-        }
-        trailerVideo?.url != null -> {
-            val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else {
-                { onTrailerClick(key, trailerVideo.name) }
-            }
-        }
-        else -> null
-    }
-
     // Cast & crew
     val cast = remember(series.people) {
         series.people?.filter { it.type == "Actor" } ?: emptyList()
@@ -132,11 +121,60 @@ fun SeriesDetailScreen(
         series.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
+    val detailInfoItems = remember(series) {
+        buildList {
+            series.productionYear?.let { add(DetailInfoItem("Year", it.toString())) }
+            series.status?.let { add(DetailInfoItem("Status", it)) }
+            series.childCount?.let { count ->
+                add(DetailInfoItem("Seasons", count.toString()))
+            }
+            series.recursiveItemCount?.let { count ->
+                add(DetailInfoItem("Episodes", count.toString()))
+            }
+            series.communityRating?.let {
+                add(DetailInfoItem("User Rating", String.format(Locale.US, "%.1f/10", it)))
+            }
+            series.criticRating?.let {
+                add(DetailInfoItem("Critic Rating", formatCriticRating(it)))
+            }
+            series.studios?.mapNotNull { it.name }?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Studios", it.joinToString(", ")))
+            }
+            series.creators.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Creators", it.joinToString(", ")))
+            }
+            series.directors.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Directors", it.joinToString(", ")))
+            }
+            series.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Writers", it.joinToString(", ")))
+            }
+            series.genres?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Genres", it.joinToString(", ")))
+            }
+            series.tags?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Tags", it.joinToString(", ")))
+            }
+        }
+    }
+
     val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
         buildExternalLinks(series)
     }
-    val featureSections = remember(state.specialFeatures, trailerItem?.id) {
-        buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
+    val featureSections = remember(state.specialFeatures) {
+        buildFeatureSections(state.specialFeatures, emptySet())
+    }
+
+    // Selected season index (derived from state.selectedSeason)
+    val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
+        state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
+    }
+
+    // Auto-select first season if none selected
+    LaunchedEffect(state.seasons) {
+        if (state.selectedSeason == null && state.seasons.isNotEmpty()) {
+            onSeasonSelected(state.seasons.first())
+        }
     }
 
     // Backdrop URL and dynamic gradient colors
@@ -177,10 +215,8 @@ fun SeriesDetailScreen(
                         .fillMaxWidth()
                         .bringIntoViewRequester(bringIntoViewRequester),
                 ) {
-                    SeriesDetailsHeader(
+                    SeasonDetailsHeader(
                         series = series,
-                        status = series.status,
-                        studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
                         overviewOnClick = { showOverviewDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -202,7 +238,6 @@ fun SeriesDetailScreen(
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
                         onMoreClick = { mediaInfoItem = series },
-                        onTrailerClick = trailerAction,
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 scope.launch {
@@ -215,6 +250,17 @@ fun SeriesDetailScreen(
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
+                    )
+                }
+            }
+
+            // Details
+            if (detailInfoItems.isNotEmpty()) {
+                item(key = "details") {
+                    DetailInfoSection(
+                        title = "Details",
+                        items = detailInfoItems,
+                        modifier = Modifier.fillMaxWidth(0.6f),
                     )
                 }
             }
@@ -265,37 +311,41 @@ fun SeriesDetailScreen(
                 }
             }
 
-            // Seasons
+            // Season tabs
             if (state.seasons.isNotEmpty()) {
                 item(key = "seasons") {
-                    ItemRow(
-                        title = "Seasons (${state.seasons.size})",
-                        items = state.seasons,
-                        onItemClick = { _, season ->
+                    SeasonTabRow(
+                        seasons = state.seasons,
+                        selectedSeasonIndex = selectedSeasonIndex,
+                        onSeasonSelected = { _, season ->
                             position = SEASONS_ROW
-                            onSeasonClick(season)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = SEASONS_ROW
-                            // TODO: Show season context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
+                            onSeasonSelected(season)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[SEASONS_ROW]),
+                    )
+                }
+            }
+
+            // Episodes for selected season
+            if (state.seasons.isNotEmpty()) {
+                item(key = "episodes") {
+                    EpisodeGrid(
+                        episodes = state.episodes,
+                        jellyfinClient = jellyfinClient,
+                        onEpisodeClick = { episode ->
+                            position = EPISODES_ROW
+                            onEpisodeClick(episode.id)
+                        },
+                        onEpisodeLongClick = { episode ->
+                            position = EPISODES_ROW
+                            // TODO: Show episode context menu
+                        },
+                        isLoading = state.isLoadingEpisodes,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[EPISODES_ROW]),
                     )
                 }
             }
@@ -463,7 +513,7 @@ fun SeriesDetailScreen(
                             position = SIMILAR_ROW
                             onNavigateToDetail(item.id)
                         },
-                        onItemLongClick = { _, item ->
+                        onItemLongClick = { _, _ ->
                             position = SIMILAR_ROW
                             // TODO: Show item context menu
                         },
@@ -517,16 +567,10 @@ fun SeriesDetailScreen(
     }
 }
 
-/**
- * Series details header with title, quick details, genres, and overview.
- * Left-aligned content (45% width) to work with backdrop on the right.
- */
 @Composable
-private fun SeriesDetailsHeader(
+private fun SeasonDetailsHeader(
     series: JellyfinItem,
     overviewOnClick: () -> Unit,
-    status: String?,
-    studioNames: List<String>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -535,7 +579,7 @@ private fun SeriesDetailsHeader(
     ) {
         // Title
         Text(
-            text = series.name,
+            text = series.seriesName?.let { "$it - ${series.name}" } ?: series.name,
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -551,8 +595,6 @@ private fun SeriesDetailsHeader(
             // Quick details: year, episode count, status
             SeriesQuickDetails(
                 item = series,
-                status = status,
-                studios = studioNames,
             )
 
             // Genres
@@ -602,3 +644,10 @@ private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
 
     return links
 }
+
+private fun formatCriticRating(rating: Float): String =
+    if (rating > 10f) {
+        "${rating.toInt()}%"
+    } else {
+        String.format(Locale.US, "%.1f/10", rating)
+    }

@@ -701,22 +701,30 @@ fun MyFlixTvApp() {
                 arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
             ) { backStackEntry ->
                 val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
-                DetailScreen(
-                    itemId = itemId,
-                    jellyfinClient = jellyfinClient,
-                    onPlayClick = { id, startPositionMs ->
-                        navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
-                    },
-                    onPlayItemClick = { id, startPositionMs ->
-                        navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
-                    },
-                    onEpisodeClick = { episodeId ->
-                        navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
-                    },
-                    onBack = { navController.popBackStack() },
-                    onNavigateToDetail = { relatedItemId ->
-                        navController.navigate("detail/$relatedItemId")
-                    },
+            DetailScreen(
+                itemId = itemId,
+                jellyfinClient = jellyfinClient,
+                onPlayClick = { id, startPositionMs ->
+                    navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
+                },
+                onPlayItemClick = { id, startPositionMs ->
+                    navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
+                },
+                onEpisodeClick = { episodeId ->
+                    navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
+                },
+                onTrailerClick = { videoKey, title ->
+                    val route = if (useTrailerFallback) {
+                        NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, title)
+                    } else {
+                        NavigationHelper.buildSeerrTrailerRoute(videoKey, title)
+                    }
+                    navController.navigate(route)
+                },
+                onBack = { navController.popBackStack() },
+                onNavigateToDetail = { relatedItemId ->
+                    navController.navigate("detail/$relatedItemId")
+                },
                     onNavigateToPerson = { personId ->
                         navController.navigate("person/$personId")
                     },

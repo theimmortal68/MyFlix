@@ -4,10 +4,13 @@ package dev.jausc.myflix.mobile.ui.components.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -137,6 +140,8 @@ fun MovieQuickDetails(
 fun SeriesQuickDetails(
     item: JellyfinItem,
     modifier: Modifier = Modifier,
+    status: String? = null,
+    studios: List<String> = emptyList(),
 ) {
     val details = remember(item) {
         buildList {
@@ -145,12 +150,73 @@ fun SeriesQuickDetails(
         }
     }
 
-    DotSeparatedRow(
-        texts = details,
+    val badges = remember(status, studios) {
+        buildList {
+            status?.let { add(formatSeriesStatusBadge(it)) }
+            studios.firstOrNull()?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+    }
+
+    SeriesQuickDetailsRow(
+        details = details,
         communityRating = item.communityRating,
-        textStyle = MaterialTheme.typography.bodyMedium,
+        badges = badges,
         modifier = modifier,
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SeriesQuickDetailsRow(
+    details: List<String>,
+    communityRating: Float?,
+    badges: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+    ) {
+        DotSeparatedRow(
+            texts = details,
+            communityRating = communityRating,
+            textStyle = MaterialTheme.typography.bodyMedium,
+        )
+        badges.forEach { badge ->
+            MetadataBadge(text = badge)
+        }
+    }
+}
+
+@Composable
+private fun MetadataBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun formatSeriesStatusBadge(status: String): String {
+    val normalized = status.trim().lowercase()
+    return when {
+        normalized.contains("continuing") -> "Airing"
+        normalized.contains("returning") -> "Returning"
+        normalized.contains("ended") -> "Ended"
+        normalized.contains("canceled") || normalized.contains("cancelled") -> "Canceled"
+        else -> status.trim()
+    }
 }
 
 /**

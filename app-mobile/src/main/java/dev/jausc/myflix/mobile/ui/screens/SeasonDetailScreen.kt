@@ -21,8 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.creators
+import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
+import dev.jausc.myflix.core.common.model.writers
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
@@ -30,6 +33,8 @@ import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
+import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoItem
+import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.GenreText
@@ -38,20 +43,19 @@ import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewText
 import dev.jausc.myflix.mobile.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.mobile.ui.components.detail.SeriesQuickDetails
+import java.util.Locale
 
 /**
- * Wholphin-style series detail screen for mobile.
- * Text-based header with seasons, cast, and similar items rows.
+ * Season detail screen with seasons + episodes layout.
  */
 @Composable
-fun SeriesDetailScreen(
+fun SeasonDetailScreen(
     state: DetailUiState,
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit,
     onSeasonClick: (JellyfinItem) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
@@ -68,26 +72,6 @@ fun SeriesDetailScreen(
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
 
-    val trailerItem = remember(state.specialFeatures) {
-        state.specialFeatures.lastOrNull { isTrailerFeature(it) }
-    }
-    val trailerVideo = remember(series.remoteTrailers) {
-        series.remoteTrailers
-            ?.firstOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
-    }
-    val trailerAction: (() -> Unit)? = when {
-        trailerItem != null -> {
-            { onPlayItemClick(trailerItem.id, null) }
-        }
-        trailerVideo?.url != null -> {
-            val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else {
-                { onTrailerClick(key, trailerVideo.name) }
-            }
-        }
-        else -> null
-    }
-
     // Cast & crew
     val cast = remember(series.people) {
         series.people?.filter { it.type == "Actor" } ?: emptyList()
@@ -96,11 +80,48 @@ fun SeriesDetailScreen(
         series.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
+    val detailInfoItems = remember(series) {
+        buildList {
+            series.productionYear?.let { add(DetailInfoItem("Year", it.toString())) }
+            series.status?.let { add(DetailInfoItem("Status", it)) }
+            series.childCount?.let { count ->
+                add(DetailInfoItem("Seasons", count.toString()))
+            }
+            series.recursiveItemCount?.let { count ->
+                add(DetailInfoItem("Episodes", count.toString()))
+            }
+            series.communityRating?.let {
+                add(DetailInfoItem("User Rating", String.format(Locale.US, "%.1f/10", it)))
+            }
+            series.criticRating?.let {
+                add(DetailInfoItem("Critic Rating", formatCriticRating(it)))
+            }
+            series.studios?.mapNotNull { it.name }?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Studios", it.joinToString(", ")))
+            }
+            series.creators.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Creators", it.joinToString(", ")))
+            }
+            series.directors.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Directors", it.joinToString(", ")))
+            }
+            series.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Writers", it.joinToString(", ")))
+            }
+            series.genres?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Genres", it.joinToString(", ")))
+            }
+            series.tags?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Tags", it.joinToString(", ")))
+            }
+        }
+    }
+
     val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
         buildExternalLinks(series)
     }
-    val featureSections = remember(state.specialFeatures, trailerItem?.id) {
-        buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
+    val featureSections = remember(state.specialFeatures) {
+        buildFeatureSections(state.specialFeatures, emptySet())
     }
 
     LazyColumn(
@@ -115,10 +136,8 @@ fun SeriesDetailScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             ) {
-                SeriesDetailsHeader(
+                SeasonDetailsHeader(
                     series = series,
-                    status = series.status,
-                    studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
                     overviewOnClick = { showOverviewDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -134,7 +153,17 @@ fun SeriesDetailScreen(
                     onWatchedClick = onWatchedClick,
                     onFavoriteClick = onFavoriteClick,
                     onMoreClick = { mediaInfoItem = series },
-                    onTrailerClick = trailerAction,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Details
+        if (detailInfoItems.isNotEmpty()) {
+            item(key = "details") {
+                DetailInfoSection(
+                    title = "Details",
+                    items = detailInfoItems,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -158,6 +187,34 @@ fun SeriesDetailScreen(
                     title = "Next Up",
                     items = listOf(nextUp),
                     onItemClick = { _, item -> onPlayItemClick(item.id, null) },
+                    onItemLongClick = { _, _ ->
+                        // TODO: Show episode context menu
+                    },
+                    cardContent = { _, item, onClick, onLongClick ->
+                        if (item != null) {
+                            MobileWideMediaCard(
+                                item = item,
+                                imageUrl = jellyfinClient.getThumbUrl(
+                                    item.id,
+                                    item.imageTags?.thumb ?: item.imageTags?.primary,
+                                ),
+                                onClick = onClick,
+                                onLongClick = onLongClick,
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Episodes row (selected season)
+        if (state.episodes.isNotEmpty()) {
+            item(key = "episodes") {
+                ItemRow(
+                    title = "Episodes",
+                    items = state.episodes,
+                    onItemClick = { _, episode -> onPlayItemClick(episode.id, null) },
                     onItemLongClick = { _, _ ->
                         // TODO: Show episode context menu
                     },
@@ -387,15 +444,10 @@ fun SeriesDetailScreen(
     }
 }
 
-/**
- * Series details header with title, quick details, genres, and overview.
- */
 @Composable
-private fun SeriesDetailsHeader(
+private fun SeasonDetailsHeader(
     series: JellyfinItem,
     overviewOnClick: () -> Unit,
-    status: String?,
-    studioNames: List<String>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -404,7 +456,7 @@ private fun SeriesDetailsHeader(
     ) {
         // Title
         Text(
-            text = series.name,
+            text = series.seriesName?.let { "$it - ${series.name}" } ?: series.name,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -418,8 +470,6 @@ private fun SeriesDetailsHeader(
             // Quick details: year, status
             SeriesQuickDetails(
                 item = series,
-                status = status,
-                studios = studioNames,
             )
 
             // Genres
@@ -468,3 +518,10 @@ private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
 
     return links
 }
+
+private fun formatCriticRating(rating: Float): String =
+    if (rating > 10f) {
+        "${rating.toInt()}%"
+    } else {
+        String.format(Locale.US, "%.1f/10", rating)
+    }

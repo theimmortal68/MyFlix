@@ -38,6 +38,7 @@ data class DetailUiState(
     val hasEpisodes: Boolean get() = episodes.isNotEmpty()
     val isSeries: Boolean get() = item?.type == "Series"
     val isMovie: Boolean get() = item?.type == "Movie"
+    val isSeason: Boolean get() = item?.type == "Season"
 }
 
 /**
@@ -83,6 +84,8 @@ class DetailViewModel(
                     if (item.type == "Series") {
                         loadSeasons(item.id)
                         loadNextUp(item.id)
+                    } else if (item.type == "Season") {
+                        loadSeasons(item.seriesId ?: item.id, preferredSeasonId = item.id)
                     } else {
                         _uiState.update { it.copy(isLoading = false) }
                     }
@@ -129,7 +132,7 @@ class DetailViewModel(
     /**
      * Load seasons for a series.
      */
-    private fun loadSeasons(seriesId: String) {
+    private fun loadSeasons(seriesId: String, preferredSeasonId: String? = null) {
         viewModelScope.launch {
             jellyfinClient.getSeasons(seriesId)
                 .onSuccess { seasons ->
@@ -137,7 +140,10 @@ class DetailViewModel(
 
                     // Auto-select first season
                     if (seasons.isNotEmpty()) {
-                        selectSeason(seasons.first())
+                        val preferredSeason = preferredSeasonId?.let { id ->
+                            seasons.firstOrNull { it.id == id }
+                        }
+                        selectSeason(preferredSeason ?: seasons.first())
                     } else {
                         _uiState.update { it.copy(isLoading = false) }
                     }
@@ -153,6 +159,7 @@ class DetailViewModel(
      */
     fun selectSeason(season: JellyfinItem) {
         val currentItem = _uiState.value.item ?: return
+        val seriesId = currentItem.seriesId ?: currentItem.id
 
         _uiState.update {
             it.copy(
@@ -162,7 +169,7 @@ class DetailViewModel(
         }
 
         viewModelScope.launch {
-            jellyfinClient.getEpisodes(currentItem.id, season.id)
+            jellyfinClient.getEpisodes(seriesId, season.id)
                 .onSuccess { episodes ->
                     _uiState.update {
                         it.copy(
@@ -189,9 +196,10 @@ class DetailViewModel(
     fun refreshEpisodes() {
         val currentItem = _uiState.value.item ?: return
         val selectedSeason = _uiState.value.selectedSeason ?: return
+        val seriesId = currentItem.seriesId ?: currentItem.id
 
         viewModelScope.launch {
-            jellyfinClient.getEpisodes(currentItem.id, selectedSeason.id)
+            jellyfinClient.getEpisodes(seriesId, selectedSeason.id)
                 .onSuccess { episodes ->
                     _uiState.update { it.copy(episodes = episodes) }
                 }
