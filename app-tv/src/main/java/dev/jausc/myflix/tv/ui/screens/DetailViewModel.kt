@@ -19,11 +19,20 @@ data class DetailUiState(
     val seasons: List<JellyfinItem> = emptyList(),
     val episodes: List<JellyfinItem> = emptyList(),
     val selectedSeason: JellyfinItem? = null,
+    val nextUpEpisode: JellyfinItem? = null,
     val isLoading: Boolean = true,
     val isLoadingEpisodes: Boolean = false,
+    val isLoadingNextUp: Boolean = false,
     val error: String? = null,
+    val recommendations: List<JellyfinItem> = emptyList(),
+    val isLoadingRecommendations: Boolean = false,
     val similarItems: List<JellyfinItem> = emptyList(),
     val isLoadingSimilar: Boolean = false,
+    val specialFeatures: List<JellyfinItem> = emptyList(),
+    val isLoadingSpecialFeatures: Boolean = false,
+    val collections: List<JellyfinItem> = emptyList(),
+    val collectionItems: Map<String, List<JellyfinItem>> = emptyMap(),
+    val isLoadingCollections: Boolean = false,
 ) {
     val hasSeasons: Boolean get() = seasons.isNotEmpty()
     val hasEpisodes: Boolean get() = episodes.isNotEmpty()
@@ -73,12 +82,16 @@ class DetailViewModel(
                     // Load seasons if this is a series
                     if (item.type == "Series") {
                         loadSeasons(item.id)
+                        loadNextUp(item.id)
                     } else {
                         _uiState.update { it.copy(isLoading = false) }
                     }
 
                     // Load similar items in parallel
                     loadSimilarItems()
+                    loadRecommendations()
+                    loadSpecialFeatures()
+                    loadCollections()
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -87,6 +100,28 @@ class DetailViewModel(
                             error = "Failed to load item: ${e.message ?: "Unknown error"}",
                         )
                     }
+                }
+        }
+    }
+
+    /**
+     * Load the Next Up episode for a series.
+     */
+    private fun loadNextUp(seriesId: String) {
+        _uiState.update { it.copy(isLoadingNextUp = true) }
+
+        viewModelScope.launch {
+            jellyfinClient.getNextUpForSeries(seriesId, limit = 1)
+                .onSuccess { items ->
+                    _uiState.update {
+                        it.copy(
+                            nextUpEpisode = items.firstOrNull(),
+                            isLoadingNextUp = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(isLoadingNextUp = false) }
                 }
         }
     }
@@ -248,6 +283,91 @@ class DetailViewModel(
                 .onFailure {
                     _uiState.update { it.copy(isLoadingSimilar = false) }
                 }
+        }
+    }
+
+    /**
+     * Load recommended items (general suggestions).
+     */
+    private fun loadRecommendations() {
+        val currentItem = _uiState.value.item ?: return
+
+        _uiState.update { it.copy(isLoadingRecommendations = true) }
+
+        viewModelScope.launch {
+            jellyfinClient.getSuggestions(limit = 24)
+                .onSuccess { items ->
+                    val filtered = items.filter { it.id != currentItem.id }
+                    _uiState.update {
+                        it.copy(
+                            recommendations = filtered,
+                            isLoadingRecommendations = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(isLoadingRecommendations = false) }
+                }
+        }
+    }
+
+    /**
+     * Load special features (extras, trailers) for the item.
+     */
+    private fun loadSpecialFeatures() {
+        val currentItem = _uiState.value.item ?: return
+
+        _uiState.update { it.copy(isLoadingSpecialFeatures = true) }
+
+        viewModelScope.launch {
+            jellyfinClient.getSpecialFeatures(currentItem.id, limit = 12)
+                .onSuccess { features ->
+                    _uiState.update {
+                        it.copy(
+                            specialFeatures = features,
+                            isLoadingSpecialFeatures = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(isLoadingSpecialFeatures = false) }
+                }
+        }
+    }
+
+    /**
+     * Load collections that contain this item and their items.
+     */
+    private fun loadCollections() {
+        val currentItem = _uiState.value.item ?: return
+
+        _uiState.update { it.copy(isLoadingCollections = true) }
+
+        viewModelScope.launch {
+            val collections = currentItem.collectionIds
+                ?.mapNotNull { id -> jellyfinClient.getItem(id).getOrNull() }
+                ?.filter { it.type == "BoxSet" }
+                ?.takeIf { it.isNotEmpty() }
+                ?: jellyfinClient.getItemAncestors(currentItem.id)
+                    .getOrNull()
+                    ?.filter { it.type == "BoxSet" }
+                    .orEmpty()
+
+            val collectionItems = mutableMapOf<String, List<JellyfinItem>>()
+            collections.forEach { collection ->
+                jellyfinClient.getCollectionItems(collection.id, limit = 12)
+                    .onSuccess { items ->
+                        collectionItems[collection.id] = items.filter { it.id != currentItem.id }
+                    }
+            }
+
+            _uiState.update {
+                it.copy(
+                    collections = collections,
+                    collectionItems = collectionItems,
+                    isLoadingCollections = false,
+                )
+            }
         }
     }
 }

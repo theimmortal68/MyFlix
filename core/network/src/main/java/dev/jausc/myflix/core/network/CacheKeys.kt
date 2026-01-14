@@ -58,6 +58,10 @@ object CacheKeys {
     fun nextUp(limit: Int, enableRewatching: Boolean): String =
         "nextup:$limit:$enableRewatching"
 
+    /** Next up episodes for a specific series */
+    fun nextUpSeries(seriesId: String, limit: Int, enableRewatching: Boolean): String =
+        "nextup:$seriesId:$limit:$enableRewatching"
+
     /** Latest items from any library */
     fun latest(libraryId: String, limit: Int): String = "latest:$libraryId:$limit"
 
@@ -91,6 +95,13 @@ object CacheKeys {
     fun collection(collectionId: String, limit: Int): String =
         "collection:$collectionId:$limit"
 
+    /** Special features (extras) for an item */
+    fun specialFeatures(itemId: String, limit: Int): String =
+        "specialFeatures:$itemId:$limit"
+
+    /** Ancestors for an item */
+    fun ancestors(itemId: String): String = "ancestors:$itemId"
+
     /** Suggested items */
     fun suggestions(limit: Int): String = "suggestions:$limit"
 
@@ -103,6 +114,10 @@ object CacheKeys {
 
     /** Similar items */
     fun similar(itemId: String, limit: Int): String = "similar:$itemId:$limit"
+
+    /** Items featuring a person */
+    fun personItems(personId: String, limit: Int): String =
+        "personItems:$personId:$limit"
 
     /** Favorite items */
     fun favorites(limit: Int, includeItemTypes: String?): String =
