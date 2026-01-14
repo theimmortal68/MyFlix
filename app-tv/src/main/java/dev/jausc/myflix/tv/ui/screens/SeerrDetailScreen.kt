@@ -504,7 +504,7 @@ fun SeerrDetailScreen(
                                                 icon = Icons.Outlined.PlayArrow,
                                                 text = "Trailer",
                                                 onClick = {
-                                                    onTrailerClick(videoKey, trailer?.name ?: trailer?.type)
+                                                    onTrailerClick(videoKey, trailer.name ?: trailer.type)
                                                 },
                                                 containerColor = Color(0xFFFF0000),
                                             )

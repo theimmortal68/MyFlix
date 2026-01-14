@@ -72,7 +72,7 @@ fun PersonDetailScreen(
             }
 
             else -> {
-                val person = state.person
+                val person = state.person!!
 
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
