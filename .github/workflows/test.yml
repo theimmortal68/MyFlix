@@ -35,16 +35,16 @@ jobs:
           ./gradlew :extractor:assemble --no-daemon
 
       - name: Run unit tests
-        run: ./gradlew test --no-daemon
+        run: GRADLE_USER_HOME=$PWD/.gradle ./gradlew test --no-daemon --no-configuration-cache
 
       - name: Run lint checks
-        run: ./gradlew :app-mobile:lint :app-tv:lint --no-daemon
+        run: GRADLE_USER_HOME=$PWD/.gradle ./gradlew :app-mobile:lint :app-tv:lint --no-daemon --no-configuration-cache
 
       - name: Build app-mobile
-        run: ./gradlew :app-mobile:assembleDebug --no-daemon
+        run: GRADLE_USER_HOME=$PWD/.gradle ./gradlew :app-mobile:assembleDebug --no-daemon --no-configuration-cache
 
       - name: Build app-tv
-        run: ./gradlew :app-tv:assembleDebug --no-daemon
+        run: GRADLE_USER_HOME=$PWD/.gradle ./gradlew :app-tv:assembleDebug --no-daemon --no-configuration-cache
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
