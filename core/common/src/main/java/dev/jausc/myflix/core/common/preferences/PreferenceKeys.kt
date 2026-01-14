@@ -136,6 +136,10 @@ object PreferenceKeys {
 
         /** Prefix for library parental ratings (append libraryId) */
         const val LIBRARY_PARENTAL_RATINGS_PREFIX = "library_parental_ratings_"
+
+        // First-run tips
+        /** Whether user has seen the nav bar tip */
+        const val HAS_SEEN_NAV_BAR_TIP = "has_seen_nav_bar_tip"
     }
 
     // ==================== Default Values ====================
@@ -146,7 +150,8 @@ object PreferenceKeys {
     object Defaults {
         const val HIDE_WATCHED_FROM_RECENT = false
         const val USE_MPV_PLAYER = false
-        // Default to true since NewPipeExtractor requires PoTokenProvider for YouTube's anti-bot measures
+        // Default to true until PoToken implementation is verified on real device
+        // WebView fallback works but doesn't support remote control (seek/pause)
         const val USE_TRAILER_FALLBACK = true
         const val SHOW_SEASON_PREMIERES = true
         const val SHOW_GENRE_ROWS = false
@@ -155,5 +160,6 @@ object PreferenceKeys {
         const val SHOW_SEERR_RECENT_REQUESTS = false
         const val SEERR_ENABLED = false
         const val SEERR_AUTO_DETECTED = false
+        const val HAS_SEEN_NAV_BAR_TIP = false
     }
 }

@@ -71,7 +71,7 @@ fun TrailerPlayerScreen(
         isLoading = true
         errorMessage = null
         resolvedStream = null
-        YouTubeTrailerResolver.resolveTrailer(videoKey)
+        YouTubeTrailerResolver.resolveTrailer(context, videoKey)
             .onSuccess { resolvedStream = it }
             .onFailure { errorMessage = it.message ?: "Failed to load trailer" }
         isLoading = false

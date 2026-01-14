@@ -1,5 +1,7 @@
 package dev.jausc.myflix.core.common.youtube
 
+import android.content.Context
+import android.util.Log
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -13,9 +15,13 @@ import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
+import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.VideoStream
+import dev.jausc.myflix.core.common.potoken.PoTokenProviderImpl
+
+private const val TAG = "YouTubeTrailerResolver"
 
 data class YouTubeStream(
     val url: String,
@@ -27,26 +33,40 @@ data class YouTubeStream(
 object YouTubeTrailerResolver {
     private val initialized = AtomicBoolean(false)
 
-    fun initialize() {
+    /**
+     * Initialize the YouTube resolver with context for PoToken generation.
+     * Must be called before resolving trailers.
+     */
+    fun initialize(context: Context) {
         if (initialized.compareAndSet(false, true)) {
             NewPipe.init(OkHttpDownloader())
+            PoTokenProviderImpl.initialize(context)
+            YoutubeStreamExtractor.setPoTokenProvider(PoTokenProviderImpl)
         }
     }
 
-    suspend fun resolveTrailer(videoKey: String): Result<YouTubeStream> = withContext(Dispatchers.IO) {
-        runCatching {
-            initialize()
+    @Deprecated("Use initialize(context) instead", ReplaceWith("initialize(context)"))
+    fun initialize() {
+        if (initialized.compareAndSet(false, true)) {
+            NewPipe.init(OkHttpDownloader())
+            // Without context, PoTokenProvider won't work
+        }
+    }
+
+    suspend fun resolveTrailer(context: Context, videoKey: String): Result<YouTubeStream> = withContext(Dispatchers.IO) {
+        try {
+            initialize(context)
             val videoUrl = "https://www.youtube.com/watch?v=$videoKey"
             val info = StreamInfo.getInfo(ServiceList.YouTube, videoUrl)
 
             val hlsUrl = info.hlsUrl?.takeIf { it.isNotBlank() }
             if (hlsUrl != null) {
-                return@runCatching YouTubeStream(
+                return@withContext Result.success(YouTubeStream(
                     url = hlsUrl,
                     title = info.name,
                     durationMs = info.duration.coerceAtLeast(0) * 1000,
                     isHls = true,
-                )
+                ))
             }
 
             val stream = selectBestStream(info)
@@ -55,12 +75,15 @@ object YouTubeTrailerResolver {
             val streamUrl = stream.content
                 ?: throw IOException("Stream URL is not available")
 
-            YouTubeStream(
+            Result.success(YouTubeStream(
                 url = streamUrl,
                 title = info.name,
                 durationMs = info.duration.coerceAtLeast(0) * 1000,
                 isHls = stream.deliveryMethod == DeliveryMethod.HLS,
-            )
+            ))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resolving trailer: ${e.message}", e)
+            Result.failure(e)
         }
     }
 
@@ -68,10 +91,27 @@ object YouTubeTrailerResolver {
         val allStreams = info.videoStreams ?: emptyList()
         val withAudio = allStreams.filter { !it.isVideoOnly }
         val preferred = if (withAudio.isNotEmpty()) withAudio else allStreams
+
+        // Prefer H.264/AVC over HEVC for better compatibility
+        val h264Streams = preferred.filter {
+            val codec = it.codec?.lowercase(Locale.US) ?: ""
+            codec.contains("avc") || codec.contains("h264") || codec.contains("264")
+        }
+
+        // Also prefer MP4 format
         val mp4Preferred = preferred.filter {
             it.format?.name?.lowercase(Locale.US)?.contains("mp4") == true
         }
-        val candidates = if (mp4Preferred.isNotEmpty()) mp4Preferred else preferred
+
+        // First try H.264 MP4, then H.264 any, then MP4, then any
+        val h264Mp4 = h264Streams.filter { it.format?.name?.lowercase(Locale.US)?.contains("mp4") == true }
+        val candidates = when {
+            h264Mp4.isNotEmpty() -> h264Mp4
+            h264Streams.isNotEmpty() -> h264Streams
+            mp4Preferred.isNotEmpty() -> mp4Preferred
+            else -> preferred
+        }
+
         return candidates.maxByOrNull { parseResolution(it.resolution) }
     }
 

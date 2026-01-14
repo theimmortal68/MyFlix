@@ -22,14 +22,13 @@ dependencyResolutionManagement {
 
 rootProject.name = "MyFlix"
 
-// Temporarily disabled - v0.25.0 requires PoTokenProvider for YouTube extraction
-// Use v0.24.8 from Maven instead (matching Wholphin's working implementation)
-// includeBuild("NewPipeExtractor") {
-//     dependencySubstitution {
-//         substitute(module("com.github.TeamNewPipe:NewPipeExtractor"))
-//             .using(project(":extractor"))
-//     }
-// }
+// Use local NewPipeExtractor v0.25.0 with PoTokenProvider support
+includeBuild("NewPipeExtractor") {
+    dependencySubstitution {
+        substitute(module("com.github.TeamNewPipe:NewPipeExtractor"))
+            .using(project(":extractor"))
+    }
+}
 
 // App modules
 include(":app-tv")

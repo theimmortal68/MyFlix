@@ -175,14 +175,25 @@ class NavBarPopupState {
     }
 }
 
+/**
+ * Remember and create a [NavBarPopupState] with appropriate auto-hide behavior.
+ *
+ * @param hasSeenNavBarTip Whether the user has dismissed the first-run tip.
+ *   - `false` (first run): Nav bar stays visible (no auto-hide) while tip is shown.
+ *   - `true` (subsequent launches): Nav bar auto-hides after 2 seconds.
+ */
 @Composable
-fun rememberNavBarPopupState(): NavBarPopupState {
+fun rememberNavBarPopupState(hasSeenNavBarTip: Boolean = true): NavBarPopupState {
     val state = remember { NavBarPopupState() }
 
-    // Auto-hide after 5 seconds on initial load
-    LaunchedEffect(Unit) {
-        delay(5000)
-        state.hide()
+    // Auto-hide behavior depends on whether user has seen the tip
+    LaunchedEffect(hasSeenNavBarTip) {
+        if (hasSeenNavBarTip) {
+            // Subsequent launches: auto-hide after 2 seconds
+            delay(2000)
+            state.hide()
+        }
+        // First run (hasSeenNavBarTip = false): don't auto-hide, tip will trigger hide
     }
 
     return state

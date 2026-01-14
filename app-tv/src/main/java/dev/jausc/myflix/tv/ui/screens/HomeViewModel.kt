@@ -89,6 +89,14 @@ class HomeViewModel(
     val pinnedCollections = preferences.pinnedCollections
     val showSuggestions = preferences.showSuggestions
     val showSeerrRecentRequests = preferences.showSeerrRecentRequests
+    val hasSeenNavBarTip = preferences.hasSeenNavBarTip
+
+    /**
+     * Mark the nav bar tip as seen (first-run tip dismissed).
+     */
+    fun setHasSeenNavBarTip() {
+        preferences.setHasSeenNavBarTip(true)
+    }
 
     init {
         loadContent()

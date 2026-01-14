@@ -83,8 +83,9 @@ import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
-import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.FirstRunTip
+import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
 import dev.jausc.myflix.tv.ui.components.HomeDialogActions
@@ -140,6 +141,7 @@ fun HomeScreen(
     val showCollections by viewModel.showCollections.collectAsState()
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val showSeerrRecentRequests by viewModel.showSeerrRecentRequests.collectAsState()
+    val hasSeenNavBarTip by viewModel.hasSeenNavBarTip.collectAsState()
 
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
@@ -335,6 +337,9 @@ fun HomeScreen(
                         // Top navigation config
                         selectedNavItem = selectedNavItem,
                         onNavItemSelected = handleNavSelection,
+                        // First-run tip
+                        hasSeenNavBarTip = hasSeenNavBarTip,
+                        onTipDismissed = { viewModel.setHasSeenNavBarTip() },
                     )
                 }
             }
@@ -407,11 +412,16 @@ private fun HomeContent(
     // Top navigation
     selectedNavItem: NavItem = NavItem.HOME,
     onNavItemSelected: (NavItem) -> Unit = {},
+    // First-run tip
+    hasSeenNavBarTip: Boolean = true,
+    onTipDismissed: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    // Popup nav bar state - visible on load, auto-hides after 5 seconds
-    val navBarState = rememberNavBarPopupState()
+    // Popup nav bar state - visible on load, auto-hides based on hasSeenNavBarTip
+    // First run: stays visible while tip is shown
+    // Subsequent launches: auto-hides after 2 seconds
+    val navBarState = rememberNavBarPopupState(hasSeenNavBarTip = hasSeenNavBarTip)
 
     // Filter watched items from Recently Added rows
     val filteredRecentEpisodes = if (hideWatchedFromRecent) {
@@ -738,6 +748,22 @@ private fun HomeContent(
             },
             homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
+        )
+
+        // Layer 4: First-run tip (modal overlay, shown on first launch only)
+        FirstRunTip(
+            visible = !hasSeenNavBarTip,
+            onDismiss = {
+                // Mark tip as seen
+                onTipDismissed()
+                // Hide nav bar
+                navBarState.hide()
+                // Return focus to hero
+                try {
+                    heroPlayFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            },
         )
     }
 }

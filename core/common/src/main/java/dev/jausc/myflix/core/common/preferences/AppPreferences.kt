@@ -108,6 +108,12 @@ abstract class AppPreferences(context: Context) {
     }
     val seerrSessionCookie: StateFlow<String?> by lazy { _seerrSessionCookie.asStateFlow() }
 
+    // First-run tip preferences
+    private val _hasSeenNavBarTip: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.HAS_SEEN_NAV_BAR_TIP, PreferenceKeys.Defaults.HAS_SEEN_NAV_BAR_TIP))
+    }
+    val hasSeenNavBarTip: StateFlow<Boolean> by lazy { _hasSeenNavBarTip.asStateFlow() }
+
     // Helper methods
     private fun loadStringList(key: String): List<String> {
         val stored = prefs.getString(key, null) ?: return emptyList()
@@ -269,6 +275,16 @@ abstract class AppPreferences(context: Context) {
         _seerrAutoDetected.value = false
         _seerrApiKey.value = null
         _seerrSessionCookie.value = null
+    }
+
+    // First-run tip setters
+
+    /**
+     * Set whether the user has seen the nav bar tip.
+     */
+    fun setHasSeenNavBarTip(seen: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.HAS_SEEN_NAV_BAR_TIP, seen).apply()
+        _hasSeenNavBarTip.value = seen
     }
 
     // ==================== Library Filter Preferences ====================
