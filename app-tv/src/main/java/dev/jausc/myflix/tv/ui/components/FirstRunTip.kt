@@ -55,43 +55,23 @@ fun FirstRunTip(
 ) {
     val buttonFocusRequester = remember { FocusRequester() }
 
-    // Request focus on button when tip becomes visible
-    LaunchedEffect(visible) {
-        if (visible) {
-            try {
-                buttonFocusRequester.requestFocus()
-            } catch (_: Exception) {
-                // Focus request may fail if component not ready
-            }
-        }
-    }
-
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = modifier,
     ) {
+        // Request focus after animation completes
+        LaunchedEffect(Unit) {
+            // Small delay to ensure composable is fully laid out
+            kotlinx.coroutines.delay(100)
+            buttonFocusRequester.requestFocus()
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f))
-                .onPreviewKeyEvent { event ->
-                    // Handle OK/Enter/Select to dismiss
-                    if (event.type == KeyEventType.KeyDown) {
-                        when (event.key) {
-                            Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> {
-                                onDismiss()
-                                true
-                            }
-                            // Block back button while tip is showing
-                            Key.Back, Key.Escape -> true
-                            else -> false
-                        }
-                    } else {
-                        false
-                    }
-                },
+                .background(Color.Black.copy(alpha = 0.7f)),
             contentAlignment = Alignment.TopCenter,
         ) {
             // Tip card - positioned below where the nav bar would be
@@ -143,7 +123,17 @@ fun FirstRunTip(
                         onClick = onDismiss,
                         modifier = Modifier
                             .focusRequester(buttonFocusRequester)
-                            .height(36.dp),
+                            .height(36.dp)
+                            .onPreviewKeyEvent { event ->
+                                // Block back button while tip is showing
+                                if (event.type == KeyEventType.KeyDown &&
+                                    (event.key == Key.Back || event.key == Key.Escape)
+                                ) {
+                                    true // Consume the event
+                                } else {
+                                    false
+                                }
+                            },
                         contentPadding = PaddingValues(horizontal = 32.dp, vertical = 0.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.BluePrimary,
