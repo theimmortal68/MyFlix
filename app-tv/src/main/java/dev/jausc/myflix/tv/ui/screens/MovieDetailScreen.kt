@@ -2,13 +2,16 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -23,19 +26,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.writers
-import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -43,19 +44,15 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
-import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.components.detail.DetailInfoItem
-import dev.jausc.myflix.tv.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
+import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
-import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
-import dev.jausc.myflix.tv.ui.components.detail.OverviewText
+import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
@@ -91,7 +88,6 @@ fun MovieDetailScreen(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     // Dialog state
-    var showOverviewDialog by remember { mutableStateOf(false) }
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
@@ -120,68 +116,10 @@ fun MovieDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    val detailInfoItems = remember(movie) {
-        buildList {
-            movie.productionYear?.let { add(DetailInfoItem("Year", it.toString())) }
-            movie.runTimeTicks?.let { ticks ->
-                val minutes = ticks / 600_000_000
-                if (minutes > 0) add(DetailInfoItem("Runtime", "${minutes}m"))
-            }
-            movie.communityRating?.let {
-                add(DetailInfoItem("User Rating", String.format(Locale.US, "%.1f/10", it)))
-            }
-            movie.criticRating?.let {
-                add(DetailInfoItem("Critic Rating", formatCriticRating(it)))
-            }
-            movie.studios?.mapNotNull { it.name }?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Studios", it.joinToString(", ")))
-            }
-            movie.directors.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Director", it.joinToString(", ")))
-            }
-            movie.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Writers", it.joinToString(", ")))
-            }
-            movie.genres?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Genres", it.joinToString(", ")))
-            }
-            movie.tags?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Tags", it.joinToString(", ")))
-            }
-            movie.videoStream?.let { video ->
-                val videoLabel = buildString {
-                    append(video.codec?.uppercase() ?: "Unknown")
-                    video.width?.let { w -> video.height?.let { h -> append(" • ${w}x$h") } }
-                    video.videoRangeType?.let { append(" • $it") }
-                }
-                add(DetailInfoItem("Video", videoLabel))
-            }
-            val audioStream = movie.mediaSources
-                ?.firstOrNull()
-                ?.mediaStreams
-                ?.firstOrNull { it.type == "Audio" }
-            audioStream?.let { audio ->
-                val audioLabel = buildString {
-                    append(audio.codec?.uppercase() ?: "Unknown")
-                    audio.channels?.let { append(" • ${it}ch") }
-                    audio.language?.let { append(" • $it") }
-                }
-                add(DetailInfoItem("Audio", audioLabel))
-            }
-            val subtitleLanguages = movie.mediaSources
-                ?.firstOrNull()
-                ?.mediaStreams
-                ?.filter { it.type == "Subtitle" }
-                ?.mapNotNull { it.language }
-                ?.distinct()
-                .orEmpty()
-            if (subtitleLanguages.isNotEmpty()) {
-                add(DetailInfoItem("Subtitles", subtitleLanguages.joinToString(", ")))
-            }
-        }
-    }
+    val playFocusRequester = remember { FocusRequester() }
 
     // Layered UI: DynamicBackground → DetailBackdropLayer → Content
+    // Uses same structure as SeriesDetailScreen: fixed hero (50%) + scrollable content
     Box(modifier = modifier.fillMaxSize()) {
         // Layer 1: Dynamic gradient background
         DynamicBackground(
@@ -199,70 +137,65 @@ fun MovieDetailScreen(
                 .align(Alignment.TopEnd),
         )
 
-        // Layer 3: Content
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 8.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            // Header with action buttons
-            item(key = "header") {
+        // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Fixed hero section (50% height for 5 lines of description) - doesn't scroll
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.50f)
+                    .bringIntoViewRequester(bringIntoViewRequester),
+            ) {
+                // Hero content (left 50%) - title, rating, genres, description
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .bringIntoViewRequester(bringIntoViewRequester),
+                        .fillMaxWidth(0.5f)
+                        .padding(start = 48.dp, top = 36.dp),
+                    verticalArrangement = Arrangement.Top,
                 ) {
                     MovieDetailsHeader(
                         movie = movie,
                         directorName = directorName,
-                        overviewOnClick = { showOverviewDialog = true },
-                        bringIntoViewRequester = bringIntoViewRequester,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 32.dp, bottom = 16.dp),
                     )
+                }
 
-                    ExpandablePlayButtons(
-                        resumePositionTicks = resumePositionTicks,
-                        watched = watched,
-                        favorite = favorite,
-                        onPlayClick = { resumeTicks ->
-                            this@item
-                            onPlayClick(resumeTicks / 10_000)
-                        },
-                        onWatchedClick = onWatchedClick,
-                        onFavoriteClick = onFavoriteClick,
-                        onMoreClick = {
-                            mediaInfoItem = movie
-                        },
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
-                                position = HEADER_ROW
-                                scope.launch {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
+                // Action buttons fixed at bottom of hero section
+                ExpandablePlayButtons(
+                    resumePositionTicks = resumePositionTicks,
+                    watched = watched,
+                    favorite = favorite,
+                    onPlayClick = { resumeTicks ->
+                        onPlayClick(resumeTicks / 10_000)
+                    },
+                    onWatchedClick = onWatchedClick,
+                    onFavoriteClick = onFavoriteClick,
+                    onMoreClick = { mediaInfoItem = movie },
+                    buttonOnFocusChanged = {
+                        if (it.isFocused) {
+                            position = HEADER_ROW
+                            scope.launch {
+                                bringIntoViewRequester.bringIntoView()
                             }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                            .focusRequester(focusRequesters[HEADER_ROW]),
-                    )
-                }
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 48.dp, bottom = 8.dp)
+                        .focusRequester(focusRequesters[HEADER_ROW])
+                        .focusProperties {
+                            down = focusRequesters[CAST_ROW]
+                        }
+                        .focusRestorer(playFocusRequester)
+                        .focusGroup(),
+                )
             }
 
-            // Details
-            if (detailInfoItems.isNotEmpty()) {
-                item(key = "details") {
-                    DetailInfoSection(
-                        title = "Details",
-                        items = detailInfoItems,
-                        modifier = Modifier.fillMaxWidth(0.6f),
-                    )
-                }
-            }
-
+            // Scrollable content rows (below fixed hero)
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
             // Cast
             if (cast.isNotEmpty()) {
                 item(key = "people") {
@@ -451,17 +384,8 @@ fun MovieDetailScreen(
                     )
                 }
             }
+            }
         }
-    }
-
-    // Overview dialog
-    if (showOverviewDialog && movie.overview != null) {
-        OverviewDialog(
-            title = movie.name,
-            overview = movie.overview!!,
-            genres = movie.genres ?: emptyList(),
-            onDismiss = { showOverviewDialog = false },
-        )
     }
 
     // Context menu dialog
@@ -482,97 +406,74 @@ fun MovieDetailScreen(
 }
 
 /**
- * Movie details header with title, quick details, genres, tagline, overview, and director.
- * Left-aligned content (45% width) to work with backdrop on the right.
+ * Movie details header matching series detail hero style.
+ * Uses full width of parent column (which is already constrained to 50% of screen).
  */
 @Composable
 private fun MovieDetailsHeader(
     movie: JellyfinItem,
     directorName: String?,
-    overviewOnClick: () -> Unit,
-    bringIntoViewRequester: BringIntoViewRequester,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
-
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
     ) {
-        // Title
+        // Title - matches series hero style
         Text(
             text = movie.name,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+            ),
+            color = TvColors.TextPrimary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(0.50f),
         )
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth(0.45f),
-        ) {
-            val padding = 4.dp
+        Spacer(modifier = Modifier.height(6.dp))
 
-            // Quick details: year, runtime, "ends at", rating
-            MovieQuickDetails(
-                item = movie,
-                modifier = Modifier.padding(bottom = padding),
+        // Quick details: year, runtime, "ends at", rating
+        MovieQuickDetails(item = movie)
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Genres
+        if (!movie.genres.isNullOrEmpty()) {
+            GenreText(genres = movie.genres!!)
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        // Tagline (italic)
+        movie.taglines?.firstOrNull()?.let { tagline ->
+            Text(
+                text = tagline,
+                style = MaterialTheme.typography.bodySmall,
+                fontStyle = FontStyle.Italic,
+                color = TvColors.TextPrimary.copy(alpha = 0.85f),
             )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
 
-            // Genres
-            if (!movie.genres.isNullOrEmpty()) {
-                GenreText(
-                    genres = movie.genres!!,
-                    modifier = Modifier.padding(bottom = padding),
-                )
-            }
+        // Description - allows 5 lines of text, uses full column width (50% of screen)
+        movie.overview?.let { overview ->
+            Text(
+                text = overview,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+            )
+        }
 
-            // Tagline (italic)
-            movie.taglines?.firstOrNull()?.let { tagline ->
-                Text(
-                    text = tagline,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
-            // Overview (clickable to expand)
-            movie.overview?.let { overview ->
-                OverviewText(
-                    overview = overview,
-                    maxLines = 3,
-                    onClick = overviewOnClick,
-                    textBoxHeight = Dp.Unspecified,
-                    modifier = Modifier.onFocusChanged {
-                        if (it.isFocused) {
-                            scope.launch {
-                                bringIntoViewRequester.bringIntoView()
-                            }
-                        }
-                    },
-                )
-            }
-
-            // Director
-            directorName?.let {
-                Text(
-                    text = "Directed by $it",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
+        // Director
+        directorName?.let {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Directed by $it",
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.85f),
+            )
         }
     }
 }
-
-
-private fun formatCriticRating(rating: Float): String =
-    if (rating > 10f) {
-        "${rating.toInt()}%"
-    } else {
-        String.format(Locale.US, "%.1f/10", rating)
-    }
