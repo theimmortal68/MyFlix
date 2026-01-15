@@ -223,12 +223,15 @@ fun SeriesDetailScreen(
                         },
                         cardContent = { _, item, cardModifier, onClick, onLongClick ->
                             if (item != null) {
+                                val thumbTag = item.imageTags?.thumb
+                                val imageUrl = if (thumbTag != null) {
+                                    jellyfinClient.getThumbUrl(item.id, thumbTag)
+                                } else {
+                                    jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+                                }
                                 WideMediaCard(
                                     item = item,
-                                    imageUrl = jellyfinClient.getThumbUrl(
-                                        item.id,
-                                        item.imageTags?.thumb,
-                                    ),
+                                    imageUrl = imageUrl,
                                     onClick = onClick,
                                     onLongClick = onLongClick,
                                     modifier = cardModifier,

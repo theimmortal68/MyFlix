@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
@@ -68,6 +69,7 @@ import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -114,6 +116,7 @@ fun SeasonDetailScreen(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val playFocusRequester = remember { FocusRequester() }
     val seasonTabFocusRequester = remember { FocusRequester() }
+    val listState = rememberLazyListState()
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -161,6 +164,11 @@ fun SeasonDetailScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        delay(100)
+        playFocusRequester.requestFocus()
+    }
+
     // Backdrop URL and dynamic gradient colors
     val backdropId = series.seriesId ?: series.id
     val backdropUrl = remember(backdropId) {
@@ -188,6 +196,7 @@ fun SeasonDetailScreen(
 
         // Layer 3: Content
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
@@ -214,7 +223,7 @@ fun SeasonDetailScreen(
                         actionButtonsFocusRequester = focusRequesters[HEADER_ROW],
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 32.dp, bottom = 16.dp),
+                            .padding(top = 16.dp, bottom = 16.dp),
                     )
 
                     // Action buttons row
@@ -360,6 +369,11 @@ fun SeasonDetailScreen(
                         },
                         onEpisodeFocused = { episode ->
                             focusedEpisodeId = episode.id
+                            if (listState.firstVisibleItemIndex != 0) {
+                                scope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
+                            }
                         },
                         isLoading = state.isLoadingEpisodes,
                         modifier = Modifier
@@ -678,7 +692,9 @@ private fun SeasonDetailsHeader(
                     text = overview,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                    modifier = Modifier.padding(top = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.55f)
+                        .padding(top = 12.dp),
                 )
             }
         }
