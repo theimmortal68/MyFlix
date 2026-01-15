@@ -508,7 +508,7 @@ fun SeriesDetailScreen(
 
 /**
  * Series details header matching home hero style.
- * Left-aligned content (50% width) to work with backdrop on the right.
+ * Uses full width of parent column (which is already constrained to 50% of screen).
  */
 @Composable
 private fun SeriesDetailsHeader(
@@ -518,7 +518,7 @@ private fun SeriesDetailsHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(0.5f),
+        modifier = modifier.fillMaxWidth(),
     ) {
         // Title - matches home hero HeroTitleSection
         Text(
