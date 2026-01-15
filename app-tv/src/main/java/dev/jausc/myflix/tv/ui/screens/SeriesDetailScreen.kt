@@ -451,12 +451,15 @@ fun SeriesDetailScreen(
                 }
             }
 
-            // Similar Items (More Like This)
-            if (state.similarItems.isNotEmpty()) {
+            // Similar Items (More Like This) - filter out series with no episodes
+            val similarWithEpisodes = state.similarItems.filter {
+                (it.recursiveItemCount ?: 0) > 0
+            }
+            if (similarWithEpisodes.isNotEmpty()) {
                 item(key = "similar") {
                     ItemRow(
                         title = "More Like This",
-                        items = state.similarItems,
+                        items = similarWithEpisodes,
                         onItemClick = { _, item ->
                             position = SIMILAR_ROW
                             onNavigateToDetail(item.id)
