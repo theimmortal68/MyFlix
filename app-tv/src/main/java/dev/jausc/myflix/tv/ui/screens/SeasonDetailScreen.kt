@@ -203,11 +203,11 @@ fun SeasonDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (45% height for 5 lines of description) - doesn't scroll
+            // Fixed hero section (50% height for 5 lines of description) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.45f)
+                    .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Season tabs at top - centered between screen top and title
@@ -696,7 +696,7 @@ private fun SeasonHeroContent(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Description - 5 lines max for season detail
+            // Description - 5 lines max, uses full column width (50% of screen)
             episode.overview?.let { overview ->
                 Text(
                     text = overview,
@@ -705,7 +705,6 @@ private fun SeasonHeroContent(
                     maxLines = 5,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 18.sp,
-                    modifier = Modifier.fillMaxWidth(0.8f),
                 )
             }
         }

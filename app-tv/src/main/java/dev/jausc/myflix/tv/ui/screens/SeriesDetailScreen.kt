@@ -158,11 +158,11 @@ fun SeriesDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (45% height for 5 lines of description) - doesn't scroll
+            // Fixed hero section (50% height for 5 lines of description) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.45f)
+                    .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, description
@@ -543,7 +543,7 @@ private fun SeriesDetailsHeader(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Description - allows 5 lines of text
+        // Description - allows 5 lines of text, uses full column width (50% of screen)
         series.overview?.let { overview ->
             Text(
                 text = overview,
@@ -552,7 +552,6 @@ private fun SeriesDetailsHeader(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
-                modifier = Modifier.fillMaxWidth(0.8f),
             )
         }
     }
