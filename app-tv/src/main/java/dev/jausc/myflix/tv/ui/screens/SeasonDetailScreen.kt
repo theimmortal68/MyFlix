@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,6 +46,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
@@ -70,6 +72,7 @@ import dev.jausc.myflix.tv.ui.components.detail.EpisodeGrid
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
+import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -202,16 +205,16 @@ fun SeasonDetailScreen(
         // Layer 3: Content
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 0.dp),
+            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Header with season tabs and episode info
+            // Header with season tabs and episode info - matches home hero layout
             item(key = "header") {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(top = 36.dp)
                         .bringIntoViewRequester(bringIntoViewRequester),
                 ) {
                     SeasonDetailsHeader(
@@ -225,9 +228,7 @@ fun SeasonDetailScreen(
                         selectedEpisode = selectedEpisode,
                         seasonTabFocusRequester = seasonTabFocusRequester,
                         episodeRowFocusRequester = focusRequesters[EPISODES_ROW],
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -248,11 +249,7 @@ fun SeasonDetailScreen(
                         },
                         onEpisodeFocused = { episode ->
                             focusedEpisodeId = episode.id
-                            if (listState.firstVisibleItemIndex != 0) {
-                                scope.launch {
-                                    listState.animateScrollToItem(0)
-                                }
-                            }
+                            // Don't scroll when focusing on episodes - keep header visible
                         },
                         isLoading = state.isLoadingEpisodes,
                         modifier = Modifier
@@ -654,7 +651,6 @@ private fun SeasonDetailsHeader(
 ) {
     val showTitle = series.seriesName ?: series.name
     Column(
-        verticalArrangement = Arrangement.spacedBy(0.dp),
         modifier = modifier,
     ) {
         SeasonTabRow(
@@ -666,28 +662,30 @@ private fun SeasonDetailsHeader(
             modifier = Modifier.fillMaxWidth(),
         )
 
+        // Series title - matches home hero HeroTitleSection
         Text(
             text = showTitle,
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+            ),
+            color = TvColors.TextPrimary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth(0.55f),
         )
 
         selectedEpisode?.let { episode ->
-            // Episode title and rating on same line with ":"
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Episode title and rating - matches home hero subtitle style
             val details = buildEpisodeRatingLine(episode)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(0.55f),
             ) {
                 Text(
                     text = episode.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                    color = TvColors.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
@@ -695,28 +693,34 @@ private fun SeasonDetailsHeader(
                 if (details.isNotEmpty() || episode.communityRating != null) {
                     Text(
                         text = ": ",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                        color = TvColors.TextPrimary,
                     )
                     DotSeparatedRow(
                         texts = details,
                         communityRating = episode.communityRating,
-                        textStyle = MaterialTheme.typography.titleSmall,
+                        textStyle = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Description - matches home hero HeroDescription (3 lines, bodySmall)
             episode.overview?.let { overview ->
                 Text(
                     text = overview,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                    modifier = Modifier
-                        .fillMaxWidth(0.55f)
-                        .padding(top = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.fillMaxWidth(0.45f),
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
     }
 }
 

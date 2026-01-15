@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -29,6 +32,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -41,10 +45,10 @@ import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
+import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
 
@@ -153,26 +157,26 @@ fun SeriesDetailScreen(
 
         // Layer 3: Content
         LazyColumn(
-            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Header with action buttons
+            // Header with action buttons - matches home hero layout
             item(key = "header") {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(top = 36.dp)
                         .bringIntoViewRequester(bringIntoViewRequester),
                 ) {
                     SeriesDetailsHeader(
                         series = series,
                         status = series.status,
                         studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 32.dp, bottom = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Action buttons row
                     SeriesActionButtons(
@@ -492,8 +496,8 @@ fun SeriesDetailScreen(
 }
 
 /**
- * Series details header with title, quick details, genres, and overview.
- * Left-aligned content (45% width) to work with backdrop on the right.
+ * Series details header matching home hero style.
+ * Left-aligned content (50% width) to work with backdrop on the right.
  */
 @Composable
 private fun SeriesDetailsHeader(
@@ -503,46 +507,42 @@ private fun SeriesDetailsHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        // Title
+        // Title - matches home hero HeroTitleSection
         Text(
             text = series.name,
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+            ),
+            color = TvColors.TextPrimary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth(0.50f),
         )
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth(0.45f),
-        ) {
-            // Quick details: year, episode count, status
-            SeriesQuickDetails(
-                item = series,
-                status = status,
-                studios = studioNames,
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Rating row - matches home hero HeroRatingRow
+        SeriesQuickDetails(
+            item = series,
+            status = status,
+            studios = studioNames,
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Description - matches home hero HeroDescription (3 lines, bodySmall)
+        series.overview?.let { overview ->
+            Text(
+                text = overview,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+                modifier = Modifier.fillMaxWidth(0.45f),
             )
-
-            // Genres
-            if (!series.genres.isNullOrEmpty()) {
-                GenreText(
-                    genres = series.genres!!,
-                )
-            }
-
-            // Overview (full text)
-            series.overview?.let { overview ->
-                Text(
-                    text = overview,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                )
-            }
         }
     }
 }
