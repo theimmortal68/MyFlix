@@ -194,6 +194,7 @@ fun SeriesActionButtons(
     onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(8.dp),
     onTrailerClick: (() -> Unit)? = null,
     showMoreButton: Boolean = true,
 ) {
@@ -201,7 +202,7 @@ fun SeriesActionButtons(
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(8.dp),
+        contentPadding = contentPadding,
         modifier = modifier
             .focusGroup()
             .focusRestorer(firstFocus),

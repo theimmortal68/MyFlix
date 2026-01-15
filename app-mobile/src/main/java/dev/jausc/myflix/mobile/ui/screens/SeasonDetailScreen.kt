@@ -57,9 +57,6 @@ import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.SeriesActionButtons
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
@@ -603,8 +600,6 @@ private fun FormatBadgeRow(badges: List<String>, modifier: Modifier = Modifier) 
 }
 
 private fun buildEpisodeRatingLine(episode: JellyfinItem): List<String> = buildList {
-    buildSeasonEpisodeLabel(episode)?.let { add(it) }
-    formatPremiereDate(episode.premiereDate)?.let { add(it) }
     episode.officialRating?.let { add(it) }
     episode.runTimeTicks?.let { ticks ->
         val minutes = (ticks / 600_000_000L).toInt()
@@ -667,18 +662,6 @@ private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
     return if (season != null && number != null) {
         "S$season E$number"
     } else {
-        null
-    }
-}
-
-private fun formatPremiereDate(premiereDate: String?): String? {
-    if (premiereDate.isNullOrBlank()) return null
-    return try {
-        val instant = Instant.parse(premiereDate)
-        val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
-        val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
-        date.format(formatter)
-    } catch (_: Exception) {
         null
     }
 }

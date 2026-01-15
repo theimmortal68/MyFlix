@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -70,9 +73,6 @@ import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // Row indices for focus management
@@ -264,95 +264,110 @@ fun SeasonDetailScreen(
                 }
             }
 
-            // Action buttons row (moved below episodes)
+            // Action buttons row with media info on right (moved below episodes)
             item(key = "actions") {
-                SeriesActionButtons(
-                    watched = watched,
-                    favorite = favorite,
-                    onPlayClick = {
-                        position = HEADER_ROW
-                        onPlayClick()
-                    },
-                    onShuffleClick = {
-                        position = HEADER_ROW
-                        onShuffleClick()
-                    },
-                    onWatchedClick = onWatchedClick,
-                    onFavoriteClick = onFavoriteClick,
-                    onMoreClick = {
-                        val episode = selectedEpisode ?: return@SeriesActionButtons
-                        val seasonLabel = buildSeasonEpisodeLabel(episode)
-                        dialogParams = buildEpisodeMenu(
-                            title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
-                                .joinToString(" - "),
-                            subtitle = episode.name,
-                            episode = episode,
-                            onPlay = {
-                                PlayQueueManager.setSingleItem(
-                                    itemId = episode.id,
-                                    title = episode.name,
-                                    episodeInfo = seasonLabel,
-                                    thumbnailItemId = episode.id,
-                                    subtitleStreamIndex = preferredSubtitleIndex,
-                                )
-                                onPlayItemClick(episode.id, null)
-                            },
-                            onChooseSubtitles = {
-                                subtitleDialogParams = buildSubtitleMenu(
-                                    episode = episode,
-                                    selectedIndex = preferredSubtitleIndex,
-                                    onSelect = { index -> preferredSubtitleIndex = index },
-                                )
-                            },
-                            onAddToPlaylist = {
-                                val items = state.episodes.map { item ->
-                                    QueueItem(
-                                        itemId = item.id,
-                                        title = item.name,
-                                        episodeInfo = buildSeasonEpisodeLabel(item),
-                                        thumbnailItemId = item.id,
-                                    )
-                                }
-                                PlayQueueManager.setQueue(items, QueueSource.SEASON_PLAY_ALL)
-                            },
-                            onToggleWatched = {
-                                val isPlayed = episode.userData?.played == true
-                                onEpisodeWatchedToggle(episode.id, !isPlayed)
-                            },
-                            onToggleFavorite = {
-                                val isFavorite = episode.userData?.isFavorite == true
-                                onEpisodeFavoriteToggle(episode.id, !isFavorite)
-                            },
-                            onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
-                            onMediaInfo = { mediaInfoItem = episode },
-                            onPlayWithTranscoding = {
-                                PlayQueueManager.setSingleItem(
-                                    itemId = episode.id,
-                                    title = episode.name,
-                                    episodeInfo = seasonLabel,
-                                    thumbnailItemId = episode.id,
-                                    subtitleStreamIndex = preferredSubtitleIndex,
-                                )
-                                onPlayItemClick(episode.id, null)
-                            },
-                        )
-                    },
-                    buttonOnFocusChanged = {
-                        if (it.isFocused) {
-                            scope.launch {
-                                bringIntoViewRequester.bringIntoView()
-                            }
-                        }
-                    },
+                val episodeBadges = buildEpisodeBadges(selectedEpisode)
+                Row(
                     modifier = Modifier
-                        .padding(bottom = 16.dp)
-                        .focusRequester(focusRequesters[HEADER_ROW])
-                        .focusProperties {
-                            up = focusRequesters[EPISODES_ROW]
-                        }
-                        .focusRestorer(playFocusRequester)
-                        .focusGroup(),
-                )
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SeriesActionButtons(
+                        watched = watched,
+                        favorite = favorite,
+                        onPlayClick = {
+                            position = HEADER_ROW
+                            onPlayClick()
+                        },
+                        onShuffleClick = {
+                            position = HEADER_ROW
+                            onShuffleClick()
+                        },
+                        onWatchedClick = onWatchedClick,
+                        onFavoriteClick = onFavoriteClick,
+                        contentPadding = PaddingValues(start = 0.dp, top = 6.dp, end = 8.dp, bottom = 8.dp),
+                        onMoreClick = {
+                            val episode = selectedEpisode ?: return@SeriesActionButtons
+                            val seasonLabel = buildSeasonEpisodeLabel(episode)
+                            dialogParams = buildEpisodeMenu(
+                                title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
+                                    .joinToString(" - "),
+                                subtitle = episode.name,
+                                episode = episode,
+                                onPlay = {
+                                    PlayQueueManager.setSingleItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = seasonLabel,
+                                        thumbnailItemId = episode.id,
+                                        subtitleStreamIndex = preferredSubtitleIndex,
+                                    )
+                                    onPlayItemClick(episode.id, null)
+                                },
+                                onChooseSubtitles = {
+                                    subtitleDialogParams = buildSubtitleMenu(
+                                        episode = episode,
+                                        selectedIndex = preferredSubtitleIndex,
+                                        onSelect = { index -> preferredSubtitleIndex = index },
+                                    )
+                                },
+                                onAddToPlaylist = {
+                                    val items = state.episodes.map { item ->
+                                        QueueItem(
+                                            itemId = item.id,
+                                            title = item.name,
+                                            episodeInfo = buildSeasonEpisodeLabel(item),
+                                            thumbnailItemId = item.id,
+                                        )
+                                    }
+                                    PlayQueueManager.setQueue(items, QueueSource.SEASON_PLAY_ALL)
+                                },
+                                onToggleWatched = {
+                                    val isPlayed = episode.userData?.played == true
+                                    onEpisodeWatchedToggle(episode.id, !isPlayed)
+                                },
+                                onToggleFavorite = {
+                                    val isFavorite = episode.userData?.isFavorite == true
+                                    onEpisodeFavoriteToggle(episode.id, !isFavorite)
+                                },
+                                onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                                onMediaInfo = { mediaInfoItem = episode },
+                                onPlayWithTranscoding = {
+                                    PlayQueueManager.setSingleItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = seasonLabel,
+                                        thumbnailItemId = episode.id,
+                                        subtitleStreamIndex = preferredSubtitleIndex,
+                                    )
+                                    onPlayItemClick(episode.id, null)
+                                },
+                            )
+                        },
+                        buttonOnFocusChanged = {
+                            if (it.isFocused) {
+                                scope.launch {
+                                    bringIntoViewRequester.bringIntoView()
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .focusRequester(focusRequesters[HEADER_ROW])
+                            .focusProperties {
+                                up = focusRequesters[EPISODES_ROW]
+                            }
+                            .focusRestorer(playFocusRequester)
+                            .focusGroup(),
+                    )
+                    if (episodeBadges.isNotEmpty()) {
+                        FormatBadgeRow(
+                            badges = episodeBadges,
+                            modifier = Modifier.padding(end = 32.dp),
+                        )
+                    }
+                }
             }
 
             // Next Up
@@ -638,7 +653,6 @@ private fun SeasonDetailsHeader(
     modifier: Modifier = Modifier,
 ) {
     val showTitle = series.seriesName ?: series.name
-    val episodeBadges = buildEpisodeBadges(selectedEpisode)
     Column(
         verticalArrangement = Arrangement.spacedBy(0.dp),
         modifier = modifier,
@@ -663,8 +677,10 @@ private fun SeasonDetailsHeader(
         )
 
         selectedEpisode?.let { episode ->
-            Column(
-                verticalArrangement = Arrangement.spacedBy(0.dp),
+            // Episode title and rating on same line with ":"
+            val details = buildEpisodeRatingLine(episode)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(0.55f),
             ) {
                 Text(
@@ -672,21 +688,21 @@ private fun SeasonDetailsHeader(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-
-                val details = buildEpisodeRatingLine(episode)
                 if (details.isNotEmpty() || episode.communityRating != null) {
+                    Text(
+                        text = ": ",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                     DotSeparatedRow(
                         texts = details,
                         communityRating = episode.communityRating,
                         textStyle = MaterialTheme.typography.titleSmall,
                     )
-                }
-
-                if (episodeBadges.isNotEmpty()) {
-                    FormatBadgeRow(badges = episodeBadges)
                 }
             }
 
@@ -731,8 +747,6 @@ private fun FormatBadgeRow(badges: List<String>, modifier: Modifier = Modifier) 
 }
 
 private fun buildEpisodeRatingLine(episode: JellyfinItem): List<String> = buildList {
-    buildSeasonEpisodeLabel(episode)?.let { add(it) }
-    formatPremiereDate(episode.premiereDate)?.let { add(it) }
     episode.officialRating?.let { add(it) }
     episode.runTimeTicks?.let { ticks ->
         val minutes = (ticks / 600_000_000L).toInt()
@@ -794,18 +808,6 @@ private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
     return if (season != null && number != null) {
         "S$season E$number"
     } else {
-        null
-    }
-}
-
-private fun formatPremiereDate(premiereDate: String?): String? {
-    if (premiereDate.isNullOrBlank()) return null
-    return try {
-        val instant = Instant.parse(premiereDate)
-        val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
-        val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
-        date.format(formatter)
-    } catch (_: Exception) {
         null
     }
 }
