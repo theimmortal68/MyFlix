@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -54,6 +55,7 @@ fun ExitConfirmationDialog(
     modifier: Modifier = Modifier,
 ) {
     val cancelFocusRequester = remember { FocusRequester() }
+    val exitFocusRequester = remember { FocusRequester() }
     val scrimFocusRequester = remember { FocusRequester() }
 
     // Handle Back button to cancel
@@ -121,6 +123,10 @@ fun ExitConfirmationDialog(
                         onClick = onCancel,
                         modifier = Modifier
                             .focusRequester(cancelFocusRequester)
+                            .focusProperties {
+                                left = FocusRequester.Cancel
+                                right = exitFocusRequester
+                            }
                             .height(40.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.SurfaceElevated,
@@ -140,7 +146,13 @@ fun ExitConfirmationDialog(
                     // Exit button
                     Button(
                         onClick = onConfirmExit,
-                        modifier = Modifier.height(40.dp),
+                        modifier = Modifier
+                            .focusRequester(exitFocusRequester)
+                            .focusProperties {
+                                left = cancelFocusRequester
+                                right = FocusRequester.Cancel
+                            }
+                            .height(40.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.Error.copy(alpha = 0.8f),
                             contentColor = Color.White,

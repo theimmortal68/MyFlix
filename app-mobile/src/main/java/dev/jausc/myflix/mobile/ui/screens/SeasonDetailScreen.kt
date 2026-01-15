@@ -4,12 +4,27 @@ package dev.jausc.myflix.mobile.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ClosedCaption
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,28 +36,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.creators
-import dev.jausc.myflix.core.common.model.directors
+import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
-import dev.jausc.myflix.core.common.model.writers
+import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.QueueSource
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
+import dev.jausc.myflix.mobile.ui.components.MenuItem
+import dev.jausc.myflix.mobile.ui.components.MenuItemDivider
+import dev.jausc.myflix.mobile.ui.components.MenuItemEntry
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
-import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoItem
-import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinkItem
+import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
-import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
-import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
-import dev.jausc.myflix.mobile.ui.components.detail.OverviewText
 import dev.jausc.myflix.mobile.ui.components.detail.SeriesActionButtons
-import dev.jausc.myflix.mobile.ui.components.detail.SeriesQuickDetails
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
@@ -60,14 +78,17 @@ fun SeasonDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onEpisodeWatchedToggle: (String, Boolean) -> Unit,
+    onEpisodeFavoriteToggle: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val series = state.item ?: return
 
     // Dialog state
-    var showOverviewDialog by remember { mutableStateOf(false) }
     var popupMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
+    var subtitleMenuParams by remember { mutableStateOf<BottomSheetParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
+    var preferredSubtitleIndex by remember { mutableStateOf<Int?>(null) }
 
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
@@ -80,41 +101,17 @@ fun SeasonDetailScreen(
         series.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
-    val detailInfoItems = remember(series) {
-        buildList {
-            series.productionYear?.let { add(DetailInfoItem("Year", it.toString())) }
-            series.status?.let { add(DetailInfoItem("Status", it)) }
-            series.childCount?.let { count ->
-                add(DetailInfoItem("Seasons", count.toString()))
-            }
-            series.recursiveItemCount?.let { count ->
-                add(DetailInfoItem("Episodes", count.toString()))
-            }
-            series.communityRating?.let {
-                add(DetailInfoItem("User Rating", String.format(Locale.US, "%.1f/10", it)))
-            }
-            series.criticRating?.let {
-                add(DetailInfoItem("Critic Rating", formatCriticRating(it)))
-            }
-            series.studios?.mapNotNull { it.name }?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Studios", it.joinToString(", ")))
-            }
-            series.creators.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Creators", it.joinToString(", ")))
-            }
-            series.directors.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Directors", it.joinToString(", ")))
-            }
-            series.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Writers", it.joinToString(", ")))
-            }
-            series.genres?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Genres", it.joinToString(", ")))
-            }
-            series.tags?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Tags", it.joinToString(", ")))
-            }
+    val selectedEpisode = remember(state.episodes, state.nextUpEpisode) {
+        val nextUp = state.nextUpEpisode?.let { next ->
+            state.episodes.firstOrNull { it.id == next.id }
         }
+        nextUp ?: state.episodes.firstOrNull()
+    }
+    val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
+        state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
+    }
+    val guestStars = remember(selectedEpisode?.people) {
+        selectedEpisode?.people?.filter { it.type == "GuestStar" } ?: emptyList()
     }
 
     val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
@@ -138,7 +135,11 @@ fun SeasonDetailScreen(
             ) {
                 SeasonDetailsHeader(
                     series = series,
-                    overviewOnClick = { showOverviewDialog = true },
+                    seasons = state.seasons,
+                    selectedSeasonIndex = selectedSeasonIndex,
+                    onSeasonClick = onSeasonClick,
+                    selectedEpisode = selectedEpisode,
+                    jellyfinClient = jellyfinClient,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
@@ -152,18 +153,64 @@ fun SeasonDetailScreen(
                     onShuffleClick = onShuffleClick,
                     onWatchedClick = onWatchedClick,
                     onFavoriteClick = onFavoriteClick,
-                    onMoreClick = { mediaInfoItem = series },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // Details
-        if (detailInfoItems.isNotEmpty()) {
-            item(key = "details") {
-                DetailInfoSection(
-                    title = "Details",
-                    items = detailInfoItems,
+                    onMoreClick = {
+                        val episode = selectedEpisode ?: return@SeriesActionButtons
+                            val seasonLabel = buildSeasonEpisodeLabel(episode)
+                            popupMenuParams = buildEpisodeMenu(
+                                title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
+                                    .joinToString(" - "),
+                                subtitle = episode.name,
+                                episode = episode,
+                                onPlay = {
+                                    PlayQueueManager.setSingleItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = seasonLabel,
+                                        thumbnailItemId = episode.id,
+                                        subtitleStreamIndex = preferredSubtitleIndex,
+                                    )
+                                    onPlayItemClick(episode.id, null)
+                                },
+                                onChooseSubtitles = {
+                                    subtitleMenuParams = buildSubtitleMenu(
+                                        episode = episode,
+                                        selectedIndex = preferredSubtitleIndex,
+                                        onSelect = { index -> preferredSubtitleIndex = index },
+                                )
+                            },
+                            onAddToPlaylist = {
+                                val items = state.episodes.map { item ->
+                                    QueueItem(
+                                        itemId = item.id,
+                                        title = item.name,
+                                        episodeInfo = buildSeasonEpisodeLabel(item),
+                                        thumbnailItemId = item.id,
+                                    )
+                                }
+                                PlayQueueManager.setQueue(items, QueueSource.SEASON_PLAY_ALL)
+                            },
+                            onToggleWatched = {
+                                val isPlayed = episode.userData?.played == true
+                                onEpisodeWatchedToggle(episode.id, !isPlayed)
+                            },
+                            onToggleFavorite = {
+                                val isFavorite = episode.userData?.isFavorite == true
+                                    onEpisodeFavoriteToggle(episode.id, !isFavorite)
+                                },
+                                onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                                onMediaInfo = { mediaInfoItem = episode },
+                                onPlayWithTranscoding = {
+                                    PlayQueueManager.setSingleItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = seasonLabel,
+                                        thumbnailItemId = episode.id,
+                                        subtitleStreamIndex = preferredSubtitleIndex,
+                                    )
+                                    onPlayItemClick(episode.id, null)
+                                },
+                            )
+                        },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -236,40 +283,30 @@ fun SeasonDetailScreen(
             }
         }
 
-        // Seasons row
-        if (state.seasons.isNotEmpty()) {
-            item(key = "seasons") {
-                ItemRow(
-                    title = "Seasons (${state.seasons.size})",
-                    items = state.seasons,
-                    onItemClick = { _, season -> onSeasonClick(season) },
-                    onItemLongClick = { _, _ ->
-                        // TODO: Show season context menu
-                    },
-                    cardContent = { _, item, onClick, onLongClick ->
-                        if (item != null) {
-                            MobileMediaCard(
-                                item = item,
-                                imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                    item.id,
-                                    item.imageTags?.primary,
-                                ),
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
         // Cast
         if (cast.isNotEmpty()) {
             item(key = "people") {
                 CastCrewSection(
                     title = "Cast",
                     people = cast,
+                    jellyfinClient = jellyfinClient,
+                    onPersonClick = { person ->
+                        onNavigateToPerson(person.id)
+                    },
+                    onPersonLongClick = { _, _ ->
+                        // TODO: Show person context menu
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Guest Stars
+        if (guestStars.isNotEmpty()) {
+            item(key = "guest_stars") {
+                CastCrewSection(
+                    title = "Guest Stars",
+                    people = guestStars,
                     jellyfinClient = jellyfinClient,
                     onPersonClick = { person ->
                         onNavigateToPerson(person.id)
@@ -417,21 +454,18 @@ fun SeasonDetailScreen(
         }
     }
 
-    // Overview dialog
-    if (showOverviewDialog && series.overview != null) {
-        OverviewDialog(
-            title = series.name,
-            overview = series.overview!!,
-            genres = series.genres ?: emptyList(),
-            onDismiss = { showOverviewDialog = false },
-        )
-    }
-
     // Popup menu
     popupMenuParams?.let { params ->
         PopupMenu(
             params = params,
             onDismiss = { popupMenuParams = null },
+        )
+    }
+
+    subtitleMenuParams?.let { params ->
+        PopupMenu(
+            params = params,
+            onDismiss = { subtitleMenuParams = null },
         )
     }
 
@@ -447,16 +481,22 @@ fun SeasonDetailScreen(
 @Composable
 private fun SeasonDetailsHeader(
     series: JellyfinItem,
-    overviewOnClick: () -> Unit,
+    seasons: List<JellyfinItem>,
+    selectedSeasonIndex: Int,
+    onSeasonClick: (JellyfinItem) -> Unit,
+    selectedEpisode: JellyfinItem?,
+    jellyfinClient: JellyfinClient,
     modifier: Modifier = Modifier,
 ) {
+    val showTitle = series.seriesName ?: series.name
+    val episodeBadges = buildEpisodeBadges(selectedEpisode)
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier,
     ) {
-        // Title
         Text(
-            text = series.seriesName?.let { "$it - ${series.name}" } ?: series.name,
+            text = showTitle,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -464,31 +504,321 @@ private fun SeasonDetailsHeader(
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            // Quick details: year, status
-            SeriesQuickDetails(
-                item = series,
-            )
+        SeasonChipRow(
+            seasons = seasons,
+            selectedIndex = selectedSeasonIndex,
+            onSeasonClick = onSeasonClick,
+        )
 
-            // Genres
-            if (!series.genres.isNullOrEmpty()) {
-                GenreText(
-                    genres = series.genres!!,
+        selectedEpisode?.let { episode ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                MobileWideMediaCard(
+                    item = episode,
+                    imageUrl = jellyfinClient.getThumbUrl(
+                        episode.id,
+                        episode.imageTags?.thumb ?: episode.imageTags?.primary,
+                    ),
+                    onClick = {},
+                    showLabel = false,
+                    modifier = Modifier.width(220.dp),
                 )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = episode.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+
+                    val details = buildEpisodeRatingLine(episode)
+                    if (details.isNotEmpty() || episode.communityRating != null) {
+                        DotSeparatedRow(
+                            texts = details,
+                            communityRating = episode.communityRating,
+                            textStyle = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+
+                    if (episodeBadges.isNotEmpty()) {
+                        FormatBadgeRow(badges = episodeBadges)
+                    }
+                }
             }
 
-            // Overview (clickable to expand)
-            series.overview?.let { overview ->
-                OverviewText(
-                    overview = overview,
-                    maxLines = 4,
-                    onClick = overviewOnClick,
+            episode.overview?.let { overview ->
+                Text(
+                    text = overview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+                    modifier = Modifier.padding(top = 12.dp),
                 )
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SeasonChipRow(
+    seasons: List<JellyfinItem>,
+    selectedIndex: Int,
+    onSeasonClick: (JellyfinItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier,
+    ) {
+        seasons.forEachIndexed { index, season ->
+            val selected = index == selectedIndex
+            Surface(
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.medium,
+                onClick = { onSeasonClick(season) },
+            ) {
+                Text(
+                    text = season.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FormatBadgeRow(badges: List<String>, modifier: Modifier = Modifier) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+    ) {
+        badges.forEach { badge ->
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun buildEpisodeRatingLine(episode: JellyfinItem): List<String> = buildList {
+    buildSeasonEpisodeLabel(episode)?.let { add(it) }
+    formatPremiereDate(episode.premiereDate)?.let { add(it) }
+    episode.officialRating?.let { add(it) }
+    episode.runTimeTicks?.let { ticks ->
+        val minutes = (ticks / 600_000_000L).toInt()
+        if (minutes > 0) add("${minutes}m")
+    }
+}
+
+private fun buildEpisodeBadges(episode: JellyfinItem?): List<String> {
+    if (episode == null) return emptyList()
+    val badges = mutableListOf<String>()
+    val mediaSource = episode.mediaSources?.firstOrNull()
+    val video = mediaSource?.mediaStreams?.firstOrNull { it.type == "Video" }
+    val audio = mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" && it.isDefault } ?:
+        mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" }
+
+    val resolution = video?.height?.let { height ->
+        when {
+            height >= 2160 -> "4K"
+            height >= 1080 -> "1080p"
+            height >= 720 -> "720p"
+            else -> null
+        }
+    }
+    resolution?.let { badges.add(it) }
+    video?.codec?.uppercase()?.let { badges.add(it) }
+
+    if (episode.videoQualityLabel.contains("Dolby Vision")) {
+        badges.add("Dolby Vision")
+    } else if (episode.videoQualityLabel.contains("HDR")) {
+        badges.add("HDR")
+    }
+
+    formatAudioBadge(audio)?.let { badges.add(it) }
+
+    return badges.distinct()
+}
+
+private fun formatAudioBadge(stream: MediaStream?): String? {
+    if (stream == null) return null
+    val language = stream.language?.replaceFirstChar { it.titlecase(Locale.US) } ?: "Unknown"
+    val codec = stream.codec?.uppercase()
+    val channels = formatChannelLayout(stream.channels)
+    return listOfNotNull(language, codec, channels).joinToString(" ")
+}
+
+private fun formatChannelLayout(channels: Int?): String? {
+    return when (channels) {
+        null -> null
+        1 -> "1.0"
+        2 -> "2.0"
+        6 -> "5.1"
+        8 -> "7.1"
+        else -> "${channels}.0"
+    }
+}
+
+private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
+    val season = episode.parentIndexNumber
+    val number = episode.indexNumber
+    return if (season != null && number != null) {
+        "S$season E$number"
+    } else {
+        null
+    }
+}
+
+private fun formatPremiereDate(premiereDate: String?): String? {
+    if (premiereDate.isNullOrBlank()) return null
+    return try {
+        val instant = Instant.parse(premiereDate)
+        val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
+        val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+        date.format(formatter)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun buildSubtitleMenu(
+    episode: JellyfinItem,
+    selectedIndex: Int?,
+    onSelect: (Int?) -> Unit,
+): BottomSheetParams {
+    val subtitleStreams = episode.mediaSources
+        ?.firstOrNull()
+        ?.mediaStreams
+        ?.filter { it.type == "Subtitle" }
+        .orEmpty()
+
+    val items = buildList<MenuItemEntry> {
+        add(
+            MenuItem(
+                text = "Off",
+                icon = Icons.Outlined.Subtitles,
+                onClick = { onSelect(null) },
+            ),
+        )
+        subtitleStreams.forEach { stream ->
+            val label = stream.displayTitle ?: stream.language ?: "Subtitle ${stream.index}"
+            add(
+                MenuItem(
+                    text = label,
+                    icon = Icons.Outlined.ClosedCaption,
+                    onClick = { onSelect(stream.index) },
+                ),
+            )
+        }
+    }
+
+    return BottomSheetParams(
+        title = "Choose Subtitles",
+        subtitle = episode.name,
+        items = items,
+    )
+}
+
+private fun buildEpisodeMenu(
+    title: String,
+    subtitle: String?,
+    episode: JellyfinItem,
+    onPlay: () -> Unit,
+    onChooseSubtitles: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onToggleWatched: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onGoToSeries: () -> Unit,
+    onMediaInfo: () -> Unit,
+    onPlayWithTranscoding: () -> Unit,
+): BottomSheetParams {
+    val watched = episode.userData?.played == true
+    val favorite = episode.userData?.isFavorite == true
+
+    val items = buildList<MenuItemEntry> {
+        add(
+            MenuItem(
+                text = "Play",
+                icon = Icons.Outlined.PlayArrow,
+                onClick = onPlay,
+            ),
+        )
+        add(
+            MenuItem(
+                text = "Choose Subtitles",
+                icon = Icons.Outlined.Subtitles,
+                onClick = onChooseSubtitles,
+            ),
+        )
+        add(
+            MenuItem(
+                text = "Add to playlist",
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                onClick = onAddToPlaylist,
+            ),
+        )
+        add(
+            MenuItem(
+                text = if (watched) "Mark as unwatched" else "Mark as watched",
+                icon = Icons.Outlined.Visibility,
+                onClick = onToggleWatched,
+            ),
+        )
+        add(
+            MenuItem(
+                text = if (favorite) "Remove favorite" else "Favorite",
+                icon = Icons.Outlined.Favorite,
+                onClick = onToggleFavorite,
+            ),
+        )
+        add(
+            MenuItem(
+                text = "Go to series",
+                icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                onClick = onGoToSeries,
+            ),
+        )
+        add(MenuItemDivider)
+        add(
+            MenuItem(
+                text = "Media Information",
+                icon = Icons.Outlined.Info,
+                onClick = onMediaInfo,
+            ),
+        )
+        add(
+            MenuItem(
+                text = "Play with transcoding",
+                icon = Icons.Outlined.PlayCircle,
+                onClick = onPlayWithTranscoding,
+            ),
+        )
+    }
+
+    return BottomSheetParams(
+        title = title,
+        subtitle = subtitle,
+        items = items,
+    )
 }
 
 private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
@@ -518,10 +848,3 @@ private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
 
     return links
 }
-
-private fun formatCriticRating(rating: Float): String =
-    if (rating > 10f) {
-        "${rating.toInt()}%"
-    } else {
-        String.format(Locale.US, "%.1f/10", rating)
-    }

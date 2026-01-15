@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -138,6 +139,7 @@ fun SeriesActionButtons(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onMoreClick: () -> Unit,
+    showMoreButton: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -175,7 +177,7 @@ fun SeriesActionButtons(
         if (onTrailerClick != null) {
             FilledTonalButton(onClick = onTrailerClick) {
                 Icon(
-                    imageVector = Icons.Default.PlayArrow,
+                    imageVector = Icons.Outlined.OndemandVideo,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = IconColors.Trailer,
@@ -205,12 +207,13 @@ fun SeriesActionButtons(
             )
         }
 
-        // More options
-        IconButton(onClick = onMoreClick) {
-            Icon(
-                imageVector = Icons.Outlined.MoreVert,
-                contentDescription = "More options",
-            )
+        if (showMoreButton) {
+            IconButton(onClick = onMoreClick) {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    contentDescription = "More options",
+                )
+            }
         }
     }
 }

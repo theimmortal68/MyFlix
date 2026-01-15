@@ -148,6 +148,9 @@ class PlayerViewModel(
                     val defaultAudioIndex = audioStreams.firstOrNull { it.isDefault }?.index
                         ?: audioStreams.firstOrNull()?.index
                     val defaultSubtitleIndex = subtitleStreams.firstOrNull { it.isDefault }?.index
+                    val queueItem = PlayQueueManager.getCurrentItem()?.takeIf { it.itemId == currentItemId }
+                    val selectedAudioIndex = queueItem?.audioStreamIndex ?: defaultAudioIndex
+                    val selectedSubtitleIndex = queueItem?.subtitleStreamIndex ?: defaultSubtitleIndex
                     val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L
@@ -163,8 +166,8 @@ class PlayerViewModel(
                             mediaSourceId = mediaSource?.id,
                             audioStreams = audioStreams,
                             subtitleStreams = subtitleStreams,
-                            selectedAudioStreamIndex = defaultAudioIndex,
-                            selectedSubtitleStreamIndex = defaultSubtitleIndex,
+                            selectedAudioStreamIndex = selectedAudioIndex,
+                            selectedSubtitleStreamIndex = selectedSubtitleIndex,
                         )
                     }
                 }
@@ -418,6 +421,9 @@ class PlayerViewModel(
                     val defaultAudioIndex = audioStreams.firstOrNull { it.isDefault }?.index
                         ?: audioStreams.firstOrNull()?.index
                     val defaultSubtitleIndex = subtitleStreams.firstOrNull { it.isDefault }?.index
+                    val queueItem = PlayQueueManager.getCurrentItem()?.takeIf { it.itemId == newItemId }
+                    val selectedAudioIndex = queueItem?.audioStreamIndex ?: defaultAudioIndex
+                    val selectedSubtitleIndex = queueItem?.subtitleStreamIndex ?: defaultSubtitleIndex
                     val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L
@@ -431,8 +437,8 @@ class PlayerViewModel(
                             mediaSourceId = mediaSource?.id,
                             audioStreams = audioStreams,
                             subtitleStreams = subtitleStreams,
-                            selectedAudioStreamIndex = defaultAudioIndex,
-                            selectedSubtitleStreamIndex = defaultSubtitleIndex,
+                            selectedAudioStreamIndex = selectedAudioIndex,
+                            selectedSubtitleStreamIndex = selectedSubtitleIndex,
                         )
                     }
                 }

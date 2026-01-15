@@ -1,6 +1,7 @@
 package dev.jausc.myflix.mobile.ui.screens
 
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import java.time.Instant
 import java.util.Locale
 
 data class FeatureSection(
@@ -61,6 +62,24 @@ fun buildFeatureSections(
 
 fun isTrailerFeature(item: JellyfinItem): Boolean =
     item.name.contains("trailer", ignoreCase = true)
+
+fun findNewestTrailer(features: List<JellyfinItem>): JellyfinItem? {
+    val trailers = features.filter { isTrailerFeature(it) }
+    if (trailers.isEmpty()) return null
+
+    val datedTrailers = trailers.mapNotNull { trailer ->
+        trailer.premiereDate?.let { date ->
+            val epoch = runCatching { Instant.parse(date).toEpochMilli() }.getOrNull()
+            epoch?.let { trailer to it }
+        }
+    }
+
+    return if (datedTrailers.isNotEmpty()) {
+        datedTrailers.maxByOrNull { it.second }?.first
+    } else {
+        trailers.lastOrNull()
+    }
+}
 
 fun extractYouTubeVideoKey(url: String?): String? {
     if (url.isNullOrBlank()) return null

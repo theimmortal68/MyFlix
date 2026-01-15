@@ -21,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.isEpisode
+import dev.jausc.myflix.core.common.model.isSeason
 import dev.jausc.myflix.core.network.JellyfinClient
 
 /**
@@ -102,7 +103,7 @@ private fun buildDetailBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinC
     // For episodes, use series backdrop if item has no backdrop
     val backdropId = if (!item.backdropImageTags.isNullOrEmpty()) {
         item.id
-    } else if (item.isEpisode && item.seriesId != null) {
+    } else if ((item.isEpisode || item.isSeason) && item.seriesId != null) {
         item.seriesId!!
     } else {
         item.id

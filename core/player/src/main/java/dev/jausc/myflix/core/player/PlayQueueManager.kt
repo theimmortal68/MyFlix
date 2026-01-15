@@ -17,6 +17,8 @@ data class QueueItem(
     val title: String,
     val episodeInfo: String? = null,
     val thumbnailItemId: String? = null,
+    val audioStreamIndex: Int? = null,
+    val subtitleStreamIndex: Int? = null,
 )
 
 /**
@@ -102,9 +104,25 @@ object PlayQueueManager {
     /**
      * Set up queue for single item playback (no queue).
      */
-    fun setSingleItem(itemId: String, title: String) {
+    fun setSingleItem(
+        itemId: String,
+        title: String,
+        episodeInfo: String? = null,
+        thumbnailItemId: String? = null,
+        audioStreamIndex: Int? = null,
+        subtitleStreamIndex: Int? = null,
+    ) {
         _state.value = PlayQueueState(
-            items = listOf(QueueItem(itemId, title)),
+            items = listOf(
+                QueueItem(
+                    itemId = itemId,
+                    title = title,
+                    episodeInfo = episodeInfo,
+                    thumbnailItemId = thumbnailItemId,
+                    audioStreamIndex = audioStreamIndex,
+                    subtitleStreamIndex = subtitleStreamIndex,
+                ),
+            ),
             currentIndex = 0,
             source = QueueSource.SINGLE,
         )
@@ -128,6 +146,11 @@ object PlayQueueManager {
      * Get the current item ID, if any.
      */
     fun getCurrentItemId(): String? = _state.value.currentItem?.itemId
+
+    /**
+     * Get the current queue item, if any.
+     */
+    fun getCurrentItem(): QueueItem? = _state.value.currentItem
 
     /**
      * Get the next item without advancing.

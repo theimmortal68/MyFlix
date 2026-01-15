@@ -14,6 +14,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.ClosedCaption
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,17 +39,19 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
+import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.model.creators
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.imdbId
-import dev.jausc.myflix.core.common.model.tmdbId
-import dev.jausc.myflix.core.common.model.directors
-import dev.jausc.myflix.core.common.model.writers
+import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.QueueSource
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
@@ -48,31 +60,25 @@ import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.components.detail.DetailInfoItem
-import dev.jausc.myflix.tv.ui.components.detail.DetailInfoSection
+import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeGrid
-import dev.jausc.myflix.tv.ui.components.detail.ExternalLinkItem
-import dev.jausc.myflix.tv.ui.components.detail.ExternalLinksRow
-import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
-import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
-import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
-import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
-private const val DETAILS_ROW = HEADER_ROW + 1
-private const val LINKS_ROW = DETAILS_ROW + 1
-private const val NEXT_UP_ROW = LINKS_ROW + 1
-private const val SEASONS_ROW = NEXT_UP_ROW + 1
-private const val EPISODES_ROW = SEASONS_ROW + 1
+private const val NEXT_UP_ROW = HEADER_ROW + 1
+private const val EPISODES_ROW = NEXT_UP_ROW + 1
 private const val CAST_ROW = EPISODES_ROW + 1
-private const val CREW_ROW = CAST_ROW + 1
+private const val GUEST_STARS_ROW = CAST_ROW + 1
+private const val CREW_ROW = GUEST_STARS_ROW + 1
 private const val EXTRAS_ROW = CREW_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
 private const val RECOMMENDED_ROW = COLLECTIONS_ROW + 1
@@ -94,6 +100,8 @@ fun SeasonDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onEpisodeWatchedToggle: (String, Boolean) -> Unit,
+    onEpisodeFavoriteToggle: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val series = state.item ?: return
@@ -106,9 +114,10 @@ fun SeasonDetailScreen(
     val playFocusRequester = remember { FocusRequester() }
 
     // Dialog state
-    var showOverviewDialog by remember { mutableStateOf(false) }
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var subtitleDialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
+    var preferredSubtitleIndex by remember { mutableStateOf<Int?>(null) }
 
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
@@ -121,53 +130,20 @@ fun SeasonDetailScreen(
         series.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
-    val detailInfoItems = remember(series) {
-        buildList {
-            series.productionYear?.let { add(DetailInfoItem("Year", it.toString())) }
-            series.status?.let { add(DetailInfoItem("Status", it)) }
-            series.childCount?.let { count ->
-                add(DetailInfoItem("Seasons", count.toString()))
-            }
-            series.recursiveItemCount?.let { count ->
-                add(DetailInfoItem("Episodes", count.toString()))
-            }
-            series.communityRating?.let {
-                add(DetailInfoItem("User Rating", String.format(Locale.US, "%.1f/10", it)))
-            }
-            series.criticRating?.let {
-                add(DetailInfoItem("Critic Rating", formatCriticRating(it)))
-            }
-            series.studios?.mapNotNull { it.name }?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Studios", it.joinToString(", ")))
-            }
-            series.creators.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Creators", it.joinToString(", ")))
-            }
-            series.directors.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Directors", it.joinToString(", ")))
-            }
-            series.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Writers", it.joinToString(", ")))
-            }
-            series.genres?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Genres", it.joinToString(", ")))
-            }
-            series.tags?.takeIf { it.isNotEmpty() }?.let {
-                add(DetailInfoItem("Tags", it.joinToString(", ")))
-            }
+    val selectedEpisode = remember(state.episodes, state.nextUpEpisode) {
+        val nextUp = state.nextUpEpisode?.let { next ->
+            state.episodes.firstOrNull { it.id == next.id }
         }
+        nextUp ?: state.episodes.firstOrNull()
     }
-
-    val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
-        buildExternalLinks(series)
+    val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
+        state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
+    }
+    val guestStars = remember(selectedEpisode?.people) {
+        selectedEpisode?.people?.filter { it.type == "GuestStar" } ?: emptyList()
     }
     val featureSections = remember(state.specialFeatures) {
         buildFeatureSections(state.specialFeatures, emptySet())
-    }
-
-    // Selected season index (derived from state.selectedSeason)
-    val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
-        state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
     }
 
     // Auto-select first season if none selected
@@ -178,8 +154,9 @@ fun SeasonDetailScreen(
     }
 
     // Backdrop URL and dynamic gradient colors
-    val backdropUrl = remember(series.id) {
-        jellyfinClient.getBackdropUrl(series.id, series.backdropImageTags?.firstOrNull())
+    val backdropId = series.seriesId ?: series.id
+    val backdropUrl = remember(backdropId) {
+        jellyfinClient.getBackdropUrl(backdropId, series.backdropImageTags?.firstOrNull())
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
@@ -217,7 +194,14 @@ fun SeasonDetailScreen(
                 ) {
                     SeasonDetailsHeader(
                         series = series,
-                        overviewOnClick = { showOverviewDialog = true },
+                        seasons = state.seasons,
+                        selectedSeasonIndex = selectedSeasonIndex,
+                        onSeasonSelected = { season ->
+                            position = HEADER_ROW
+                            onSeasonSelected(season)
+                        },
+                        selectedEpisode = selectedEpisode,
+                        jellyfinClient = jellyfinClient,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 32.dp, bottom = 16.dp),
@@ -237,7 +221,64 @@ fun SeasonDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onMoreClick = { mediaInfoItem = series },
+                        onMoreClick = {
+                            val episode = selectedEpisode ?: return@SeriesActionButtons
+                            val seasonLabel = buildSeasonEpisodeLabel(episode)
+                            dialogParams = buildEpisodeMenu(
+                                title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
+                                    .joinToString(" - "),
+                                subtitle = episode.name,
+                                episode = episode,
+                                onPlay = {
+                                    PlayQueueManager.setSingleItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = seasonLabel,
+                                        thumbnailItemId = episode.id,
+                                        subtitleStreamIndex = preferredSubtitleIndex,
+                                    )
+                                    onPlayItemClick(episode.id, null)
+                                },
+                                onChooseSubtitles = {
+                                    subtitleDialogParams = buildSubtitleMenu(
+                                        episode = episode,
+                                        selectedIndex = preferredSubtitleIndex,
+                                        onSelect = { index -> preferredSubtitleIndex = index },
+                                    )
+                                },
+                                onAddToPlaylist = {
+                                    val items = state.episodes.map { item ->
+                                        QueueItem(
+                                            itemId = item.id,
+                                            title = item.name,
+                                            episodeInfo = buildSeasonEpisodeLabel(item),
+                                            thumbnailItemId = item.id,
+                                        )
+                                    }
+                                    PlayQueueManager.setQueue(items, QueueSource.SEASON_PLAY_ALL)
+                                },
+                                onToggleWatched = {
+                                    val isPlayed = episode.userData?.played == true
+                                    onEpisodeWatchedToggle(episode.id, !isPlayed)
+                                },
+                                onToggleFavorite = {
+                                    val isFavorite = episode.userData?.isFavorite == true
+                                    onEpisodeFavoriteToggle(episode.id, !isFavorite)
+                                },
+                                onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                                onMediaInfo = { mediaInfoItem = episode },
+                                onPlayWithTranscoding = {
+                                    PlayQueueManager.setSingleItem(
+                                        itemId = episode.id,
+                                        title = episode.name,
+                                        episodeInfo = seasonLabel,
+                                        thumbnailItemId = episode.id,
+                                        subtitleStreamIndex = preferredSubtitleIndex,
+                                    )
+                                    onPlayItemClick(episode.id, null)
+                                },
+                            )
+                        },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 scope.launch {
@@ -250,28 +291,6 @@ fun SeasonDetailScreen(
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
-                    )
-                }
-            }
-
-            // Details
-            if (detailInfoItems.isNotEmpty()) {
-                item(key = "details") {
-                    DetailInfoSection(
-                        title = "Details",
-                        items = detailInfoItems,
-                        modifier = Modifier.fillMaxWidth(0.6f),
-                    )
-                }
-            }
-
-            // External links
-            if (externalLinks.isNotEmpty()) {
-                item(key = "links") {
-                    ExternalLinksRow(
-                        title = "External Links",
-                        links = externalLinks,
-                        modifier = Modifier.fillMaxWidth(0.6f),
                     )
                 }
             }
@@ -307,23 +326,6 @@ fun SeasonDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[NEXT_UP_ROW]),
-                    )
-                }
-            }
-
-            // Season tabs
-            if (state.seasons.isNotEmpty()) {
-                item(key = "seasons") {
-                    SeasonTabRow(
-                        seasons = state.seasons,
-                        selectedSeasonIndex = selectedSeasonIndex,
-                        onSeasonSelected = { _, season ->
-                            position = SEASONS_ROW
-                            onSeasonSelected(season)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[SEASONS_ROW]),
                     )
                 }
             }
@@ -368,6 +370,28 @@ fun SeasonDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[CAST_ROW]),
+                    )
+                }
+            }
+
+            // Guest Stars
+            if (guestStars.isNotEmpty()) {
+                item(key = "guest_stars") {
+                    CastCrewSection(
+                        title = "Guest Stars",
+                        people = guestStars,
+                        jellyfinClient = jellyfinClient,
+                        onPersonClick = { person ->
+                            position = GUEST_STARS_ROW
+                            onNavigateToPerson(person.id)
+                        },
+                        onPersonLongClick = { _, _ ->
+                            position = GUEST_STARS_ROW
+                            // TODO: Show person context menu
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[GUEST_STARS_ROW]),
                     )
                 }
             }
@@ -540,21 +564,18 @@ fun SeasonDetailScreen(
         }
     }
 
-    // Overview dialog
-    if (showOverviewDialog && series.overview != null) {
-        OverviewDialog(
-            title = series.name,
-            overview = series.overview!!,
-            genres = series.genres ?: emptyList(),
-            onDismiss = { showOverviewDialog = false },
-        )
-    }
-
     // Context menu dialog
     dialogParams?.let { params ->
         DialogPopup(
             params = params,
             onDismissRequest = { dialogParams = null },
+        )
+    }
+
+    subtitleDialogParams?.let { params ->
+        DialogPopup(
+            params = params,
+            onDismissRequest = { subtitleDialogParams = null },
         )
     }
 
@@ -570,16 +591,22 @@ fun SeasonDetailScreen(
 @Composable
 private fun SeasonDetailsHeader(
     series: JellyfinItem,
-    overviewOnClick: () -> Unit,
+    seasons: List<JellyfinItem>,
+    selectedSeasonIndex: Int,
+    onSeasonSelected: (JellyfinItem) -> Unit,
+    selectedEpisode: JellyfinItem?,
+    jellyfinClient: JellyfinClient,
     modifier: Modifier = Modifier,
 ) {
+    val showTitle = series.seriesName ?: series.name
+    val episodeBadges = buildEpisodeBadges(selectedEpisode)
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
         // Title
         Text(
-            text = series.seriesName?.let { "$it - ${series.name}" } ?: series.name,
+            text = showTitle,
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -592,62 +619,286 @@ private fun SeasonDetailsHeader(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.fillMaxWidth(0.45f),
         ) {
-            // Quick details: year, episode count, status
-            SeriesQuickDetails(
-                item = series,
+            SeasonTabRow(
+                seasons = seasons,
+                selectedSeasonIndex = selectedSeasonIndex,
+                onSeasonSelected = { _, season -> onSeasonSelected(season) },
+                modifier = Modifier.fillMaxWidth(),
             )
 
-            // Genres
-            if (!series.genres.isNullOrEmpty()) {
-                GenreText(
-                    genres = series.genres!!,
-                )
-            }
+            selectedEpisode?.let { episode ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 12.dp),
+                ) {
+                    WideMediaCard(
+                        item = episode,
+                        imageUrl = jellyfinClient.getThumbUrl(
+                            episode.id,
+                            episode.imageTags?.thumb ?: episode.imageTags?.primary,
+                        ),
+                        onClick = {},
+                        showLabel = false,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
-            // Overview (clickable to expand)
-            series.overview?.let { overview ->
-                OverviewText(
-                    overview = overview,
-                    maxLines = 3,
-                    onClick = overviewOnClick,
-                    textBoxHeight = Dp.Unspecified,
+                    Text(
+                        text = episode.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    val details = buildEpisodeRatingLine(episode)
+                    if (details.isNotEmpty() || episode.communityRating != null) {
+                        DotSeparatedRow(
+                            texts = details,
+                            communityRating = episode.communityRating,
+                            textStyle = MaterialTheme.typography.titleSmall,
+                        )
+                    }
+
+                    if (episodeBadges.isNotEmpty()) {
+                        FormatBadgeRow(badges = episodeBadges)
+                    }
+                }
+
+                episode.overview?.let { overview ->
+                    Text(
+                        text = overview,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun FormatBadgeRow(badges: List<String>, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
+    ) {
+        badges.forEach { badge ->
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                colors = SurfaceDefaults.colors(
+                    containerColor = dev.jausc.myflix.tv.ui.theme.TvColors.SurfaceElevated.copy(alpha = 0.85f),
+                ),
+            ) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = dev.jausc.myflix.tv.ui.theme.TvColors.TextPrimary,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
         }
     }
 }
 
-private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
-    val links = mutableListOf<ExternalLinkItem>()
-
-    series.externalUrls?.forEach { url ->
-        val label = url.name?.trim().orEmpty()
-        val link = url.url?.trim().orEmpty()
-        if (label.isNotEmpty() && link.isNotEmpty()) {
-            links.add(ExternalLinkItem(label, link))
-        }
+private fun buildEpisodeRatingLine(episode: JellyfinItem): List<String> = buildList {
+    buildSeasonEpisodeLabel(episode)?.let { add(it) }
+    formatPremiereDate(episode.premiereDate)?.let { add(it) }
+    episode.officialRating?.let { add(it) }
+    episode.runTimeTicks?.let { ticks ->
+        val minutes = (ticks / 600_000_000L).toInt()
+        if (minutes > 0) add("${minutes}m")
     }
-
-    series.imdbId?.let { imdbId ->
-        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
-        if (!hasImdb) {
-            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
-        }
-    }
-
-    series.tmdbId?.let { tmdbId ->
-        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
-        if (!hasTmdb) {
-            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/tv/$tmdbId"))
-        }
-    }
-
-    return links
 }
 
-private fun formatCriticRating(rating: Float): String =
-    if (rating > 10f) {
-        "${rating.toInt()}%"
+private fun buildEpisodeBadges(episode: JellyfinItem?): List<String> {
+    if (episode == null) return emptyList()
+    val badges = mutableListOf<String>()
+    val mediaSource = episode.mediaSources?.firstOrNull()
+    val video = mediaSource?.mediaStreams?.firstOrNull { it.type == "Video" }
+    val audio = mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" && it.isDefault } ?:
+        mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" }
+
+    val resolution = video?.height?.let { height ->
+        when {
+            height >= 2160 -> "4K"
+            height >= 1080 -> "1080p"
+            height >= 720 -> "720p"
+            else -> null
+        }
+    }
+    resolution?.let { badges.add(it) }
+    video?.codec?.uppercase()?.let { badges.add(it) }
+
+    if (episode.videoQualityLabel.contains("Dolby Vision")) {
+        badges.add("Dolby Vision")
+    } else if (episode.videoQualityLabel.contains("HDR")) {
+        badges.add("HDR")
+    }
+
+    formatAudioBadge(audio)?.let { badges.add(it) }
+    return badges.distinct()
+}
+
+private fun formatAudioBadge(stream: dev.jausc.myflix.core.common.model.MediaStream?): String? {
+    if (stream == null) return null
+    val language = stream.language?.replaceFirstChar { it.titlecase(Locale.US) } ?: "Unknown"
+    val codec = stream.codec?.uppercase()
+    val channels = formatChannelLayout(stream.channels)
+    return listOfNotNull(language, codec, channels).joinToString(" ")
+}
+
+private fun formatChannelLayout(channels: Int?): String? {
+    return when (channels) {
+        null -> null
+        1 -> "1.0"
+        2 -> "2.0"
+        6 -> "5.1"
+        8 -> "7.1"
+        else -> "${channels}.0"
+    }
+}
+
+private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
+    val season = episode.parentIndexNumber
+    val number = episode.indexNumber
+    return if (season != null && number != null) {
+        "S$season E$number"
     } else {
-        String.format(Locale.US, "%.1f/10", rating)
+        null
     }
+}
+
+private fun formatPremiereDate(premiereDate: String?): String? {
+    if (premiereDate.isNullOrBlank()) return null
+    return try {
+        val instant = Instant.parse(premiereDate)
+        val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
+        val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+        date.format(formatter)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun buildSubtitleMenu(
+    episode: JellyfinItem,
+    selectedIndex: Int?,
+    onSelect: (Int?) -> Unit,
+): DialogParams {
+    val subtitleStreams = episode.mediaSources
+        ?.firstOrNull()
+        ?.mediaStreams
+        ?.filter { it.type == "Subtitle" }
+        .orEmpty()
+
+    val items = buildList<dev.jausc.myflix.tv.ui.components.DialogItemEntry> {
+        add(
+            DialogItem(
+                text = "Off",
+                icon = Icons.Outlined.Subtitles,
+                onClick = { onSelect(null) },
+            ),
+        )
+        subtitleStreams.forEach { stream ->
+            val label = stream.displayTitle ?: stream.language ?: "Subtitle ${stream.index}"
+            add(
+                DialogItem(
+                    text = label,
+                    icon = Icons.Outlined.ClosedCaption,
+                    onClick = { onSelect(stream.index) },
+                ),
+            )
+        }
+    }
+
+    return DialogParams(
+        title = "Choose Subtitles",
+        items = items,
+    )
+}
+
+private fun buildEpisodeMenu(
+    title: String,
+    subtitle: String?,
+    episode: JellyfinItem,
+    onPlay: () -> Unit,
+    onChooseSubtitles: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onToggleWatched: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onGoToSeries: () -> Unit,
+    onMediaInfo: () -> Unit,
+    onPlayWithTranscoding: () -> Unit,
+): DialogParams {
+    val watched = episode.userData?.played == true
+    val favorite = episode.userData?.isFavorite == true
+
+    val items = buildList<dev.jausc.myflix.tv.ui.components.DialogItemEntry> {
+        add(
+            DialogItem(
+                text = "Play",
+                icon = Icons.Outlined.PlayArrow,
+                onClick = onPlay,
+            ),
+        )
+        add(
+            DialogItem(
+                text = "Choose Subtitles",
+                icon = Icons.Outlined.Subtitles,
+                onClick = onChooseSubtitles,
+            ),
+        )
+        add(
+            DialogItem(
+                text = "Add to playlist",
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                onClick = onAddToPlaylist,
+            ),
+        )
+        add(
+            DialogItem(
+                text = if (watched) "Mark as unwatched" else "Mark as watched",
+                icon = Icons.Outlined.Visibility,
+                onClick = onToggleWatched,
+            ),
+        )
+        add(
+            DialogItem(
+                text = if (favorite) "Remove favorite" else "Favorite",
+                icon = Icons.Outlined.Favorite,
+                onClick = onToggleFavorite,
+            ),
+        )
+        add(
+            DialogItem(
+                text = "Go to series",
+                icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                onClick = onGoToSeries,
+            ),
+        )
+        add(DialogItemDivider)
+        add(
+            DialogItem(
+                text = "Media Information",
+                icon = Icons.Outlined.Info,
+                onClick = onMediaInfo,
+            ),
+        )
+        add(
+            DialogItem(
+                text = "Play with transcoding",
+                icon = Icons.Outlined.PlayCircle,
+                onClick = onPlayWithTranscoding,
+            ),
+        )
+    }
+
+    return DialogParams(
+        title = title,
+        items = items,
+    )
+}

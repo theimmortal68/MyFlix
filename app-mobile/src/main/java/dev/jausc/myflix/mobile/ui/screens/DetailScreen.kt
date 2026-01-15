@@ -138,6 +138,12 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    onEpisodeWatchedToggle = { episodeId, played ->
+                        viewModel.setPlayed(episodeId, played)
+                    },
+                    onEpisodeFavoriteToggle = { episodeId, favorite ->
+                        viewModel.setFavorite(episodeId, favorite)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

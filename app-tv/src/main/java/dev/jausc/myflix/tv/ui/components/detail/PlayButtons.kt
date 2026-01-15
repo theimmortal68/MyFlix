@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Shuffle
@@ -194,6 +195,7 @@ fun SeriesActionButtons(
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     onTrailerClick: (() -> Unit)? = null,
+    showMoreButton: Boolean = true,
 ) {
     val firstFocus = remember { FocusRequester() }
 
@@ -233,7 +235,7 @@ fun SeriesActionButtons(
             item("trailer") {
                 ExpandablePlayButton(
                     title = "Trailer",
-                    icon = Icons.Outlined.PlayArrow,
+                    icon = Icons.Outlined.OndemandVideo,
                     iconColor = IconColors.Trailer,
                     onClick = onTrailerClick,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
@@ -263,15 +265,16 @@ fun SeriesActionButtons(
             )
         }
 
-        // More button
-        item("more") {
-            ExpandablePlayButton(
-                title = "More",
-                icon = Icons.Outlined.MoreVert,
-                iconColor = IconColors.More,
-                onClick = onMoreClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
+        if (showMoreButton) {
+            item("more") {
+                ExpandablePlayButton(
+                    title = "More",
+                    icon = Icons.Outlined.MoreVert,
+                    iconColor = IconColors.More,
+                    onClick = onMoreClick,
+                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                )
+            }
         }
     }
 }

@@ -206,7 +206,8 @@ class JellyfinClient(
                 "CollectionName,RemoteTrailers,LocalTrailerCount,ProductionLocations,Status"
 
         // Fields for episode listing
-        const val EPISODE_LIST = "Overview,ImageTags,UserData,MediaSources"
+        const val EPISODE_LIST =
+            "Overview,ImageTags,UserData,MediaSources,People,RunTimeTicks,OfficialRating,CommunityRating,PremiereDate"
     }
 
     // Image types for enableImageTypes parameter

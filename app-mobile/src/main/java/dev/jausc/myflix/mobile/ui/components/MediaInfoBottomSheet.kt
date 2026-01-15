@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaSource
+import dev.jausc.myflix.core.common.model.MediaStream
+import kotlin.math.roundToInt
 
 /**
  * Bottom sheet displaying technical media information for a video item.
@@ -31,8 +34,12 @@ fun MediaInfoBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val mediaSource = item.mediaSources?.firstOrNull()
-    val mediaStreams = mediaSource?.mediaStreams ?: emptyList()
-    val container = mediaSource?.container
+    val mediaStreams = mediaSource?.mediaStreams.orEmpty()
+    val videoStream = mediaStreams.firstOrNull { it.type == "Video" }
+    val audioStream = mediaStreams.firstOrNull { it.type == "Audio" && it.isDefault }
+        ?: mediaStreams.firstOrNull { it.type == "Audio" }
+    val subtitleStream = mediaStreams.firstOrNull { it.type == "Subtitle" && it.isDefault }
+        ?: mediaStreams.firstOrNull { it.type == "Subtitle" }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -59,77 +66,29 @@ fun MediaInfoBottomSheet(
 
             HorizontalDivider()
 
-            // Video stream info
-            mediaStreams.filter { it.type == "Video" }.firstOrNull()?.let { video ->
+            MediaInfoSection(
+                label = "General",
+                rows = buildGeneralRows(item, mediaSource),
+            )
+
+            videoStream?.let { stream ->
                 MediaInfoSection(
-                    label = "VIDEO",
-                    content = buildString {
-                        append(video.codec?.uppercase() ?: "Unknown")
-                        video.width?.let { w -> video.height?.let { h -> append(" \u2022 ${w}x$h") } }
-                        video.videoRangeType?.let { append(" \u2022 $it") }
-                    },
+                    label = "Video",
+                    rows = buildVideoRows(stream),
                 )
             }
 
-            // Audio streams
-            val audioStreams = mediaStreams.filter { it.type == "Audio" }
-            if (audioStreams.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "AUDIO (${audioStreams.size} tracks)",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    audioStreams.take(4).forEach { audio ->
-                        Text(
-                            text = buildString {
-                                append(audio.codec?.uppercase() ?: "Unknown")
-                                audio.channels?.let { append(" \u2022 ${it}ch") }
-                                audio.language?.let { append(" \u2022 $it") }
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    if (audioStreams.size > 4) {
-                        Text(
-                            text = "... and ${audioStreams.size - 4} more",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            // Subtitle streams
-            val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }
-            if (subtitleStreams.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "SUBTITLES (${subtitleStreams.size} tracks)",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = subtitleStreams.take(6).mapNotNull { it.language }.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (subtitleStreams.size > 6) {
-                        Text(
-                            text = "... and ${subtitleStreams.size - 6} more",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            // File info
-            container?.let { cont ->
+            audioStream?.let { stream ->
                 MediaInfoSection(
-                    label = "CONTAINER",
-                    content = cont.uppercase(),
+                    label = "Audio",
+                    rows = buildAudioRows(stream),
+                )
+            }
+
+            subtitleStream?.let { stream ->
+                MediaInfoSection(
+                    label = "Subtitle",
+                    rows = buildSubtitleRows(stream),
                 )
             }
 
@@ -141,7 +100,7 @@ fun MediaInfoBottomSheet(
 @Composable
 private fun MediaInfoSection(
     label: String,
-    content: String,
+    rows: List<Pair<String, String>>,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -149,10 +108,107 @@ private fun MediaInfoSection(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            text = content,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        rows.forEach { (title, value) ->
+            Text(
+                text = "$title: $value",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
+
+private fun buildGeneralRows(item: JellyfinItem, mediaSource: MediaSource?): List<Pair<String, String>> {
+    val runtimeTicks = mediaSource?.runTimeTicks ?: item.runTimeTicks
+    return buildList {
+        mediaSource?.container?.let { add("Container" to it.uppercase()) }
+        mediaSource?.path?.let { add("Path" to it) }
+        add("ID" to item.id)
+        formatBytes(mediaSource?.size)?.let { add("Size" to it) }
+        formatBitrate(mediaSource?.bitrate)?.let { add("Bitrate" to it) }
+        formatRuntime(runtimeTicks)?.let { add("Runtime" to it) }
+    }
+}
+
+private fun buildVideoRows(stream: MediaStream): List<Pair<String, String>> = buildList {
+    stream.codec?.uppercase()?.let { add("Codec" to it) }
+    if (stream.width != null && stream.height != null) {
+        add("Resolution" to "${stream.width}x${stream.height}")
+    }
+    stream.aspectRatio?.let { add("Aspect Ratio" to it) }
+    formatBitrate(stream.bitRate)?.let { add("Bitrate" to it) }
+    stream.frameRate?.let { add("Framerate" to String.format("%.3f", it)) }
+    stream.videoRangeType?.let { add("Video range type" to it) }
+    stream.profile?.let { add("Profile" to it) }
+    stream.level?.let { add("Level" to String.format("%.1f", it)) }
+    stream.pixelFormat?.let { add("Pixel format" to it) }
+    stream.refFrames?.let { add("Ref frames" to it.toString()) }
+    stream.nalLengthSize?.let { add("NAL" to it.toString()) }
+    stream.isInterlaced?.let { add("Interlaced" to yesNo(it)) }
+}
+
+private fun buildAudioRows(stream: MediaStream): List<Pair<String, String>> = buildList {
+    stream.language?.let { add("Language" to it) }
+    stream.codec?.uppercase()?.let { add("Codec" to it) }
+    stream.channelLayout?.let { add("Layout" to it) }
+        ?: formatChannels(stream.channels)?.let { add("Layout" to it) }
+    stream.channels?.let { add("Channels" to it.toString()) }
+    formatBitrate(stream.bitRate)?.let { add("Bitrate" to it) }
+    stream.sampleRate?.let { add("Sample rate" to "$it Hz") }
+    add("Default" to yesNo(stream.isDefault))
+}
+
+private fun buildSubtitleRows(stream: MediaStream): List<Pair<String, String>> = buildList {
+    val title = stream.title ?: stream.displayTitle
+    title?.let { add("Title" to it) }
+    stream.language?.let { add("Language" to it) }
+    stream.codec?.uppercase()?.let { add("Codec" to it) }
+    add("Default" to yesNo(stream.isDefault))
+    add("Forced" to yesNo(stream.isForced))
+    add("External" to yesNo(stream.isExternal))
+    add("Hearing Impaired" to yesNo(stream.isHearingImpaired))
+}
+
+private fun formatBytes(size: Long?): String? {
+    if (size == null) return null
+    val mb = size / (1024.0 * 1024.0)
+    return if (mb >= 1024) {
+        val gb = mb / 1024.0
+        String.format("%.2f GB", gb)
+    } else {
+        String.format("%.2f MB", mb)
+    }
+}
+
+private fun formatBitrate(bitrate: Long?): String? {
+    if (bitrate == null || bitrate <= 0) return null
+    val mbps = bitrate / 1_000_000.0
+    return String.format("%.2f Mbps", mbps)
+}
+
+private fun formatRuntime(ticks: Long?): String? {
+    if (ticks == null || ticks <= 0) return null
+    val totalSeconds = (ticks / 10_000_000.0).roundToInt()
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return if (minutes >= 60) {
+        val hours = minutes / 60
+        val remainingMinutes = minutes % 60
+        String.format("%dh %02dm", hours, remainingMinutes)
+    } else {
+        String.format("%dm %02ds", minutes, seconds)
+    }
+}
+
+private fun formatChannels(channels: Int?): String? {
+    return when (channels) {
+        null -> null
+        1 -> "mono"
+        2 -> "stereo"
+        6 -> "5.1"
+        8 -> "7.1"
+        else -> "${channels}.0"
+    }
+}
+
+private fun yesNo(value: Boolean): String = if (value) "Yes" else "No"

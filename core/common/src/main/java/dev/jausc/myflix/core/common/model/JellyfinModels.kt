@@ -108,6 +108,9 @@ data class MediaSource(
     @SerialName("Id") val id: String,
     @SerialName("Path") val path: String? = null,
     @SerialName("Container") val container: String? = null,
+    @SerialName("Size") val size: Long? = null,
+    @SerialName("Bitrate") val bitrate: Long? = null,
+    @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
     @SerialName("MediaStreams") val mediaStreams: List<MediaStream>? = null,
 )
 
@@ -117,7 +120,11 @@ data class MediaStream(
     @SerialName("Type") val type: String,
     @SerialName("Codec") val codec: String? = null,
     @SerialName("Language") val language: String? = null,
+    @SerialName("Title") val title: String? = null,
     @SerialName("IsDefault") val isDefault: Boolean = false,
+    @SerialName("IsForced") val isForced: Boolean = false,
+    @SerialName("IsExternal") val isExternal: Boolean = false,
+    @SerialName("IsHearingImpaired") val isHearingImpaired: Boolean = false,
     // Video-specific fields for HDR/DV detection
     @SerialName("Profile") val profile: String? = null,
     @SerialName("VideoRange") val videoRange: String? = null,
@@ -126,9 +133,19 @@ data class MediaStream(
     @SerialName("Width") val width: Int? = null,
     @SerialName("Height") val height: Int? = null,
     @SerialName("BitRate") val bitRate: Long? = null,
+    @SerialName("FrameRate") val frameRate: Float? = null,
+    @SerialName("AspectRatio") val aspectRatio: String? = null,
+    @SerialName("Level") val level: Float? = null,
+    @SerialName("PixelFormat") val pixelFormat: String? = null,
+    @SerialName("RefFrames") val refFrames: Int? = null,
+    @SerialName("NalLengthSize") val nalLengthSize: Int? = null,
+    @SerialName("IsInterlaced") val isInterlaced: Boolean? = null,
     @SerialName("DisplayTitle") val displayTitle: String? = null,
     // Audio-specific fields
     @SerialName("Channels") val channels: Int? = null,
+    @SerialName("ChannelLayout") val channelLayout: String? = null,
+    @SerialName("SampleRate") val sampleRate: Int? = null,
+    @SerialName("BitDepth") val bitDepth: Int? = null,
 )
 
 @Serializable

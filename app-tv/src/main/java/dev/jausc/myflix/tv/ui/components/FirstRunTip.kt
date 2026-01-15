@@ -118,7 +118,7 @@ fun FirstRunTip(
 
                     // Tip message
                     Text(
-                        text = "The menu auto-hides after a moment, but it is always one click away.",
+                        text = "The menu auto-hides after a moment. Press UP to reveal it any time.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TvColors.TextSecondary,
                         textAlign = TextAlign.Center,

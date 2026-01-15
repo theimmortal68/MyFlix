@@ -28,7 +28,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -48,8 +47,6 @@ import dev.jausc.myflix.tv.ui.components.detail.ExternalLinkItem
 import dev.jausc.myflix.tv.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
-import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
-import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
@@ -97,7 +94,6 @@ fun SeriesDetailScreen(
     val playFocusRequester = remember { FocusRequester() }
 
     // Dialog state
-    var showOverviewDialog by remember { mutableStateOf(false) }
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
@@ -105,11 +101,11 @@ fun SeriesDetailScreen(
     val favorite = series.userData?.isFavorite == true
 
     val trailerItem = remember(state.specialFeatures) {
-        state.specialFeatures.lastOrNull { isTrailerFeature(it) }
+        findNewestTrailer(state.specialFeatures)
     }
     val trailerVideo = remember(series.remoteTrailers) {
         series.remoteTrailers
-            ?.firstOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
+            ?.lastOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
     }
     val trailerAction: (() -> Unit)? = when {
         trailerItem != null -> {
@@ -181,7 +177,6 @@ fun SeriesDetailScreen(
                         series = series,
                         status = series.status,
                         studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
-                        overviewOnClick = { showOverviewDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 32.dp, bottom = 16.dp),
@@ -203,6 +198,7 @@ fun SeriesDetailScreen(
                         onFavoriteClick = onFavoriteClick,
                         onMoreClick = { mediaInfoItem = series },
                         onTrailerClick = trailerAction,
+                        showMoreButton = false,
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 scope.launch {
@@ -490,16 +486,6 @@ fun SeriesDetailScreen(
         }
     }
 
-    // Overview dialog
-    if (showOverviewDialog && series.overview != null) {
-        OverviewDialog(
-            title = series.name,
-            overview = series.overview!!,
-            genres = series.genres ?: emptyList(),
-            onDismiss = { showOverviewDialog = false },
-        )
-    }
-
     // Context menu dialog
     dialogParams?.let { params ->
         DialogPopup(
@@ -524,7 +510,6 @@ fun SeriesDetailScreen(
 @Composable
 private fun SeriesDetailsHeader(
     series: JellyfinItem,
-    overviewOnClick: () -> Unit,
     status: String?,
     studioNames: List<String>,
     modifier: Modifier = Modifier,
@@ -562,13 +547,12 @@ private fun SeriesDetailsHeader(
                 )
             }
 
-            // Overview (clickable to expand)
+            // Overview (full text)
             series.overview?.let { overview ->
-                OverviewText(
-                    overview = overview,
-                    maxLines = 3,
-                    onClick = overviewOnClick,
-                    textBoxHeight = Dp.Unspecified,
+                Text(
+                    text = overview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                 )
             }
         }
