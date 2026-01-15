@@ -219,14 +219,14 @@ fun SeasonDetailScreen(
                         onSeasonSelected(season)
                     },
                     firstTabFocusRequester = seasonTabFocusRequester,
-                    downFocusRequester = focusRequesters[EPISODES_ROW],
+                    downFocusRequester = focusRequesters[HEADER_ROW], // Go to action buttons, not episodes
                     upFocusRequester = playFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp, start = 48.dp, end = 48.dp),
                 )
 
-                // Hero content (left 50%)
+                // Hero content (left 50%) - title, subtitle, rating, description
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
@@ -237,10 +237,10 @@ fun SeasonDetailScreen(
                         series = series,
                         selectedEpisode = selectedEpisode,
                     )
+                }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    SeriesActionButtons(
+                // Action buttons fixed at bottom of hero section
+                SeriesActionButtons(
                         watched = watched,
                         favorite = favorite,
                         onPlayClick = {
@@ -320,6 +320,8 @@ fun SeasonDetailScreen(
                         },
                         playButtonFocusRequester = playFocusRequester,
                         modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 48.dp, bottom = 8.dp)
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
                                 down = focusRequesters[EPISODES_ROW]
@@ -328,7 +330,6 @@ fun SeasonDetailScreen(
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
                     )
-                }
             }
 
             // Scrollable content rows (below fixed hero)

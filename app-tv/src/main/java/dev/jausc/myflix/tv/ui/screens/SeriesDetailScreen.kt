@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,7 @@ import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
+import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -90,6 +92,7 @@ fun SeriesDetailScreen(
     val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val playFocusRequester = remember { FocusRequester() }
+    val seasonTabFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -157,24 +160,47 @@ fun SeriesDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (37% height, matches home) - doesn't scroll
-            Column(
+            // Fixed hero section (45% height for season tabs + content) - doesn't scroll
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.37f)
-                    .padding(start = 48.dp, top = 36.dp, end = 48.dp)
+                    .fillMaxHeight(0.45f)
                     .bringIntoViewRequester(bringIntoViewRequester),
-                verticalArrangement = Arrangement.Top,
             ) {
-                SeriesDetailsHeader(
-                    series = series,
-                    status = series.status,
-                    studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
-                )
+                // Season tabs at top
+                if (state.seasons.isNotEmpty()) {
+                    SeasonTabRow(
+                        seasons = state.seasons,
+                        selectedSeasonIndex = 0, // No selection on series page
+                        onSeasonSelected = { _, season ->
+                            position = HEADER_ROW
+                            onSeasonClick(season)
+                        },
+                        firstTabFocusRequester = seasonTabFocusRequester,
+                        downFocusRequester = focusRequesters[HEADER_ROW],
+                        upFocusRequester = playFocusRequester,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, start = 48.dp, end = 48.dp),
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                // Hero content (left 50%) - title, rating, description
+                // 4dp tab padding + ~28dp tab height + 2dp spacing = 34dp when seasons exist
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .padding(start = 48.dp, top = if (state.seasons.isNotEmpty()) 34.dp else 36.dp),
+                    verticalArrangement = Arrangement.Top,
+                ) {
+                    SeriesDetailsHeader(
+                        series = series,
+                        status = series.status,
+                        studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
+                    )
+                }
 
-                // Action buttons row
+                // Action buttons fixed at bottom of hero section
                 SeriesActionButtons(
                     watched = watched,
                     favorite = favorite,
@@ -199,7 +225,13 @@ fun SeriesDetailScreen(
                         }
                     },
                     modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 48.dp, bottom = 8.dp)
                         .focusRequester(focusRequesters[HEADER_ROW])
+                        .focusProperties {
+                            down = focusRequesters[NEXT_UP_ROW]
+                            up = seasonTabFocusRequester
+                        }
                         .focusRestorer(playFocusRequester)
                         .focusGroup(),
                 )
@@ -251,41 +283,6 @@ fun SeriesDetailScreen(
                                 .focusRequester(focusRequesters[NEXT_UP_ROW]),
                         )
                     }
-                }
-            }
-
-            // Seasons
-            if (state.seasons.isNotEmpty()) {
-                item(key = "seasons") {
-                    ItemRow(
-                        title = "Seasons (${state.seasons.size})",
-                        items = state.seasons,
-                        onItemClick = { _, season ->
-                            position = SEASONS_ROW
-                            onSeasonClick(season)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = SEASONS_ROW
-                            // TODO: Show season context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[SEASONS_ROW]),
-                    )
                 }
             }
 

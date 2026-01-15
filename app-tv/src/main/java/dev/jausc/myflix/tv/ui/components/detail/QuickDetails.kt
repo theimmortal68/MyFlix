@@ -65,6 +65,7 @@ fun DotSeparatedRow(
             communityRating?.let {
                 SimpleStarRating(
                     communityRating = it,
+                    textStyle = textStyle,
                     modifier = Modifier.height(height),
                 )
             }
@@ -93,6 +94,7 @@ fun Dot(modifier: Modifier = Modifier) {
 fun SimpleStarRating(
     communityRating: Float,
     modifier: Modifier = Modifier,
+    textStyle: TextStyle = MaterialTheme.typography.titleSmall,
 ) {
     Row(
         modifier = modifier,
@@ -106,7 +108,7 @@ fun SimpleStarRating(
         )
         Text(
             text = String.format(Locale.US, "%.1f", communityRating),
-            style = MaterialTheme.typography.titleSmall,
+            style = textStyle,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(start = 4.dp),
         )
