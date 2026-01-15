@@ -37,6 +37,9 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.actors
+import dev.jausc.myflix.core.common.model.crew
+import dev.jausc.myflix.core.common.model.directorNames
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -95,20 +98,10 @@ fun MovieDetailScreen(
     val watched = movie.userData?.played == true
     val favorite = movie.userData?.isFavorite == true
 
-    // Cast & crew
-    val cast = remember(movie.people) {
-        movie.people?.filter { it.type == "Actor" } ?: emptyList()
-    }
-    val crew = remember(movie.people) {
-        movie.people?.filter { it.type != "Actor" } ?: emptyList()
-    }
-
-    // Get director name
-    val directorName = remember(movie.people) {
-        movie.people
-            ?.filter { it.type == "Director" && !it.name.isNullOrBlank() }
-            ?.joinToString(", ") { it.name!! }
-    }
+    // Cast & crew (using extension properties from JellyfinItem)
+    val cast = movie.actors
+    val crew = movie.crew
+    val directorName = movie.directorNames
 
     // Backdrop URL and dynamic gradient colors
     val backdropUrl = remember(movie.id) {

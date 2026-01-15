@@ -50,6 +50,8 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.actors
+import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
@@ -128,13 +130,9 @@ fun SeasonDetailScreen(
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
 
-    // Cast & crew
-    val cast = remember(series.people) {
-        series.people?.filter { it.type == "Actor" } ?: emptyList()
-    }
-    val crew = remember(series.people) {
-        series.people?.filter { it.type != "Actor" } ?: emptyList()
-    }
+    // Cast & crew (using extension properties from JellyfinItem)
+    val cast = series.actors
+    val crew = series.crew
 
     var focusedEpisodeId by remember { mutableStateOf<String?>(null) }
     val focusedEpisode = remember(state.episodes, focusedEpisodeId) {

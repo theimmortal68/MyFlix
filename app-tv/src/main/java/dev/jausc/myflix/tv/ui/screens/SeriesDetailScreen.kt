@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.actors
+import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -119,13 +121,9 @@ fun SeriesDetailScreen(
         else -> null
     }
 
-    // Cast & crew
-    val cast = remember(series.people) {
-        series.people?.filter { it.type == "Actor" } ?: emptyList()
-    }
-    val crew = remember(series.people) {
-        series.people?.filter { it.type != "Actor" } ?: emptyList()
-    }
+    // Cast & crew (using extension properties from JellyfinItem)
+    val cast = series.actors
+    val crew = series.crew
 
     val featureSections = remember(state.specialFeatures, trailerItem?.id) {
         buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())

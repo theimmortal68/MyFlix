@@ -367,10 +367,25 @@ val JellyfinItem.actors: List<JellyfinPerson>
     get() = people?.filter { it.type == "Actor" } ?: emptyList()
 
 /**
+ * Get crew (non-actors) from the people list
+ */
+val JellyfinItem.crew: List<JellyfinPerson>
+    get() = people?.filter { it.type != "Actor" } ?: emptyList()
+
+/**
  * Get directors from the people list
  */
 val JellyfinItem.directors: List<JellyfinPerson>
     get() = people?.filter { it.type == "Director" } ?: emptyList()
+
+/**
+ * Get director names as a comma-separated string
+ */
+val JellyfinItem.directorNames: String?
+    get() = directors
+        .mapNotNull { it.name?.takeIf(String::isNotBlank) }
+        .joinToString(", ")
+        .takeIf { it.isNotEmpty() }
 
 /**
  * Get writers from the people list
