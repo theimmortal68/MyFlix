@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -138,6 +137,7 @@ fun SeriesDetailScreen(
     val gradientColors = rememberGradientColors(backdropUrl)
 
     // Layered UI: DynamicBackground → DetailBackdropLayer → Content
+    // Uses same structure as HomeScreen: fixed hero (37%) + scrollable content
     Box(modifier = modifier.fillMaxSize()) {
         // Layer 1: Dynamic gradient background
         DynamicBackground(
@@ -155,61 +155,63 @@ fun SeriesDetailScreen(
                 .align(Alignment.TopEnd),
         )
 
-        // Layer 3: Content
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            // Header with action buttons - matches home hero layout
-            item(key = "header") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 36.dp)
-                        .bringIntoViewRequester(bringIntoViewRequester),
-                ) {
-                    SeriesDetailsHeader(
-                        series = series,
-                        status = series.status,
-                        studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+        // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Fixed hero section (37% height, matches home) - doesn't scroll
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.37f)
+                    .padding(start = 48.dp, top = 36.dp, end = 48.dp)
+                    .bringIntoViewRequester(bringIntoViewRequester),
+                verticalArrangement = Arrangement.Top,
+            ) {
+                SeriesDetailsHeader(
+                    series = series,
+                    status = series.status,
+                    studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                    // Action buttons row
-                    SeriesActionButtons(
-                        watched = watched,
-                        favorite = favorite,
-                        onPlayClick = {
-                            position = HEADER_ROW
-                            onPlayClick()
-                        },
-                        onShuffleClick = {
-                            position = HEADER_ROW
-                            onShuffleClick()
-                        },
-                        onWatchedClick = onWatchedClick,
-                        onFavoriteClick = onFavoriteClick,
-                        onMoreClick = { mediaInfoItem = series },
-                        onTrailerClick = trailerAction,
-                        showMoreButton = false,
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
-                                scope.launch {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
+                // Action buttons row
+                SeriesActionButtons(
+                    watched = watched,
+                    favorite = favorite,
+                    onPlayClick = {
+                        position = HEADER_ROW
+                        onPlayClick()
+                    },
+                    onShuffleClick = {
+                        position = HEADER_ROW
+                        onShuffleClick()
+                    },
+                    onWatchedClick = onWatchedClick,
+                    onFavoriteClick = onFavoriteClick,
+                    onMoreClick = { mediaInfoItem = series },
+                    onTrailerClick = trailerAction,
+                    showMoreButton = false,
+                    buttonOnFocusChanged = {
+                        if (it.isFocused) {
+                            scope.launch {
+                                bringIntoViewRequester.bringIntoView()
                             }
-                        },
-                        modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .focusRequester(focusRequesters[HEADER_ROW])
-                            .focusRestorer(playFocusRequester)
-                            .focusGroup(),
-                    )
-                }
+                        }
+                    },
+                    modifier = Modifier
+                        .focusRequester(focusRequesters[HEADER_ROW])
+                        .focusRestorer(playFocusRequester)
+                        .focusGroup(),
+                )
             }
+
+            // Scrollable content rows (below fixed hero)
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
 
             // Next Up - only show if not S1E1 (i.e., watching is in progress)
             state.nextUpEpisode?.let { nextUp ->
@@ -475,6 +477,7 @@ fun SeriesDetailScreen(
                     )
                 }
             }
+            }
         }
     }
 
@@ -507,7 +510,7 @@ private fun SeriesDetailsHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(0.5f),
     ) {
         // Title - matches home hero HeroTitleSection
         Text(
@@ -541,7 +544,7 @@ private fun SeriesDetailsHeader(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
-                modifier = Modifier.fillMaxWidth(0.45f),
+                modifier = Modifier.fillMaxWidth(0.8f),
             )
         }
     }

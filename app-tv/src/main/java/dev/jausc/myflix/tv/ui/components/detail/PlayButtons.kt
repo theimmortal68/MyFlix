@@ -195,10 +195,11 @@ fun SeriesActionButtons(
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(8.dp),
+    playButtonFocusRequester: FocusRequester? = null,
     onTrailerClick: (() -> Unit)? = null,
     showMoreButton: Boolean = true,
 ) {
-    val firstFocus = remember { FocusRequester() }
+    val firstFocus = playButtonFocusRequester ?: remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),

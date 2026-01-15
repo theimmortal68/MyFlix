@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -167,11 +165,11 @@ fun SeasonDetailScreen(
         }
     }
 
-    // Focus first episode on load
+    // Focus play button on load
     LaunchedEffect(Unit) {
         delay(100)
         try {
-            focusRequesters[EPISODES_ROW].requestFocus()
+            playFocusRequester.requestFocus()
         } catch (_: Exception) {
             // Ignore focus errors
         }
@@ -185,6 +183,7 @@ fun SeasonDetailScreen(
     val gradientColors = rememberGradientColors(backdropUrl)
 
     // Layered UI: DynamicBackground → DetailBackdropLayer → Content
+    // Uses same structure as HomeScreen: fixed hero (37%) + scrollable content
     Box(modifier = modifier.fillMaxSize()) {
         // Layer 1: Dynamic gradient background
         DynamicBackground(
@@ -202,75 +201,45 @@ fun SeasonDetailScreen(
                 .align(Alignment.TopEnd),
         )
 
-        // Layer 3: Content
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            // Header with season tabs and episode info - matches home hero layout
-            item(key = "header") {
+        // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Fixed hero section (37% height, matches home) - doesn't scroll
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.37f)
+                    .bringIntoViewRequester(bringIntoViewRequester),
+            ) {
+                // Season tabs at top right
+                SeasonTabRow(
+                    seasons = state.seasons,
+                    selectedSeasonIndex = selectedSeasonIndex,
+                    onSeasonSelected = { _, season ->
+                        position = HEADER_ROW
+                        onSeasonSelected(season)
+                    },
+                    firstTabFocusRequester = seasonTabFocusRequester,
+                    downFocusRequester = focusRequesters[EPISODES_ROW],
+                    upFocusRequester = playFocusRequester,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, start = 48.dp, end = 48.dp),
+                )
+
+                // Hero content (left 50%)
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 36.dp)
-                        .bringIntoViewRequester(bringIntoViewRequester),
+                        .fillMaxWidth(0.5f)
+                        .padding(start = 48.dp, top = 36.dp),
+                    verticalArrangement = Arrangement.Top,
                 ) {
-                    SeasonDetailsHeader(
+                    SeasonHeroContent(
                         series = series,
-                        seasons = state.seasons,
-                        selectedSeasonIndex = selectedSeasonIndex,
-                        onSeasonSelected = { season ->
-                            position = HEADER_ROW
-                            onSeasonSelected(season)
-                        },
                         selectedEpisode = selectedEpisode,
-                        seasonTabFocusRequester = seasonTabFocusRequester,
-                        episodeRowFocusRequester = focusRequesters[EPISODES_ROW],
-                        modifier = Modifier.fillMaxWidth(),
                     )
-                }
-            }
 
-            // Episodes for selected season (moved above action buttons)
-            if (state.seasons.isNotEmpty()) {
-                item(key = "episodes") {
-                    EpisodeGrid(
-                        episodes = state.episodes,
-                        jellyfinClient = jellyfinClient,
-                        onEpisodeClick = { episode ->
-                            position = EPISODES_ROW
-                            onEpisodeClick(episode.id)
-                        },
-                        onEpisodeLongClick = { episode ->
-                            position = EPISODES_ROW
-                            // TODO: Show episode context menu
-                        },
-                        onEpisodeFocused = { episode ->
-                            focusedEpisodeId = episode.id
-                            // Don't scroll when focusing on episodes - keep header visible
-                        },
-                        isLoading = state.isLoadingEpisodes,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[EPISODES_ROW]),
-                        firstEpisodeFocusRequester = focusRequesters[EPISODES_ROW],
-                        upFocusRequester = seasonTabFocusRequester,
-                    )
-                }
-            }
+                    Spacer(modifier = Modifier.height(10.dp))
 
-            // Action buttons row with media info on right (moved below episodes)
-            item(key = "actions") {
-                val episodeBadges = buildEpisodeBadges(selectedEpisode)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
                     SeriesActionButtons(
                         watched = watched,
                         favorite = favorite,
@@ -284,7 +253,6 @@ fun SeasonDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        contentPadding = PaddingValues(start = 0.dp, top = 6.dp, end = 8.dp, bottom = 8.dp),
                         onMoreClick = {
                             val episode = selectedEpisode ?: return@SeriesActionButtons
                             val seasonLabel = buildSeasonEpisodeLabel(episode)
@@ -350,20 +318,50 @@ fun SeasonDetailScreen(
                                 }
                             }
                         },
+                        playButtonFocusRequester = playFocusRequester,
                         modifier = Modifier
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
-                                up = focusRequesters[EPISODES_ROW]
+                                down = focusRequesters[EPISODES_ROW]
+                                up = seasonTabFocusRequester
                             }
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
                     )
-                    if (episodeBadges.isNotEmpty()) {
-                        FormatBadgeRow(
-                            badges = episodeBadges,
-                            modifier = Modifier.padding(end = 32.dp),
-                        )
-                    }
+                }
+            }
+
+            // Scrollable content rows (below fixed hero)
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+            // Episodes for selected season
+            if (state.seasons.isNotEmpty()) {
+                item(key = "episodes") {
+                    EpisodeGrid(
+                        episodes = state.episodes,
+                        jellyfinClient = jellyfinClient,
+                        onEpisodeClick = { episode ->
+                            position = EPISODES_ROW
+                            onEpisodeClick(episode.id)
+                        },
+                        onEpisodeLongClick = { episode ->
+                            position = EPISODES_ROW
+                            // TODO: Show episode context menu
+                        },
+                        onEpisodeFocused = { episode ->
+                            focusedEpisodeId = episode.id
+                        },
+                        isLoading = state.isLoadingEpisodes,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[EPISODES_ROW]),
+                        firstEpisodeFocusRequester = focusRequesters[EPISODES_ROW],
+                        upFocusRequester = playFocusRequester,
+                    )
                 }
             }
 
@@ -611,6 +609,7 @@ fun SeasonDetailScreen(
                     )
                 }
             }
+            }
         }
     }
 
@@ -638,30 +637,20 @@ fun SeasonDetailScreen(
     }
 }
 
+/**
+ * Season hero content matching home hero style.
+ * Shows series title, episode title/subtitle, rating row, badges, and description.
+ */
 @Composable
-private fun SeasonDetailsHeader(
+private fun SeasonHeroContent(
     series: JellyfinItem,
-    seasons: List<JellyfinItem>,
-    selectedSeasonIndex: Int,
-    onSeasonSelected: (JellyfinItem) -> Unit,
     selectedEpisode: JellyfinItem?,
-    seasonTabFocusRequester: FocusRequester,
-    episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val showTitle = series.seriesName ?: series.name
-    Column(
-        modifier = modifier,
-    ) {
-        SeasonTabRow(
-            seasons = seasons,
-            selectedSeasonIndex = selectedSeasonIndex,
-            onSeasonSelected = { _, season -> onSeasonSelected(season) },
-            firstTabFocusRequester = seasonTabFocusRequester,
-            downFocusRequester = episodeRowFocusRequester,
-            modifier = Modifier.fillMaxWidth(),
-        )
+    val episodeBadges = buildEpisodeBadges(selectedEpisode)
 
+    Column(modifier = modifier) {
         // Series title - matches home hero HeroTitleSection
         Text(
             text = showTitle,
@@ -677,31 +666,31 @@ private fun SeasonDetailsHeader(
         selectedEpisode?.let { episode ->
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Episode title and rating - matches home hero subtitle style
+            // Episode subtitle - matches home hero episode subtitle
+            Text(
+                text = episode.name,
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                color = TvColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Episode rating row
             val details = buildEpisodeRatingLine(episode)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = episode.name,
-                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
-                    color = TvColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+            if (details.isNotEmpty() || episode.communityRating != null) {
+                DotSeparatedRow(
+                    texts = details,
+                    communityRating = episode.communityRating,
+                    textStyle = MaterialTheme.typography.bodySmall,
                 )
-                if (details.isNotEmpty() || episode.communityRating != null) {
-                    Text(
-                        text = ": ",
-                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
-                        color = TvColors.TextPrimary,
-                    )
-                    DotSeparatedRow(
-                        texts = details,
-                        communityRating = episode.communityRating,
-                        textStyle = MaterialTheme.typography.bodySmall,
-                    )
-                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            if (episodeBadges.isNotEmpty()) {
+                FormatBadgeRow(badges = episodeBadges)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -715,12 +704,10 @@ private fun SeasonDetailsHeader(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 18.sp,
-                    modifier = Modifier.fillMaxWidth(0.45f),
+                    modifier = Modifier.fillMaxWidth(0.8f),
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(10.dp))
     }
 }
 
