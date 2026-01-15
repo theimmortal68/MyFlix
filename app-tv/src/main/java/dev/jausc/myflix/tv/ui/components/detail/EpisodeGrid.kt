@@ -24,7 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -57,9 +59,11 @@ fun EpisodeGrid(
     jellyfinClient: JellyfinClient,
     onEpisodeClick: (JellyfinItem) -> Unit,
     onEpisodeLongClick: (JellyfinItem) -> Unit,
+    onEpisodeFocused: (JellyfinItem) -> Unit,
     isLoading: Boolean = false,
     modifier: Modifier = Modifier,
     firstEpisodeFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -125,7 +129,9 @@ fun EpisodeGrid(
                     jellyfinClient = jellyfinClient,
                     onEpisodeClick = onEpisodeClick,
                     onEpisodeLongClick = onEpisodeLongClick,
+                    onEpisodeFocused = onEpisodeFocused,
                     firstEpisodeFocusRequester = firstEpisodeFocusRequester,
+                    upFocusRequester = upFocusRequester,
                 )
             }
         }
@@ -138,7 +144,9 @@ private fun EpisodeRow(
     jellyfinClient: JellyfinClient,
     onEpisodeClick: (JellyfinItem) -> Unit,
     onEpisodeLongClick: (JellyfinItem) -> Unit,
+    onEpisodeFocused: (JellyfinItem) -> Unit,
     firstEpisodeFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
 ) {
     val lazyRowState = rememberLazyListState()
     val firstFocus = remember { FocusRequester() }
@@ -171,7 +179,17 @@ private fun EpisodeRow(
                 jellyfinClient = jellyfinClient,
                 onClick = { onEpisodeClick(episode) },
                 onLongClick = { onEpisodeLongClick(episode) },
-                modifier = cardModifier,
+                modifier = cardModifier
+                    .focusProperties {
+                        if (upFocusRequester != null) {
+                            up = upFocusRequester
+                        }
+                    }
+                    .onFocusChanged { state ->
+                        if (state.isFocused) {
+                            onEpisodeFocused(episode)
+                        }
+                    },
             )
         }
     }

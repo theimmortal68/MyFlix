@@ -32,8 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.imdbId
-import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -43,8 +41,6 @@ import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.components.detail.ExternalLinkItem
-import dev.jausc.myflix.tv.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
@@ -54,8 +50,7 @@ import kotlinx.coroutines.launch
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
-private const val LINKS_ROW = HEADER_ROW + 1
-private const val NEXT_UP_ROW = LINKS_ROW + 1
+private const val NEXT_UP_ROW = HEADER_ROW + 1
 private const val SEASONS_ROW = NEXT_UP_ROW + 1
 private const val CAST_ROW = SEASONS_ROW + 1
 private const val CREW_ROW = CAST_ROW + 1
@@ -128,9 +123,6 @@ fun SeriesDetailScreen(
         series.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
-    val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
-        buildExternalLinks(series)
-    }
     val featureSections = remember(state.specialFeatures, trailerItem?.id) {
         buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
     }
@@ -215,17 +207,6 @@ fun SeriesDetailScreen(
                 }
             }
 
-            // External links
-            if (externalLinks.isNotEmpty()) {
-                item(key = "links") {
-                    ExternalLinksRow(
-                        title = "External Links",
-                        links = externalLinks,
-                        modifier = Modifier.fillMaxWidth(0.6f),
-                    )
-                }
-            }
-
             // Next Up
             state.nextUpEpisode?.let { nextUp ->
                 item(key = "next_up") {
@@ -246,7 +227,7 @@ fun SeriesDetailScreen(
                                     item = item,
                                     imageUrl = jellyfinClient.getThumbUrl(
                                         item.id,
-                                        item.imageTags?.thumb ?: item.imageTags?.primary,
+                                        item.imageTags?.thumb,
                                     ),
                                     onClick = onClick,
                                     onLongClick = onLongClick,
@@ -557,32 +538,4 @@ private fun SeriesDetailsHeader(
             }
         }
     }
-}
-
-private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
-    val links = mutableListOf<ExternalLinkItem>()
-
-    series.externalUrls?.forEach { url ->
-        val label = url.name?.trim().orEmpty()
-        val link = url.url?.trim().orEmpty()
-        if (label.isNotEmpty() && link.isNotEmpty()) {
-            links.add(ExternalLinkItem(label, link))
-        }
-    }
-
-    series.imdbId?.let { imdbId ->
-        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
-        if (!hasImdb) {
-            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
-        }
-    }
-
-    series.tmdbId?.let { tmdbId ->
-        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
-        if (!hasTmdb) {
-            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/tv/$tmdbId"))
-        }
-    }
-
-    return links
 }

@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
@@ -112,6 +113,7 @@ fun SeasonDetailScreen(
     val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val playFocusRequester = remember { FocusRequester() }
+    val seasonTabFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -130,11 +132,17 @@ fun SeasonDetailScreen(
         series.people?.filter { it.type != "Actor" } ?: emptyList()
     }
 
-    val selectedEpisode = remember(state.episodes, state.nextUpEpisode) {
-        val nextUp = state.nextUpEpisode?.let { next ->
-            state.episodes.firstOrNull { it.id == next.id }
+    var focusedEpisodeId by remember { mutableStateOf<String?>(null) }
+    val focusedEpisode = remember(state.episodes, focusedEpisodeId) {
+        focusedEpisodeId?.let { id -> state.episodes.firstOrNull { it.id == id } }
+    }
+    val selectedEpisode = remember(state.episodes, state.nextUpEpisode, focusedEpisode) {
+        focusedEpisode ?: run {
+            val nextUp = state.nextUpEpisode?.let { next ->
+                state.episodes.firstOrNull { it.id == next.id }
+            }
+            nextUp ?: state.episodes.firstOrNull()
         }
-        nextUp ?: state.episodes.firstOrNull()
     }
     val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
         state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
@@ -201,7 +209,9 @@ fun SeasonDetailScreen(
                             onSeasonSelected(season)
                         },
                         selectedEpisode = selectedEpisode,
-                        jellyfinClient = jellyfinClient,
+                        seasonTabFocusRequester = seasonTabFocusRequester,
+                        episodeRowFocusRequester = focusRequesters[EPISODES_ROW],
+                        actionButtonsFocusRequester = focusRequesters[HEADER_ROW],
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 32.dp, bottom = 16.dp),
@@ -289,6 +299,10 @@ fun SeasonDetailScreen(
                         modifier = Modifier
                             .padding(bottom = 16.dp)
                             .focusRequester(focusRequesters[HEADER_ROW])
+                            .focusProperties {
+                                down = focusRequesters[EPISODES_ROW]
+                                up = seasonTabFocusRequester
+                            }
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
                     )
@@ -344,10 +358,15 @@ fun SeasonDetailScreen(
                             position = EPISODES_ROW
                             // TODO: Show episode context menu
                         },
+                        onEpisodeFocused = { episode ->
+                            focusedEpisodeId = episode.id
+                        },
                         isLoading = state.isLoadingEpisodes,
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[EPISODES_ROW]),
+                        firstEpisodeFocusRequester = focusRequesters[EPISODES_ROW],
+                        upFocusRequester = focusRequesters[HEADER_ROW],
                     )
                 }
             }
@@ -595,7 +614,9 @@ private fun SeasonDetailsHeader(
     selectedSeasonIndex: Int,
     onSeasonSelected: (JellyfinItem) -> Unit,
     selectedEpisode: JellyfinItem?,
-    jellyfinClient: JellyfinClient,
+    seasonTabFocusRequester: FocusRequester,
+    episodeRowFocusRequester: FocusRequester,
+    actionButtonsFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val showTitle = series.seriesName ?: series.name
@@ -604,7 +625,16 @@ private fun SeasonDetailsHeader(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        // Title
+        SeasonTabRow(
+            seasons = seasons,
+            selectedSeasonIndex = selectedSeasonIndex,
+            onSeasonSelected = { _, season -> onSeasonSelected(season) },
+            firstTabFocusRequester = seasonTabFocusRequester,
+            downFocusRequester = episodeRowFocusRequester,
+            upFocusRequester = actionButtonsFocusRequester,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         Text(
             text = showTitle,
             style = MaterialTheme.typography.displaySmall,
@@ -612,67 +642,44 @@ private fun SeasonDetailsHeader(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth(0.50f),
+            modifier = Modifier.fillMaxWidth(0.55f),
         )
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth(0.45f),
-        ) {
-            SeasonTabRow(
-                seasons = seasons,
-                selectedSeasonIndex = selectedSeasonIndex,
-                onSeasonSelected = { _, season -> onSeasonSelected(season) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+        selectedEpisode?.let { episode ->
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(0.55f),
+            ) {
+                Text(
+                    text = episode.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
-            selectedEpisode?.let { episode ->
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                val details = buildEpisodeRatingLine(episode)
+                if (details.isNotEmpty() || episode.communityRating != null) {
+                    DotSeparatedRow(
+                        texts = details,
+                        communityRating = episode.communityRating,
+                        textStyle = MaterialTheme.typography.titleSmall,
+                    )
+                }
+
+                if (episodeBadges.isNotEmpty()) {
+                    FormatBadgeRow(badges = episodeBadges)
+                }
+            }
+
+            episode.overview?.let { overview ->
+                Text(
+                    text = overview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                     modifier = Modifier.padding(top = 12.dp),
-                ) {
-                    WideMediaCard(
-                        item = episode,
-                        imageUrl = jellyfinClient.getThumbUrl(
-                            episode.id,
-                            episode.imageTags?.thumb ?: episode.imageTags?.primary,
-                        ),
-                        onClick = {},
-                        showLabel = false,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Text(
-                        text = episode.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-
-                    val details = buildEpisodeRatingLine(episode)
-                    if (details.isNotEmpty() || episode.communityRating != null) {
-                        DotSeparatedRow(
-                            texts = details,
-                            communityRating = episode.communityRating,
-                            textStyle = MaterialTheme.typography.titleSmall,
-                        )
-                    }
-
-                    if (episodeBadges.isNotEmpty()) {
-                        FormatBadgeRow(badges = episodeBadges)
-                    }
-                }
-
-                episode.overview?.let { overview ->
-                    Text(
-                        text = overview,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
-                }
+                )
             }
         }
     }

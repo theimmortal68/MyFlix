@@ -7,11 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ClosedCaption
@@ -139,7 +138,6 @@ fun SeasonDetailScreen(
                     selectedSeasonIndex = selectedSeasonIndex,
                     onSeasonClick = onSeasonClick,
                     selectedEpisode = selectedEpisode,
-                    jellyfinClient = jellyfinClient,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
@@ -485,7 +483,6 @@ private fun SeasonDetailsHeader(
     selectedSeasonIndex: Int,
     onSeasonClick: (JellyfinItem) -> Unit,
     selectedEpisode: JellyfinItem?,
-    jellyfinClient: JellyfinClient,
     modifier: Modifier = Modifier,
 ) {
     val showTitle = series.seriesName ?: series.name
@@ -495,6 +492,13 @@ private fun SeasonDetailsHeader(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier,
     ) {
+        SeasonChipRow(
+            seasons = seasons,
+            selectedIndex = selectedSeasonIndex,
+            onSeasonClick = onSeasonClick,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         Text(
             text = showTitle,
             style = MaterialTheme.typography.headlineMedium,
@@ -504,51 +508,29 @@ private fun SeasonDetailsHeader(
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        SeasonChipRow(
-            seasons = seasons,
-            selectedIndex = selectedSeasonIndex,
-            onSeasonClick = onSeasonClick,
-        )
-
         selectedEpisode?.let { episode ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                MobileWideMediaCard(
-                    item = episode,
-                    imageUrl = jellyfinClient.getThumbUrl(
-                        episode.id,
-                        episode.imageTags?.thumb ?: episode.imageTags?.primary,
-                    ),
-                    onClick = {},
-                    showLabel = false,
-                    modifier = Modifier.width(220.dp),
+                Text(
+                    text = episode.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        text = episode.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
+                val details = buildEpisodeRatingLine(episode)
+                if (details.isNotEmpty() || episode.communityRating != null) {
+                    DotSeparatedRow(
+                        texts = details,
+                        communityRating = episode.communityRating,
+                        textStyle = MaterialTheme.typography.bodySmall,
                     )
+                }
 
-                    val details = buildEpisodeRatingLine(episode)
-                    if (details.isNotEmpty() || episode.communityRating != null) {
-                        DotSeparatedRow(
-                            texts = details,
-                            communityRating = episode.communityRating,
-                            textStyle = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-
-                    if (episodeBadges.isNotEmpty()) {
-                        FormatBadgeRow(badges = episodeBadges)
-                    }
+                if (episodeBadges.isNotEmpty()) {
+                    FormatBadgeRow(badges = episodeBadges)
                 }
             }
 
@@ -582,13 +564,14 @@ private fun SeasonChipRow(
             Surface(
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.height(20.dp),
                 onClick = { onSeasonClick(season) },
             ) {
                 Text(
                     text = season.name,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
                 )
             }
         }

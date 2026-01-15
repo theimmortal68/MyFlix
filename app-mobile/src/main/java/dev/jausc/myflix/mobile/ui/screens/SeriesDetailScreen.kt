@@ -164,7 +164,7 @@ fun SeriesDetailScreen(
                                 item = item,
                                 imageUrl = jellyfinClient.getThumbUrl(
                                     item.id,
-                                    item.imageTags?.thumb ?: item.imageTags?.primary,
+                                    item.imageTags?.thumb,
                                 ),
                                 onClick = onClick,
                                 onLongClick = onLongClick,

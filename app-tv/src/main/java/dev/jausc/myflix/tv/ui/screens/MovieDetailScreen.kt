@@ -34,8 +34,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.imdbId
-import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.writers
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -50,8 +48,6 @@ import dev.jausc.myflix.tv.ui.components.detail.DetailInfoItem
 import dev.jausc.myflix.tv.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
-import dev.jausc.myflix.tv.ui.components.detail.ExternalLinkItem
-import dev.jausc.myflix.tv.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
@@ -185,10 +181,6 @@ fun MovieDetailScreen(
         }
     }
 
-    val externalLinks = remember(movie.externalUrls, movie.imdbId, movie.tmdbId) {
-        buildExternalLinks(movie)
-    }
-
     // Layered UI: DynamicBackground → DetailBackdropLayer → Content
     Box(modifier = modifier.fillMaxSize()) {
         // Layer 1: Dynamic gradient background
@@ -266,17 +258,6 @@ fun MovieDetailScreen(
                     DetailInfoSection(
                         title = "Details",
                         items = detailInfoItems,
-                        modifier = Modifier.fillMaxWidth(0.6f),
-                    )
-                }
-            }
-
-            // External links
-            if (externalLinks.isNotEmpty()) {
-                item(key = "links") {
-                    ExternalLinksRow(
-                        title = "External Links",
-                        links = externalLinks,
                         modifier = Modifier.fillMaxWidth(0.6f),
                     )
                 }
@@ -588,33 +569,6 @@ private fun MovieDetailsHeader(
     }
 }
 
-private fun buildExternalLinks(movie: JellyfinItem): List<ExternalLinkItem> {
-    val links = mutableListOf<ExternalLinkItem>()
-
-    movie.externalUrls?.forEach { url ->
-        val label = url.name?.trim().orEmpty()
-        val link = url.url?.trim().orEmpty()
-        if (label.isNotEmpty() && link.isNotEmpty()) {
-            links.add(ExternalLinkItem(label, link))
-        }
-    }
-
-    movie.imdbId?.let { imdbId ->
-        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
-        if (!hasImdb) {
-            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
-        }
-    }
-
-    movie.tmdbId?.let { tmdbId ->
-        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
-        if (!hasTmdb) {
-            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/movie/$tmdbId"))
-        }
-    }
-
-    return links
-}
 
 private fun formatCriticRating(rating: Float): String =
     if (rating > 10f) {

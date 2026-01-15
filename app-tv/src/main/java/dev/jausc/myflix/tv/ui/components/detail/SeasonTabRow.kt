@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
@@ -46,6 +47,8 @@ fun SeasonTabRow(
     onSeasonSelected: (Int, JellyfinItem) -> Unit,
     modifier: Modifier = Modifier,
     firstTabFocusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
 ) {
     if (seasons.isEmpty()) return
 
@@ -62,7 +65,7 @@ fun SeasonTabRow(
     LazyRow(
         state = lazyListState,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
         modifier = modifier.focusRestorer(firstFocus),
     ) {
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
@@ -85,6 +88,8 @@ fun SeasonTabRow(
                 season = season,
                 isSelected = isSelected,
                 onClick = { onSeasonSelected(index, season) },
+                downFocusRequester = downFocusRequester,
+                upFocusRequester = upFocusRequester,
                 modifier = tabModifier,
             )
         }
@@ -99,6 +104,8 @@ private fun SeasonTab(
     season: JellyfinItem,
     isSelected: Boolean,
     onClick: () -> Unit,
+    downFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     // Use season name if available, otherwise "Season X"
@@ -108,10 +115,19 @@ private fun SeasonTab(
 
     Surface(
         onClick = onClick,
-        modifier = modifier.height(36.dp),
+        modifier = modifier
+            .height(20.dp)
+            .focusProperties {
+                if (downFocusRequester != null) {
+                    down = downFocusRequester
+                }
+                if (upFocusRequester != null) {
+                    up = upFocusRequester
+                }
+            },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isSelected) TvColors.BluePrimary else TvColors.SurfaceElevated,
+            containerColor = if (isSelected) TvColors.BluePrimary else TvColors.SurfaceElevated.copy(alpha = 0.8f),
             focusedContainerColor = TvColors.BluePrimary,
             contentColor = if (isSelected) Color.White else TvColors.TextPrimary,
             focusedContentColor = Color.White,
@@ -125,9 +141,9 @@ private fun SeasonTab(
     ) {
         Text(
             text = tabText,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
         )
     }
 }

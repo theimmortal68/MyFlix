@@ -5,7 +5,9 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -80,7 +82,8 @@ fun PersonDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(key = "header") {
-                        Box(
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             AsyncImage(
@@ -94,22 +97,25 @@ fun PersonDetailScreen(
                                     .size(180.dp)
                                     .clip(MaterialTheme.shapes.large),
                             )
-                        }
 
-                        Text(
-                            text = person.name,
-                            style = MaterialTheme.typography.displaySmall,
-                            color = TvColors.TextPrimary,
-                            modifier = Modifier.padding(top = 12.dp),
-                        )
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = person.name,
+                                    style = MaterialTheme.typography.displaySmall,
+                                    color = TvColors.TextPrimary,
+                                )
 
-                        person.overview?.let { overview ->
-                            OverviewText(
-                                overview = overview,
-                                maxLines = 6,
-                                onClick = {},
-                                modifier = Modifier.padding(top = 12.dp),
-                            )
+                                person.overview?.let { overview ->
+                                    OverviewText(
+                                        overview = overview,
+                                        maxLines = 6,
+                                        onClick = {},
+                                    )
+                                }
+                            }
                         }
                     }
 
