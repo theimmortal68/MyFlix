@@ -254,9 +254,9 @@ fun HomeScreen(
     val contentId = state.featuredItems.firstOrNull()?.id
     var heroFocused by remember(contentId) { mutableStateOf(false) }
 
-    // Request focus on hero when content becomes ready
-    LaunchedEffect(state.contentReady) {
-        if (state.contentReady && !heroFocused) {
+    // Request focus on hero when content becomes ready (but not when exit dialog is shown)
+    LaunchedEffect(state.contentReady, showExitDialog) {
+        if (state.contentReady && !heroFocused && !showExitDialog) {
             delay(100)
             try {
                 heroPlayFocusRequester.requestFocus()

@@ -189,12 +189,12 @@ fun MovieDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Layer 2: Backdrop image (right side, behind content)
+        // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
         DetailBackdropLayer(
             item = movie,
             jellyfinClient = jellyfinClient,
             modifier = Modifier
-                .fillMaxWidth(0.65f)
+                .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.9f)
                 .align(Alignment.TopEnd),
         )

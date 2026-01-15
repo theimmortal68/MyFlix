@@ -215,6 +215,8 @@ private fun MediaCardInternal(
  * Wide/landscape media card for episodes and continue watching (16:9 aspect ratio)
  * Shows episode thumbnail with series name and episode info
  * Titles scroll when focused if they don't fit
+ *
+ * @param showBackground If true, shows a surface background. If false, only shows the image with border on focus.
  */
 @Composable
 fun WideMediaCard(
@@ -223,6 +225,7 @@ fun WideMediaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showLabel: Boolean = true,
+    showBackground: Boolean = true,
     onLongClick: (() -> Unit)? = null,
     onItemFocused: ((JellyfinItem) -> Unit)? = null,
 ) {
@@ -243,8 +246,8 @@ fun WideMediaCard(
             shape = MaterialTheme.shapes.medium,
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
+            containerColor = if (showBackground) TvColors.Surface else Color.Transparent,
+            focusedContainerColor = if (showBackground) TvColors.FocusedSurface else Color.Transparent,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(

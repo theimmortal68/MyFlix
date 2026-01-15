@@ -27,8 +27,8 @@ import dev.jausc.myflix.core.network.JellyfinClient
 /**
  * Backdrop layer for detail screens (movies and series).
  *
- * Similar to HeroBackdropLayer but with stronger left edge fading
- * to improve readability of metadata text on the left side.
+ * Matches the HeroBackdropLayer style from the home screen with
+ * similar edge fading and positioning.
  *
  * @param item The media item to display backdrop for
  * @param jellyfinClient Client for building image URLs
@@ -61,30 +61,29 @@ fun DetailBackdropLayer(
                 alignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(0.85f)
+                    .alpha(0.9f)
                     .drawWithContent {
                         drawContent()
-                        // Left edge fade - stronger for detail screen metadata readability
+                        // Left edge fade - matches home page HeroBackdropLayer style
                         drawRect(
                             brush = Brush.horizontalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Transparent,
-                                    0.05f to Color.Black.copy(alpha = 0.3f),
-                                    0.15f to Color.Black.copy(alpha = 0.7f),
-                                    0.30f to Color.Black.copy(alpha = 0.9f),
-                                    0.45f to Color.Black,
+                                    0.08f to Color.Black.copy(alpha = 0.5f),
+                                    0.2f to Color.Black.copy(alpha = 0.85f),
+                                    0.35f to Color.Black,
                                 ),
                             ),
                             blendMode = BlendMode.DstIn,
                         )
-                        // Bottom edge fade - blend into content rows
+                        // Bottom edge fade - matches home page style
                         drawRect(
                             brush = Brush.verticalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Black,
-                                    0.6f to Color.Black.copy(alpha = 0.9f),
-                                    0.8f to Color.Black.copy(alpha = 0.5f),
-                                    0.95f to Color.Black.copy(alpha = 0.2f),
+                                    0.5f to Color.Black.copy(alpha = 0.85f),
+                                    0.7f to Color.Black.copy(alpha = 0.4f),
+                                    0.85f to Color.Black.copy(alpha = 0.15f),
                                     1.0f to Color.Transparent,
                                 ),
                             ),

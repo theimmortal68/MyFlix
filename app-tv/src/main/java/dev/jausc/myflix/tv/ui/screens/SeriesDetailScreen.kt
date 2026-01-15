@@ -141,12 +141,12 @@ fun SeriesDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Layer 2: Backdrop image (right side, behind content)
+        // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
         DetailBackdropLayer(
             item = series,
             jellyfinClient = jellyfinClient,
             modifier = Modifier
-                .fillMaxWidth(0.65f)
+                .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.9f)
                 .align(Alignment.TopEnd),
         )
@@ -207,41 +207,45 @@ fun SeriesDetailScreen(
                 }
             }
 
-            // Next Up
+            // Next Up - only show if not S1E1 (i.e., watching is in progress)
             state.nextUpEpisode?.let { nextUp ->
-                item(key = "next_up") {
-                    ItemRow(
-                        title = "Next Up",
-                        items = listOf(nextUp),
-                        onItemClick = { _, item ->
-                            position = NEXT_UP_ROW
-                            onPlayItemClick(item.id, null)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = NEXT_UP_ROW
-                            // TODO: Show episode context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                val thumbTag = item.imageTags?.thumb
-                                val imageUrl = if (thumbTag != null) {
-                                    jellyfinClient.getThumbUrl(item.id, thumbTag)
-                                } else {
-                                    jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+                val isFirstEpisode = nextUp.parentIndexNumber == 1 && nextUp.indexNumber == 1
+                if (!isFirstEpisode) {
+                    item(key = "next_up") {
+                        ItemRow(
+                            title = "Next Up",
+                            items = listOf(nextUp),
+                            onItemClick = { _, item ->
+                                position = NEXT_UP_ROW
+                                onPlayItemClick(item.id, null)
+                            },
+                            onItemLongClick = { _, _ ->
+                                position = NEXT_UP_ROW
+                                // TODO: Show episode context menu
+                            },
+                            cardContent = { _, item, cardModifier, onClick, onLongClick ->
+                                if (item != null) {
+                                    val thumbTag = item.imageTags?.thumb
+                                    val imageUrl = if (thumbTag != null) {
+                                        jellyfinClient.getThumbUrl(item.id, thumbTag)
+                                    } else {
+                                        jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+                                    }
+                                    WideMediaCard(
+                                        item = item,
+                                        imageUrl = imageUrl,
+                                        onClick = onClick,
+                                        onLongClick = onLongClick,
+                                        showBackground = false,
+                                        modifier = cardModifier,
+                                    )
                                 }
-                                WideMediaCard(
-                                    item = item,
-                                    imageUrl = imageUrl,
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[NEXT_UP_ROW]),
-                    )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequesters[NEXT_UP_ROW]),
+                        )
+                    }
                 }
             }
 

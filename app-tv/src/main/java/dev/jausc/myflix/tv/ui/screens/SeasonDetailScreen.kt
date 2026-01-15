@@ -164,9 +164,14 @@ fun SeasonDetailScreen(
         }
     }
 
+    // Focus first episode on load
     LaunchedEffect(Unit) {
         delay(100)
-        playFocusRequester.requestFocus()
+        try {
+            focusRequesters[EPISODES_ROW].requestFocus()
+        } catch (_: Exception) {
+            // Ignore focus errors
+        }
     }
 
     // Backdrop URL and dynamic gradient colors
@@ -184,12 +189,12 @@ fun SeasonDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Layer 2: Backdrop image (right side, behind content)
+        // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
         DetailBackdropLayer(
             item = series,
             jellyfinClient = jellyfinClient,
             modifier = Modifier
-                .fillMaxWidth(0.65f)
+                .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.9f)
                 .align(Alignment.TopEnd),
         )
@@ -197,11 +202,11 @@ fun SeasonDetailScreen(
         // Layer 3: Content
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Header with action buttons
+            // Header with season tabs and episode info
             item(key = "header") {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
@@ -220,102 +225,134 @@ fun SeasonDetailScreen(
                         selectedEpisode = selectedEpisode,
                         seasonTabFocusRequester = seasonTabFocusRequester,
                         episodeRowFocusRequester = focusRequesters[EPISODES_ROW],
-                        actionButtonsFocusRequester = focusRequesters[HEADER_ROW],
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 16.dp),
+                            .padding(top = 16.dp, bottom = 8.dp),
                     )
+                }
+            }
 
-                    // Action buttons row
-                    SeriesActionButtons(
-                        watched = watched,
-                        favorite = favorite,
-                        onPlayClick = {
-                            position = HEADER_ROW
-                            onPlayClick()
+            // Episodes for selected season (moved above action buttons)
+            if (state.seasons.isNotEmpty()) {
+                item(key = "episodes") {
+                    EpisodeGrid(
+                        episodes = state.episodes,
+                        jellyfinClient = jellyfinClient,
+                        onEpisodeClick = { episode ->
+                            position = EPISODES_ROW
+                            onEpisodeClick(episode.id)
                         },
-                        onShuffleClick = {
-                            position = HEADER_ROW
-                            onShuffleClick()
+                        onEpisodeLongClick = { episode ->
+                            position = EPISODES_ROW
+                            // TODO: Show episode context menu
                         },
-                        onWatchedClick = onWatchedClick,
-                        onFavoriteClick = onFavoriteClick,
-                        onMoreClick = {
-                            val episode = selectedEpisode ?: return@SeriesActionButtons
-                            val seasonLabel = buildSeasonEpisodeLabel(episode)
-                            dialogParams = buildEpisodeMenu(
-                                title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
-                                    .joinToString(" - "),
-                                subtitle = episode.name,
-                                episode = episode,
-                                onPlay = {
-                                    PlayQueueManager.setSingleItem(
-                                        itemId = episode.id,
-                                        title = episode.name,
-                                        episodeInfo = seasonLabel,
-                                        thumbnailItemId = episode.id,
-                                        subtitleStreamIndex = preferredSubtitleIndex,
-                                    )
-                                    onPlayItemClick(episode.id, null)
-                                },
-                                onChooseSubtitles = {
-                                    subtitleDialogParams = buildSubtitleMenu(
-                                        episode = episode,
-                                        selectedIndex = preferredSubtitleIndex,
-                                        onSelect = { index -> preferredSubtitleIndex = index },
-                                    )
-                                },
-                                onAddToPlaylist = {
-                                    val items = state.episodes.map { item ->
-                                        QueueItem(
-                                            itemId = item.id,
-                                            title = item.name,
-                                            episodeInfo = buildSeasonEpisodeLabel(item),
-                                            thumbnailItemId = item.id,
-                                        )
-                                    }
-                                    PlayQueueManager.setQueue(items, QueueSource.SEASON_PLAY_ALL)
-                                },
-                                onToggleWatched = {
-                                    val isPlayed = episode.userData?.played == true
-                                    onEpisodeWatchedToggle(episode.id, !isPlayed)
-                                },
-                                onToggleFavorite = {
-                                    val isFavorite = episode.userData?.isFavorite == true
-                                    onEpisodeFavoriteToggle(episode.id, !isFavorite)
-                                },
-                                onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
-                                onMediaInfo = { mediaInfoItem = episode },
-                                onPlayWithTranscoding = {
-                                    PlayQueueManager.setSingleItem(
-                                        itemId = episode.id,
-                                        title = episode.name,
-                                        episodeInfo = seasonLabel,
-                                        thumbnailItemId = episode.id,
-                                        subtitleStreamIndex = preferredSubtitleIndex,
-                                    )
-                                    onPlayItemClick(episode.id, null)
-                                },
-                            )
-                        },
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
+                        onEpisodeFocused = { episode ->
+                            focusedEpisodeId = episode.id
+                            if (listState.firstVisibleItemIndex != 0) {
                                 scope.launch {
-                                    bringIntoViewRequester.bringIntoView()
+                                    listState.animateScrollToItem(0)
                                 }
                             }
                         },
+                        isLoading = state.isLoadingEpisodes,
                         modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .focusRequester(focusRequesters[HEADER_ROW])
-                            .focusProperties {
-                                down = focusRequesters[EPISODES_ROW]
-                                up = seasonTabFocusRequester
-                            }
-                            .focusRestorer(playFocusRequester)
-                            .focusGroup(),
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[EPISODES_ROW]),
+                        firstEpisodeFocusRequester = focusRequesters[EPISODES_ROW],
+                        upFocusRequester = seasonTabFocusRequester,
                     )
                 }
+            }
+
+            // Action buttons row (moved below episodes)
+            item(key = "actions") {
+                SeriesActionButtons(
+                    watched = watched,
+                    favorite = favorite,
+                    onPlayClick = {
+                        position = HEADER_ROW
+                        onPlayClick()
+                    },
+                    onShuffleClick = {
+                        position = HEADER_ROW
+                        onShuffleClick()
+                    },
+                    onWatchedClick = onWatchedClick,
+                    onFavoriteClick = onFavoriteClick,
+                    onMoreClick = {
+                        val episode = selectedEpisode ?: return@SeriesActionButtons
+                        val seasonLabel = buildSeasonEpisodeLabel(episode)
+                        dialogParams = buildEpisodeMenu(
+                            title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
+                                .joinToString(" - "),
+                            subtitle = episode.name,
+                            episode = episode,
+                            onPlay = {
+                                PlayQueueManager.setSingleItem(
+                                    itemId = episode.id,
+                                    title = episode.name,
+                                    episodeInfo = seasonLabel,
+                                    thumbnailItemId = episode.id,
+                                    subtitleStreamIndex = preferredSubtitleIndex,
+                                )
+                                onPlayItemClick(episode.id, null)
+                            },
+                            onChooseSubtitles = {
+                                subtitleDialogParams = buildSubtitleMenu(
+                                    episode = episode,
+                                    selectedIndex = preferredSubtitleIndex,
+                                    onSelect = { index -> preferredSubtitleIndex = index },
+                                )
+                            },
+                            onAddToPlaylist = {
+                                val items = state.episodes.map { item ->
+                                    QueueItem(
+                                        itemId = item.id,
+                                        title = item.name,
+                                        episodeInfo = buildSeasonEpisodeLabel(item),
+                                        thumbnailItemId = item.id,
+                                    )
+                                }
+                                PlayQueueManager.setQueue(items, QueueSource.SEASON_PLAY_ALL)
+                            },
+                            onToggleWatched = {
+                                val isPlayed = episode.userData?.played == true
+                                onEpisodeWatchedToggle(episode.id, !isPlayed)
+                            },
+                            onToggleFavorite = {
+                                val isFavorite = episode.userData?.isFavorite == true
+                                onEpisodeFavoriteToggle(episode.id, !isFavorite)
+                            },
+                            onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                            onMediaInfo = { mediaInfoItem = episode },
+                            onPlayWithTranscoding = {
+                                PlayQueueManager.setSingleItem(
+                                    itemId = episode.id,
+                                    title = episode.name,
+                                    episodeInfo = seasonLabel,
+                                    thumbnailItemId = episode.id,
+                                    subtitleStreamIndex = preferredSubtitleIndex,
+                                )
+                                onPlayItemClick(episode.id, null)
+                            },
+                        )
+                    },
+                    buttonOnFocusChanged = {
+                        if (it.isFocused) {
+                            scope.launch {
+                                bringIntoViewRequester.bringIntoView()
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .focusRequester(focusRequesters[HEADER_ROW])
+                        .focusProperties {
+                            up = focusRequesters[EPISODES_ROW]
+                        }
+                        .focusRestorer(playFocusRequester)
+                        .focusGroup(),
+                )
             }
 
             // Next Up
@@ -349,38 +386,6 @@ fun SeasonDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[NEXT_UP_ROW]),
-                    )
-                }
-            }
-
-            // Episodes for selected season
-            if (state.seasons.isNotEmpty()) {
-                item(key = "episodes") {
-                    EpisodeGrid(
-                        episodes = state.episodes,
-                        jellyfinClient = jellyfinClient,
-                        onEpisodeClick = { episode ->
-                            position = EPISODES_ROW
-                            onEpisodeClick(episode.id)
-                        },
-                        onEpisodeLongClick = { episode ->
-                            position = EPISODES_ROW
-                            // TODO: Show episode context menu
-                        },
-                        onEpisodeFocused = { episode ->
-                            focusedEpisodeId = episode.id
-                            if (listState.firstVisibleItemIndex != 0) {
-                                scope.launch {
-                                    listState.animateScrollToItem(0)
-                                }
-                            }
-                        },
-                        isLoading = state.isLoadingEpisodes,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[EPISODES_ROW]),
-                        firstEpisodeFocusRequester = focusRequesters[EPISODES_ROW],
-                        upFocusRequester = focusRequesters[HEADER_ROW],
                     )
                 }
             }
@@ -630,7 +635,6 @@ private fun SeasonDetailsHeader(
     selectedEpisode: JellyfinItem?,
     seasonTabFocusRequester: FocusRequester,
     episodeRowFocusRequester: FocusRequester,
-    actionButtonsFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val showTitle = series.seriesName ?: series.name
@@ -645,7 +649,6 @@ private fun SeasonDetailsHeader(
             onSeasonSelected = { _, season -> onSeasonSelected(season) },
             firstTabFocusRequester = seasonTabFocusRequester,
             downFocusRequester = episodeRowFocusRequester,
-            upFocusRequester = actionButtonsFocusRequester,
             modifier = Modifier.fillMaxWidth(),
         )
 

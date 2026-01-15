@@ -113,6 +113,7 @@ fun PersonDetailScreen(
                                         overview = overview,
                                         maxLines = 6,
                                         onClick = {},
+                                        showFocusBackground = false,
                                     )
                                 }
                             }

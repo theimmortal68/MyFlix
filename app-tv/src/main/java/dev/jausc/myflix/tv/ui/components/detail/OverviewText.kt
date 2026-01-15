@@ -30,6 +30,8 @@ import androidx.tv.material3.Text
 /**
  * Clickable overview text that shows limited lines and expands on click.
  * Shows a focus highlight when focused for TV D-pad navigation.
+ *
+ * @param showFocusBackground If true, shows a background highlight when focused. Default is true.
  */
 @Composable
 fun OverviewText(
@@ -40,9 +42,10 @@ fun OverviewText(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     textBoxHeight: Dp = maxLines * 20.dp,
     enabled: Boolean = true,
+    showFocusBackground: Boolean = true,
 ) {
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val bgColor = if (isFocused) {
+    val bgColor = if (isFocused && showFocusBackground) {
         MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f)
     } else {
         Color.Transparent
