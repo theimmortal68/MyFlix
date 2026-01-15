@@ -170,7 +170,6 @@ fun SeriesDetailScreen(
                     series = series,
                     status = series.status,
                     studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
