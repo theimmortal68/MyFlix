@@ -203,7 +203,7 @@ fun SeasonDetailScreen(
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
             // Header with season tabs and episode info
@@ -640,7 +640,7 @@ private fun SeasonDetailsHeader(
     val showTitle = series.seriesName ?: series.name
     val episodeBadges = buildEpisodeBadges(selectedEpisode)
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
         modifier = modifier,
     ) {
         SeasonTabRow(
@@ -664,7 +664,7 @@ private fun SeasonDetailsHeader(
 
         selectedEpisode?.let { episode ->
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
                 modifier = Modifier.fillMaxWidth(0.55f),
             ) {
                 Text(
@@ -697,7 +697,7 @@ private fun SeasonDetailsHeader(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                     modifier = Modifier
                         .fillMaxWidth(0.55f)
-                        .padding(top = 12.dp),
+                        .padding(top = 4.dp),
                 )
             }
         }
