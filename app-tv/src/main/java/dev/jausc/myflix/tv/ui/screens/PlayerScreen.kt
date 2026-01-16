@@ -39,10 +39,18 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.ClosedCaptionOff
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
+import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
@@ -655,6 +663,8 @@ private fun TvPlayerControlsOverlay(
                         listOf(
                             DialogItem(
                                 text = "No audio tracks available",
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                                iconTint = ActionColors.Audio,
                                 enabled = false,
                                 onClick = {},
                             ),
@@ -663,6 +673,8 @@ private fun TvPlayerControlsOverlay(
                         audioStreams.map {
                             DialogItem(
                                 text = it.audioLabel(),
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                                iconTint = ActionColors.Audio,
                                 onClick = { onAudioSelected(it.index) },
                             )
                         }
@@ -675,6 +687,8 @@ private fun TvPlayerControlsOverlay(
                         listOf(
                             DialogItem(
                                 text = "No subtitles available",
+                                icon = Icons.Default.ClosedCaptionOff,
+                                iconTint = ActionColors.Subtitles,
                                 enabled = false,
                                 onClick = {},
                             ),
@@ -683,6 +697,8 @@ private fun TvPlayerControlsOverlay(
                         val entries = mutableListOf<DialogItemEntry>(
                             DialogItem(
                                 text = "Off",
+                                icon = Icons.Default.ClosedCaptionOff,
+                                iconTint = ActionColors.Subtitles,
                                 onClick = { onSubtitleSelected(PlayerConstants.TRACK_DISABLED) },
                             ),
                         )
@@ -690,6 +706,8 @@ private fun TvPlayerControlsOverlay(
                             subtitleStreams.map {
                                 DialogItem(
                                     text = it.subtitleLabel(),
+                                    icon = Icons.Default.ClosedCaption,
+                                    iconTint = ActionColors.Subtitles,
                                     onClick = { onSubtitleSelected(it.index) },
                                 )
                             },
@@ -706,6 +724,8 @@ private fun TvPlayerControlsOverlay(
                         items = speeds.map { value ->
                             DialogItem(
                                 text = "x${"%.2f".format(value)}",
+                                icon = Icons.Default.Speed,
+                                iconTint = ActionColors.Play,
                                 onClick = {
                                     onUserInteraction()
                                     onSpeedChanged(value)
@@ -721,6 +741,8 @@ private fun TvPlayerControlsOverlay(
                         items = PlayerDisplayMode.values().map { mode ->
                             DialogItem(
                                 text = mode.label,
+                                icon = Icons.Default.AspectRatio,
+                                iconTint = ActionColors.GoTo,
                                 onClick = {
                                     onUserInteraction()
                                     onDisplayModeChanged(mode)
@@ -736,6 +758,8 @@ private fun TvPlayerControlsOverlay(
                         listOf(
                             DialogItem(
                                 text = "No chapters available",
+                                icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                                iconTint = ActionColors.Season,
                                 enabled = false,
                                 onClick = {},
                             ),
@@ -745,6 +769,8 @@ private fun TvPlayerControlsOverlay(
                             val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
                             DialogItem(
                                 text = "${chapter.name ?: "Chapter"} • ${PlayerUtils.formatTime(startMs)}",
+                                icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                                iconTint = ActionColors.Season,
                                 onClick = {
                                     onUserInteraction()
                                     onSeekTo(startMs)
