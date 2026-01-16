@@ -1177,6 +1177,7 @@ class JellyfinClient(
     /**
      * Get collections tagged with "universe-collection".
      * Universe collections are BoxSets with a special tag for franchise groupings.
+     * Sorted by IndexNumber (Display Order) if set, falling back to SortName.
      */
     suspend fun getUniverseCollections(limit: Int = 50): Result<List<JellyfinItem>> {
         val key = CacheKeys.universeCollections(limit)
@@ -1186,7 +1187,7 @@ class JellyfinClient(
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
                 parameter("tags", "universe-collection")
-                parameter("sortBy", "SortName")
+                parameter("sortBy", "IndexNumber,SortName")
                 parameter("sortOrder", "Ascending")
                 parameter("recursive", true)
                 parameter("limit", limit)

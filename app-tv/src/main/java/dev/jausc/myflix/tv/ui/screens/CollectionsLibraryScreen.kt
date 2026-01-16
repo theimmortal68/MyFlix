@@ -22,10 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -34,11 +32,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -53,13 +46,11 @@ import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
-import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
 
 private const val COLUMNS = 7
 
@@ -86,22 +77,14 @@ fun CollectionsLibraryScreen(
 
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
-    val homeButtonFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
     var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    // Track which row is focused (for up navigation to show nav bar)
-    var focusedIndex by remember { mutableIntStateOf(0) }
 
     // Track focused item for dynamic background
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
     val gradientColors = rememberGradientColors(focusedImageUrl)
-
-    // Nav bar popup state
-    val navBarState = rememberNavBarPopupState()
 
     // Calculate available letters from items
     val availableLetters = remember(state.items) {
@@ -232,18 +215,7 @@ fun CollectionsLibraryScreen(
                             firstItemFocusRequester = firstItemFocusRequester,
                             alphabetFocusRequester = alphabetFocusRequester,
                             onCollectionClick = onCollectionClick,
-                            onUpNavigation = {
-                                navBarState.show()
-                                coroutineScope.launch {
-                                    try {
-                                        homeButtonFocusRequester.requestFocus()
-                                    } catch (_: Exception) {
-                                        // Ignore
-                                    }
-                                }
-                            },
-                            onItemFocused = { index, imageUrl ->
-                                focusedIndex = index
+                            onItemFocused = { _, imageUrl ->
                                 focusedImageUrl = imageUrl
                             },
                             modifier = Modifier.weight(1f),
@@ -268,21 +240,13 @@ fun CollectionsLibraryScreen(
             }
         }
 
-        // Top Navigation Bar Popup (overlay, auto-hides)
+        // Top Navigation Bar (always visible)
         TopNavigationBarPopup(
-            visible = navBarState.isVisible,
             selectedItem = NavItem.COLLECTIONS,
             onItemSelected = onNavigate,
-            onDismiss = {
-                navBarState.hide()
-                try {
-                    firstItemFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                    // Ignore focus errors
-                }
-            },
             showUniverses = showUniversesInNav,
-            homeButtonFocusRequester = homeButtonFocusRequester,
+            contentFocusRequester = firstItemFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
         )
     }
 }
@@ -295,29 +259,13 @@ private fun CollectionsGridContent(
     firstItemFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
     onCollectionClick: (String) -> Unit,
-    onUpNavigation: () -> Unit,
     onItemFocused: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Fixed(COLUMNS),
-        modifier = modifier
-            .fillMaxSize()
-            .onPreviewKeyEvent { keyEvent ->
-                // Show nav bar when pressing UP from first row
-                val firstVisibleIndex = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
-                val isAtTop = firstVisibleIndex < COLUMNS
-                if (keyEvent.type == KeyEventType.KeyDown &&
-                    keyEvent.key == Key.DirectionUp &&
-                    isAtTop
-                ) {
-                    onUpNavigation()
-                    true
-                } else {
-                    false
-                }
-            },
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

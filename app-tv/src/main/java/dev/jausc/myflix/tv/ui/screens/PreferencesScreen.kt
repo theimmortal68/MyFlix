@@ -59,10 +59,7 @@ import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvTextButton
-import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * Preferences/Settings screen with toggle options.
@@ -83,7 +80,6 @@ fun PreferencesScreen(
         { _, _, _ -> },
     showUniversesInNav: Boolean = false,
 ) {
-    val scope = rememberCoroutineScope()
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
 
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
@@ -106,11 +102,7 @@ fun PreferencesScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
-    val homeButtonFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
-
-    // Popup nav bar state - visible on load, auto-hides after 5 seconds
-    val navBarState = rememberNavBarPopupState()
 
     // Load available genres, collections, and libraries
     LaunchedEffect(Unit) {
@@ -194,33 +186,15 @@ fun PreferencesScreen(
                 showSeerrRecentRequests = showSeerrRecentRequests,
                 onShowSeerrRecentRequestsChanged = { preferences.setShowSeerrRecentRequests(it) },
                 contentFocusRequester = contentFocusRequester,
-                onShowNavBar = {
-                    navBarState.show()
-                    scope.launch {
-                        delay(150) // Wait for animation
-                        try {
-                            homeButtonFocusRequester.requestFocus()
-                        } catch (_: Exception) {
-                        }
-                    }
-                },
             )
         }
 
-        // Top Navigation Bar (popup overlay)
+        // Top Navigation Bar (always visible)
         TopNavigationBarPopup(
-            visible = navBarState.isVisible,
             selectedItem = selectedNavItem,
             onItemSelected = handleNavSelection,
-            onDismiss = {
-                navBarState.hide()
-                try {
-                    contentFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                }
-            },
             showUniverses = showUniversesInNav,
-            homeButtonFocusRequester = homeButtonFocusRequester,
+            contentFocusRequester = contentFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }
@@ -281,7 +255,6 @@ private fun PreferencesContent(
     showSeerrRecentRequests: Boolean,
     onShowSeerrRecentRequestsChanged: (Boolean) -> Unit,
     contentFocusRequester: FocusRequester,
-    onShowNavBar: () -> Unit,
 ) {
     val lazyListState = rememberLazyListState()
 
@@ -333,7 +306,6 @@ private fun PreferencesContent(
                         iconTint = if (showSeasonPremieres) Color(0xFF60A5FA) else TvColors.TextSecondary,
                         checked = showSeasonPremieres,
                         onCheckedChange = onShowSeasonPremieresChanged,
-                        onUpPressed = onShowNavBar,
                     )
                     PreferenceDivider()
                     ToggleWithEditItem(
@@ -484,7 +456,6 @@ private fun TogglePreferenceItem(
     iconTint: Color,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    onUpPressed: (() -> Unit)? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -496,18 +467,6 @@ private fun TogglePreferenceItem(
             )
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
-            .onPreviewKeyEvent { event ->
-                // Intercept UP key to show nav bar (for first preference item)
-                if (onUpPressed != null &&
-                    event.type == KeyEventType.KeyDown &&
-                    event.key == Key.DirectionUp
-                ) {
-                    onUpPressed()
-                    true
-                } else {
-                    false
-                }
-            }
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown &&
                     (event.key == Key.Enter || event.key == Key.DirectionCenter)

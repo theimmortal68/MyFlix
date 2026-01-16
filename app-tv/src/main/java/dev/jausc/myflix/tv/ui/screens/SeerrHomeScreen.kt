@@ -37,13 +37,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -116,10 +109,10 @@ import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
-import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -158,15 +151,11 @@ fun SeerrHomeScreen(
     onNavigateNetwork: (networkId: Int, networkName: String) -> Unit = { _, _ -> },
     showUniversesInNav: Boolean = false,
 ) {
-    // Coroutine scope for navigation actions
+    // Coroutine scope for async operations
     val coroutineScope = rememberCoroutineScope()
 
     // Focus requesters for navigation
-    val homeButtonFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
-
-    // Popup nav bar state - visible on load, auto-hides after 5 seconds
-    val navBarState = rememberNavBarPopupState()
 
     // Content state
     var isLoading by remember { mutableStateOf(true) }
@@ -386,26 +375,7 @@ fun SeerrHomeScreen(
                         state = lazyListState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .focusRequester(contentFocusRequester)
-                            .onPreviewKeyEvent { keyEvent ->
-                                // Only show nav bar when pressing UP from quick_actions row
-                                if (keyEvent.type == KeyEventType.KeyDown &&
-                                    keyEvent.key == Key.DirectionUp &&
-                                    quickActionsHasFocus
-                                ) {
-                                    navBarState.show()
-                                    coroutineScope.launch {
-                                        delay(150) // Wait for animation
-                                        try {
-                                            homeButtonFocusRequester.requestFocus()
-                                        } catch (_: Exception) {
-                                        }
-                                    }
-                                    true
-                                } else {
-                                    false
-                                }
-                            },
+                            .focusRequester(contentFocusRequester),
                         contentPadding = PaddingValues(top = 16.dp, bottom = 300.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
@@ -577,20 +547,12 @@ fun SeerrHomeScreen(
             }
         }
 
-        // Top Navigation Bar (popup overlay)
+        // Top Navigation Bar (always visible)
         TopNavigationBarPopup(
-            visible = navBarState.isVisible,
             selectedItem = NavItem.DISCOVER,
             onItemSelected = handleNavSelection,
-            onDismiss = {
-                navBarState.hide()
-                try {
-                    contentFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                }
-            },
             showUniverses = showUniversesInNav,
-            homeButtonFocusRequester = homeButtonFocusRequester,
+            contentFocusRequester = contentFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 

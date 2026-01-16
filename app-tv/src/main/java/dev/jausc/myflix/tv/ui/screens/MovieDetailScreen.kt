@@ -36,14 +36,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.model.directorNames
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -81,6 +87,8 @@ fun MovieDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onNavigate: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val movie = state.item ?: return
@@ -163,7 +171,19 @@ fun MovieDetailScreen(
                     },
                     onWatchedClick = onWatchedClick,
                     onFavoriteClick = onFavoriteClick,
-                    onMoreClick = { mediaInfoItem = movie },
+                    onMoreClick = {
+                        dialogParams = DialogParams(
+                            title = movie.name,
+                            items = listOf(
+                                DialogItem(
+                                    text = "Media Info",
+                                    icon = Icons.Outlined.Info,
+                                    iconTint = IconColors.MediaInfo,
+                                    onClick = { mediaInfoItem = movie },
+                                ),
+                            ),
+                        )
+                    },
                     buttonOnFocusChanged = {
                         if (it.isFocused) {
                             position = HEADER_ROW
@@ -380,6 +400,15 @@ fun MovieDetailScreen(
             }
             }
         }
+
+        // Top Navigation Bar (always visible)
+        TopNavigationBarPopup(
+            selectedItem = NavItem.MOVIES,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = playFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 
     // Context menu dialog

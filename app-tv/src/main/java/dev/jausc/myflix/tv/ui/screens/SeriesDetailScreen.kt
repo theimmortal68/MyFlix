@@ -35,19 +35,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
+import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -83,6 +90,8 @@ fun SeriesDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onNavigate: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val series = state.item ?: return
@@ -156,11 +165,11 @@ fun SeriesDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (50% height for 5 lines of description) - doesn't scroll
+            // Fixed hero section (55% height for 6 lines of description + badges) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.50f)
+                    .fillMaxHeight(0.55f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, description
@@ -191,9 +200,21 @@ fun SeriesDetailScreen(
                     },
                     onWatchedClick = onWatchedClick,
                     onFavoriteClick = onFavoriteClick,
-                    onMoreClick = { mediaInfoItem = series },
+                    onMoreClick = {
+                        dialogParams = DialogParams(
+                            title = series.name,
+                            items = listOf(
+                                DialogItem(
+                                    text = "Media Info",
+                                    icon = Icons.Outlined.Info,
+                                    iconTint = IconColors.MediaInfo,
+                                    onClick = { mediaInfoItem = series },
+                                ),
+                            ),
+                        )
+                    },
                     onTrailerClick = trailerAction,
-                    showMoreButton = false,
+                    showMoreButton = true,
                     buttonOnFocusChanged = {
                         if (it.isFocused) {
                             scope.launch {
@@ -488,6 +509,15 @@ fun SeriesDetailScreen(
             }
             }
         }
+
+        // Top Navigation Bar (always visible)
+        TopNavigationBarPopup(
+            selectedItem = NavItem.SHOWS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = playFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 
     // Context menu dialog
@@ -544,13 +574,18 @@ private fun SeriesDetailsHeader(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Description - allows 5 lines of text, uses full column width (50% of screen)
+        // Media badges: resolution, codec, HDR/DV, audio
+        MediaBadgesRow(item = series)
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Description - allows 6 lines of text, uses full column width (50% of screen)
         series.overview?.let { overview ->
             Text(
                 text = overview,
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                maxLines = 5,
+                maxLines = 6,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
             )

@@ -1,21 +1,11 @@
 @file:Suppress(
-    "LongMethod",
     "MagicNumber",
     "WildcardImport",
     "NoWildcardImports",
-    "LabeledExpression",
-    "ModifierMissing",
-    "ParameterNaming",
-    "ComposableParamOrder",
 )
 
 package dev.jausc.myflix.tv.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -25,15 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
@@ -42,163 +28,85 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.delay
 
 /**
- * Netflix-style top navigation bar that appears as a popup overlay.
- * - Visible on page load, auto-hides after 5 seconds
- * - Reappears when user navigates up from content
- * - Hides on item selection or down navigation
+ * Height of the navigation bar including padding.
+ * Use this constant to offset content below the nav bar.
+ */
+const val NAV_BAR_HEIGHT_DP = 44
+
+/**
+ * Always-visible Netflix-style top navigation bar.
+ * Settings icon on left, main nav centered, Search icon on right.
+ *
+ * @param selectedItem Currently selected navigation item
+ * @param onItemSelected Callback when a nav item is clicked
+ * @param modifier Modifier for the nav bar
+ * @param showUniverses Whether to show the Universes nav item
+ * @param contentFocusRequester FocusRequester for the main content below the nav bar
  */
 @Composable
 fun TopNavigationBarPopup(
-    visible: Boolean,
     selectedItem: NavItem,
     onItemSelected: (NavItem) -> Unit,
-    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     showUniverses: Boolean = false,
-    homeButtonFocusRequester: FocusRequester = remember { FocusRequester() },
+    contentFocusRequester: FocusRequester? = null,
 ) {
-    // Track if nav bar has been hidden once (for auto-focus behavior)
-    var hasBeenHiddenOnce by remember { mutableStateOf(false) }
-
-    // Focus Home button when popup reappears after being hidden
-    LaunchedEffect(visible) {
-        if (visible && hasBeenHiddenOnce) {
-            try {
-                homeButtonFocusRequester.requestFocus()
-            } catch (_: Exception) {
-            }
-        }
-        if (!visible) {
-            hasBeenHiddenOnce = true
-        }
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically { -it } + fadeIn(),
-        exit = slideOutVertically { -it } + fadeOut(),
-        modifier = modifier,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.6f),
-                            0.4f to Color.Black.copy(alpha = 0.5f),
-                            0.7f to Color.Black.copy(alpha = 0.3f),
-                            1.0f to Color.Transparent,
-                        ),
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(NAV_BAR_HEIGHT_DP.dp)
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.0f to Color.Black.copy(alpha = 0.7f),
+                        0.5f to Color.Black.copy(alpha = 0.5f),
+                        0.8f to Color.Black.copy(alpha = 0.3f),
+                        1.0f to Color.Transparent,
                     ),
-                )
-                .padding(horizontal = 24.dp)
-                .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown) {
-                        when (event.key) {
-                            Key.DirectionDown, Key.Back, Key.Escape -> {
-                                onDismiss()
-                                true
-                            }
-                            else -> {
-                                false
-                            }
-                        }
-                    } else {
-                        false
-                    }
-                },
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Settings
-            NavIconButton(
-                icon = Icons.Default.Settings,
-                contentDescription = "Settings",
-                isSelected = selectedItem == NavItem.SETTINGS,
-                onClick = {
-                    onItemSelected(NavItem.SETTINGS)
-                    onDismiss()
-                },
+                ),
             )
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Settings
+        NavIconButton(
+            icon = Icons.Default.Settings,
+            contentDescription = "Settings",
+            isSelected = selectedItem == NavItem.SETTINGS,
+            onClick = { onItemSelected(NavItem.SETTINGS) },
+            contentFocusRequester = contentFocusRequester,
+        )
 
-            // Main nav items: Home, TV Shows, Movies, Collections, Universes (if enabled), Discover
-            val navItems = buildList {
-                add(NavItem.HOME)
-                add(NavItem.SHOWS)
-                add(NavItem.MOVIES)
-                add(NavItem.COLLECTIONS)
-                if (showUniverses) add(NavItem.UNIVERSES)
-                add(NavItem.DISCOVER)
-            }
-            navItems.forEach { item ->
-                NavTabButton(
-                    item = item,
-                    isSelected = selectedItem == item,
-                    onClick = {
-                        onItemSelected(item)
-                        onDismiss()
-                    },
-                    focusRequester = if (item == NavItem.HOME) homeButtonFocusRequester else null,
-                )
-            }
-
-            // Search
-            NavIconButton(
-                icon = Icons.Default.Search,
-                contentDescription = "Search",
-                isSelected = selectedItem == NavItem.SEARCH,
-                onClick = {
-                    onItemSelected(NavItem.SEARCH)
-                    onDismiss()
-                },
+        // Main nav items: Home, TV Shows, Movies, Collections, Universes (if enabled), Discover
+        val navItems = buildList {
+            add(NavItem.HOME)
+            add(NavItem.SHOWS)
+            add(NavItem.MOVIES)
+            add(NavItem.COLLECTIONS)
+            if (showUniverses) add(NavItem.UNIVERSES)
+            add(NavItem.DISCOVER)
+        }
+        navItems.forEach { item ->
+            NavTabButton(
+                item = item,
+                isSelected = selectedItem == item,
+                onClick = { onItemSelected(item) },
+                contentFocusRequester = contentFocusRequester,
             )
         }
+
+        // Search
+        NavIconButton(
+            icon = Icons.Default.Search,
+            contentDescription = "Search",
+            isSelected = selectedItem == NavItem.SEARCH,
+            onClick = { onItemSelected(NavItem.SEARCH) },
+            contentFocusRequester = contentFocusRequester,
+        )
     }
-}
-
-/**
- * State holder for TopNavigationBarPopup.
- * Handles visibility and auto-hide timer.
- */
-class NavBarPopupState {
-    var isVisible by mutableStateOf(true)
-        private set
-
-    fun show() {
-        isVisible = true
-    }
-
-    fun hide() {
-        isVisible = false
-    }
-}
-
-/**
- * Remember and create a [NavBarPopupState] with appropriate auto-hide behavior.
- *
- * @param hasSeenNavBarTip Whether the user has dismissed the first-run tip.
- *   - `false` (first run): Nav bar stays visible (no auto-hide) while tip is shown.
- *   - `true` (subsequent launches): Nav bar auto-hides after 2 seconds.
- */
-@Composable
-fun rememberNavBarPopupState(hasSeenNavBarTip: Boolean = true): NavBarPopupState {
-    val state = remember { NavBarPopupState() }
-
-    // Auto-hide behavior depends on whether user has seen the tip
-    LaunchedEffect(hasSeenNavBarTip) {
-        if (hasSeenNavBarTip) {
-            // Subsequent launches: auto-hide after 2 seconds
-            delay(2000)
-            state.hide()
-        }
-        // First run (hasSeenNavBarTip = false): don't auto-hide, tip will trigger hide
-    }
-
-    return state
 }
 
 @Composable
@@ -208,10 +116,18 @@ private fun NavIconButton(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    contentFocusRequester: FocusRequester? = null,
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.size(20.dp),
+        modifier = modifier
+            .size(20.dp)
+            .focusProperties {
+                if (contentFocusRequester != null) {
+                    down = contentFocusRequester
+                }
+                up = FocusRequester.Cancel
+            },
         contentPadding = PaddingValues(0.dp),
         scale = ButtonDefaults.scale(
             scale = 1f,
@@ -245,19 +161,18 @@ private fun NavTabButton(
     item: NavItem,
     isSelected: Boolean,
     onClick: () -> Unit,
-    focusRequester: FocusRequester? = null,
+    contentFocusRequester: FocusRequester? = null,
 ) {
     Button(
         onClick = onClick,
         modifier = Modifier
             .height(20.dp)
-            .then(
-                if (focusRequester != null) {
-                    Modifier.focusRequester(focusRequester)
-                } else {
-                    Modifier
-                },
-            ),
+            .focusProperties {
+                if (contentFocusRequester != null) {
+                    down = contentFocusRequester
+                }
+                up = FocusRequester.Cancel
+            },
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
         scale = ButtonDefaults.scale(
             scale = 1f,

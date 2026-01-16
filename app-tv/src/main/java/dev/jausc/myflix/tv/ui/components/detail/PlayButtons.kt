@@ -63,6 +63,7 @@ object IconColors {
     val FavoriteFilled = Color(0xFFEF4444) // Red
     val More = Color(0xFF94A3B8) // Gray
     val Trailer = Color(0xFFFBBF24) // Yellow
+    val MediaInfo = Color(0xFF3B82F6) // Blue - for media information
 }
 
 /**

@@ -26,6 +26,8 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -36,6 +38,8 @@ fun PersonDetailScreen(
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
+    onNavigate: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -150,5 +154,13 @@ fun PersonDetailScreen(
                 }
             }
         }
+
+        // Top Navigation Bar (always visible)
+        TopNavigationBarPopup(
+            selectedItem = NavItem.HOME, // Persons are typically accessed from search or detail screens
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }

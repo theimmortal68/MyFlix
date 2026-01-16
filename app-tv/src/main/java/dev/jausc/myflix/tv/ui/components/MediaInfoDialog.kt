@@ -3,24 +3,26 @@
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -77,39 +79,33 @@ fun MediaInfoDialog(
                     containerColor = TvColors.Surface,
                 ),
             ) {
-                val scrollState = rememberScrollState()
-
-                // Scroll to top when dialog opens (prevents auto-scroll to focused button)
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(50)
-                    scrollState.animateScrollTo(0)
-                }
+                val listState = rememberLazyListState()
+                val closeFocusRequester = FocusRequester()
 
                 val generalSection = buildGeneralRows(item, mediaSource)
                 val videoSection = videoStream?.let { buildVideoRows(it) }
                 val audioSection = audioStream?.let { buildAudioRows(it) }
                 val subtitleSection = subtitleStream?.let { buildSubtitleRows(it) }
 
-                val leftSections = listOfNotNull(
-                    "General" to generalSection,
-                    videoSection?.let { "Video" to it },
-                )
-                val rightSections = listOfNotNull(
-                    audioSection?.let { "Audio" to it },
-                    subtitleSection?.let { "Subtitle" to it },
-                )
+                // Build list of sections for LazyColumn
+                val allSections = buildList {
+                    add("General" to generalSection)
+                    videoSection?.let { add("Video" to it) }
+                    audioSection?.let { add("Audio" to it) }
+                    subtitleSection?.let { add("Subtitle" to it) }
+                }
 
                 Column(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(24.dp),
                 ) {
+                    // Fixed header
                     Text(
                         text = "Media Information",
                         style = MaterialTheme.typography.titleLarge,
                         color = TvColors.TextPrimary,
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = item.name,
@@ -117,36 +113,50 @@ fun MediaInfoDialog(
                         color = TvColors.BluePrimary,
                     )
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            leftSections.forEach { (label, rows) ->
-                                MediaInfoSection(label = label, rows = rows)
-                            }
-                        }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            rightSections.forEach { (label, rows) ->
-                                MediaInfoSection(label = label, rows = rows)
-                            }
+                    // Scrollable content with focusable sections for D-pad navigation
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        items(
+                            items = allSections,
+                            key = { (label, _) -> label },
+                        ) { (label, rows) ->
+                            MediaInfoSection(
+                                label = label,
+                                rows = rows,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusable(),
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
+                    // Fixed footer with close button
                     Button(
                         onClick = onDismiss,
-                        modifier = Modifier.align(Alignment.End),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .focusRequester(closeFocusRequester),
                     ) {
                         Text("Close")
+                    }
+                }
+
+                // Focus the close button after a delay
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(100)
+                    try {
+                        closeFocusRequester.requestFocus()
+                    } catch (_: Exception) {
+                        // Focus request failed
                     }
                 }
             }
@@ -158,8 +168,12 @@ fun MediaInfoDialog(
 private fun MediaInfoSection(
     label: String,
     rows: List<Pair<String, String>>,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier,
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,

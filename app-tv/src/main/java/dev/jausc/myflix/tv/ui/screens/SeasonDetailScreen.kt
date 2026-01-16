@@ -62,6 +62,8 @@ import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -108,6 +110,8 @@ fun SeasonDetailScreen(
     onFavoriteClick: () -> Unit,
     onEpisodeWatchedToggle: (String, Boolean) -> Unit,
     onEpisodeFavoriteToggle: (String, Boolean) -> Unit,
+    onNavigate: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val series = state.item ?: return
@@ -613,6 +617,15 @@ fun SeasonDetailScreen(
             }
             }
         }
+
+        // Top Navigation Bar (always visible)
+        TopNavigationBarPopup(
+            selectedItem = NavItem.SHOWS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = playFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 
     // Context menu dialog

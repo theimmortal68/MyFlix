@@ -54,6 +54,8 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -79,6 +81,8 @@ fun CollectionDetailScreen(
     onItemClick: (String) -> Unit,
     onPlayClick: (String, Long?) -> Unit,
     onBack: () -> Unit,
+    onNavigate: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -287,6 +291,15 @@ fun CollectionDetailScreen(
                 }
             }
         }
+
+        // Top Navigation Bar (always visible)
+        TopNavigationBarPopup(
+            selectedItem = NavItem.COLLECTIONS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = shuffleFocusRequester,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 

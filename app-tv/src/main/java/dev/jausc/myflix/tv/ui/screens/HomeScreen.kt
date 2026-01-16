@@ -88,7 +88,6 @@ import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.ExitConfirmationDialog
-import dev.jausc.myflix.tv.ui.components.FirstRunTip
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
@@ -96,7 +95,6 @@ import dev.jausc.myflix.tv.ui.components.HomeDialogActions
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
-import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -157,7 +155,6 @@ fun HomeScreen(
     val showCollections by viewModel.showCollections.collectAsState()
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val showSeerrRecentRequests by viewModel.showSeerrRecentRequests.collectAsState()
-    val hasSeenNavBarTip by viewModel.hasSeenNavBarTip.collectAsState()
 
     // Navigation state
     var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
@@ -354,9 +351,6 @@ fun HomeScreen(
                         selectedNavItem = selectedNavItem,
                         onNavItemSelected = handleNavSelection,
                         showUniversesInNav = showUniversesInNav,
-                        // First-run tip
-                        hasSeenNavBarTip = hasSeenNavBarTip,
-                        onTipDismissed = { viewModel.setHasSeenNavBarTip() },
                     )
                 }
             }
@@ -442,16 +436,8 @@ private fun HomeContent(
     selectedNavItem: NavItem = NavItem.HOME,
     onNavItemSelected: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
-    // First-run tip
-    hasSeenNavBarTip: Boolean = true,
-    onTipDismissed: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
-
-    // Popup nav bar state - visible on load, auto-hides based on hasSeenNavBarTip
-    // First run: stays visible while tip is shown
-    // Subsequent launches: auto-hides after 2 seconds
-    val navBarState = rememberNavBarPopupState(hasSeenNavBarTip = hasSeenNavBarTip)
 
     // Filter watched items from Recently Added rows
     val filteredRecentEpisodes = if (hideWatchedFromRecent) {
@@ -674,18 +660,7 @@ private fun HomeContent(
                         onBackdropUrlChanged(backdropUrl)
                     },
                     onPreviewClear = clearPreviewAndScrollToTop,
-                    onUpPressed = {
-                        // Show nav bar and focus home button when UP is pressed on hero
-                        navBarState.show()
-                        coroutineScope.launch {
-                            delay(150) // Wait for animation
-                            try {
-                                homeButtonFocusRequester.requestFocus()
-                            } catch (_: Exception) {
-                            }
-                        }
-                    },
-                    navBarVisible = navBarState.isVisible,
+                    navBarVisible = true, // Nav bar is always visible
                 )
             }
 
@@ -764,37 +739,13 @@ private fun HomeContent(
             }
         } // End Column
 
-        // Layer 3: Top Navigation Bar (popup overlay)
+        // Layer 3: Top Navigation Bar (always visible)
         TopNavigationBarPopup(
-            visible = navBarState.isVisible,
             selectedItem = selectedNavItem,
             onItemSelected = onNavItemSelected,
-            onDismiss = {
-                navBarState.hide()
-                try {
-                    heroPlayFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                }
-            },
             showUniverses = showUniversesInNav,
-            homeButtonFocusRequester = homeButtonFocusRequester,
+            contentFocusRequester = heroPlayFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
-        )
-
-        // Layer 4: First-run tip (modal overlay, shown on first launch only)
-        FirstRunTip(
-            visible = !hasSeenNavBarTip,
-            onDismiss = {
-                // Mark tip as seen
-                onTipDismissed()
-                // Hide nav bar
-                navBarState.hide()
-                // Return focus to hero
-                try {
-                    heroPlayFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                }
-            },
         )
     }
 }

@@ -49,7 +49,6 @@ import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
-import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
@@ -76,9 +75,6 @@ fun LibraryScreen(
 
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
-
-    // Nav bar popup state (auto-hides after 5 seconds like HomeScreen)
-    val navBarState = rememberNavBarPopupState()
 
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
@@ -195,7 +191,6 @@ fun LibraryScreen(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .focusRequester(filterBarFocusRequester),
-                onUpNavigation = { navBarState.show() },
                 firstButtonFocusRequester = filterBarFirstButtonFocusRequester,
                 gridFocusRequester = firstItemFocusRequester,
                 alphabetFocusRequester = alphabetFocusRequester,
@@ -260,7 +255,6 @@ fun LibraryScreen(
                             filterBarFocusRequester = filterBarFirstButtonFocusRequester,
                             alphabetFocusRequester = alphabetFocusRequester,
                             onItemClick = onItemClick,
-                            onUpNavigation = { navBarState.show() },
                             onItemFocused = { _, imageUrl ->
                                 focusedImageUrl = imageUrl
                             },
@@ -287,23 +281,12 @@ fun LibraryScreen(
             }
         }
 
-        // Top Navigation Bar Popup (overlay, auto-hides)
+        // Top Navigation Bar (always visible)
         TopNavigationBarPopup(
-            visible = navBarState.isVisible,
             selectedItem = selectedNavItem,
             onItemSelected = onNavigate,
-            onDismiss = {
-                navBarState.hide()
-                try {
-                    filterBarFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                    try {
-                        firstItemFocusRequester.requestFocus()
-                    } catch (_: Exception) {
-                    }
-                }
-            },
             showUniverses = showUniversesInNav,
+            contentFocusRequester = filterBarFirstButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
@@ -321,7 +304,6 @@ private fun LibraryGridContent(
     filterBarFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
-    onUpNavigation: () -> Unit,
     onItemFocused: (JellyfinItem, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
