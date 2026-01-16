@@ -91,6 +91,16 @@ object CacheKeys {
     /** All collections */
     fun collections(limit: Int): String = "collections:$limit"
 
+    /** Collections with filtering/pagination (library-style view) */
+    fun collectionsFiltered(
+        limit: Int,
+        startIndex: Int,
+        sortBy: String,
+        sortOrder: String,
+        nameStartsWith: String?,
+        excludeUniverseCollections: Boolean,
+    ): String = "collectionsFiltered:$limit:$startIndex:$sortBy:$sortOrder:${nameStartsWith ?: ""}:$excludeUniverseCollections"
+
     /** Universe collections (tagged with "universe-collection") */
     fun universeCollections(limit: Int): String = "universeCollections:$limit"
 

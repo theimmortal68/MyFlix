@@ -53,9 +53,12 @@ import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+private const val COLUMNS = 7
+
 /**
  * Universe collections screen for browsing BoxSet collections tagged with "universe-collection".
  * These are franchise groupings like Marvel Universe, Star Wars Universe, etc.
+ * Library-style grid layout matching Collections screen.
  */
 @Composable
 fun UniverseCollectionsScreen(
@@ -78,7 +81,6 @@ fun UniverseCollectionsScreen(
 
     // Track which row is focused (for up navigation to show nav bar)
     var focusedIndex by remember { mutableIntStateOf(0) }
-    val columnsCount = 7  // Fixed 7 columns
 
     // Track focused item for dynamic background
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -89,7 +91,7 @@ fun UniverseCollectionsScreen(
 
     // Load universe collections (filtered by tag)
     LaunchedEffect(Unit) {
-        jellyfinClient.getUniverseCollections(limit = 100)
+        jellyfinClient.getUniverseCollections(limit = 200)
             .onSuccess {
                 collections = it
                 isLoading = false
@@ -104,7 +106,7 @@ fun UniverseCollectionsScreen(
     LaunchedEffect(isLoading, collections) {
         if (!isLoading && collections.isNotEmpty() && !didRequestInitialFocus) {
             didRequestInitialFocus = true
-            delay(300)
+            delay(100)
             try {
                 firstItemFocusRequester.requestFocus()
             } catch (_: Exception) {
@@ -125,7 +127,7 @@ fun UniverseCollectionsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 48.dp, vertical = 8.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -143,8 +145,6 @@ fun UniverseCollectionsScreen(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             // Content
             when {
@@ -188,21 +188,22 @@ fun UniverseCollectionsScreen(
                     }
                 }
                 else -> {
-                    // Grid of collections
+                    // Grid of collections (library-style layout)
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Fixed(columnsCount),
-                        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 8.dp),
+                        columns = GridCells.Fixed(COLUMNS),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier
                             .fillMaxSize()
                             .onPreviewKeyEvent { keyEvent ->
                                 // Show nav bar when pressing UP from first row
-                                val isFirstRow = focusedIndex < columnsCount
+                                val firstVisibleIndex = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
+                                val isAtTop = firstVisibleIndex < COLUMNS
                                 if (keyEvent.type == KeyEventType.KeyDown &&
                                     keyEvent.key == Key.DirectionUp &&
-                                    isFirstRow
+                                    isAtTop
                                 ) {
                                     navBarState.show()
                                     coroutineScope.launch {

@@ -221,14 +221,14 @@ fun SeasonDetailScreen(
                     upFocusRequester = playFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp, start = 48.dp, end = 48.dp),
+                        .padding(top = 6.dp, start = 48.dp, end = 48.dp),
                 )
 
                 // Hero content (left 50%) - title, subtitle, rating, description
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 36.dp),
+                        .padding(start = 48.dp, top = 40.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     SeasonHeroContent(

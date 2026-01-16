@@ -1130,6 +1130,51 @@ class JellyfinClient(
     }
 
     /**
+     * Get collections with pagination and filtering support (for library-style view).
+     * Supports alphabet navigation and sorting.
+     */
+    suspend fun getCollectionsFiltered(
+        limit: Int = 100,
+        startIndex: Int = 0,
+        sortBy: String = "SortName",
+        sortOrder: String = "Ascending",
+        nameStartsWith: String? = null,
+        excludeUniverseCollections: Boolean = false,
+    ): Result<ItemsResponse> {
+        val key = CacheKeys.collectionsFiltered(limit, startIndex, sortBy, sortOrder, nameStartsWith, excludeUniverseCollections)
+        getCached<ItemsResponse>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("includeItemTypes", "BoxSet")
+                parameter("sortBy", sortBy)
+                parameter("sortOrder", sortOrder)
+                parameter("recursive", true)
+                parameter("startIndex", startIndex)
+                parameter("limit", limit)
+                parameter("fields", Fields.CARD + ",Tags")
+                parameter("enableImageTypes", ImageTypes.HERO)
+                nameStartsWith?.let { parameter("nameStartsWith", it) }
+            }.body()
+            val items = if (excludeUniverseCollections) {
+                r.items.filter { item ->
+                    item.tags?.contains("universe-collection") != true
+                }
+            } else {
+                r.items
+            }
+            // Adjust total count if filtering client-side
+            val adjustedTotal = if (excludeUniverseCollections) {
+                // Approximate - actual count may differ on subsequent pages
+                r.totalRecordCount - (r.items.size - items.size)
+            } else {
+                r.totalRecordCount
+            }
+            ItemsResponse(items, adjustedTotal).also { putCache(key, it) }
+        }
+    }
+
+    /**
      * Get collections tagged with "universe-collection".
      * Universe collections are BoxSets with a special tag for franchise groupings.
      */

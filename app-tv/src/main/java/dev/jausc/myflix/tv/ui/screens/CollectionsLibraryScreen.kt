@@ -20,15 +20,18 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
@@ -38,7 +41,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -48,14 +51,21 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
+import dev.jausc.myflix.tv.ui.components.TvTextButton
+import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.rememberNavBarPopupState
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+
+private const val COLUMNS = 7
 
 /**
  * Collections library screen for browsing all BoxSet collections.
- * Simplified grid layout without filters - collections are pre-sorted by name.
+ * Library-style grid layout with alphabet navigation and pagination.
  */
 @Composable
 fun CollectionsLibraryScreen(
@@ -65,21 +75,26 @@ fun CollectionsLibraryScreen(
     excludeUniverseCollections: Boolean = false,
     showUniversesInNav: Boolean = false,
 ) {
-    // State
-    var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    // ViewModel with manual DI
+    val viewModel: CollectionsViewModel = viewModel(
+        key = "collections:$excludeUniverseCollections",
+        factory = CollectionsViewModel.Factory(jellyfinClient, excludeUniverseCollections),
+    )
+
+    // Collect UI state
+    val state by viewModel.uiState.collectAsState()
 
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
     val homeButtonFocusRequester = remember { FocusRequester() }
+    val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
+    var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // Track which row is focused (for up navigation to show nav bar)
     var focusedIndex by remember { mutableIntStateOf(0) }
-    val columnsCount = 7  // Fixed 7 columns
 
     // Track focused item for dynamic background
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -88,30 +103,47 @@ fun CollectionsLibraryScreen(
     // Nav bar popup state
     val navBarState = rememberNavBarPopupState()
 
-    // Load collections (excluding universe collections if enabled)
-    LaunchedEffect(excludeUniverseCollections) {
-        jellyfinClient.getCollections(limit = 100, excludeUniverseCollections = excludeUniverseCollections)
-            .onSuccess {
-                collections = it
-                isLoading = false
+    // Calculate available letters from items
+    val availableLetters = remember(state.items) {
+        state.items.mapNotNull { item ->
+            val firstChar = item.name.firstOrNull()?.uppercaseChar()
+            when {
+                firstChar == null -> null
+                firstChar.isLetter() -> firstChar
+                else -> '#'
             }
-            .onFailure {
-                error = it.message ?: "Failed to load collections"
-                isLoading = false
+        }.toSet()
+    }
+
+    // Pagination - load more when near end
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .filterNotNull()
+            .collectLatest { lastVisibleIndex ->
+                if (lastVisibleIndex >= state.items.lastIndex - 4 && state.canLoadMore) {
+                    viewModel.loadMore()
+                }
             }
     }
 
     // Focus on first item when loading completes
-    LaunchedEffect(isLoading, collections) {
-        if (!isLoading && collections.isNotEmpty() && !didRequestInitialFocus) {
-            didRequestInitialFocus = true
-            delay(300)
-            try {
-                firstItemFocusRequester.requestFocus()
-            } catch (_: Exception) {
-                // Focus request failed, ignore
+    LaunchedEffect(Unit) {
+        snapshotFlow { Triple(state.isLoading, state.items.isNotEmpty(), state.currentLetter) }
+            .collect { (isLoading, hasItems, currentLetter) ->
+                if (!isLoading && hasItems) {
+                    val shouldFocus = !didRequestInitialFocus || lastFocusedForLetter != currentLetter
+                    if (shouldFocus) {
+                        didRequestInitialFocus = true
+                        lastFocusedForLetter = currentLetter
+                        delay(100)
+                        try {
+                            firstItemFocusRequester.requestFocus()
+                        } catch (_: Exception) {
+                            // Focus request failed
+                        }
+                    }
+                }
             }
-        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -126,7 +158,7 @@ fun CollectionsLibraryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 48.dp, vertical = 8.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -136,20 +168,23 @@ fun CollectionsLibraryScreen(
                     color = TvColors.TextPrimary,
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                if (!isLoading && collections.isNotEmpty()) {
+                if (!state.isLoading) {
+                    val countText = if (state.currentLetter != null) {
+                        "${state.items.size} of ${state.totalRecordCount}"
+                    } else {
+                        "${state.totalRecordCount} collections"
+                    }
                     Text(
-                        text = "${collections.size} collections",
+                        text = countText,
                         style = MaterialTheme.typography.bodyMedium,
                         color = TvColors.TextSecondary,
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             // Content
             when {
-                isLoading -> {
+                state.isLoading && state.items.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -157,18 +192,25 @@ fun CollectionsLibraryScreen(
                         TvLoadingIndicator()
                     }
                 }
-                error != null -> {
+                state.error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = error ?: "Error loading collections",
-                            color = TvColors.Error,
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = state.error ?: "Error loading collections",
+                                color = TvColors.Error,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            TvTextButton(
+                                text = "Retry",
+                                onClick = { viewModel.refresh() },
+                            )
+                        }
                     }
                 }
-                collections.isEmpty() -> {
+                state.isEmpty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -181,75 +223,46 @@ fun CollectionsLibraryScreen(
                     }
                 }
                 else -> {
-                    // Grid of collections
-                    LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Fixed(columnsCount),
-                        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .onPreviewKeyEvent { keyEvent ->
-                                // Show nav bar when pressing UP from first row
-                                val isFirstRow = focusedIndex < columnsCount
-                                if (keyEvent.type == KeyEventType.KeyDown &&
-                                    keyEvent.key == Key.DirectionUp &&
-                                    isFirstRow
-                                ) {
-                                    navBarState.show()
-                                    coroutineScope.launch {
-                                        try {
-                                            homeButtonFocusRequester.requestFocus()
-                                        } catch (_: Exception) {
-                                            // Ignore focus errors
-                                        }
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Main grid content
+                        CollectionsGridContent(
+                            state = state,
+                            gridState = gridState,
+                            jellyfinClient = jellyfinClient,
+                            firstItemFocusRequester = firstItemFocusRequester,
+                            alphabetFocusRequester = alphabetFocusRequester,
+                            onCollectionClick = onCollectionClick,
+                            onUpNavigation = {
+                                navBarState.show()
+                                coroutineScope.launch {
+                                    try {
+                                        homeButtonFocusRequester.requestFocus()
+                                    } catch (_: Exception) {
+                                        // Ignore
                                     }
-                                    true
-                                } else {
-                                    false
                                 }
                             },
-                    ) {
-                        itemsIndexed(
-                            items = collections,
-                            key = { _, item -> item.id },
-                        ) { index, collection ->
-                            val isFirstItem = index == 0
-                            val imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                collection.id,
-                                collection.imageTags?.primary,
-                            )
-                            // Build label with item count
-                            val itemCount = collection.childCount ?: collection.recursiveItemCount
-                            val label = if (itemCount != null && itemCount > 0) {
-                                "${collection.name} • $itemCount items"
-                            } else {
-                                collection.name
-                            }
+                            onItemFocused = { index, imageUrl ->
+                                focusedIndex = index
+                                focusedImageUrl = imageUrl
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
 
-                            MediaCard(
-                                item = collection.copy(name = label),
-                                imageUrl = imageUrl,
-                                onClick = { onCollectionClick(collection.id) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(2f / 3f)
-                                    .then(
-                                        if (isFirstItem) {
-                                            Modifier.focusRequester(firstItemFocusRequester)
-                                        } else {
-                                            Modifier
-                                        },
-                                    )
-                                    .onFocusChanged { focusState ->
-                                        if (focusState.isFocused) {
-                                            focusedIndex = index
-                                            focusedImageUrl = imageUrl
-                                        }
-                                    },
-                            )
-                        }
+                        // Alphabet scroll bar on right edge
+                        AlphabetScrollBar(
+                            availableLetters = availableLetters,
+                            currentLetter = state.currentLetter,
+                            onLetterClick = { letter ->
+                                viewModel.jumpToLetter(letter)
+                            },
+                            onClearFilter = {
+                                viewModel.clearLetterFilter()
+                            },
+                            focusRequester = alphabetFocusRequester,
+                            gridFocusRequester = firstItemFocusRequester,
+                            modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        )
                     }
                 }
             }
@@ -271,5 +284,81 @@ fun CollectionsLibraryScreen(
             showUniverses = showUniversesInNav,
             homeButtonFocusRequester = homeButtonFocusRequester,
         )
+    }
+}
+
+@Composable
+private fun CollectionsGridContent(
+    state: CollectionsUiState,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    jellyfinClient: JellyfinClient,
+    firstItemFocusRequester: FocusRequester,
+    alphabetFocusRequester: FocusRequester,
+    onCollectionClick: (String) -> Unit,
+    onUpNavigation: () -> Unit,
+    onItemFocused: (Int, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Fixed(COLUMNS),
+        modifier = modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { keyEvent ->
+                // Show nav bar when pressing UP from first row
+                val firstVisibleIndex = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
+                val isAtTop = firstVisibleIndex < COLUMNS
+                if (keyEvent.type == KeyEventType.KeyDown &&
+                    keyEvent.key == Key.DirectionUp &&
+                    isAtTop
+                ) {
+                    onUpNavigation()
+                    true
+                } else {
+                    false
+                }
+            },
+        contentPadding = PaddingValues(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        itemsIndexed(state.items, key = { _, item -> item.id }) { index, collection ->
+            val isFirstItem = index == 0
+            val imageUrl = jellyfinClient.getPrimaryImageUrl(
+                collection.id,
+                collection.imageTags?.primary,
+            )
+
+            // Build label with item count
+            val itemCount = collection.childCount ?: collection.recursiveItemCount
+            val label = if (itemCount != null && itemCount > 0) {
+                "${collection.name} • $itemCount items"
+            } else {
+                collection.name
+            }
+
+            MediaCard(
+                item = collection.copy(name = label),
+                imageUrl = imageUrl,
+                onClick = { onCollectionClick(collection.id) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f)
+                    .then(
+                        if (isFirstItem) {
+                            Modifier
+                                .focusRequester(firstItemFocusRequester)
+                                .focusProperties { right = alphabetFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            onItemFocused(index, imageUrl)
+                        }
+                    },
+            )
+        }
     }
 }
