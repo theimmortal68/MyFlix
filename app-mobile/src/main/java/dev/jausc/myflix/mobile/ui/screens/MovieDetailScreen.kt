@@ -40,6 +40,7 @@ import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
+import dev.jausc.myflix.mobile.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons
 import dev.jausc.myflix.mobile.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
@@ -423,6 +424,12 @@ private fun MovieDetailsHeader(
         ) {
             // Quick details: year, runtime, "ends at", rating
             MovieQuickDetails(
+                item = movie,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+
+            // Media badges: resolution, codec, HDR/DV, audio
+            MediaBadgesRow(
                 item = movie,
                 modifier = Modifier.padding(bottom = 4.dp),
             )

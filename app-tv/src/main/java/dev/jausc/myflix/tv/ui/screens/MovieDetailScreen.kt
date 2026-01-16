@@ -52,6 +52,7 @@ import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
+import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
@@ -132,11 +133,11 @@ fun MovieDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (50% height for 5 lines of description) - doesn't scroll
+            // Fixed hero section (56% height for badge row + 7 lines of description) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.50f)
+                    .fillMaxHeight(0.56f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, genres, description
@@ -430,6 +431,11 @@ private fun MovieDetailsHeader(
 
         Spacer(modifier = Modifier.height(6.dp))
 
+        // Media badges: resolution, codec, HDR/DV, audio
+        MediaBadgesRow(item = movie)
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         // Genres
         if (!movie.genres.isNullOrEmpty()) {
             GenreText(genres = movie.genres!!)
@@ -447,13 +453,13 @@ private fun MovieDetailsHeader(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Description - allows 5 lines of text, uses full column width (50% of screen)
+        // Description - allows 7 lines of text, uses full column width (50% of screen)
         movie.overview?.let { overview ->
             Text(
                 text = overview,
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                maxLines = 5,
+                maxLines = 7,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
             )
