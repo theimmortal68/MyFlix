@@ -272,6 +272,8 @@ class LibraryViewModel(
                         val filteredItems = result.items.filterNot { item ->
                             // Filter out folders
                             item.type == "Folder" ||
+                                // Filter out collections (BoxSet) from movie/show libraries
+                                item.type == "BoxSet" ||
                                 // Filter out movies without media sources/images
                                 (item.isMovie &&
                                     item.mediaSources.isNullOrEmpty() &&
