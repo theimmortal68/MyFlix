@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
@@ -76,8 +77,11 @@ fun PreferencesScreen(
     onNavigateMovies: () -> Unit,
     onNavigateShows: () -> Unit,
     onNavigateDiscover: () -> Unit = {},
+    onNavigateCollections: () -> Unit = {},
+    onNavigateUniverses: () -> Unit = {},
     onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
         { _, _, _ -> },
+    showUniversesInNav: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
@@ -90,6 +94,7 @@ fun PreferencesScreen(
     val enabledGenres by preferences.enabledGenres.collectAsState()
     val showCollections by preferences.showCollections.collectAsState()
     val pinnedCollections by preferences.pinnedCollections.collectAsState()
+    val universesEnabled by preferences.universesEnabled.collectAsState()
     val showSuggestions by preferences.showSuggestions.collectAsState()
     val showSeerrRecentRequests by preferences.showSeerrRecentRequests.collectAsState()
 
@@ -145,8 +150,8 @@ fun PreferencesScreen(
                 } ?: onNavigateShows()
             }
             NavItem.DISCOVER -> { onNavigateDiscover() }
-            NavItem.COLLECTIONS -> { /* TODO: Navigate to collections */ }
-            NavItem.UNIVERSES -> { /* TODO: Placeholder for future feature */ }
+            NavItem.COLLECTIONS -> { onNavigateCollections() }
+            NavItem.UNIVERSES -> { onNavigateUniverses() }
             NavItem.SETTINGS -> { /* Already here */ }
         }
     }
@@ -182,6 +187,8 @@ fun PreferencesScreen(
                 pinnedCollections = pinnedCollections,
                 availableCollections = availableCollections,
                 onEditCollections = { showCollectionDialog = true },
+                universesEnabled = universesEnabled,
+                onUniversesEnabledChanged = { preferences.setUniversesEnabled(it) },
                 showSuggestions = showSuggestions,
                 onShowSuggestionsChanged = { preferences.setShowSuggestions(it) },
                 showSeerrRecentRequests = showSeerrRecentRequests,
@@ -212,6 +219,7 @@ fun PreferencesScreen(
                 } catch (_: Exception) {
                 }
             },
+            showUniverses = showUniversesInNav,
             homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
@@ -266,6 +274,8 @@ private fun PreferencesContent(
     pinnedCollections: List<String>,
     availableCollections: List<JellyfinItem>,
     onEditCollections: () -> Unit,
+    universesEnabled: Boolean,
+    onUniversesEnabledChanged: (Boolean) -> Unit,
     showSuggestions: Boolean,
     onShowSuggestionsChanged: (Boolean) -> Unit,
     showSeerrRecentRequests: Boolean,
@@ -346,6 +356,15 @@ private fun PreferencesContent(
                         onCheckedChange = onShowCollectionsChanged,
                         showEditButton = showCollections && availableCollections.isNotEmpty(),
                         onEditClick = onEditCollections,
+                    )
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "Universes",
+                        description = "Show universe collections in nav bar (franchises)",
+                        icon = Icons.Outlined.Public,
+                        iconTint = if (universesEnabled) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                        checked = universesEnabled,
+                        onCheckedChange = onUniversesEnabledChanged,
                     )
                     PreferenceDivider()
                     TogglePreferenceItem(

@@ -124,9 +124,12 @@ fun HomeScreen(
     onPlayClick: (String) -> Unit,
     onSearchClick: () -> Unit = {},
     onDiscoverClick: () -> Unit = {},
+    onCollectionsClick: () -> Unit = {},
+    onUniversesClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     seerrClient: SeerrClient? = null,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
+    showUniversesInNav: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -233,8 +236,8 @@ fun HomeScreen(
                     onLibraryClick(it.id, it.name, it.collectionType)
                 }
             NavItem.DISCOVER -> onDiscoverClick()
-            NavItem.COLLECTIONS -> Unit // TODO: Navigate to collections
-            NavItem.UNIVERSES -> Unit // TODO: Placeholder for future feature
+            NavItem.COLLECTIONS -> onCollectionsClick()
+            NavItem.UNIVERSES -> onUniversesClick()
             NavItem.SETTINGS -> onSettingsClick()
         }
     }
@@ -350,6 +353,7 @@ fun HomeScreen(
                         // Top navigation config
                         selectedNavItem = selectedNavItem,
                         onNavItemSelected = handleNavSelection,
+                        showUniversesInNav = showUniversesInNav,
                         // First-run tip
                         hasSeenNavBarTip = hasSeenNavBarTip,
                         onTipDismissed = { viewModel.setHasSeenNavBarTip() },
@@ -437,6 +441,7 @@ private fun HomeContent(
     // Top navigation
     selectedNavItem: NavItem = NavItem.HOME,
     onNavItemSelected: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
     // First-run tip
     hasSeenNavBarTip: Boolean = true,
     onTipDismissed: () -> Unit = {},
@@ -771,6 +776,7 @@ private fun HomeContent(
                 } catch (_: Exception) {
                 }
             },
+            showUniverses = showUniversesInNav,
             homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )

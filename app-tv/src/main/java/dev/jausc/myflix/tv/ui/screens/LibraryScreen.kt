@@ -66,6 +66,7 @@ fun LibraryScreen(
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onNavigate: (NavItem) -> Unit,
+    showUniversesInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
@@ -302,6 +303,7 @@ fun LibraryScreen(
                     }
                 }
             },
+            showUniverses = showUniversesInNav,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 

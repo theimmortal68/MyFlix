@@ -71,6 +71,7 @@ fun SearchScreen(
     onNavigateMovies: () -> Unit,
     onNavigateShows: () -> Unit,
     onNavigateSettings: () -> Unit,
+    showUniversesInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: SearchViewModel = viewModel(
@@ -272,7 +273,7 @@ fun SearchScreen(
                     NavItem.SHOWS -> onNavigateShows()
                     NavItem.SEARCH -> { /* Already here */ }
                     NavItem.SETTINGS -> onNavigateSettings()
-                    else -> { /* Collections/Universes not implemented */ }
+                    NavItem.COLLECTIONS, NavItem.UNIVERSES, NavItem.DISCOVER -> onNavigateHome()
                 }
             },
             onDismiss = {
@@ -282,6 +283,7 @@ fun SearchScreen(
                 } catch (_: Exception) {
                 }
             },
+            showUniverses = showUniversesInNav,
             homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )

@@ -93,6 +93,9 @@ object PreferenceKeys {
         /** Show recent requests row on Seerr home (Discover) */
         const val SHOW_SEERR_RECENT_REQUESTS = "show_seerr_recent_requests"
 
+        /** Enable Universe Collections feature (separate screen for universe-tagged collections) */
+        const val UNIVERSES_ENABLED = "universes_enabled"
+
         // Seerr integration preferences
         /** Whether Seerr integration is enabled */
         const val SEERR_ENABLED = "seerr_enabled"
@@ -158,6 +161,7 @@ object PreferenceKeys {
         const val SHOW_COLLECTIONS = true
         const val SHOW_SUGGESTIONS = true
         const val SHOW_SEERR_RECENT_REQUESTS = false
+        const val UNIVERSES_ENABLED = false
         const val SEERR_ENABLED = false
         const val SEERR_AUTO_DETECTED = false
         const val HAS_SEEN_NAV_BAR_TIP = false

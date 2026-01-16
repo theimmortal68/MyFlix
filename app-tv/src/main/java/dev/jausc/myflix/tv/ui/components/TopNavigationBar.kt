@@ -46,6 +46,7 @@ fun TopNavigationBar(
     selectedItem: NavItem,
     onItemSelected: (NavItem) -> Unit,
     modifier: Modifier = Modifier,
+    showUniverses: Boolean = false,
     firstItemFocusRequester: FocusRequester? = null,
     homeButtonFocusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
@@ -76,20 +77,21 @@ fun TopNavigationBar(
             modifier = Modifier.align(Alignment.CenterStart),
         )
 
-        // Center: Home, TV Shows, Movies, Collections, Universes, Discover
+        // Center: Home, TV Shows, Movies, Collections, Universes (if enabled), Discover
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.align(Alignment.Center),
         ) {
-            listOf(
-                NavItem.HOME,
-                NavItem.SHOWS,
-                NavItem.MOVIES,
-                NavItem.COLLECTIONS,
-                NavItem.UNIVERSES,
-                NavItem.DISCOVER,
-            ).forEach { item ->
+            val navItems = buildList {
+                add(NavItem.HOME)
+                add(NavItem.SHOWS)
+                add(NavItem.MOVIES)
+                add(NavItem.COLLECTIONS)
+                if (showUniverses) add(NavItem.UNIVERSES)
+                add(NavItem.DISCOVER)
+            }
+            navItems.forEach { item ->
                 NavTabButton(
                     item = item,
                     isSelected = selectedItem == item,

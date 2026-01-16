@@ -156,6 +156,7 @@ fun SeerrHomeScreen(
     onNavigateGenre: (mediaType: String, genreId: Int, genreName: String) -> Unit = { _, _, _ -> },
     onNavigateStudio: (studioId: Int, studioName: String) -> Unit = { _, _ -> },
     onNavigateNetwork: (networkId: Int, networkName: String) -> Unit = { _, _ -> },
+    showUniversesInNav: Boolean = false,
 ) {
     // Coroutine scope for navigation actions
     val coroutineScope = rememberCoroutineScope()
@@ -588,6 +589,7 @@ fun SeerrHomeScreen(
                 } catch (_: Exception) {
                 }
             },
+            showUniverses = showUniversesInNav,
             homeButtonFocusRequester = homeButtonFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )

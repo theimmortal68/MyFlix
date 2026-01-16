@@ -32,7 +32,10 @@ import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.tv.ui.screens.CollectionDetailScreen
+import dev.jausc.myflix.tv.ui.screens.CollectionsLibraryScreen
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
+import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
 import dev.jausc.myflix.tv.ui.screens.HomeScreen
 import dev.jausc.myflix.tv.ui.screens.LibraryScreen
 import dev.jausc.myflix.tv.ui.screens.LoginScreen
@@ -91,6 +94,7 @@ fun MyFlixTvApp() {
     val seerrUrl by tvPreferences.seerrUrl.collectAsState()
     val seerrApiKey by tvPreferences.seerrApiKey.collectAsState()
     val seerrSessionCookie by tvPreferences.seerrSessionCookie.collectAsState()
+    val universesEnabled by tvPreferences.universesEnabled.collectAsState()
 
     LaunchedEffect(Unit) {
         appState.initialize()
@@ -252,12 +256,19 @@ fun MyFlixTvApp() {
                     onDiscoverClick = {
                         navController.navigate("seerr")
                     },
+                    onCollectionsClick = {
+                        navController.navigate("collections")
+                    },
+                    onUniversesClick = {
+                        navController.navigate("universes")
+                    },
                     onSettingsClick = {
                         navController.navigate("settings")
                     },
                     onSeerrMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
+                    showUniversesInNav = universesEnabled,
                 )
             }
 
@@ -282,6 +293,7 @@ fun MyFlixTvApp() {
                     onNavigateSettings = {
                         navController.navigate("settings")
                     },
+                    showUniversesInNav = universesEnabled,
                 )
             }
 
@@ -306,11 +318,18 @@ fun MyFlixTvApp() {
                     onNavigateDiscover = {
                         navController.navigate("seerr")
                     },
+                    onNavigateCollections = {
+                        navController.navigate("collections")
+                    },
+                    onNavigateUniverses = {
+                        navController.navigate("universes")
+                    },
                     onNavigateLibrary = { libraryId, libraryName, collectionType ->
                         navController.navigate(
                             NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
                         )
                     },
+                    showUniversesInNav = universesEnabled,
                 )
             }
 
@@ -384,6 +403,7 @@ fun MyFlixTvApp() {
                             val encodedName = NavigationHelper.encodeNavArg(genreName)
                             navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
                         },
+                        showUniversesInNav = universesEnabled,
                     )
                 }
             }
@@ -688,11 +708,82 @@ fun MyFlixTvApp() {
                                 val targetType = if (navItem == NavItem.MOVIES) "movies" else "tvshows"
                                 navController.navigate("home")
                             }
-                            NavItem.COLLECTIONS, NavItem.UNIVERSES -> {
-                                navController.navigate("home")
+                            NavItem.COLLECTIONS -> {
+                                navController.navigate("collections")
+                            }
+                            NavItem.UNIVERSES -> {
+                                navController.navigate("universes")
                             }
                         }
                     },
+                    showUniversesInNav = universesEnabled,
+                )
+            }
+
+            // Collections routes
+            composable("collections") {
+                CollectionsLibraryScreen(
+                    jellyfinClient = jellyfinClient,
+                    onCollectionClick = { collectionId ->
+                        navController.navigate("collection/$collectionId")
+                    },
+                    onNavigate = { navItem ->
+                        when (navItem) {
+                            NavItem.HOME -> navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                            NavItem.SEARCH -> navController.navigate("search")
+                            NavItem.SETTINGS -> navController.navigate("settings")
+                            NavItem.DISCOVER -> navController.navigate("seerr")
+                            NavItem.MOVIES, NavItem.SHOWS -> navController.navigate("home")
+                            NavItem.COLLECTIONS -> { /* Already here */ }
+                            NavItem.UNIVERSES -> navController.navigate("universes")
+                        }
+                    },
+                    excludeUniverseCollections = universesEnabled,
+                    showUniversesInNav = universesEnabled,
+                )
+            }
+
+            composable(
+                route = "collection/{collectionId}",
+                arguments = listOf(navArgument("collectionId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val collectionId = backStackEntry.arguments?.getString("collectionId") ?: return@composable
+                CollectionDetailScreen(
+                    collectionId = collectionId,
+                    jellyfinClient = jellyfinClient,
+                    onItemClick = { itemId ->
+                        navController.navigate("detail/$itemId")
+                    },
+                    onPlayClick = { itemId, startPositionMs ->
+                        navController.navigate(NavigationHelper.buildPlayerRoute(itemId, startPositionMs))
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            // Universe collections route (tagged with "universe-collection")
+            composable("universes") {
+                UniverseCollectionsScreen(
+                    jellyfinClient = jellyfinClient,
+                    onCollectionClick = { collectionId ->
+                        navController.navigate("collection/$collectionId")
+                    },
+                    onNavigate = { navItem ->
+                        when (navItem) {
+                            NavItem.HOME -> navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                            NavItem.SEARCH -> navController.navigate("search")
+                            NavItem.SETTINGS -> navController.navigate("settings")
+                            NavItem.DISCOVER -> navController.navigate("seerr")
+                            NavItem.MOVIES, NavItem.SHOWS -> navController.navigate("home")
+                            NavItem.COLLECTIONS -> navController.navigate("collections")
+                            NavItem.UNIVERSES -> { /* Already here */ }
+                        }
+                    },
+                    showUniversesInNav = true,
                 )
             }
 

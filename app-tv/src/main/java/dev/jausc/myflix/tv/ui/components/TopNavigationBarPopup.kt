@@ -57,6 +57,7 @@ fun TopNavigationBarPopup(
     onItemSelected: (NavItem) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    showUniverses: Boolean = false,
     homeButtonFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     // Track if nav bar has been hidden once (for auto-focus behavior)
@@ -124,15 +125,16 @@ fun TopNavigationBarPopup(
                 },
             )
 
-            // Main nav items: Home, TV Shows, Movies, Collections, Universes, Discover
-            listOf(
-                NavItem.HOME,
-                NavItem.SHOWS,
-                NavItem.MOVIES,
-                NavItem.COLLECTIONS,
-                NavItem.UNIVERSES,
-                NavItem.DISCOVER,
-            ).forEach { item ->
+            // Main nav items: Home, TV Shows, Movies, Collections, Universes (if enabled), Discover
+            val navItems = buildList {
+                add(NavItem.HOME)
+                add(NavItem.SHOWS)
+                add(NavItem.MOVIES)
+                add(NavItem.COLLECTIONS)
+                if (showUniverses) add(NavItem.UNIVERSES)
+                add(NavItem.DISCOVER)
+            }
+            navItems.forEach { item ->
                 NavTabButton(
                     item = item,
                     isSelected = selectedItem == item,

@@ -740,6 +740,7 @@ class JellyfinClient(
         officialRatings: List<String>? = null,
         nameStartsWith: String? = null,
         includeItemTypes: List<String>? = null,
+        excludeItemTypes: List<String>? = null,
         seriesStatus: String? = null,
     ): Result<ItemsResponse> {
         // Build cache key including filter parameters
@@ -751,6 +752,7 @@ class JellyfinClient(
             officialRatings?.let { append("_o${it.hashCode()}") }
             nameStartsWith?.let { append("_l$it") }
             includeItemTypes?.let { append("_t${it.hashCode()}") }
+            excludeItemTypes?.let { append("_e${it.hashCode()}") }
             seriesStatus?.let { append("_s$it") }
         }
         val key = CacheKeys.library(libraryId, limit, startIndex, sortBy) + filterSuffix
@@ -806,6 +808,10 @@ class JellyfinClient(
                 // Filter by item types (e.g., "Movie" for movies, "Series" for TV shows)
                 includeItemTypes?.takeIf { it.isNotEmpty() }?.let {
                     parameter("IncludeItemTypes", it.joinToString(","))
+                }
+                // Exclude item types (e.g., "BoxSet" to hide collections from libraries)
+                excludeItemTypes?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("ExcludeItemTypes", it.joinToString(","))
                 }
                 // Filter by series status (Continuing, Ended) - TV shows only
                 seriesStatus?.let {
@@ -1091,14 +1097,50 @@ class JellyfinClient(
 
     /**
      * Get all collections (BoxSets) from the server.
+     *
+     * @param limit Maximum number of collections to return.
+     * @param excludeUniverseCollections If true, filters out collections tagged with "universe-collection".
      */
-    suspend fun getCollections(limit: Int = 50): Result<List<JellyfinItem>> {
-        val key = CacheKeys.collections(limit)
+    suspend fun getCollections(
+        limit: Int = 50,
+        excludeUniverseCollections: Boolean = false,
+    ): Result<List<JellyfinItem>> {
+        val key = CacheKeys.collections(limit) + if (excludeUniverseCollections) ":noUniverse" else ""
         getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
+                parameter("sortBy", "SortName")
+                parameter("sortOrder", "Ascending")
+                parameter("recursive", true)
+                parameter("limit", limit)
+                parameter("fields", Fields.CARD + ",Tags")
+                parameter("enableImageTypes", ImageTypes.HERO)
+            }.body()
+            val items = if (excludeUniverseCollections) {
+                r.items.filter { item ->
+                    item.tags?.contains("universe-collection") != true
+                }
+            } else {
+                r.items
+            }
+            items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get collections tagged with "universe-collection".
+     * Universe collections are BoxSets with a special tag for franchise groupings.
+     */
+    suspend fun getUniverseCollections(limit: Int = 50): Result<List<JellyfinItem>> {
+        val key = CacheKeys.universeCollections(limit)
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("includeItemTypes", "BoxSet")
+                parameter("tags", "universe-collection")
                 parameter("sortBy", "SortName")
                 parameter("sortOrder", "Ascending")
                 parameter("recursive", true)

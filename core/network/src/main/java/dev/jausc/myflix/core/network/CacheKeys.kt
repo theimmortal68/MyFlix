@@ -91,6 +91,9 @@ object CacheKeys {
     /** All collections */
     fun collections(limit: Int): String = "collections:$limit"
 
+    /** Universe collections (tagged with "universe-collection") */
+    fun universeCollections(limit: Int): String = "universeCollections:$limit"
+
     /** Items in a specific collection */
     fun collection(collectionId: String, limit: Int): String =
         "collection:$collectionId:$limit"

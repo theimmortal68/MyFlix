@@ -82,6 +82,11 @@ abstract class AppPreferences(context: Context) {
     }
     val showSeerrRecentRequests: StateFlow<Boolean> by lazy { _showSeerrRecentRequests.asStateFlow() }
 
+    private val _universesEnabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.UNIVERSES_ENABLED, PreferenceKeys.Defaults.UNIVERSES_ENABLED))
+    }
+    val universesEnabled: StateFlow<Boolean> by lazy { _universesEnabled.asStateFlow() }
+
     // Seerr Integration Preferences
     private val _seerrEnabled: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, PreferenceKeys.Defaults.SEERR_ENABLED))
@@ -207,6 +212,15 @@ abstract class AppPreferences(context: Context) {
     fun setShowSeerrRecentRequests(show: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_SEERR_RECENT_REQUESTS, show).apply()
         _showSeerrRecentRequests.value = show
+    }
+
+    /**
+     * Set whether Universe Collections feature is enabled.
+     * When enabled: shows Universes nav item, filters universe-tagged collections from Collections.
+     */
+    fun setUniversesEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.UNIVERSES_ENABLED, enabled).apply()
+        _universesEnabled.value = enabled
     }
 
     // Seerr setters
