@@ -236,6 +236,7 @@ private enum class BadgeType {
     HDR,
     AUDIO_CODEC,
     AUDIO_CHANNELS,
+    EDITION,
 }
 
 /**
@@ -253,6 +254,7 @@ private fun ColoredMediaBadge(
         BadgeType.HDR -> Color(0xFF9333EA) to Color.White             // Purple
         BadgeType.AUDIO_CODEC -> Color(0xFF0891B2) to Color.White     // Cyan
         BadgeType.AUDIO_CHANNELS -> Color(0xFF059669) to Color.White  // Green
+        BadgeType.EDITION -> Color(0xFFCA8A04) to Color.White         // Gold/Yellow
     }
 
     Box(
@@ -270,7 +272,7 @@ private fun ColoredMediaBadge(
 }
 
 /**
- * Row of colorful media badges showing resolution, HDR/DV, video codec, and audio info.
+ * Row of colorful media badges showing resolution, HDR/DV, video codec, audio info, and edition.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -284,8 +286,8 @@ fun MediaBadgesRow(
     val audioStream = mediaStreams.firstOrNull { it.type == "Audio" && it.isDefault }
         ?: mediaStreams.firstOrNull { it.type == "Audio" }
 
-    val badges = remember(mediaSource) {
-        buildMediaBadges(videoStream, audioStream)
+    val badges = remember(mediaSource, item.name, item.tags) {
+        buildMediaBadges(videoStream, audioStream, item.name, item.tags)
     }
 
     if (badges.isEmpty()) return
@@ -306,7 +308,14 @@ private data class MediaBadge(val text: String, val type: BadgeType)
 private fun buildMediaBadges(
     videoStream: MediaStream?,
     audioStream: MediaStream?,
+    itemName: String = "",
+    tags: List<String>? = null,
 ): List<MediaBadge> = buildList {
+    // Edition badge (Gold) - check name and tags for edition info
+    detectEdition(itemName, tags)?.let { edition ->
+        add(MediaBadge(edition, BadgeType.EDITION))
+    }
+
     // Resolution badge (Blue)
     videoStream?.let { video ->
         val width = video.width ?: 0
@@ -392,6 +401,62 @@ private fun buildMediaBadges(
                 add(MediaBadge("Stereo", BadgeType.AUDIO_CHANNELS))
         }
     }
+}
+
+/**
+ * Edition patterns to detect from item name or tags.
+ * Returns the display label for the edition, or null if no edition detected.
+ */
+private fun detectEdition(itemName: String, tags: List<String>?): String? {
+    val nameLower = itemName.lowercase()
+    val tagsLower = tags?.map { it.lowercase() }.orEmpty()
+
+    // Check both name and tags for edition patterns
+    // Order matters - more specific patterns first
+    val editionPatterns = listOf(
+        // Director's cuts and special cuts
+        listOf("director's cut", "directors cut", "director cut") to "Director's Cut",
+        listOf("final cut") to "Final Cut",
+        listOf("ultimate cut") to "Ultimate Cut",
+        listOf("theatrical cut", "theatrical") to "Theatrical",
+        listOf("producer's cut", "producers cut") to "Producer's Cut",
+        listOf("assembly cut") to "Assembly Cut",
+
+        // Extended versions
+        listOf("extended edition", "extended cut", "extended version", "extended") to "Extended",
+        listOf("unrated", "unrated edition", "unrated cut") to "Unrated",
+        listOf("uncut", "uncut edition") to "Uncut",
+
+        // Special editions
+        listOf("special edition") to "Special Edition",
+        listOf("collector's edition", "collectors edition") to "Collector's Edition",
+        listOf("anniversary edition", "anniversary") to "Anniversary",
+        listOf("criterion collection", "criterion") to "Criterion",
+        listOf("remastered", "remaster") to "Remastered",
+        listOf("restored", "4k restoration", "restoration") to "Restored",
+
+        // IMAX
+        listOf("imax enhanced") to "IMAX Enhanced",
+        listOf("imax edition", "imax") to "IMAX",
+
+        // 3D
+        listOf("3d") to "3D",
+
+        // Other
+        listOf("black and chrome", "black & chrome") to "Black & Chrome",
+        listOf("open matte") to "Open Matte",
+        listOf("superbit") to "Superbit",
+    )
+
+    for ((patterns, label) in editionPatterns) {
+        for (pattern in patterns) {
+            if (nameLower.contains(pattern) || tagsLower.any { it.contains(pattern) }) {
+                return label
+            }
+        }
+    }
+
+    return null
 }
 
 /**
