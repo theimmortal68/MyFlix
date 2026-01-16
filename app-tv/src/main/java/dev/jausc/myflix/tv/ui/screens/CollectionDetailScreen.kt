@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
@@ -53,11 +56,13 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+// Grid configuration
+private const val GRID_COLUMNS = 7
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
@@ -65,7 +70,7 @@ private const val ITEMS_ROW = HEADER_ROW + 1
 
 /**
  * Collection detail screen showing collection info and all items within it.
- * Plex-style hero layout with backdrop and horizontal item row.
+ * Plex-style hero layout with backdrop and 7-column grid of items.
  */
 @Composable
 fun CollectionDetailScreen(
@@ -238,60 +243,47 @@ fun CollectionDetailScreen(
                 )
             }
 
-            // Scrollable content rows (below fixed hero)
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                // Items in collection
-                if (items.isNotEmpty()) {
-                    item(key = "items") {
-                        ItemRow(
-                            title = "Items in Collection",
-                            items = items,
-                            onItemClick = { _, item ->
+            // Scrollable grid content (below fixed hero) - 7 columns wrapping
+            if (items.isNotEmpty()) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(GRID_COLUMNS),
+                    contentPadding = PaddingValues(horizontal = 48.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .focusRequester(focusRequesters[ITEMS_ROW]),
+                ) {
+                    itemsIndexed(
+                        items = items,
+                        key = { _, item -> item.id },
+                    ) { index, item ->
+                        MediaCard(
+                            item = item,
+                            imageUrl = jellyfinClient.getPrimaryImageUrl(
+                                item.id,
+                                item.imageTags?.primary,
+                            ),
+                            onClick = {
                                 position = ITEMS_ROW
                                 onItemClick(item.id)
                             },
-                            onItemLongClick = { _, _ ->
-                                position = ITEMS_ROW
-                                // TODO: Show item context menu
-                            },
-                            cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                                if (item != null) {
-                                    MediaCard(
-                                        item = item,
-                                        imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                            item.id,
-                                            item.imageTags?.primary,
-                                        ),
-                                        onClick = onClick,
-                                        onLongClick = onLongClick,
-                                        modifier = cardModifier,
-                                    )
-                                }
-                            },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(focusRequesters[ITEMS_ROW]),
+                                .aspectRatio(2f / 3f),
                         )
                     }
-                } else {
-                    item(key = "empty") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "No items in this collection",
-                                color = TvColors.TextSecondary,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
-                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "No items in this collection",
+                        color = TvColors.TextSecondary,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
             }
         }

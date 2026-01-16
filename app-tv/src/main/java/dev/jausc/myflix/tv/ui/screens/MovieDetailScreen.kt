@@ -133,11 +133,11 @@ fun MovieDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (56% height for badge row + 7 lines of description) - doesn't scroll
+            // Fixed hero section (65% height for badge row + 10 lines of description) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.56f)
+                    .fillMaxHeight(0.65f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, genres, description
@@ -453,13 +453,13 @@ private fun MovieDetailsHeader(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Description - allows 7 lines of text, uses full column width (50% of screen)
+        // Description - allows 10 lines of text, uses full column width (50% of screen)
         movie.overview?.let { overview ->
             Text(
                 text = overview,
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                maxLines = 7,
+                maxLines = 10,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
             )
