@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -74,6 +75,13 @@ fun MediaInfoDialog(
                 ),
             ) {
                 val scrollState = rememberScrollState()
+
+                // Scroll to top when dialog opens (prevents auto-scroll to focused button)
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(50)
+                    scrollState.animateScrollTo(0)
+                }
+
                 val generalSection = buildGeneralRows(item, mediaSource)
                 val videoSection = videoStream?.let { buildVideoRows(it) }
                 val audioSection = audioStream?.let { buildAudioRows(it) }
