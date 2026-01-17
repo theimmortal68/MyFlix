@@ -26,10 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.core.common.model.BadgeType
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.MediaStream
+import dev.jausc.myflix.core.common.util.MediaBadgeUtil
+import dev.jausc.myflix.core.common.util.MediaInfoUtil
+import dev.jausc.myflix.core.common.util.MediaInfoUtil.addRuntimeDetails
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
@@ -153,7 +155,7 @@ fun SeriesQuickDetails(
 
     val badges = remember(status, studios) {
         buildList {
-            status?.let { add(formatSeriesStatusBadge(it)) }
+            status?.let { add(MediaInfoUtil.formatSeriesStatusBadge(it)) }
             studios.firstOrNull()?.takeIf { it.isNotBlank() }?.let { add(it) }
         }
     }
@@ -209,29 +211,6 @@ private fun MetadataBadge(
     }
 }
 
-private fun formatSeriesStatusBadge(status: String): String {
-    val normalized = status.trim().lowercase()
-    return when {
-        normalized.contains("continuing") -> "Airing"
-        normalized.contains("returning") -> "Returning"
-        normalized.contains("ended") -> "Ended"
-        normalized.contains("canceled") || normalized.contains("cancelled") -> "Canceled"
-        else -> status.trim()
-    }
-}
-
-/**
- * Badge type for colorful media badges.
- */
-private enum class BadgeType {
-    RESOLUTION,
-    VIDEO_CODEC,
-    HDR,
-    AUDIO_CODEC,
-    AUDIO_CHANNELS,
-    EDITION,
-}
-
 /**
  * Colorful badge for media information.
  */
@@ -280,7 +259,7 @@ fun MediaBadgesRow(
         ?: mediaStreams.firstOrNull { it.type == "Audio" }
 
     val badges = remember(mediaSource, item.name, item.tags) {
-        buildMediaBadges(videoStream, audioStream, item.name, item.tags)
+        MediaBadgeUtil.buildMediaBadges(videoStream, audioStream, item.name, item.tags)
     }
 
     if (badges.isEmpty()) return
@@ -294,206 +273,4 @@ fun MediaBadgesRow(
             ColoredMediaBadge(text = text, type = type)
         }
     }
-}
-
-private data class MediaBadge(val text: String, val type: BadgeType)
-
-private fun buildMediaBadges(
-    videoStream: MediaStream?,
-    audioStream: MediaStream?,
-    itemName: String = "",
-    tags: List<String>? = null,
-): List<MediaBadge> = buildList {
-    // Edition badge (Gold) - check name and tags for edition info
-    detectEdition(itemName, tags)?.let { edition ->
-        add(MediaBadge(edition, BadgeType.EDITION))
-    }
-
-    // Resolution badge (Blue)
-    videoStream?.let { video ->
-        val width = video.width ?: 0
-        val height = video.height ?: 0
-        when {
-            width >= 3840 || height >= 2160 -> add(MediaBadge("4K", BadgeType.RESOLUTION))
-            height >= 1080 -> add(MediaBadge("1080p", BadgeType.RESOLUTION))
-            height >= 720 -> add(MediaBadge("720p", BadgeType.RESOLUTION))
-            height >= 480 -> add(MediaBadge("480p", BadgeType.RESOLUTION))
-        }
-    }
-
-    // Video codec badge (Orange)
-    videoStream?.codec?.let { codec ->
-        val codecUpper = codec.uppercase()
-        when {
-            codecUpper.contains("HEVC") || codecUpper.contains("H265") ->
-                add(MediaBadge("HEVC", BadgeType.VIDEO_CODEC))
-            codecUpper.contains("AV1") -> add(MediaBadge("AV1", BadgeType.VIDEO_CODEC))
-            codecUpper.contains("VP9") -> add(MediaBadge("VP9", BadgeType.VIDEO_CODEC))
-            codecUpper.contains("AVC") || codecUpper.contains("H264") ->
-                add(MediaBadge("H.264", BadgeType.VIDEO_CODEC))
-        }
-    }
-
-    // HDR/Dolby Vision badge (Purple)
-    videoStream?.let { video ->
-        val rangeType = video.videoRangeType?.lowercase() ?: ""
-        val range = video.videoRange?.lowercase() ?: ""
-        val profile = video.profile?.lowercase() ?: ""
-
-        when {
-            rangeType.contains("dolby") || rangeType.contains("dovi") ||
-                profile.contains("dvhe") || profile.contains("dvh1") ||
-                !video.videoDoViTitle.isNullOrBlank() ->
-                    add(MediaBadge("Dolby Vision", BadgeType.HDR))
-            rangeType.contains("hdr10+") || rangeType.contains("hdr10plus") ->
-                add(MediaBadge("HDR10+", BadgeType.HDR))
-            rangeType.contains("hdr10") -> add(MediaBadge("HDR10", BadgeType.HDR))
-            rangeType.contains("hlg") || range.contains("hlg") ->
-                add(MediaBadge("HLG", BadgeType.HDR))
-            rangeType.contains("hdr") || range.contains("hdr") ->
-                add(MediaBadge("HDR", BadgeType.HDR))
-        }
-    }
-
-    // Audio codec badge (Cyan)
-    audioStream?.let { audio ->
-        val codec = audio.codec?.uppercase() ?: ""
-        val title = audio.title?.lowercase() ?: ""
-        val displayTitle = audio.displayTitle?.lowercase() ?: ""
-
-        when {
-            title.contains("atmos") || displayTitle.contains("atmos") ->
-                add(MediaBadge("Atmos", BadgeType.AUDIO_CODEC))
-            codec.contains("TRUEHD") -> add(MediaBadge("TrueHD", BadgeType.AUDIO_CODEC))
-            title.contains("dts:x") || displayTitle.contains("dts:x") ||
-                title.contains("dts-x") || displayTitle.contains("dts-x") ->
-                    add(MediaBadge("DTS:X", BadgeType.AUDIO_CODEC))
-            codec.contains("DTS") && (title.contains("hd ma") || displayTitle.contains("hd ma") ||
-                title.contains("hd-ma") || displayTitle.contains("hd-ma")) ->
-                    add(MediaBadge("DTS-HD MA", BadgeType.AUDIO_CODEC))
-            codec.contains("DTS") -> add(MediaBadge("DTS", BadgeType.AUDIO_CODEC))
-            codec.contains("EAC3") || codec.contains("E-AC-3") ->
-                add(MediaBadge("EAC3", BadgeType.AUDIO_CODEC))
-            codec.contains("AC3") || codec.contains("AC-3") ->
-                add(MediaBadge("AC3", BadgeType.AUDIO_CODEC))
-            codec.contains("AAC") -> add(MediaBadge("AAC", BadgeType.AUDIO_CODEC))
-            codec.contains("FLAC") -> add(MediaBadge("FLAC", BadgeType.AUDIO_CODEC))
-        }
-    }
-
-    // Audio channels badge (Green)
-    audioStream?.let { audio ->
-        val channels = audio.channels
-        val layout = audio.channelLayout?.lowercase() ?: ""
-        when {
-            channels == 8 || layout.contains("7.1") ->
-                add(MediaBadge("7.1", BadgeType.AUDIO_CHANNELS))
-            channels == 6 || layout.contains("5.1") ->
-                add(MediaBadge("5.1", BadgeType.AUDIO_CHANNELS))
-            channels == 2 || layout.contains("stereo") ->
-                add(MediaBadge("Stereo", BadgeType.AUDIO_CHANNELS))
-        }
-    }
-}
-
-/**
- * Edition patterns to detect from item name or tags.
- * Returns the display label for the edition, or null if no edition detected.
- */
-private fun detectEdition(itemName: String, tags: List<String>?): String? {
-    val nameLower = itemName.lowercase()
-    val tagsLower = tags?.map { it.lowercase() }.orEmpty()
-
-    // Check both name and tags for edition patterns
-    // Order matters - more specific patterns first
-    val editionPatterns = listOf(
-        // Director's cuts and special cuts
-        listOf("director's cut", "directors cut", "director cut") to "Director's Cut",
-        listOf("final cut") to "Final Cut",
-        listOf("ultimate cut") to "Ultimate Cut",
-        listOf("theatrical cut", "theatrical") to "Theatrical",
-        listOf("producer's cut", "producers cut") to "Producer's Cut",
-        listOf("assembly cut") to "Assembly Cut",
-
-        // Extended versions
-        listOf("extended edition", "extended cut", "extended version", "extended") to "Extended",
-        listOf("unrated", "unrated edition", "unrated cut") to "Unrated",
-        listOf("uncut", "uncut edition") to "Uncut",
-
-        // Special editions
-        listOf("special edition") to "Special Edition",
-        listOf("collector's edition", "collectors edition") to "Collector's Edition",
-        listOf("anniversary edition", "anniversary") to "Anniversary",
-        listOf("criterion collection", "criterion") to "Criterion",
-        listOf("remastered", "remaster") to "Remastered",
-        listOf("restored", "4k restoration", "restoration") to "Restored",
-
-        // IMAX
-        listOf("imax enhanced") to "IMAX Enhanced",
-        listOf("imax edition", "imax") to "IMAX",
-
-        // 3D
-        listOf("3d") to "3D",
-
-        // Other
-        listOf("black and chrome", "black & chrome") to "Black & Chrome",
-        listOf("open matte") to "Open Matte",
-        listOf("superbit") to "Superbit",
-    )
-
-    for ((patterns, label) in editionPatterns) {
-        for (pattern in patterns) {
-            if (nameLower.contains(pattern) || tagsLower.any { it.contains(pattern) }) {
-                return label
-            }
-        }
-    }
-
-    return null
-}
-
-/**
- * Helper function to add runtime details to the list.
- */
-private fun MutableList<String>.addRuntimeDetails(
-    now: LocalDateTime,
-    item: JellyfinItem,
-) {
-    val runtimeTicks = item.runTimeTicks ?: return
-    val runtimeMinutes = (runtimeTicks / 600_000_000).toInt()
-    if (runtimeMinutes <= 0) return
-
-    // Format runtime as "1h 48m" or "48m"
-    val hours = runtimeMinutes / 60
-    val mins = runtimeMinutes % 60
-    val runtimeText = when {
-        hours > 0 && mins > 0 -> "${hours}h ${mins}m"
-        hours > 0 -> "${hours}h"
-        else -> "${mins}m"
-    }
-    add(runtimeText)
-
-    // Calculate remaining time if there's playback progress
-    val positionTicks = item.userData?.playbackPositionTicks ?: 0L
-    if (positionTicks > 0L) {
-        val remainingTicks = runtimeTicks - positionTicks
-        val remainingMinutes = (remainingTicks / 600_000_000).toInt()
-        if (remainingMinutes > 0) {
-            val remainingHours = remainingMinutes / 60
-            val remainingMins = remainingMinutes % 60
-            val remainingText = when {
-                remainingHours > 0 && remainingMins > 0 -> "${remainingHours}h ${remainingMins}m left"
-                remainingHours > 0 -> "${remainingHours}h left"
-                else -> "${remainingMins}m left"
-            }
-            add(remainingText)
-        }
-    }
-
-    // Calculate "ends at" time
-    val ticksToPlay = if (positionTicks > 0L) runtimeTicks - positionTicks else runtimeTicks
-    val secondsToPlay = ticksToPlay / 10_000_000
-    val endTime = now.plusSeconds(secondsToPlay)
-    val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
-    add("ends at ${endTime.format(timeFormatter)}")
 }
