@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -80,7 +81,7 @@ fun MediaInfoDialog(
                 ),
             ) {
                 val listState = rememberLazyListState()
-                val closeFocusRequester = FocusRequester()
+                val closeFocusRequester = remember { FocusRequester() }
 
                 val generalSection = buildGeneralRows(item, mediaSource)
                 val videoSection = videoStream?.let { buildVideoRows(it) }
