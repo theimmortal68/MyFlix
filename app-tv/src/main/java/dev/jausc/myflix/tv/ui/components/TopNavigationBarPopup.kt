@@ -6,11 +6,21 @@
 
 package dev.jausc.myflix.tv.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Hub
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Tv
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,9 +82,9 @@ fun TopNavigationBarPopup(
         verticalAlignment = Alignment.Top,
     ) {
         // Settings
-        NavIconButton(
-            icon = Icons.Default.Settings,
-            contentDescription = "Settings",
+        ExpandableNavButton(
+            text = "Settings",
+            icon = Icons.Outlined.Settings,
             isSelected = selectedItem == NavItem.SETTINGS,
             onClick = { onItemSelected(NavItem.SETTINGS) },
             contentFocusRequester = contentFocusRequester,
@@ -97,8 +107,19 @@ fun TopNavigationBarPopup(
             add(NavItem.DISCOVER)
         }
         navItems.forEach { item ->
-            NavTabButton(
-                item = item,
+            val (icon, title) = when (item) {
+                NavItem.HOME -> Icons.Outlined.Home to "Home"
+                NavItem.MOVIES -> Icons.Outlined.Movie to "Movies"
+                NavItem.SHOWS -> Icons.Outlined.Tv to "TV Shows"
+                NavItem.COLLECTIONS -> Icons.Outlined.VideoLibrary to "Collections"
+                NavItem.UNIVERSES -> Icons.Outlined.Hub to "Universes"
+                NavItem.DISCOVER -> Icons.Outlined.Explore to "Discover"
+                else -> Icons.Outlined.Home to "Home" // Fallback
+            }
+            
+            ExpandableNavButton(
+                text = title,
+                icon = icon,
                 isSelected = selectedItem == item,
                 onClick = { onItemSelected(item) },
                 contentFocusRequester = contentFocusRequester,
@@ -106,9 +127,9 @@ fun TopNavigationBarPopup(
         }
 
         // Search
-        NavIconButton(
-            icon = Icons.Default.Search,
-            contentDescription = "Search",
+        ExpandableNavButton(
+            text = "Search",
+            icon = Icons.Outlined.Search,
             isSelected = selectedItem == NavItem.SEARCH,
             onClick = { onItemSelected(NavItem.SEARCH) },
             contentFocusRequester = contentFocusRequester,
@@ -117,25 +138,29 @@ fun TopNavigationBarPopup(
 }
 
 @Composable
-private fun NavIconButton(
+private fun ExpandableNavButton(
+    text: String,
     icon: ImageVector,
-    contentDescription: String,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     contentFocusRequester: FocusRequester? = null,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
     Button(
         onClick = onClick,
         modifier = modifier
-            .size(20.dp)
+            .height(20.dp)
             .focusProperties {
                 if (contentFocusRequester != null) {
                     down = contentFocusRequester
                 }
                 up = FocusRequester.Cancel
             },
-        contentPadding = PaddingValues(0.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+        interactionSource = interactionSource,
         scale = ButtonDefaults.scale(
             scale = 1f,
             focusedScale = 1f,
@@ -157,62 +182,19 @@ private fun NavIconButton(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = contentDescription,
+            contentDescription = text,
             modifier = Modifier.size(14.dp),
         )
-    }
-}
-
-@Composable
-private fun NavTabButton(
-    item: NavItem,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    contentFocusRequester: FocusRequester? = null,
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .height(20.dp)
-            .focusProperties {
-                if (contentFocusRequester != null) {
-                    down = contentFocusRequester
-                }
-                up = FocusRequester.Cancel
-            },
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-        scale = ButtonDefaults.scale(
-            scale = 1f,
-            focusedScale = 1f,
-        ),
-        colors = ButtonDefaults.colors(
-            containerColor = if (isSelected) {
-                TvColors.BluePrimary.copy(alpha = 0.3f)
-            } else {
-                Color.Transparent
-            },
-            contentColor = if (isSelected) {
-                TvColors.BluePrimary
-            } else {
-                TvColors.TextPrimary.copy(alpha = 0.8f)
-            },
-            focusedContainerColor = TvColors.BluePrimary,
-            focusedContentColor = Color.White,
-        ),
-    ) {
-        Text(
-            text = when (item) {
-                NavItem.HOME -> "Home"
-                NavItem.MOVIES -> "Movies"
-                NavItem.SHOWS -> "TV Shows"
-                NavItem.SEARCH -> "Search"
-                NavItem.DISCOVER -> "Discover"
-                NavItem.SETTINGS -> "Settings"
-                NavItem.COLLECTIONS -> "Collections"
-                NavItem.UNIVERSES -> "Universes"
-            },
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-        )
+        AnimatedVisibility(visible = isFocused) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
