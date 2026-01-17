@@ -217,7 +217,9 @@ fun SeriesDetailScreen(
                         upFocusRequester = navBarFocusRequester,
                     )
 
-                    // Action buttons directly below description with no extra padding
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Action buttons directly below description
                     SeriesActionButtons(
                         watched = watched,
                         favorite = favorite,
@@ -255,7 +257,7 @@ fun SeriesDetailScreen(
                             }
                         },
                         playButtonFocusRequester = playFocusRequester,
-                        contentPadding = PaddingValues(top = 0.dp, bottom = 8.dp),
+                        contentPadding = PaddingValues(0.dp),
                         modifier = Modifier
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
@@ -265,6 +267,8 @@ fun SeriesDetailScreen(
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 
@@ -344,12 +348,10 @@ fun SeriesDetailScreen(
                                     onClick = onClick,
                                     onLongClick = onLongClick,
                                     modifier = cardModifier,
+                                    onItemFocused = { focusedItem ->
+                                        focusedSeason = focusedItem
+                                    }
                                 )
-                            }
-                        },
-                        cardOnFocus = { isFocused, index ->
-                            if (isFocused) {
-                                focusedSeason = state.seasons.getOrNull(index)
                             }
                         },
                         modifier = Modifier
