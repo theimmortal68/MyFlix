@@ -45,7 +45,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
-import dev.jausc.myflix.tv.ui.components.detail.IconColors
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
@@ -191,7 +191,7 @@ fun SeriesDetailScreen(
                     .fillMaxHeight(0.48f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Hero content (left 50%) - title, rating, description
+                // Hero content (left 50%) - title, rating, description + action buttons
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
@@ -216,57 +216,56 @@ fun SeriesDetailScreen(
                         downFocusRequester = playFocusRequester,
                         upFocusRequester = navBarFocusRequester,
                     )
-                }
 
-                // Action buttons fixed at bottom of hero section
-                SeriesActionButtons(
-                    watched = watched,
-                    favorite = favorite,
-                    onPlayClick = {
-                        position = HEADER_ROW
-                        onPlayClick()
-                    },
-                    onShuffleClick = {
-                        position = HEADER_ROW
-                        onShuffleClick()
-                    },
-                    onWatchedClick = onWatchedClick,
-                    onFavoriteClick = onFavoriteClick,
-                    onMoreClick = {
-                        dialogParams = DialogParams(
-                            title = series.name,
-                            items = listOf(
-                                DialogItem(
-                                    text = "Media Info",
-                                    icon = Icons.Outlined.Info,
-                                    iconTint = IconColors.MediaInfo,
-                                    onClick = { mediaInfoItem = series },
+                    // Action buttons directly below description with no extra padding
+                    SeriesActionButtons(
+                        watched = watched,
+                        favorite = favorite,
+                        onPlayClick = {
+                            position = HEADER_ROW
+                            onPlayClick()
+                        },
+                        onShuffleClick = {
+                            position = HEADER_ROW
+                            onShuffleClick()
+                        },
+                        onWatchedClick = onWatchedClick,
+                        onFavoriteClick = onFavoriteClick,
+                        onMoreClick = {
+                            dialogParams = DialogParams(
+                                title = series.name,
+                                items = listOf(
+                                    DialogItem(
+                                        text = "Media Info",
+                                        icon = Icons.Outlined.Info,
+                                        iconTint = IconColors.MediaInfo,
+                                        onClick = { mediaInfoItem = series },
+                                    ),
                                 ),
-                            ),
-                        )
-                    },
-                    onTrailerClick = trailerAction,
-                    showMoreButton = true,
-                    buttonOnFocusChanged = {
-                        if (it.isFocused) {
-                            scope.launch {
-                                bringIntoViewRequester.bringIntoView()
+                            )
+                        },
+                        onTrailerClick = trailerAction,
+                        showMoreButton = true,
+                        buttonOnFocusChanged = {
+                            if (it.isFocused) {
+                                scope.launch {
+                                    bringIntoViewRequester.bringIntoView()
+                                }
+                                focusedSeason = null // Reset to series info when focusing action buttons
                             }
-                            focusedSeason = null // Reset to series info when focusing action buttons
-                        }
-                    },
-                    playButtonFocusRequester = playFocusRequester,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 48.dp, bottom = 8.dp)
-                        .focusRequester(focusRequesters[HEADER_ROW])
-                        .focusProperties {
-                            down = focusRequesters[SEASONS_ROW]
-                            up = descriptionFocusRequester
-                        }
-                        .focusRestorer(playFocusRequester)
-                        .focusGroup(),
-                )
+                        },
+                        playButtonFocusRequester = playFocusRequester,
+                        contentPadding = PaddingValues(top = 0.dp, bottom = 8.dp),
+                        modifier = Modifier
+                            .focusRequester(focusRequesters[HEADER_ROW])
+                            .focusProperties {
+                                down = focusRequesters[SEASONS_ROW]
+                                up = descriptionFocusRequester
+                            }
+                            .focusRestorer(playFocusRequester)
+                            .focusGroup(),
+                    )
+                }
             }
 
             // Scrollable content rows (below fixed hero)
@@ -672,6 +671,7 @@ private fun SeriesDetailsHeader(
                         down = downFocusRequester
                         up = upFocusRequester
                     },
+                paddingValues = PaddingValues(0.dp)
             )
         }
     }

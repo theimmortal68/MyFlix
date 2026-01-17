@@ -7,6 +7,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +33,7 @@ import androidx.tv.material3.Text
  * Shows a focus highlight when focused for TV D-pad navigation.
  *
  * @param showFocusBackground If true, shows a background highlight when focused. Default is true.
+ * @param paddingValues Padding applied to the text within the focusable box. Defaults to 8.dp on all sides.
  */
 @Composable
 fun OverviewText(
@@ -43,6 +45,7 @@ fun OverviewText(
     textBoxHeight: Dp = maxLines * 20.dp,
     enabled: Boolean = true,
     showFocusBackground: Boolean = true,
+    paddingValues: PaddingValues = PaddingValues(8.dp),
 ) {
     val isFocused by interactionSource.collectIsFocusedAsState()
     val bgColor = if (isFocused && showFocusBackground) {
@@ -73,7 +76,7 @@ fun OverviewText(
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .padding(8.dp)
+                .padding(paddingValues)
                 .then(
                     if (textBoxHeight != Dp.Unspecified) {
                         Modifier.height(textBoxHeight)
