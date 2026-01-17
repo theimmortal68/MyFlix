@@ -183,11 +183,11 @@ fun SeriesDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (55% height for 6 lines of description + badges) - doesn't scroll
+            // Fixed hero section (48% height) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.55f)
+                    .fillMaxHeight(0.48f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, description
@@ -244,6 +244,7 @@ fun SeriesDetailScreen(
                             }
                         }
                     },
+                    playButtonFocusRequester = playFocusRequester,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 48.dp, bottom = 8.dp)
@@ -614,7 +615,7 @@ private fun SeriesDetailsHeader(
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Description - allows 4 lines of text, uses full column width (50% of screen)
         series.overview?.let { overview ->
