@@ -1,9 +1,12 @@
-package dev.jausc.myflix.mobile.ui.screens
+package dev.jausc.myflix.core.common.util
 
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import java.time.Instant
 import java.util.Locale
 
+/**
+ * Represents a categorized section of special features/extras.
+ */
 data class FeatureSection(
     val title: String,
     val items: List<JellyfinItem>,
@@ -14,6 +17,14 @@ private data class FeatureCategory(
     val keywords: List<String>,
 )
 
+/**
+ * Build categorized sections from a list of special features.
+ * Groups items into categories like Trailers, Teasers, Featurettes, etc.
+ *
+ * @param features List of special feature items
+ * @param excludedIds Set of item IDs to exclude (e.g., already-displayed trailer)
+ * @return List of categorized feature sections
+ */
 fun buildFeatureSections(
     features: List<JellyfinItem>,
     excludedIds: Set<String>,
@@ -60,9 +71,19 @@ fun buildFeatureSections(
     return sections
 }
 
+/**
+ * Check if an item is a trailer based on its name.
+ */
 fun isTrailerFeature(item: JellyfinItem): Boolean =
     item.name.contains("trailer", ignoreCase = true)
 
+/**
+ * Find the newest trailer from a list of special features.
+ * Prefers trailers with premiere dates, falls back to the last trailer in the list.
+ *
+ * @param features List of special feature items
+ * @return The newest trailer, or null if no trailers found
+ */
 fun findNewestTrailer(features: List<JellyfinItem>): JellyfinItem? {
     val trailers = features.filter { isTrailerFeature(it) }
     if (trailers.isEmpty()) return null
@@ -81,6 +102,13 @@ fun findNewestTrailer(features: List<JellyfinItem>): JellyfinItem? {
     }
 }
 
+/**
+ * Extract YouTube video key from various YouTube URL formats.
+ * Supports youtube.com/watch?v=, youtu.be/, and youtube.com/embed/ formats.
+ *
+ * @param url YouTube URL to parse
+ * @return Video key/ID, or null if not a valid YouTube URL
+ */
 fun extractYouTubeVideoKey(url: String?): String? {
     if (url.isNullOrBlank()) return null
     val patterns = listOf(

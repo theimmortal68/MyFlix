@@ -50,6 +50,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:player"))
     implementation(project(":core:seerr"))
+    implementation(project(":core:viewmodel"))
 
     val composeBom = platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}")
     implementation(composeBom)

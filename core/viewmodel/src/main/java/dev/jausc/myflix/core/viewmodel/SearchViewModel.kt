@@ -1,4 +1,4 @@
-package dev.jausc.myflix.tv.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -35,7 +35,7 @@ data class SearchUiState(
 }
 
 /**
- * ViewModel for the TV search screen.
+ * Shared ViewModel for search screens.
  * Manages search query, results, and loading state.
  */
 class SearchViewModel(

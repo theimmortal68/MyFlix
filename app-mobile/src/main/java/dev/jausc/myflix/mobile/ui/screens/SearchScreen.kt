@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.viewmodel.SearchViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
 
 @OptIn(ExperimentalMaterial3Api::class)

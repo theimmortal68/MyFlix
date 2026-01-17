@@ -1,4 +1,4 @@
-package dev.jausc.myflix.mobile.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -43,8 +43,8 @@ data class DetailUiState(
 }
 
 /**
- * ViewModel for the mobile detail screen.
- * Manages item details, seasons, and episodes loading.
+ * Shared ViewModel for detail screens.
+ * Manages item details, seasons, episodes, and related content loading.
  */
 class DetailViewModel(
     private val itemId: String,

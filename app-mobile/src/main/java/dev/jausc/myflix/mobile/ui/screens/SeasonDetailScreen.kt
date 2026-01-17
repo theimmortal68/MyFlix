@@ -39,6 +39,9 @@ import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.videoQualityLabel
+import dev.jausc.myflix.core.common.util.FeatureSection
+import dev.jausc.myflix.core.common.util.buildFeatureSections
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem

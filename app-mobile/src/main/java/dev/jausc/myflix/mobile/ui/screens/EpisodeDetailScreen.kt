@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.writers
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet

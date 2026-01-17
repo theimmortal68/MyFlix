@@ -1,4 +1,4 @@
-package dev.jausc.myflix.tv.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * UI state for person detail screens.
+ */
 data class PersonDetailUiState(
     val person: JellyfinItem? = null,
     val credits: List<JellyfinItem> = emptyList(),
@@ -18,6 +21,10 @@ data class PersonDetailUiState(
     val error: String? = null,
 )
 
+/**
+ * Shared ViewModel for person detail screens.
+ * Loads person information and their credits (movies/shows they appear in).
+ */
 class PersonDetailViewModel(
     private val personId: String,
     private val jellyfinClient: JellyfinClient,

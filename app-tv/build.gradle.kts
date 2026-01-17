@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:player"))
     implementation(project(":core:seerr"))
+    implementation(project(":core:viewmodel"))
 
     // Core Android
     implementation("androidx.core:core-ktx:1.17.0")

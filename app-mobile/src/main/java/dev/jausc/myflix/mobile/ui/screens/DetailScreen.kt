@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.jausc.myflix.core.viewmodel.DetailViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
 
 /**

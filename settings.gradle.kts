@@ -40,6 +40,7 @@ include(":core:network")
 include(":core:data")
 include(":core:player")
 include(":core:seerr")
+include(":core:viewmodel")
 
 // UI modules
 include(":ui:common")

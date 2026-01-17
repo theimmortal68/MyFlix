@@ -23,6 +23,11 @@ import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
+import dev.jausc.myflix.core.common.util.FeatureSection
+import dev.jausc.myflix.core.common.util.buildFeatureSections
+import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
+import dev.jausc.myflix.core.common.util.findNewestTrailer
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
