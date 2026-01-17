@@ -39,6 +39,7 @@ data class DetailUiState(
     val isSeries: Boolean get() = item?.type == "Series"
     val isMovie: Boolean get() = item?.type == "Movie"
     val isSeason: Boolean get() = item?.type == "Season"
+    val isEpisode: Boolean get() = item?.type == "Episode"
 }
 
 /**
