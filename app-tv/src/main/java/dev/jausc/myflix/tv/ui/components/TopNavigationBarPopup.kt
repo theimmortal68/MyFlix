@@ -68,7 +68,7 @@ fun TopNavigationBarPopup(
                     ),
                 ),
             )
-            .padding(horizontal = 24.dp, top = 8.dp),
+            .padding(start = 24.dp, top = 8.dp, end = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top,
     ) {
