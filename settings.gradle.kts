@@ -26,7 +26,7 @@ rootProject.name = "MyFlix"
 includeBuild("NewPipeExtractor") {
     dependencySubstitution {
         substitute(module("com.github.TeamNewPipe:NewPipeExtractor"))
-            .using(project(":NewPipeExtractor:extractor"))
+            .using(project(":extractor"))
     }
 }
 
