@@ -934,10 +934,10 @@ LazyVerticalGrid(
 
 ### Current Gaps
 
-> **Note:** Some screens silently ignore errors (e.g., HomeScreen shows empty rows on failure). Consider adding:
-> - Retry buttons for failed API calls
-> - Empty state with error message
-> - Global error boundary/handler
+ ## **Note:** Some screens silently ignore errors (e.g., HomeScreen shows empty rows on failure). Consider adding:
+ - Retry buttons for failed API calls
+ - Empty state with error message
+ - Global error boundary/handler
 
 ### Adding Error Handling to a Screen
 

@@ -78,6 +78,7 @@ fun CollectionsLibraryScreen(
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
     var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
@@ -214,6 +215,7 @@ fun CollectionsLibraryScreen(
                             jellyfinClient = jellyfinClient,
                             firstItemFocusRequester = firstItemFocusRequester,
                             alphabetFocusRequester = alphabetFocusRequester,
+                            navBarFocusRequester = navBarFocusRequester,
                             onCollectionClick = onCollectionClick,
                             onItemFocused = { _, imageUrl ->
                                 focusedImageUrl = imageUrl
@@ -246,6 +248,7 @@ fun CollectionsLibraryScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = firstItemFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }
@@ -258,6 +261,7 @@ private fun CollectionsGridContent(
     jellyfinClient: JellyfinClient,
     firstItemFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
+    navBarFocusRequester: FocusRequester,
     onCollectionClick: (String) -> Unit,
     onItemFocused: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -272,6 +276,7 @@ private fun CollectionsGridContent(
     ) {
         itemsIndexed(state.items, key = { _, item -> item.id }) { index, collection ->
             val isFirstItem = index == 0
+            val isFirstRow = index < COLUMNS
             val imageUrl = jellyfinClient.getPrimaryImageUrl(
                 collection.id,
                 collection.imageTags?.primary,
@@ -297,6 +302,13 @@ private fun CollectionsGridContent(
                             Modifier
                                 .focusRequester(firstItemFocusRequester)
                                 .focusProperties { right = alphabetFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .then(
+                        if (isFirstRow) {
+                            Modifier.focusProperties { up = navBarFocusRequester }
                         } else {
                             Modifier
                         },

@@ -46,3 +46,7 @@ Thumbs.db
 # Reference source code
 myflix-wholphin-main/
 references/
+
+# Node
+node_modules/
+package-lock.json

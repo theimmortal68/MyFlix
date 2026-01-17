@@ -97,6 +97,7 @@ fun CollectionDetailScreen(
     val focusRequesters = remember { List(ITEMS_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val shuffleFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
 
     // Load collection data
     LaunchedEffect(collectionId) {
@@ -241,6 +242,7 @@ fun CollectionDetailScreen(
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
                             down = focusRequesters[ITEMS_ROW]
+                            up = navBarFocusRequester
                         }
                         .focusRestorer(shuffleFocusRequester)
                         .focusGroup(),
@@ -298,6 +300,7 @@ fun CollectionDetailScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = shuffleFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }

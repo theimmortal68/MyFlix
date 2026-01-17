@@ -79,6 +79,7 @@ fun SearchScreen(
     var isTextFieldFocused by remember { mutableStateOf(false) }
     val searchFieldFocusRequester = remember { FocusRequester() }
     val resultsFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
 
     // Focus search field on entry
     LaunchedEffect(Unit) {
@@ -144,6 +145,10 @@ fun SearchScreen(
                                     event.type == KeyEventType.KeyDown &&
                                     state.results.isNotEmpty() -> {
                                     resultsFocusRequester.requestFocus()
+                                    true
+                                }
+                                event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
+                                    navBarFocusRequester.requestFocus()
                                     true
                                 }
                                 event.key == Key.Back && event.type == KeyEventType.KeyDown -> {
@@ -251,6 +256,7 @@ fun SearchScreen(
             },
             showUniverses = showUniversesInNav,
             contentFocusRequester = searchFieldFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     } // End Box

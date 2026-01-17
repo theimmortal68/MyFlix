@@ -52,6 +52,7 @@ fun TopNavigationBarPopup(
     modifier: Modifier = Modifier,
     showUniverses: Boolean = false,
     contentFocusRequester: FocusRequester? = null,
+    focusRequester: FocusRequester? = null,
 ) {
     Row(
         modifier = modifier
@@ -60,14 +61,14 @@ fun TopNavigationBarPopup(
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.0f to Color.Black.copy(alpha = 0.7f),
-                        0.5f to Color.Black.copy(alpha = 0.5f),
-                        0.8f to Color.Black.copy(alpha = 0.3f),
+                        0.0f to Color.Black.copy(alpha = 0.9f),
+                        0.5f to Color.Black.copy(alpha = 0.7f),
+                        0.8f to Color.Black.copy(alpha = 0.4f),
                         1.0f to Color.Transparent,
                     ),
                 ),
             )
-            .padding(horizontal = 24.dp, vertical = 8.dp),
+            .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -78,6 +79,13 @@ fun TopNavigationBarPopup(
             isSelected = selectedItem == NavItem.SETTINGS,
             onClick = { onItemSelected(NavItem.SETTINGS) },
             contentFocusRequester = contentFocusRequester,
+            modifier = Modifier.then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                },
+            ),
         )
 
         // Main nav items: Home, TV Shows, Movies, Collections, Universes (if enabled), Discover
@@ -142,7 +150,7 @@ private fun NavIconButton(
             contentColor = if (isSelected) {
                 TvColors.BluePrimary
             } else {
-                TvColors.TextSecondary
+                TvColors.TextPrimary.copy(alpha = 0.8f)
             },
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
@@ -187,7 +195,7 @@ private fun NavTabButton(
             contentColor = if (isSelected) {
                 TvColors.BluePrimary
             } else {
-                TvColors.TextSecondary
+                TvColors.TextPrimary.copy(alpha = 0.8f)
             },
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,

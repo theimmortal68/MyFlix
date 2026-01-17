@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +68,7 @@ fun UniverseCollectionsScreen(
 
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
@@ -218,6 +220,7 @@ fun UniverseCollectionsScreen(
                     key = { _, item -> item.id },
                 ) { index, collection ->
                     val isFirstItem = index == 0
+                    val isFirstRow = index < COLUMNS
                     val imageUrl = jellyfinClient.getPrimaryImageUrl(
                         collection.id,
                         collection.imageTags?.primary,
@@ -230,6 +233,13 @@ fun UniverseCollectionsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(2f / 3f)
+                            .then(
+                                if (isFirstRow) {
+                                    Modifier.focusProperties { up = navBarFocusRequester }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .then(
                                 if (isFirstItem) {
                                     Modifier.focusRequester(firstItemFocusRequester)
@@ -253,6 +263,7 @@ fun UniverseCollectionsScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = firstItemFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }

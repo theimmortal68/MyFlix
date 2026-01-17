@@ -81,6 +81,7 @@ fun LibraryScreen(
     val filterBarFocusRequester = remember { FocusRequester() }
     val filterBarFirstButtonFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
@@ -191,6 +192,7 @@ fun LibraryScreen(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .focusRequester(filterBarFocusRequester),
+                onUpNavigation = { navBarFocusRequester.requestFocus() },
                 firstButtonFocusRequester = filterBarFirstButtonFocusRequester,
                 gridFocusRequester = firstItemFocusRequester,
                 alphabetFocusRequester = alphabetFocusRequester,
@@ -287,6 +289,7 @@ fun LibraryScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = filterBarFirstButtonFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 

@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -156,6 +157,7 @@ fun SeerrHomeScreen(
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
 
     // Content state
     var isLoading by remember { mutableStateOf(true) }
@@ -389,17 +391,21 @@ fun SeerrHomeScreen(
                                     icon = Icons.Outlined.Search,
                                     text = "Search",
                                     onClick = onNavigateSeerrSearch,
-                                    modifier = Modifier.onFocusChanged {
-                                        quickActionsHasFocus = it.hasFocus
-                                    },
+                                    modifier = Modifier
+                                        .onFocusChanged {
+                                            quickActionsHasFocus = it.hasFocus
+                                        }
+                                        .focusProperties { up = navBarFocusRequester },
                                 )
                                 TvIconTextButton(
                                     icon = Icons.AutoMirrored.Outlined.FormatListBulleted,
                                     text = "Requests",
                                     onClick = onNavigateSeerrRequests,
-                                    modifier = Modifier.onFocusChanged {
-                                        quickActionsHasFocus = it.hasFocus
-                                    },
+                                    modifier = Modifier
+                                        .onFocusChanged {
+                                            quickActionsHasFocus = it.hasFocus
+                                        }
+                                        .focusProperties { up = navBarFocusRequester },
                                 )
                             }
                         }
@@ -553,6 +559,7 @@ fun SeerrHomeScreen(
             onItemSelected = handleNavSelection,
             showUniverses = showUniversesInNav,
             contentFocusRequester = contentFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
