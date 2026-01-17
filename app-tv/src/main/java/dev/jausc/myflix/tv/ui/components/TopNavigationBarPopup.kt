@@ -7,7 +7,6 @@
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
@@ -27,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +35,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -69,14 +68,6 @@ fun TopNavigationBarPopup(
         modifier = modifier
             .fillMaxWidth()
             .height(NAV_BAR_HEIGHT_DP.dp)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.8f),
-                        Color.Transparent,
-                    ),
-                ),
-            )
             .padding(start = 24.dp, top = 8.dp, end = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top,
@@ -85,6 +76,7 @@ fun TopNavigationBarPopup(
         ExpandableNavButton(
             text = "Settings",
             icon = Icons.Outlined.Settings,
+            iconTint = IconColors.NavSettings,
             isSelected = selectedItem == NavItem.SETTINGS,
             onClick = { onItemSelected(NavItem.SETTINGS) },
             contentFocusRequester = contentFocusRequester,
@@ -107,19 +99,20 @@ fun TopNavigationBarPopup(
             add(NavItem.DISCOVER)
         }
         navItems.forEach { item ->
-            val (icon, title) = when (item) {
-                NavItem.HOME -> Icons.Outlined.Home to "Home"
-                NavItem.MOVIES -> Icons.Outlined.Movie to "Movies"
-                NavItem.SHOWS -> Icons.Outlined.Tv to "TV Shows"
-                NavItem.COLLECTIONS -> Icons.Outlined.VideoLibrary to "Collections"
-                NavItem.UNIVERSES -> Icons.Outlined.Hub to "Universes"
-                NavItem.DISCOVER -> Icons.Outlined.Explore to "Discover"
-                else -> Icons.Outlined.Home to "Home" // Fallback
+            val (icon, title, tint) = when (item) {
+                NavItem.HOME -> Triple(Icons.Outlined.Home, "Home", IconColors.NavHome)
+                NavItem.MOVIES -> Triple(Icons.Outlined.Movie, "Movies", IconColors.NavMovies)
+                NavItem.SHOWS -> Triple(Icons.Outlined.Tv, "TV Shows", IconColors.NavShows)
+                NavItem.COLLECTIONS -> Triple(Icons.Outlined.VideoLibrary, "Collections", IconColors.NavCollections)
+                NavItem.UNIVERSES -> Triple(Icons.Outlined.Hub, "Universes", IconColors.NavUniverses)
+                NavItem.DISCOVER -> Triple(Icons.Outlined.Explore, "Discover", IconColors.NavDiscover)
+                else -> Triple(Icons.Outlined.Home, "Home", IconColors.NavHome) // Fallback
             }
             
             ExpandableNavButton(
                 text = title,
                 icon = icon,
+                iconTint = tint,
                 isSelected = selectedItem == item,
                 onClick = { onItemSelected(item) },
                 contentFocusRequester = contentFocusRequester,
@@ -130,6 +123,7 @@ fun TopNavigationBarPopup(
         ExpandableNavButton(
             text = "Search",
             icon = Icons.Outlined.Search,
+            iconTint = IconColors.NavSearch,
             isSelected = selectedItem == NavItem.SEARCH,
             onClick = { onItemSelected(NavItem.SEARCH) },
             contentFocusRequester = contentFocusRequester,
@@ -141,6 +135,7 @@ fun TopNavigationBarPopup(
 private fun ExpandableNavButton(
     text: String,
     icon: ImageVector,
+    iconTint: Color,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -169,7 +164,7 @@ private fun ExpandableNavButton(
             containerColor = if (isSelected) {
                 TvColors.BluePrimary.copy(alpha = 0.3f)
             } else {
-                Color.Transparent
+                TvColors.SurfaceElevated.copy(alpha = 0.8f)
             },
             contentColor = if (isSelected) {
                 TvColors.BluePrimary
@@ -184,6 +179,7 @@ private fun ExpandableNavButton(
             imageVector = icon,
             contentDescription = text,
             modifier = Modifier.size(14.dp),
+            tint = if (isFocused) Color.White else iconTint
         )
         AnimatedVisibility(visible = isFocused) {
             Row(verticalAlignment = Alignment.CenterVertically) {

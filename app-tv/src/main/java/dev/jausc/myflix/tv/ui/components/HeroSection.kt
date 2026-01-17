@@ -11,11 +11,14 @@
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.runtime.Composable
@@ -49,14 +53,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -75,6 +80,7 @@ import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.isUpcomingEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.R
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -512,11 +518,12 @@ private fun HeroActionButtons(
             },
     ) {
         // Play button - receives initial focus
-        // Same colors as nav buttons: SurfaceElevated unfocused, BluePrimary focused
-        Button(
+        ExpandableHeroButton(
+            text = "Play",
+            icon = Icons.Outlined.PlayArrow,
+            iconTint = IconColors.Play,
             onClick = onPlayClick,
             modifier = Modifier
-                .height(20.dp)
                 .focusRequester(playButtonFocusRequester)
                 .onFocusChanged { state ->
                     if (state.isFocused) {
@@ -531,36 +538,15 @@ private fun HeroActionButtons(
                         up = upFocusRequester
                     }
                 },
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-            scale = ButtonDefaults.scale(
-                scale = 1f,
-                focusedScale = 1f, // No scale change on focus
-            ),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                contentColor = TvColors.TextPrimary,
-                focusedContainerColor = TvColors.BluePrimary,
-                focusedContentColor = Color.White,
-            ),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.PlayArrow,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "Play",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        )
 
-        // More Info button - same colors as Play
-        Button(
+        // More Info button
+        ExpandableHeroButton(
+            text = "More Info",
+            icon = Icons.Outlined.Info,
+            iconTint = IconColors.Info,
             onClick = onDetailsClick,
             modifier = Modifier
-                .height(20.dp)
                 .onFocusChanged { state ->
                     if (state.isFocused) {
                         onButtonFocused?.invoke()
@@ -574,23 +560,53 @@ private fun HeroActionButtons(
                         up = upFocusRequester
                     }
                 },
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-            scale = ButtonDefaults.scale(
-                scale = 1f,
-                focusedScale = 1f, // No scale change on focus
-            ),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                contentColor = TvColors.TextPrimary,
-                focusedContainerColor = TvColors.BluePrimary,
-                focusedContentColor = Color.White,
-            ),
-        ) {
-            Text(
-                text = "More Info",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-            )
+        )
+    }
+}
+
+@Composable
+private fun ExpandableHeroButton(
+    text: String,
+    icon: ImageVector,
+    iconTint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(20.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+        interactionSource = interactionSource,
+        scale = ButtonDefaults.scale(
+            scale = 1f,
+            focusedScale = 1f, // No scale change on focus
+        ),
+        colors = ButtonDefaults.colors(
+            containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+            contentColor = TvColors.TextPrimary,
+            focusedContainerColor = TvColors.BluePrimary,
+            focusedContentColor = Color.White,
+        ),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = if (isFocused) Color.White else iconTint
+        )
+        AnimatedVisibility(visible = isFocused) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
