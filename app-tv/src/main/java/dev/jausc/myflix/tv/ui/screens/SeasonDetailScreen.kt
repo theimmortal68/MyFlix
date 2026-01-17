@@ -124,6 +124,7 @@ fun SeasonDetailScreen(
     val playFocusRequester = remember { FocusRequester() }
     val seasonTabFocusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
+    val navBarFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -222,7 +223,7 @@ fun SeasonDetailScreen(
                     },
                     firstTabFocusRequester = seasonTabFocusRequester,
                     downFocusRequester = focusRequesters[HEADER_ROW], // Go to action buttons, not episodes
-                    upFocusRequester = playFocusRequester,
+                    upFocusRequester = navBarFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 6.dp, start = 48.dp, end = 48.dp),
@@ -624,6 +625,7 @@ fun SeasonDetailScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = playFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }

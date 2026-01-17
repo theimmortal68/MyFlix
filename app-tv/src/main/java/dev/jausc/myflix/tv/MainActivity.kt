@@ -25,6 +25,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.jausc.myflix.core.common.LibraryFinder
+import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.ui.SplashScreen
+import dev.jausc.myflix.core.common.ui.SplashScreenTvConfig
+import dev.jausc.myflix.core.common.ui.SplashScreen
+import dev.jausc.myflix.core.common.ui.SplashScreenTvConfig
 import dev.jausc.myflix.core.common.ui.SplashScreen
 import dev.jausc.myflix.core.common.ui.SplashScreenTvConfig
 import dev.jausc.myflix.core.common.util.NavigationHelper
@@ -86,6 +92,7 @@ fun MyFlixTvApp() {
     var isLoggedIn by remember { mutableStateOf(false) }
     var splashFinished by remember { mutableStateOf(false) }
     var isSeerrAuthenticated by remember { mutableStateOf(false) }
+    var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
 
     // Collect preferences (only ones used outside HomeScreen)
     val useMpvPlayer by tvPreferences.useMpvPlayer.collectAsState()
@@ -123,6 +130,14 @@ fun MyFlixTvApp() {
         }
 
         isInitialized = true
+    }
+
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            jellyfinClient.getLibraries().onSuccess { libraries = it }
+        } else {
+            libraries = emptyList()
+        }
     }
 
     // Initialize SeerrClient with stored session cookie, API key, or Jellyfin credentials
@@ -194,6 +209,34 @@ fun MyFlixTvApp() {
     }
 
     val navController = rememberNavController()
+
+    // Centralized navigation handler
+    val handleNavigation: (NavItem) -> Unit = { navItem ->
+        when (navItem) {
+            NavItem.HOME -> navController.navigate("home") {
+                popUpTo("home") { inclusive = true }
+            }
+            NavItem.SEARCH -> navController.navigate("search")
+            NavItem.SETTINGS -> navController.navigate("settings")
+            NavItem.DISCOVER -> navController.navigate("seerr")
+            NavItem.MOVIES -> {
+                LibraryFinder.findMoviesLibrary(libraries)?.let {
+                    navController.navigate(
+                        NavigationHelper.buildLibraryRoute(it.id, it.name, it.collectionType)
+                    )
+                } ?: navController.navigate("home")
+            }
+            NavItem.SHOWS -> {
+                LibraryFinder.findShowsLibrary(libraries)?.let {
+                    navController.navigate(
+                        NavigationHelper.buildLibraryRoute(it.id, it.name, it.collectionType)
+                    )
+                } ?: navController.navigate("home")
+            }
+            NavItem.COLLECTIONS -> navController.navigate("collections")
+            NavItem.UNIVERSES -> navController.navigate("universes")
+        }
+    }
 
     // Navigate when BOTH splash animation completes AND initialization is done
     LaunchedEffect(splashFinished, isInitialized) {
@@ -279,20 +322,10 @@ fun MyFlixTvApp() {
                         navController.navigate("detail/$itemId")
                     },
                     onBack = { navController.popBackStack() },
-                    onNavigateHome = {
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    },
-                    onNavigateMovies = {
-                        navController.navigate("home")
-                    },
-                    onNavigateShows = {
-                        navController.navigate("home")
-                    },
-                    onNavigateSettings = {
-                        navController.navigate("settings")
-                    },
+                    onNavigateHome = { handleNavigation(NavItem.HOME) },
+                    onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
+                    onNavigateShows = { handleNavigation(NavItem.SHOWS) },
+                    onNavigateSettings = { handleNavigation(NavItem.SETTINGS) },
                     showUniversesInNav = universesEnabled,
                 )
             }
@@ -301,29 +334,13 @@ fun MyFlixTvApp() {
                 PreferencesScreen(
                     preferences = tvPreferences,
                     jellyfinClient = jellyfinClient,
-                    onNavigateHome = {
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    },
-                    onNavigateSearch = {
-                        navController.navigate("search")
-                    },
-                    onNavigateMovies = {
-                        navController.navigate("home")
-                    },
-                    onNavigateShows = {
-                        navController.navigate("home")
-                    },
-                    onNavigateDiscover = {
-                        navController.navigate("seerr")
-                    },
-                    onNavigateCollections = {
-                        navController.navigate("collections")
-                    },
-                    onNavigateUniverses = {
-                        navController.navigate("universes")
-                    },
+                    onNavigateHome = { handleNavigation(NavItem.HOME) },
+                    onNavigateSearch = { handleNavigation(NavItem.SEARCH) },
+                    onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
+                    onNavigateShows = { handleNavigation(NavItem.SHOWS) },
+                    onNavigateDiscover = { handleNavigation(NavItem.DISCOVER) },
+                    onNavigateCollections = { handleNavigation(NavItem.COLLECTIONS) },
+                    onNavigateUniverses = { handleNavigation(NavItem.UNIVERSES) },
                     onNavigateLibrary = { libraryId, libraryName, collectionType ->
                         navController.navigate(
                             NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
@@ -355,23 +372,11 @@ fun MyFlixTvApp() {
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
-                        onNavigateHome = {
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                        },
-                        onNavigateSearch = {
-                            navController.navigate("search")
-                        },
-                        onNavigateMovies = {
-                            navController.navigate("home")
-                        },
-                        onNavigateShows = {
-                            navController.navigate("home")
-                        },
-                        onNavigateSettings = {
-                            navController.navigate("settings")
-                        },
+                        onNavigateHome = { handleNavigation(NavItem.HOME) },
+                        onNavigateSearch = { handleNavigation(NavItem.SEARCH) },
+                        onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
+                        onNavigateShows = { handleNavigation(NavItem.SHOWS) },
+                        onNavigateSettings = { handleNavigation(NavItem.SETTINGS) },
                         jellyfinClient = jellyfinClient,
                         onNavigateLibrary = { libraryId, libraryName, collectionType ->
                             navController.navigate(
@@ -695,27 +700,7 @@ fun MyFlixTvApp() {
                     onPlayClick = { itemId ->
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                     },
-                    onNavigate = { navItem ->
-                        when (navItem) {
-                            NavItem.HOME -> navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                            NavItem.SEARCH -> navController.navigate("search")
-                            NavItem.SETTINGS -> navController.navigate("settings")
-                            NavItem.DISCOVER -> navController.navigate("seerr")
-                            NavItem.MOVIES, NavItem.SHOWS -> {
-                                // Navigate to the specific library
-                                val targetType = if (navItem == NavItem.MOVIES) "movies" else "tvshows"
-                                navController.navigate("home")
-                            }
-                            NavItem.COLLECTIONS -> {
-                                navController.navigate("collections")
-                            }
-                            NavItem.UNIVERSES -> {
-                                navController.navigate("universes")
-                            }
-                        }
-                    },
+                    onNavigate = handleNavigation,
                     showUniversesInNav = universesEnabled,
                 )
             }
@@ -727,19 +712,7 @@ fun MyFlixTvApp() {
                     onCollectionClick = { collectionId ->
                         navController.navigate("collection/$collectionId")
                     },
-                    onNavigate = { navItem ->
-                        when (navItem) {
-                            NavItem.HOME -> navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                            NavItem.SEARCH -> navController.navigate("search")
-                            NavItem.SETTINGS -> navController.navigate("settings")
-                            NavItem.DISCOVER -> navController.navigate("seerr")
-                            NavItem.MOVIES, NavItem.SHOWS -> navController.navigate("home")
-                            NavItem.COLLECTIONS -> { /* Already here */ }
-                            NavItem.UNIVERSES -> navController.navigate("universes")
-                        }
-                    },
+                    onNavigate = handleNavigation,
                     excludeUniverseCollections = universesEnabled,
                     showUniversesInNav = universesEnabled,
                 )
@@ -760,6 +733,8 @@ fun MyFlixTvApp() {
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId, startPositionMs))
                     },
                     onBack = { navController.popBackStack() },
+                    onNavigate = handleNavigation,
+                    showUniversesInNav = universesEnabled,
                 )
             }
 
@@ -770,19 +745,7 @@ fun MyFlixTvApp() {
                     onCollectionClick = { collectionId ->
                         navController.navigate("collection/$collectionId")
                     },
-                    onNavigate = { navItem ->
-                        when (navItem) {
-                            NavItem.HOME -> navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                            NavItem.SEARCH -> navController.navigate("search")
-                            NavItem.SETTINGS -> navController.navigate("settings")
-                            NavItem.DISCOVER -> navController.navigate("seerr")
-                            NavItem.MOVIES, NavItem.SHOWS -> navController.navigate("home")
-                            NavItem.COLLECTIONS -> navController.navigate("collections")
-                            NavItem.UNIVERSES -> { /* Already here */ }
-                        }
-                    },
+                    onNavigate = handleNavigation,
                     showUniversesInNav = true,
                 )
             }
@@ -826,6 +789,8 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = true }
                         }
                     },
+                    onNavigate = handleNavigation,
+                    showUniversesInNav = universesEnabled,
                 )
             }
 

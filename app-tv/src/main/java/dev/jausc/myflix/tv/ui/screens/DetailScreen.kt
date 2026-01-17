@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -31,6 +32,8 @@ fun DetailScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
     onNavigateToPerson: (String) -> Unit = {},
+    onNavigate: (NavItem) -> Unit = {},
+    showUniversesInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -76,6 +79,8 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    onNavigate = onNavigate,
+                    showUniversesInNav = showUniversesInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -112,6 +117,8 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    onNavigate = onNavigate,
+                    showUniversesInNav = showUniversesInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -151,6 +158,8 @@ fun DetailScreen(
                     onEpisodeFavoriteToggle = { episodeId, favorite ->
                         viewModel.setFavorite(episodeId, favorite)
                     },
+                    onNavigate = onNavigate,
+                    showUniversesInNav = showUniversesInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

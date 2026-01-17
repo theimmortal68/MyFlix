@@ -33,7 +33,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Height of the navigation bar including padding.
  * Use this constant to offset content below the nav bar.
  */
-const val NAV_BAR_HEIGHT_DP = 44
+const val NAV_BAR_HEIGHT_DP = 30
 
 /**
  * Always-visible Netflix-style top navigation bar.
@@ -44,6 +44,7 @@ const val NAV_BAR_HEIGHT_DP = 44
  * @param modifier Modifier for the nav bar
  * @param showUniverses Whether to show the Universes nav item
  * @param contentFocusRequester FocusRequester for the main content below the nav bar
+ * @param focusRequester FocusRequester for the navigation bar itself
  */
 @Composable
 fun TopNavigationBarPopup(
@@ -62,15 +63,14 @@ fun TopNavigationBarPopup(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.0f to Color.Black.copy(alpha = 0.9f),
-                        0.5f to Color.Black.copy(alpha = 0.7f),
-                        0.8f to Color.Black.copy(alpha = 0.4f),
+                        0.93f to Color.Black.copy(alpha = 0.9f),
                         1.0f to Color.Transparent,
                     ),
                 ),
             )
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp, top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         // Settings
         NavIconButton(

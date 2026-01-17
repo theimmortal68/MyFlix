@@ -98,6 +98,7 @@ fun MovieDetailScreen(
     var position by remember { mutableIntStateOf(0) }
     val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -198,6 +199,7 @@ fun MovieDetailScreen(
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
                             down = focusRequesters[CAST_ROW]
+                            up = navBarFocusRequester
                         }
                         .focusRestorer(playFocusRequester)
                         .focusGroup(),
@@ -407,6 +409,7 @@ fun MovieDetailScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = playFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }

@@ -102,6 +102,7 @@ fun SeriesDetailScreen(
     val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val playFocusRequester = remember { FocusRequester() }
+    val navBarFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -228,6 +229,7 @@ fun SeriesDetailScreen(
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
                             down = focusRequesters[SEASONS_ROW]
+                            up = navBarFocusRequester
                         }
                         .focusRestorer(playFocusRequester)
                         .focusGroup(),
@@ -516,6 +518,7 @@ fun SeriesDetailScreen(
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = playFocusRequester,
+            focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
     }
