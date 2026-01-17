@@ -1505,6 +1505,19 @@ class JellyfinClient(
         return "$baseUrl/Items/$personId/Images/Primary?$params"
     }
 
+    /**
+     * Get chapter image URL for chapter thumbnails.
+     * Chapter images are extracted from the video file at the chapter's position.
+     */
+    fun getChapterImageUrl(itemId: String, chapterIndex: Int, maxWidth: Int = 320): String {
+        val params = buildString {
+            append("maxWidth=$maxWidth")
+            append("&quality=90")
+            append("&format=Webp")
+        }
+        return "$baseUrl/Items/$itemId/Images/Chapter/$chapterIndex?$params"
+    }
+
     // ==================== Playback Reporting ====================
 
     private var currentPlaySessionId: String? = null

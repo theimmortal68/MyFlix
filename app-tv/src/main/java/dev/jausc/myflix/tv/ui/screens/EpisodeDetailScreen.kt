@@ -59,6 +59,7 @@ import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
+import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
@@ -77,7 +78,8 @@ import java.util.Locale
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
-private const val GUEST_STARS_ROW = HEADER_ROW + 1
+private const val CHAPTERS_ROW = HEADER_ROW + 1
+private const val GUEST_STARS_ROW = CHAPTERS_ROW + 1
 private const val CAST_ROW = GUEST_STARS_ROW + 1
 private const val CREW_ROW = CAST_ROW + 1
 private const val RECOMMENDED_ROW = CREW_ROW + 1
@@ -244,7 +246,7 @@ fun EpisodeDetailScreen(
                         .padding(start = 48.dp, bottom = 8.dp)
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
-                            down = focusRequesters[GUEST_STARS_ROW]
+                            down = focusRequesters[CHAPTERS_ROW]
                             up = descriptionFocusRequester
                         }
                         .focusRestorer(playFocusRequester)
@@ -258,6 +260,25 @@ fun EpisodeDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                // Chapters (first item beneath hero section)
+                if (!episode.chapters.isNullOrEmpty()) {
+                    item(key = "chapters") {
+                        ChaptersRow(
+                            chapters = episode.chapters!!,
+                            itemId = episode.id,
+                            getChapterImageUrl = { index ->
+                                jellyfinClient.getChapterImageUrl(episode.id, index)
+                            },
+                            onChapterClick = { positionMs ->
+                                onPlayClick(positionMs)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequesters[CHAPTERS_ROW]),
+                        )
+                    }
+                }
+
                 // Guest Stars
                 if (guestStars.isNotEmpty()) {
                     item(key = "guest_stars") {

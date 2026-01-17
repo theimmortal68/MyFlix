@@ -168,6 +168,29 @@ object PlayQueueManager {
     fun isQueueMode(): Boolean = _state.value.isQueueMode
 
     /**
+     * Add an item to the end of the current queue.
+     * If no queue exists, creates a new queue with this item.
+     *
+     * @param item The item to add to the queue
+     */
+    fun addItem(item: QueueItem) {
+        val current = _state.value
+        if (current.isEmpty) {
+            // No queue yet - create single item queue
+            _state.value = PlayQueueState(
+                items = listOf(item),
+                currentIndex = 0,
+                source = QueueSource.SINGLE,
+            )
+        } else {
+            // Add to existing queue
+            _state.value = current.copy(
+                items = current.items + item,
+            )
+        }
+    }
+
+    /**
      * Clear the queue and reset to empty state.
      */
     fun clear() {

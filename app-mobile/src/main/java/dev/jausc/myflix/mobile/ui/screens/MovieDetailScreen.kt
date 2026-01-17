@@ -34,6 +34,7 @@ import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
+import dev.jausc.myflix.mobile.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoItem
 import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinkItem
@@ -187,6 +188,23 @@ fun MovieDetailScreen(
                     onWatchedClick = onWatchedClick,
                     onFavoriteClick = onFavoriteClick,
                     onMoreClick = { mediaInfoItem = movie },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Chapters (first item beneath hero section)
+        if (!movie.chapters.isNullOrEmpty()) {
+            item(key = "chapters") {
+                ChaptersRow(
+                    chapters = movie.chapters!!,
+                    itemId = movie.id,
+                    getChapterImageUrl = { index ->
+                        jellyfinClient.getChapterImageUrl(movie.id, index)
+                    },
+                    onChapterClick = { positionMs ->
+                        onPlayClick(positionMs)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

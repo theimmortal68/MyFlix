@@ -175,4 +175,12 @@ class NavigationHelperTest {
         val route = NavigationHelper.buildSeerrCollectionRoute(999999999)
         assertEquals("seerr/collection/999999999", route)
     }
+
+    // ==================== buildDetailRoute Tests ====================
+
+    @Test
+    fun `buildDetailRoute creates correct route format`() {
+        val route = NavigationHelper.buildDetailRoute("item123")
+        assertEquals("detail/item123", route)
+    }
 }

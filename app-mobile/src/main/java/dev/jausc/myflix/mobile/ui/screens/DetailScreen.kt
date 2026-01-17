@@ -148,6 +148,24 @@ fun DetailScreen(
                 )
             }
 
+            state.isEpisode -> {
+                EpisodeDetailScreen(
+                    state = state,
+                    jellyfinClient = jellyfinClient,
+                    onPlayClick = { startPositionMs ->
+                        onPlayClick(itemId, startPositionMs)
+                    },
+                    onNavigateToDetail = onNavigateToDetail,
+                    onNavigateToPerson = onNavigateToPerson,
+                    onWatchedClick = {
+                        val played = state.item?.userData?.played == true
+                        viewModel.setItemPlayed(!played)
+                    },
+                    onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
             else -> {
                 // Unknown item type - show generic loading or error
                 Box(

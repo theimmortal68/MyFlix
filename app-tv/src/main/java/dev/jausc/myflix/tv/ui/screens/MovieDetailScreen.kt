@@ -54,6 +54,7 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
+import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
@@ -66,7 +67,8 @@ import kotlinx.coroutines.launch
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
-private const val CAST_ROW = HEADER_ROW + 1
+private const val CHAPTERS_ROW = HEADER_ROW + 1
+private const val CAST_ROW = CHAPTERS_ROW + 1
 private const val CREW_ROW = CAST_ROW + 1
 private const val EXTRAS_ROW = CREW_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
@@ -198,7 +200,7 @@ fun MovieDetailScreen(
                         .padding(start = 48.dp, bottom = 8.dp)
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
-                            down = focusRequesters[CAST_ROW]
+                            down = focusRequesters[CHAPTERS_ROW]
                             up = navBarFocusRequester
                         }
                         .focusRestorer(playFocusRequester)
@@ -212,6 +214,25 @@ fun MovieDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+            // Chapters (first item beneath hero section)
+            if (!movie.chapters.isNullOrEmpty()) {
+                item(key = "chapters") {
+                    ChaptersRow(
+                        chapters = movie.chapters!!,
+                        itemId = movie.id,
+                        getChapterImageUrl = { index ->
+                            jellyfinClient.getChapterImageUrl(movie.id, index)
+                        },
+                        onChapterClick = { positionMs ->
+                            onPlayClick(positionMs)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequesters[CHAPTERS_ROW]),
+                    )
+                }
+            }
+
             // Cast
             if (cast.isNotEmpty()) {
                 item(key = "people") {

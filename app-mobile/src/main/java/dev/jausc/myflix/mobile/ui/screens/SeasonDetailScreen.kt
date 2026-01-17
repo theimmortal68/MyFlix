@@ -190,96 +190,204 @@ fun SeasonDetailScreen(
                                 val isPlayed = episode.userData?.played == true
                                 onEpisodeWatchedToggle(episode.id, !isPlayed)
                             },
-                            onToggleFavorite = {
-                                val isFavorite = episode.userData?.isFavorite == true
-                                    onEpisodeFavoriteToggle(episode.id, !isFavorite)
-                                },
-                                onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
-                                onMediaInfo = { mediaInfoItem = episode },
-                                onPlayWithTranscoding = {
-                                    PlayQueueManager.setSingleItem(
-                                        itemId = episode.id,
-                                        title = episode.name,
-                                        episodeInfo = seasonLabel,
-                                        thumbnailItemId = episode.id,
-                                        subtitleStreamIndex = preferredSubtitleIndex,
-                                    )
-                                    onPlayItemClick(episode.id, null)
-                                },
-                            )
-                        },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // External links
-        if (externalLinks.isNotEmpty()) {
-            item(key = "links") {
-                ExternalLinksRow(
-                    title = "External Links",
-                    links = externalLinks,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // Next Up
-        state.nextUpEpisode?.let { nextUp ->
-            item(key = "next_up") {
-                ItemRow(
-                    title = "Next Up",
-                    items = listOf(nextUp),
-                    onItemClick = { _, item -> onPlayItemClick(item.id, null) },
-                    onItemLongClick = { _, _ ->
-                        // TODO: Show episode context menu
-                    },
-                    cardContent = { _, item, onClick, onLongClick ->
-                        if (item != null) {
-                            MobileWideMediaCard(
-                                item = item,
-                                imageUrl = jellyfinClient.getThumbUrl(
-                                    item.id,
-                                    item.imageTags?.thumb ?: item.imageTags?.primary,
-                                ),
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // Episodes row (selected season)
-        if (state.episodes.isNotEmpty()) {
-            item(key = "episodes") {
-                ItemRow(
-                    title = "Episodes",
-                    items = state.episodes,
-                    onItemClick = { _, episode -> onPlayItemClick(episode.id, null) },
-                    onItemLongClick = { _, _ ->
-                        // TODO: Show episode context menu
-                    },
-                    cardContent = { _, item, onClick, onLongClick ->
-                        if (item != null) {
-                            MobileWideMediaCard(
-                                item = item,
-                                imageUrl = jellyfinClient.getThumbUrl(
-                                    item.id,
-                                    item.imageTags?.thumb ?: item.imageTags?.primary,
-                                ),
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
+                                                            onToggleFavorite = {
+                                                                val isFavorite = episode.userData?.isFavorite == true
+                                                                onEpisodeFavoriteToggle(episode.id, !isFavorite)
+                                                            },
+                                                            onGoToEpisode = { onNavigateToDetail(episode.id) },
+                                                            onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                                                            onMediaInfo = { mediaInfoItem = episode },
+                                                            onPlayWithTranscoding = {
+                                                                PlayQueueManager.setSingleItem(
+                                                                    itemId = episode.id,
+                                                                    title = episode.name,
+                                                                    episodeInfo = seasonLabel,
+                                                                    thumbnailItemId = episode.id,
+                                                                    subtitleStreamIndex = preferredSubtitleIndex,
+                                                                )
+                                                                onPlayItemClick(episode.id, null)
+                                                            },
+                                                        )
+                                                    },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
+                            
+                                    // External links
+                                    if (externalLinks.isNotEmpty()) {
+                                        item(key = "links") {
+                                            ExternalLinksRow(
+                                                title = "External Links",
+                                                links = externalLinks,
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
+                            
+                                    // Next Up
+                                    state.nextUpEpisode?.let { nextUp ->
+                                        item(key = "next_up") {
+                                            ItemRow(
+                                                title = "Next Up",
+                                                items = listOf(nextUp),
+                                                onItemClick = { _, item -> onPlayItemClick(item.id, null) },
+                                                onItemLongClick = { _, item ->
+                                                    val seasonLabel = buildSeasonEpisodeLabel(item)
+                                                    popupMenuParams = buildEpisodeMenu(
+                                                        title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
+                                                            .joinToString(" - "),
+                                                        subtitle = item.name,
+                                                        episode = item,
+                                                        onPlay = {
+                                                            PlayQueueManager.setSingleItem(
+                                                                itemId = item.id,
+                                                                title = item.name,
+                                                                episodeInfo = seasonLabel,
+                                                                thumbnailItemId = item.id,
+                                                                subtitleStreamIndex = preferredSubtitleIndex,
+                                                            )
+                                                            onPlayItemClick(item.id, null)
+                                                        },
+                                                        onChooseSubtitles = {
+                                                            subtitleMenuParams = buildSubtitleMenu(
+                                                                episode = item,
+                                                                selectedIndex = preferredSubtitleIndex,
+                                                                onSelect = { index -> preferredSubtitleIndex = index },
+                                                            )
+                                                        },
+                                                        onAddToPlaylist = {
+                                                            PlayQueueManager.addItem(
+                                                                QueueItem(
+                                                                    itemId = item.id,
+                                                                    title = item.name,
+                                                                    episodeInfo = seasonLabel,
+                                                                    thumbnailItemId = item.id,
+                                                                ),
+                                                            )
+                                                        },
+                                                        onToggleWatched = {
+                                                            val isPlayed = item.userData?.played == true
+                                                            onEpisodeWatchedToggle(item.id, !isPlayed)
+                                                        },
+                                                        onToggleFavorite = {
+                                                            val isFavorite = item.userData?.isFavorite == true
+                                                            onEpisodeFavoriteToggle(item.id, !isFavorite)
+                                                        },
+                                                        onGoToEpisode = { onNavigateToDetail(item.id) },
+                                                        onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                                                        onMediaInfo = { mediaInfoItem = item },
+                                                        onPlayWithTranscoding = {
+                                                            PlayQueueManager.setSingleItem(
+                                                                itemId = item.id,
+                                                                title = item.name,
+                                                                episodeInfo = seasonLabel,
+                                                                thumbnailItemId = item.id,
+                                                                subtitleStreamIndex = preferredSubtitleIndex,
+                                                            )
+                                                            onPlayItemClick(item.id, null)
+                                                        },
+                                                    )
+                                                },
+                                                cardContent = { _, item, onClick, onLongClick ->
+                                                    if (item != null) {
+                                                        MobileWideMediaCard(
+                                                            item = item,
+                                                            imageUrl = jellyfinClient.getThumbUrl(
+                                                                item.id,
+                                                                item.imageTags?.thumb ?: item.imageTags?.primary,
+                                                            ),
+                                                            onClick = onClick,
+                                                            onLongClick = onLongClick,
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
+                            
+                                    // Episodes row (selected season)
+                                    if (state.episodes.isNotEmpty()) {
+                                        item(key = "episodes") {
+                                            ItemRow(
+                                                title = "Episodes",
+                                                items = state.episodes,
+                                                onItemClick = { _, episode -> onPlayItemClick(episode.id, null) },
+                                                onItemLongClick = { _, item ->
+                                                    val seasonLabel = buildSeasonEpisodeLabel(item)
+                                                    popupMenuParams = buildEpisodeMenu(
+                                                        title = listOfNotNull(series.seriesName ?: series.name, seasonLabel)
+                                                            .joinToString(" - "),
+                                                        subtitle = item.name,
+                                                        episode = item,
+                                                        onPlay = {
+                                                            PlayQueueManager.setSingleItem(
+                                                                itemId = item.id,
+                                                                title = item.name,
+                                                                episodeInfo = seasonLabel,
+                                                                thumbnailItemId = item.id,
+                                                                subtitleStreamIndex = preferredSubtitleIndex,
+                                                            )
+                                                            onPlayItemClick(item.id, null)
+                                                        },
+                                                        onChooseSubtitles = {
+                                                            subtitleMenuParams = buildSubtitleMenu(
+                                                                episode = item,
+                                                                selectedIndex = preferredSubtitleIndex,
+                                                                onSelect = { index -> preferredSubtitleIndex = index },
+                                                            )
+                                                        },
+                                                        onAddToPlaylist = {
+                                                            PlayQueueManager.addItem(
+                                                                QueueItem(
+                                                                    itemId = item.id,
+                                                                    title = item.name,
+                                                                    episodeInfo = seasonLabel,
+                                                                    thumbnailItemId = item.id,
+                                                                ),
+                                                            )
+                                                        },
+                                                        onToggleWatched = {
+                                                            val isPlayed = item.userData?.played == true
+                                                            onEpisodeWatchedToggle(item.id, !isPlayed)
+                                                        },
+                                                        onToggleFavorite = {
+                                                            val isFavorite = item.userData?.isFavorite == true
+                                                            onEpisodeFavoriteToggle(item.id, !isFavorite)
+                                                        },
+                                                        onGoToEpisode = { onNavigateToDetail(item.id) },
+                                                        onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
+                                                        onMediaInfo = { mediaInfoItem = item },
+                                                        onPlayWithTranscoding = {
+                                                            PlayQueueManager.setSingleItem(
+                                                                itemId = item.id,
+                                                                title = item.name,
+                                                                episodeInfo = seasonLabel,
+                                                                thumbnailItemId = item.id,
+                                                                subtitleStreamIndex = preferredSubtitleIndex,
+                                                            )
+                                                            onPlayItemClick(item.id, null)
+                                                        },
+                                                    )
+                                                },
+                                                cardContent = { _, item, onClick, onLongClick ->
+                                                    if (item != null) {
+                                                        MobileWideMediaCard(
+                                                            item = item,
+                                                            imageUrl = jellyfinClient.getThumbUrl(
+                                                                item.id,
+                                                                item.imageTags?.thumb ?: item.imageTags?.primary,
+                                                            ),
+                                                            onClick = onClick,
+                                                            onLongClick = onLongClick,
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
         // Cast
         if (cast.isNotEmpty()) {
             item(key = "people") {
@@ -715,6 +823,7 @@ private fun buildEpisodeMenu(
     onAddToPlaylist: () -> Unit,
     onToggleWatched: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onGoToEpisode: () -> Unit,
     onGoToSeries: () -> Unit,
     onMediaInfo: () -> Unit,
     onPlayWithTranscoding: () -> Unit,
@@ -735,6 +844,13 @@ private fun buildEpisodeMenu(
                 text = "Choose Subtitles",
                 icon = Icons.Outlined.Subtitles,
                 onClick = onChooseSubtitles,
+            ),
+        )
+        add(
+            MenuItem(
+                text = "Episode Details",
+                icon = Icons.Outlined.Info,
+                onClick = onGoToEpisode,
             ),
         )
         add(

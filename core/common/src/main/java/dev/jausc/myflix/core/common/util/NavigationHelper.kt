@@ -79,4 +79,10 @@ object NavigationHelper {
         } else {
             "player/$itemId"
         }
+
+    /**
+     * Builds a detail route for an item.
+     */
+    fun buildDetailRoute(itemId: String): String =
+        "detail/$itemId"
 }
