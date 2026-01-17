@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +62,10 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
 
+import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
+import dev.jausc.myflix.tv.ui.components.detail.OverviewText
+import kotlinx.coroutines.delay
+
 // Row indices for focus management
 private const val HEADER_ROW = 0
 private const val NEXT_UP_ROW = HEADER_ROW + 1
@@ -103,10 +108,22 @@ fun SeriesDetailScreen(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val playFocusRequester = remember { FocusRequester() }
     val navBarFocusRequester = remember { FocusRequester() }
+    val descriptionFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
+    var showOverview by remember { mutableStateOf(false) }
+
+    // Focus play button on load
+    LaunchedEffect(Unit) {
+        delay(100)
+        try {
+            playFocusRequester.requestFocus()
+        } catch (_: Exception) {
+            // Ignore focus errors
+        }
+    }
 
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
@@ -184,6 +201,10 @@ fun SeriesDetailScreen(
                         series = series,
                         status = series.status,
                         studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
+                        onOverviewClick = { showOverview = true },
+                        focusRequester = descriptionFocusRequester,
+                        downFocusRequester = playFocusRequester,
+                        upFocusRequester = navBarFocusRequester,
                     )
                 }
 
@@ -229,7 +250,7 @@ fun SeriesDetailScreen(
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
                             down = focusRequesters[SEASONS_ROW]
-                            up = navBarFocusRequester
+                            up = descriptionFocusRequester
                         }
                         .focusRestorer(playFocusRequester)
                         .focusGroup(),
@@ -538,6 +559,15 @@ fun SeriesDetailScreen(
             onDismiss = { mediaInfoItem = null },
         )
     }
+
+    if (showOverview && series.overview != null) {
+        OverviewDialog(
+            title = series.name,
+            overview = series.overview!!,
+            genres = series.genres.orEmpty(),
+            onDismiss = { showOverview = false },
+        )
+    }
 }
 
 /**
@@ -549,6 +579,10 @@ private fun SeriesDetailsHeader(
     series: JellyfinItem,
     status: String?,
     studioNames: List<String>,
+    onOverviewClick: () -> Unit,
+    focusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -580,17 +614,21 @@ private fun SeriesDetailsHeader(
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Description - allows 6 lines of text, uses full column width (50% of screen)
+        // Description - allows 4 lines of text, uses full column width (50% of screen)
         series.overview?.let { overview ->
-            Text(
-                text = overview,
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                maxLines = 6,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 18.sp,
+            OverviewText(
+                overview = overview,
+                maxLines = 4,
+                onClick = onOverviewClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .focusProperties {
+                        down = downFocusRequester
+                        up = upFocusRequester
+                    },
             )
         }
     }
