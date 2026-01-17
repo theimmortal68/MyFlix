@@ -517,7 +517,7 @@ fun SeriesDetailScreen(
             selectedItem = NavItem.SHOWS,
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
-            contentFocusRequester = playFocusRequester,
+            contentFocusRequester = focusRequesters[HEADER_ROW],
             focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )

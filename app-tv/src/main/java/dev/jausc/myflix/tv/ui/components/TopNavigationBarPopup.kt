@@ -61,10 +61,9 @@ fun TopNavigationBarPopup(
             .height(NAV_BAR_HEIGHT_DP.dp)
             .background(
                 Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.0f to Color.Black.copy(alpha = 0.9f),
-                        0.93f to Color.Black.copy(alpha = 0.9f),
-                        1.0f to Color.Transparent,
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.8f),
+                        Color.Transparent,
                     ),
                 ),
             )

@@ -624,7 +624,7 @@ fun SeasonDetailScreen(
             selectedItem = NavItem.SHOWS,
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
-            contentFocusRequester = playFocusRequester,
+            contentFocusRequester = seasonTabFocusRequester,
             focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
