@@ -114,6 +114,7 @@ fun SeriesDetailScreen(
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
+    var focusedSeason by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Focus play button on load
     LaunchedEffect(Unit) {
@@ -127,6 +128,10 @@ fun SeriesDetailScreen(
 
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
+
+    // Cast & crew (using extension properties from JellyfinItem)
+    val cast = series.actors
+    val crew = series.crew
 
     val trailerItem = remember(state.specialFeatures) {
         findNewestTrailer(state.specialFeatures)
@@ -147,10 +152,6 @@ fun SeriesDetailScreen(
         }
         else -> null
     }
-
-    // Cast & crew (using extension properties from JellyfinItem)
-    val cast = series.actors
-    val crew = series.crew
 
     val featureSections = remember(state.specialFeatures, trailerItem?.id) {
         buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
@@ -197,8 +198,17 @@ fun SeriesDetailScreen(
                         .padding(start = 48.dp, top = 36.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
+                    val displayDescription = focusedSeason?.overview?.takeIf { it.isNotBlank() } ?: series.overview
+                    val displayTitle = if (focusedSeason != null && focusedSeason?.overview?.isNotBlank() == true) {
+                        "${series.name} - ${focusedSeason?.name}"
+                    } else {
+                        series.name
+                    }
+
                     SeriesDetailsHeader(
                         series = series,
+                        title = displayTitle,
+                        overview = displayDescription,
                         status = series.status,
                         studioNames = series.studios?.mapNotNull { it.name }.orEmpty(),
                         onOverviewClick = { showOverview = true },
@@ -242,6 +252,7 @@ fun SeriesDetailScreen(
                             scope.launch {
                                 bringIntoViewRequester.bringIntoView()
                             }
+                            focusedSeason = null // Reset to series info when focusing action buttons
                         }
                     },
                     playButtonFocusRequester = playFocusRequester,
@@ -299,6 +310,9 @@ fun SeriesDetailScreen(
                                     )
                                 }
                             },
+                            cardOnFocus = { isFocused, _ ->
+                                if (isFocused) focusedSeason = null
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequesters[NEXT_UP_ROW]),
@@ -334,6 +348,11 @@ fun SeriesDetailScreen(
                                 )
                             }
                         },
+                        cardOnFocus = { isFocused, index ->
+                            if (isFocused) {
+                                focusedSeason = state.seasons.getOrNull(index)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[SEASONS_ROW]),
@@ -356,6 +375,9 @@ fun SeriesDetailScreen(
                             position = CAST_ROW
                             // TODO: Show person context menu
                         },
+                        cardOnFocus = { isFocused, _ ->
+                            if (isFocused) focusedSeason = null
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[CAST_ROW]),
@@ -377,6 +399,9 @@ fun SeriesDetailScreen(
                         onPersonLongClick = { _, _ ->
                             position = CREW_ROW
                             // TODO: Show person context menu
+                        },
+                        cardOnFocus = { isFocused, _ ->
+                            if (isFocused) focusedSeason = null
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -411,6 +436,9 @@ fun SeriesDetailScreen(
                                     modifier = cardModifier,
                                 )
                             }
+                        },
+                        cardOnFocus = { isFocused, _ ->
+                            if (isFocused) focusedSeason = null
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -450,6 +478,9 @@ fun SeriesDetailScreen(
                                         )
                                     }
                                 },
+                                cardOnFocus = { isFocused, _ ->
+                                    if (isFocused) focusedSeason = null
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focusRequesters[COLLECTIONS_ROW]),
@@ -486,6 +517,9 @@ fun SeriesDetailScreen(
                                     modifier = cardModifier,
                                 )
                             }
+                        },
+                        cardOnFocus = { isFocused, _ ->
+                            if (isFocused) focusedSeason = null
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -525,6 +559,9 @@ fun SeriesDetailScreen(
                                 )
                             }
                         },
+                        cardOnFocus = { isFocused, _ ->
+                            if (isFocused) focusedSeason = null
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequesters[SIMILAR_ROW]),
@@ -561,10 +598,15 @@ fun SeriesDetailScreen(
         )
     }
 
-    if (showOverview && series.overview != null) {
+    if (showOverview) {
+        val dialogItem = focusedSeason?.takeIf { it.overview?.isNotBlank() == true } ?: series
         OverviewDialog(
-            title = series.name,
-            overview = series.overview!!,
+            title = if (focusedSeason != null && focusedSeason?.overview?.isNotBlank() == true) {
+                "${series.name} - ${focusedSeason?.name}"
+            } else {
+                series.name
+            },
+            overview = dialogItem.overview.orEmpty(),
             genres = series.genres.orEmpty(),
             onDismiss = { showOverview = false },
         )
@@ -578,6 +620,8 @@ fun SeriesDetailScreen(
 @Composable
 private fun SeriesDetailsHeader(
     series: JellyfinItem,
+    title: String,
+    overview: String?,
     status: String?,
     studioNames: List<String>,
     onOverviewClick: () -> Unit,
@@ -591,7 +635,7 @@ private fun SeriesDetailsHeader(
     ) {
         // Title - matches home hero HeroTitleSection
         Text(
-            text = series.name,
+            text = title,
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
@@ -615,12 +659,10 @@ private fun SeriesDetailsHeader(
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
 
-        Spacer(modifier = Modifier.height(2.dp))
-
         // Description - allows 4 lines of text, uses full column width (50% of screen)
-        series.overview?.let { overview ->
+        overview?.let { text ->
             OverviewText(
-                overview = overview,
+                overview = text,
                 maxLines = 4,
                 onClick = onOverviewClick,
                 modifier = Modifier

@@ -37,6 +37,7 @@ fun CastCrewSection(
     onPersonLongClick: (Int, JellyfinPerson) -> Unit,
     modifier: Modifier = Modifier,
     title: String = "Cast & Crew",
+    cardOnFocus: ((isFocused: Boolean, index: Int) -> Unit)? = null,
 ) {
     if (people.isEmpty()) return
 
@@ -70,6 +71,7 @@ fun CastCrewSection(
                     if (it.isFocused) {
                         focusedIndex = index
                     }
+                    cardOnFocus?.invoke(it.isFocused, index)
                 }
 
                 PersonCard(
