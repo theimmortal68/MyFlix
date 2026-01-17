@@ -98,10 +98,12 @@ fun SeasonDetailScreen(
     }
 
     val selectedEpisode = remember(state.episodes, state.nextUpEpisode) {
+        // Priority: nextUp > first non-watched > first episode
         val nextUp = state.nextUpEpisode?.let { next ->
             state.episodes.firstOrNull { it.id == next.id }
         }
-        nextUp ?: state.episodes.firstOrNull()
+        nextUp ?: state.episodes.firstOrNull { it.userData?.played != true }
+            ?: state.episodes.firstOrNull()
     }
     val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
         state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)

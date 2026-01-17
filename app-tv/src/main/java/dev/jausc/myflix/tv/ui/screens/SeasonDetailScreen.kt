@@ -42,17 +42,13 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
-import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
-import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
@@ -72,13 +68,15 @@ import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeGrid
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
+import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
+import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
+import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import java.util.Locale
+import kotlinx.coroutines.launch
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
@@ -131,6 +129,8 @@ fun SeasonDetailScreen(
     var subtitleDialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var preferredSubtitleIndex by remember { mutableStateOf<Int?>(null) }
+    var showOverview by remember { mutableStateOf(false) }
+    val descriptionFocusRequester = remember { FocusRequester() }
 
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
@@ -145,10 +145,12 @@ fun SeasonDetailScreen(
     }
     val selectedEpisode = remember(state.episodes, state.nextUpEpisode, focusedEpisode) {
         focusedEpisode ?: run {
+            // Priority: nextUp > first non-watched > first episode
             val nextUp = state.nextUpEpisode?.let { next ->
                 state.episodes.firstOrNull { it.id == next.id }
             }
-            nextUp ?: state.episodes.firstOrNull()
+            nextUp ?: state.episodes.firstOrNull { it.userData?.played != true }
+                ?: state.episodes.firstOrNull()
         }
     }
     val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
@@ -213,7 +215,7 @@ fun SeasonDetailScreen(
                     .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Season tabs at top - centered between screen top and title
+                // Season tabs at top - shifted down to avoid nav bar overlap
                 SeasonTabRow(
                     seasons = state.seasons,
                     selectedSeasonIndex = selectedSeasonIndex,
@@ -222,23 +224,27 @@ fun SeasonDetailScreen(
                         onSeasonSelected(season)
                     },
                     firstTabFocusRequester = seasonTabFocusRequester,
-                    downFocusRequester = focusRequesters[HEADER_ROW], // Go to action buttons, not episodes
+                    downFocusRequester = descriptionFocusRequester,
                     upFocusRequester = navBarFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 6.dp, start = 48.dp, end = 48.dp),
+                        .padding(top = 30.dp, start = 48.dp, end = 48.dp),
                 )
 
                 // Hero content (left 50%) - title, subtitle, rating, description
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 40.dp),
+                        .padding(start = 48.dp, top = 64.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     SeasonHeroContent(
                         series = series,
                         selectedEpisode = selectedEpisode,
+                        onOverviewClick = { showOverview = true },
+                        descriptionFocusRequester = descriptionFocusRequester,
+                        downFocusRequester = playFocusRequester,
+                        upFocusRequester = seasonTabFocusRequester,
                     )
                 }
 
@@ -328,7 +334,7 @@ fun SeasonDetailScreen(
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
                                 down = focusRequesters[EPISODES_ROW]
-                                up = seasonTabFocusRequester
+                                up = descriptionFocusRequester
                             }
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
@@ -652,6 +658,22 @@ fun SeasonDetailScreen(
             onDismiss = { mediaInfoItem = null },
         )
     }
+
+    // Overview dialog
+    if (showOverview) {
+        val episode = selectedEpisode
+        if (episode != null) {
+            val seasonLabel = buildSeasonEpisodeLabel(episode)
+            val dialogTitle = listOfNotNull(series.seriesName ?: series.name, seasonLabel, episode.name)
+                .joinToString(" - ")
+            OverviewDialog(
+                title = dialogTitle,
+                overview = episode.overview.orEmpty(),
+                genres = emptyList(),
+                onDismiss = { showOverview = false },
+            )
+        }
+    }
 }
 
 /**
@@ -662,10 +684,13 @@ fun SeasonDetailScreen(
 private fun SeasonHeroContent(
     series: JellyfinItem,
     selectedEpisode: JellyfinItem?,
+    onOverviewClick: () -> Unit,
+    descriptionFocusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val showTitle = series.seriesName ?: series.name
-    val episodeBadges = buildEpisodeBadges(selectedEpisode)
 
     Column(modifier = modifier) {
         // Series title - matches home hero HeroTitleSection
@@ -677,7 +702,6 @@ private fun SeasonHeroContent(
             ),
             color = TvColors.TextPrimary,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
         )
 
         selectedEpisode?.let { episode ->
@@ -689,7 +713,6 @@ private fun SeasonHeroContent(
                 style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
                 color = TvColors.TextPrimary,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -706,47 +729,23 @@ private fun SeasonHeroContent(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            if (episodeBadges.isNotEmpty()) {
-                FormatBadgeRow(badges = episodeBadges)
-            }
+            // Colored media badges (matching movie detail page)
+            MediaBadgesRow(item = episode)
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Description - 5 lines max, uses full column width (50% of screen)
+            // Description - 4 lines max, clickable to show full overview
             episode.overview?.let { overview ->
-                Text(
-                    text = overview,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                    maxLines = 5,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp,
-                )
-            }
-        }
-    }
-}
-
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-private fun FormatBadgeRow(badges: List<String>, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.layout.FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier,
-    ) {
-        badges.forEach { badge ->
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                colors = SurfaceDefaults.colors(
-                    containerColor = dev.jausc.myflix.tv.ui.theme.TvColors.SurfaceElevated.copy(alpha = 0.85f),
-                ),
-            ) {
-                Text(
-                    text = badge,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = dev.jausc.myflix.tv.ui.theme.TvColors.TextPrimary,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                OverviewText(
+                    overview = overview,
+                    maxLines = 4,
+                    onClick = onOverviewClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(descriptionFocusRequester)
+                        .focusProperties {
+                            down = downFocusRequester
+                            up = upFocusRequester
+                        },
+                    paddingValues = PaddingValues(0.dp),
                 )
             }
         }
@@ -758,54 +757,6 @@ private fun buildEpisodeRatingLine(episode: JellyfinItem): List<String> = buildL
     episode.runTimeTicks?.let { ticks ->
         val minutes = (ticks / 600_000_000L).toInt()
         if (minutes > 0) add("${minutes}m")
-    }
-}
-
-private fun buildEpisodeBadges(episode: JellyfinItem?): List<String> {
-    if (episode == null) return emptyList()
-    val badges = mutableListOf<String>()
-    val mediaSource = episode.mediaSources?.firstOrNull()
-    val video = mediaSource?.mediaStreams?.firstOrNull { it.type == "Video" }
-    val audio = mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" && it.isDefault } ?:
-        mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" }
-
-    val resolution = video?.height?.let { height ->
-        when {
-            height >= 2160 -> "4K"
-            height >= 1080 -> "1080p"
-            height >= 720 -> "720p"
-            else -> null
-        }
-    }
-    resolution?.let { badges.add(it) }
-    video?.codec?.uppercase()?.let { badges.add(it) }
-
-    if (episode.videoQualityLabel.contains("Dolby Vision")) {
-        badges.add("Dolby Vision")
-    } else if (episode.videoQualityLabel.contains("HDR")) {
-        badges.add("HDR")
-    }
-
-    formatAudioBadge(audio)?.let { badges.add(it) }
-    return badges.distinct()
-}
-
-private fun formatAudioBadge(stream: dev.jausc.myflix.core.common.model.MediaStream?): String? {
-    if (stream == null) return null
-    val language = stream.language?.replaceFirstChar { it.titlecase(Locale.US) } ?: "Unknown"
-    val codec = stream.codec?.uppercase()
-    val channels = formatChannelLayout(stream.channels)
-    return listOfNotNull(language, codec, channels).joinToString(" ")
-}
-
-private fun formatChannelLayout(channels: Int?): String? {
-    return when (channels) {
-        null -> null
-        1 -> "1.0"
-        2 -> "2.0"
-        6 -> "5.1"
-        8 -> "7.1"
-        else -> "${channels}.0"
     }
 }
 
