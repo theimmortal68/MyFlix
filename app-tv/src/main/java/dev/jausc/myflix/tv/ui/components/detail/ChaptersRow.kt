@@ -39,6 +39,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinChapter
+import dev.jausc.myflix.core.common.util.TimeFormatUtil
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -160,7 +161,7 @@ private fun ChapterCard(
                 // Timestamp badge
                 chapter.startPositionTicks?.let { ticks ->
                     Text(
-                        text = formatChapterTime(ticks),
+                        text = TimeFormatUtil.formatTicksToTime(ticks),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         modifier = Modifier
@@ -185,21 +186,5 @@ private fun ChapterCard(
                 )
             }
         }
-    }
-}
-
-/**
- * Format chapter time from ticks to human-readable format (HH:MM:SS or MM:SS).
- */
-private fun formatChapterTime(ticks: Long): String {
-    val totalSeconds = ticks / 10_000_000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-
-    return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format("%d:%02d", minutes, seconds)
     }
 }

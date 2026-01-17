@@ -13,12 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.model.DetailInfoItem
 import dev.jausc.myflix.tv.ui.theme.TvColors
-
-data class DetailInfoItem(
-    val label: String,
-    val value: String,
-)
 
 @Composable
 fun DetailInfoSection(

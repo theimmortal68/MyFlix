@@ -13,11 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-data class DetailInfoItem(
-    val label: String,
-    val value: String,
-)
+import dev.jausc.myflix.core.common.model.DetailInfoItem
 
 @Composable
 fun DetailInfoSection(

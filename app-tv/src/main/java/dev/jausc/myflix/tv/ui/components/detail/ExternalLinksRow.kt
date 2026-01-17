@@ -16,12 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.tv.ui.theme.TvColors
-
-data class ExternalLinkItem(
-    val label: String,
-    val url: String,
-)
 
 @Composable
 fun ExternalLinksRow(

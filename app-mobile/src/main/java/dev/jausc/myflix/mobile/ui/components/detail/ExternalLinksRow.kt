@@ -17,11 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-
-data class ExternalLinkItem(
-    val label: String,
-    val url: String,
-)
+import dev.jausc.myflix.core.common.model.ExternalLinkItem
 
 @Composable
 fun ExternalLinksRow(

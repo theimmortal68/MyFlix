@@ -5,6 +5,7 @@ package dev.jausc.myflix.mobile.ui.components.detail
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -20,14 +21,17 @@ fun GenreText(
 ) {
     if (genres.isEmpty()) return
 
-    val displayGenres = if (genres.size > MAX_GENRES_TO_SHOW) {
-        genres.take(MAX_GENRES_TO_SHOW)
-    } else {
-        genres
+    val displayText = remember(genres) {
+        val displayGenres = if (genres.size > MAX_GENRES_TO_SHOW) {
+            genres.take(MAX_GENRES_TO_SHOW)
+        } else {
+            genres
+        }
+        displayGenres.joinToString(separator = ", ")
     }
 
     Text(
-        text = displayGenres.joinToString(separator = ", "),
+        text = displayText,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,

@@ -29,8 +29,8 @@ import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
+import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
-import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
