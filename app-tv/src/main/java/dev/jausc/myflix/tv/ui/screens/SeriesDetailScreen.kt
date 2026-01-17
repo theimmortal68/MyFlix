@@ -184,11 +184,10 @@ fun SeriesDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (48% height) - doesn't scroll
+            // Fixed hero section - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.48f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, description + action buttons
@@ -348,10 +347,12 @@ fun SeriesDetailScreen(
                                     onClick = onClick,
                                     onLongClick = onLongClick,
                                     modifier = cardModifier,
-                                    onItemFocused = { focusedItem ->
-                                        focusedSeason = focusedItem
-                                    }
                                 )
+                            }
+                        },
+                        cardOnFocus = { isFocused, index ->
+                            if (isFocused) {
+                                focusedSeason = state.seasons.getOrNull(index)
                             }
                         },
                         modifier = Modifier
