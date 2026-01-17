@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -208,11 +208,10 @@ fun SeasonDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (50% height for 5 lines of description) - doesn't scroll
+            // Fixed hero section - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Season tabs at top - shifted down to avoid nav bar overlap
@@ -231,7 +230,7 @@ fun SeasonDetailScreen(
                         .padding(top = 30.dp, start = 48.dp, end = 48.dp),
                 )
 
-                // Hero content (left 50%) - title, subtitle, rating, description
+                // Hero content (left 50%) - title, subtitle, rating, description + action buttons
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
@@ -246,10 +245,11 @@ fun SeasonDetailScreen(
                         downFocusRequester = playFocusRequester,
                         upFocusRequester = seasonTabFocusRequester,
                     )
-                }
 
-                // Action buttons fixed at bottom of hero section
-                SeriesActionButtons(
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Action buttons directly below description
+                    SeriesActionButtons(
                         watched = watched,
                         favorite = favorite,
                         onPlayClick = {
@@ -328,9 +328,8 @@ fun SeasonDetailScreen(
                             }
                         },
                         playButtonFocusRequester = playFocusRequester,
+                        contentPadding = PaddingValues(0.dp),
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 48.dp, bottom = 8.dp)
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
                                 down = focusRequesters[EPISODES_ROW]
@@ -339,6 +338,9 @@ fun SeasonDetailScreen(
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
             // Scrollable content rows (below fixed hero)
@@ -731,6 +733,8 @@ private fun SeasonHeroContent(
 
             // Colored media badges (matching movie detail page)
             MediaBadgesRow(item = episode)
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Description - 4 lines max, clickable to show full overview
             episode.overview?.let { overview ->
