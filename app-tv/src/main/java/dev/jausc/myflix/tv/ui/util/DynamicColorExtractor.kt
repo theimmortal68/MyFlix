@@ -31,6 +31,7 @@ import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
@@ -249,10 +250,12 @@ fun rememberGradientColors(imageUrl: String?): GradientColors {
     var colors by remember { mutableStateOf(GradientColors.Default) }
 
     LaunchedEffect(imageUrl) {
-        colors = if (imageUrl != null) {
-            extractGradientColorsFromUrl(context, imageUrl)
+        if (imageUrl != null) {
+            // Debounce rapid changes (e.g. during fast scrolling)
+            delay(300)
+            colors = extractGradientColorsFromUrl(context, imageUrl)
         } else {
-            GradientColors.Default
+            colors = GradientColors.Default
         }
     }
 

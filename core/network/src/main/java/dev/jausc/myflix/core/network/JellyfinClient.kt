@@ -148,6 +148,17 @@ class JellyfinClient(
     }
 
     private fun <T : Any> putCache(key: String, data: T) {
+        // Prevent unbounded growth
+        if (cache.size > 500) {
+            // Simple eviction: remove arbitrary 100 items
+            var removed = 0
+            val iterator = cache.keys.iterator()
+            while (iterator.hasNext() && removed < 100) {
+                iterator.next()
+                iterator.remove()
+                removed++
+            }
+        }
         cache[key] = CacheEntry(data, System.currentTimeMillis())
     }
 

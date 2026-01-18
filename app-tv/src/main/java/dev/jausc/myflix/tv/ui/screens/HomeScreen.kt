@@ -314,48 +314,46 @@ fun HomeScreen(
                 }
             } else {
                 // Key forces complete recomposition when content changes
-                key(state.featuredItems.firstOrNull()?.id) {
-                    HomeContent(
-                        featuredItems = state.featuredItems,
-                        nextUp = state.nextUp,
-                        continueWatching = state.continueWatching,
-                        recentEpisodes = state.recentEpisodes,
-                        recentShows = state.recentShows,
-                        recentMovies = state.recentMovies,
-                        seasonPremieres = state.seasonPremieres,
-                        pinnedCollectionData = state.pinnedCollectionsData,
-                        suggestions = state.suggestions,
-                        genreRowsData = state.genreRowsData,
-                        recentRequests = state.recentRequests,
-                        showSeasonPremieres = showSeasonPremieres,
-                        showGenreRows = showGenreRows,
-                        showCollections = showCollections,
-                        showSuggestions = showSuggestions,
-                        showSeerrRecentRequests = showSeerrRecentRequests,
-                        jellyfinClient = jellyfinClient,
-                        seerrClient = seerrClient,
-                        onItemClick = onItemClick,
-                        onPlayClick = onPlayClick,
-                        onItemLongClick = { item ->
-                            dialogParams = DialogParams(
-                                title = item.name,
-                                items = buildHomeDialogItems(item, dialogActions),
-                                fromLongClick = true,
-                            )
-                        },
-                        onSeerrMediaClick = onSeerrMediaClick,
-                        hideWatchedFromRecent = hideWatchedFromRecent,
-                        heroPlayFocusRequester = heroPlayFocusRequester,
-                        firstRowFocusRequester = firstRowFocusRequester,
-                        homeButtonFocusRequester = homeButtonFocusRequester,
-                        onBackdropUrlChanged = { url -> currentBackdropUrl = url },
-                        onItemFocused = { },
-                        // Top navigation config
-                        selectedNavItem = selectedNavItem,
-                        onNavItemSelected = handleNavSelection,
-                        showUniversesInNav = showUniversesInNav,
-                    )
-                }
+                HomeContent(
+                    featuredItems = state.featuredItems,
+                    nextUp = state.nextUp,
+                    continueWatching = state.continueWatching,
+                    recentEpisodes = state.recentEpisodes,
+                    recentShows = state.recentShows,
+                    recentMovies = state.recentMovies,
+                    seasonPremieres = state.seasonPremieres,
+                    pinnedCollectionData = state.pinnedCollectionsData,
+                    suggestions = state.suggestions,
+                    genreRowsData = state.genreRowsData,
+                    recentRequests = state.recentRequests,
+                    showSeasonPremieres = showSeasonPremieres,
+                    showGenreRows = showGenreRows,
+                    showCollections = showCollections,
+                    showSuggestions = showSuggestions,
+                    showSeerrRecentRequests = showSeerrRecentRequests,
+                    jellyfinClient = jellyfinClient,
+                    seerrClient = seerrClient,
+                    onItemClick = onItemClick,
+                    onPlayClick = onPlayClick,
+                    onItemLongClick = { item ->
+                        dialogParams = DialogParams(
+                            title = item.name,
+                            items = buildHomeDialogItems(item, dialogActions),
+                            fromLongClick = true,
+                        )
+                    },
+                    onSeerrMediaClick = onSeerrMediaClick,
+                    hideWatchedFromRecent = hideWatchedFromRecent,
+                    heroPlayFocusRequester = heroPlayFocusRequester,
+                    firstRowFocusRequester = firstRowFocusRequester,
+                    homeButtonFocusRequester = homeButtonFocusRequester,
+                    onBackdropUrlChanged = { url -> currentBackdropUrl = url },
+                    onItemFocused = { },
+                    // Top navigation config
+                    selectedNavItem = selectedNavItem,
+                    onNavItemSelected = handleNavSelection,
+                    showUniversesInNav = showUniversesInNav,
+                )
             }
         }
     }
