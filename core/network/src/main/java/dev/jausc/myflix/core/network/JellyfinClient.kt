@@ -5,6 +5,8 @@ import dev.jausc.myflix.core.common.model.AuthResponse
 import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaSegment
+import dev.jausc.myflix.core.common.model.MediaSegmentsResponse
 import dev.jausc.myflix.core.common.model.ServerInfo
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -1324,6 +1326,22 @@ class JellyfinClient(
                 parameter("userId", userId)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
+            }.body()
+            r.items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get media segments for an item (intro, outro, recap, etc.).
+     * Used for skip intro/outro functionality.
+     * Requires Jellyfin 10.9+ with Media Segments plugin or built-in support.
+     */
+    suspend fun getMediaSegments(itemId: String): Result<List<MediaSegment>> {
+        val key = CacheKeys.mediaSegments(itemId)
+        getCached<List<MediaSegment>>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
+        return runCatching {
+            val r: MediaSegmentsResponse = httpClient.get("$baseUrl/MediaSegments/$itemId") {
+                header("Authorization", authHeader())
             }.body()
             r.items.also { putCache(key, it) }
         }

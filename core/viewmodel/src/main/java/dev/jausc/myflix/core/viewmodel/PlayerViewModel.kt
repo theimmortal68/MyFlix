@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaSegment
+import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -58,6 +60,9 @@ data class PlayerUiState(
     val nextQueueItem: QueueItem? = null,
     val countdownSecondsRemaining: Int = AUTO_PLAY_COUNTDOWN_SECONDS,
     val isQueueMode: Boolean = false,
+    // Media segments (intro, outro, etc.)
+    val mediaSegments: List<MediaSegment> = emptyList(),
+    val activeSegment: MediaSegment? = null,
 ) {
     /**
      * MediaInfo for content-aware player selection.
@@ -169,8 +174,14 @@ class PlayerViewModel(
                             subtitleStreams = subtitleStreams,
                             selectedAudioStreamIndex = selectedAudioIndex,
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
+                            // Clear segments from previous item
+                            mediaSegments = emptyList(),
+                            activeSegment = null,
                         )
                     }
+
+                    // Load media segments (async, non-blocking)
+                    loadMediaSegments(currentItemId)
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -439,8 +450,14 @@ class PlayerViewModel(
                             subtitleStreams = subtitleStreams,
                             selectedAudioStreamIndex = selectedAudioIndex,
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
+                            // Clear segments from previous item
+                            mediaSegments = emptyList(),
+                            activeSegment = null,
                         )
                     }
+
+                    // Load media segments (async, non-blocking)
+                    loadMediaSegments(newItemId)
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -475,6 +492,68 @@ class PlayerViewModel(
         // Fall back to server default or first available
         return audioStreams.firstOrNull { it.isDefault }?.index
             ?: audioStreams.firstOrNull()?.index
+    }
+
+    // ==================== Media Segments ====================
+
+    /**
+     * Load media segments for the current item.
+     * Called after item is loaded to fetch intro/outro markers.
+     */
+    private fun loadMediaSegments(itemId: String) {
+        viewModelScope.launch {
+            jellyfinClient.getMediaSegments(itemId)
+                .onSuccess { segments ->
+                    _uiState.update { it.copy(mediaSegments = segments) }
+                }
+                .onFailure {
+                    // Silently fail - segments are optional
+                    _uiState.update { it.copy(mediaSegments = emptyList()) }
+                }
+        }
+    }
+
+    /**
+     * Update the active segment based on current playback position.
+     * Should be called periodically during playback.
+     *
+     * @param positionMs Current playback position in milliseconds
+     */
+    fun updateActiveSegment(positionMs: Long) {
+        val segments = _uiState.value.mediaSegments
+        val currentActive = _uiState.value.activeSegment
+
+        // Find segment containing current position (only Intro and Outro are skippable)
+        val newActiveSegment = segments.find { segment ->
+            segment.containsPosition(positionMs) &&
+                segment.type in listOf(MediaSegmentType.Intro, MediaSegmentType.Outro)
+        }
+
+        // Only update if changed
+        if (newActiveSegment?.id != currentActive?.id) {
+            _uiState.update { it.copy(activeSegment = newActiveSegment) }
+        }
+    }
+
+    /**
+     * Get the skip target position for the active segment.
+     * Returns the end position of the active segment, or null if no active segment.
+     */
+    fun getSkipTargetMs(): Long? {
+        return _uiState.value.activeSegment?.endMs
+    }
+
+    /**
+     * Get a user-friendly label for the skip button.
+     */
+    fun getSkipButtonLabel(): String {
+        return when (_uiState.value.activeSegment?.type) {
+            MediaSegmentType.Intro -> "Skip Intro"
+            MediaSegmentType.Outro -> "Skip Outro"
+            MediaSegmentType.Recap -> "Skip Recap"
+            MediaSegmentType.Preview -> "Skip Preview"
+            else -> "Skip"
+        }
     }
 
     override fun onCleared() {

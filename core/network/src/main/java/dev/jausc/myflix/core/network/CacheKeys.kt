@@ -136,6 +136,9 @@ object CacheKeys {
     fun favorites(limit: Int, includeItemTypes: String?): String =
         "favorites:$limit:${includeItemTypes ?: "all"}"
 
+    /** Media segments for an item (intro, outro, etc.) */
+    fun mediaSegments(itemId: String): String = "segments:$itemId"
+
     // ==================== Invalidation Patterns ====================
 
     /**

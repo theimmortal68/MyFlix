@@ -205,6 +205,16 @@ fun PlayerScreen(
         }
     }
 
+    // Update active segment based on playback position
+    LaunchedEffect(playbackState.isPlaying, state.mediaSegments) {
+        if (playbackState.isPlaying && state.mediaSegments.isNotEmpty()) {
+            while (isActive) {
+                viewModel.updateActiveSegment(playerController.state.value.position)
+                delay(500) // Check every 500ms
+            }
+        }
+    }
+
     // Cleanup player resources (ViewModel handles playback stop reporting)
     DisposableEffect(Unit) {
         onDispose {
@@ -333,6 +343,22 @@ fun PlayerScreen(
                         onBack()
                     },
                     modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
+
+            // Skip segment button (intro/outro)
+            if (state.activeSegment != null && !state.showControls && !state.showAutoPlayCountdown) {
+                SkipSegmentButton(
+                    label = viewModel.getSkipButtonLabel(),
+                    onSkip = {
+                        viewModel.getSkipTargetMs()?.let { targetMs ->
+                            playerController.seekTo(targetMs)
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 24.dp, bottom = 24.dp)
+                        .navigationBarsPadding(),
                 )
             }
         }
@@ -1095,4 +1121,40 @@ private fun SheetEmptyState(message: String) {
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
     )
+}
+
+/**
+ * Skip segment button for intro/outro skipping.
+ * Appears in the bottom-right corner when a skippable segment is detected.
+ */
+@Composable
+private fun SkipSegmentButton(
+    label: String,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onSkip,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Black.copy(alpha = 0.8f),
+            contentColor = Color.White,
+        ),
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Icon(
+                imageVector = Icons.Default.FastForward,
+                contentDescription = "Skip",
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
 }

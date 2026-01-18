@@ -14,6 +14,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +55,7 @@ import dev.jausc.myflix.core.viewmodel.PlayerUiState
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
+import androidx.tv.material3.Border
 import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream
@@ -205,6 +207,16 @@ fun PlayerScreen(
     LaunchedEffect(playbackState.isEnded) {
         if (playbackState.isEnded && !state.showAutoPlayCountdown) {
             viewModel.onVideoEnded()
+        }
+    }
+
+    // Update active segment based on playback position
+    LaunchedEffect(playbackState.isPlaying, state.mediaSegments) {
+        if (playbackState.isPlaying && state.mediaSegments.isNotEmpty()) {
+            while (isActive) {
+                viewModel.updateActiveSegment(playerController.state.value.position)
+                delay(500) // Check every 500ms
+            }
         }
     }
 
@@ -381,6 +393,21 @@ fun PlayerScreen(
                     onPlayNow = { viewModel.playNextNow() },
                     onCancel = { viewModel.cancelQueue() },
                     modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
+
+            // Skip segment button (intro/outro)
+            if (state.activeSegment != null && !state.showControls && !state.showAutoPlayCountdown) {
+                SkipSegmentButton(
+                    label = viewModel.getSkipButtonLabel(),
+                    onSkip = {
+                        viewModel.getSkipTargetMs()?.let { targetMs ->
+                            playerController.seekTo(targetMs)
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 48.dp, bottom = 48.dp),
                 )
             }
         }
@@ -958,5 +985,57 @@ private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color =
             style = MaterialTheme.typography.labelMedium,
             color = textColor,
         )
+    }
+}
+
+/**
+ * Skip segment button for intro/outro skipping.
+ * Appears in the bottom-right corner when a skippable segment is detected.
+ */
+@Composable
+private fun SkipSegmentButton(
+    label: String,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    // Request focus when button appears
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    Surface(
+        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.8f),
+            focusedContainerColor = TvColors.BluePrimary,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, Color.White),
+                shape = MaterialTheme.shapes.medium,
+            ),
+        ),
+        onClick = onSkip,
+        modifier = modifier
+            .focusRequester(focusRequester),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
+            Text(
+                text = "▶▶",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
+        }
     }
 }

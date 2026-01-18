@@ -404,3 +404,80 @@ val JellyfinItem.imdbId: String?
 
 val JellyfinItem.tmdbId: String?
     get() = providerIds?.get("Tmdb") ?: providerIds?.get("TMDB")
+
+// ==================== Media Segments ====================
+
+/**
+ * Media segment types as defined by Jellyfin API.
+ */
+enum class MediaSegmentType {
+    Unknown,
+    Intro,
+    Outro,
+    Recap,
+    Preview,
+    Commercial,
+    ;
+
+    companion object {
+        fun fromString(value: String): MediaSegmentType =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: Unknown
+    }
+}
+
+/**
+ * Media segment action types.
+ */
+enum class MediaSegmentAction {
+    None,
+    Auto,
+    ;
+
+    companion object {
+        fun fromString(value: String): MediaSegmentAction =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: None
+    }
+}
+
+/**
+ * A media segment (intro, outro, recap, etc.) for skip functionality.
+ */
+@Serializable
+data class MediaSegment(
+    @SerialName("Id") val id: String? = null,
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("Type") val typeString: String,
+    @SerialName("StartTicks") val startTicks: Long,
+    @SerialName("EndTicks") val endTicks: Long,
+    @SerialName("Action") val actionString: String? = null,
+) {
+    val type: MediaSegmentType
+        get() = MediaSegmentType.fromString(typeString)
+
+    val action: MediaSegmentAction
+        get() = MediaSegmentAction.fromString(actionString ?: "None")
+
+    /** Start position in milliseconds */
+    val startMs: Long
+        get() = startTicks / 10_000
+
+    /** End position in milliseconds */
+    val endMs: Long
+        get() = endTicks / 10_000
+
+    /** Duration in milliseconds */
+    val durationMs: Long
+        get() = endMs - startMs
+
+    /** Check if a position (in ms) is within this segment */
+    fun containsPosition(positionMs: Long): Boolean =
+        positionMs in startMs..endMs
+}
+
+/**
+ * Response wrapper for media segments API.
+ */
+@Serializable
+data class MediaSegmentsResponse(
+    @SerialName("Items") val items: List<MediaSegment>,
+)
