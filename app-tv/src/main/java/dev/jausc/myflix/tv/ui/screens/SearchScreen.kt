@@ -24,7 +24,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +36,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
+import androidx.tv.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -56,6 +66,7 @@ import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
+import dev.jausc.myflix.tv.ui.components.VoiceSpeechHelper
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 @Composable
@@ -81,6 +92,35 @@ fun SearchScreen(
     val searchFieldFocusRequester = remember { FocusRequester() }
     val resultsFocusRequester = remember { FocusRequester() }
     val navBarFocusRequester = remember { FocusRequester() }
+
+    // Voice search state
+    val context = LocalContext.current
+    var isVoiceListening by remember { mutableStateOf(false) }
+    var voiceError by remember { mutableStateOf<String?>(null) }
+
+    // Initialize voice helper
+    val voiceSpeechHelper = remember {
+        VoiceSpeechHelper(
+            context = context,
+            onResult = { result ->
+                viewModel.updateQuery(result)
+                viewModel.performSearch()
+            },
+            onListening = { listening ->
+                isVoiceListening = listening
+            },
+            onError = { error ->
+                voiceError = error
+            },
+        )
+    }
+
+    // Cleanup on dispose
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceSpeechHelper.destroy()
+        }
+    }
 
     // Focus search field on entry
     LaunchedEffect(Unit) {
@@ -120,8 +160,8 @@ fun SearchScreen(
             ) {
                 if (state.query.isEmpty()) {
                     Text(
-                        text = "Search movies, shows...",
-                        color = TvColors.TextSecondary,
+                        text = if (isVoiceListening) "Listening..." else "Search movies, shows...",
+                        color = if (isVoiceListening) TvColors.BluePrimary else TvColors.TextSecondary,
                         fontSize = 16.sp,
                     )
                 }
@@ -164,11 +204,35 @@ fun SearchScreen(
                 )
             }
 
+            // Voice search button
+            VoiceSearchButton(
+                isListening = isVoiceListening,
+                isAvailable = voiceSpeechHelper.isAvailable(),
+                onClick = {
+                    if (isVoiceListening) {
+                        voiceSpeechHelper.stopListening()
+                    } else {
+                        voiceError = null
+                        voiceSpeechHelper.startListening()
+                    }
+                },
+            )
+
             TvTextButton(
                 text = "Search",
                 onClick = { viewModel.performSearch() },
                 enabled = state.canSearch,
                 isPrimary = true,
+            )
+        }
+
+        // Voice error message
+        voiceError?.let { error ->
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.Error,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
 
@@ -261,4 +325,50 @@ fun SearchScreen(
             modifier = Modifier.align(Alignment.TopCenter),
         )
     } // End Box
+}
+
+/**
+ * Voice search button with visual feedback for listening state.
+ */
+@Composable
+private fun VoiceSearchButton(
+    isListening: Boolean,
+    isAvailable: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = isAvailable,
+        modifier = modifier.size(56.dp),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (isListening) TvColors.BluePrimary else TvColors.Surface,
+            focusedContainerColor = if (isListening) TvColors.BluePrimary else TvColors.FocusedSurface,
+            disabledContainerColor = TvColors.Surface.copy(alpha = 0.5f),
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = RoundedCornerShape(8.dp),
+            ),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Mic,
+                contentDescription = if (isListening) "Stop listening" else "Voice search",
+                tint = when {
+                    !isAvailable -> TvColors.TextSecondary.copy(alpha = 0.5f)
+                    isListening -> Color.White
+                    else -> TvColors.TextPrimary
+                },
+                modifier = Modifier.size(28.dp),
+            )
+        }
+    }
 }
