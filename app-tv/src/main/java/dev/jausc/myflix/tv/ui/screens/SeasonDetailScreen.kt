@@ -3,17 +3,22 @@
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -59,7 +64,7 @@ import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
-import dev.jausc.myflix.tv.ui.components.detail.EpisodeListSection
+import dev.jausc.myflix.tv.ui.components.detail.EpisodeListRow
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
@@ -276,28 +281,76 @@ fun SeasonDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(0.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-            // Episodes for selected season - vertical list with thumbnails and action buttons
+            // Episodes for selected season - rendered directly in parent LazyColumn
+            // (Not using EpisodeListSection which has its own LazyColumn - would cause crash)
             if (state.seasons.isNotEmpty()) {
-                item(key = "episodes") {
-                    EpisodeListSection(
-                        episodes = state.episodes,
-                        jellyfinClient = jellyfinClient,
-                        onPlayClick = { episode ->
-                            position = EPISODES_ROW
-                            onPlayItemClick(episode.id, null)
-                        },
-                        onMoreInfoClick = { episode ->
-                            position = EPISODES_ROW
-                            // Navigate to episode detail screen
-                            onNavigateToDetail(episode.id)
-                        },
+                // Episodes section header
+                item(key = "episodes_header") {
+                    EpisodeSectionHeader(
+                        episodeCount = state.episodes.size,
                         isLoading = state.isLoadingEpisodes,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[EPISODES_ROW]),
-                        firstRowFocusRequester = focusRequesters[EPISODES_ROW],
-                        upFocusRequester = playFocusRequester,
                     )
+                }
+
+                // Episode rows
+                if (state.isLoadingEpisodes) {
+                    item(key = "episodes_loading") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            dev.jausc.myflix.tv.ui.components.TvLoadingIndicator(
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
+                    }
+                } else if (state.episodes.isEmpty()) {
+                    item(key = "episodes_empty") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "No episodes available",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = TvColors.TextSecondary,
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(
+                        items = state.episodes,
+                        key = { _, episode -> "episode_${episode.id}" },
+                    ) { index, episode ->
+                        EpisodeListRow(
+                            episode = episode,
+                            jellyfinClient = jellyfinClient,
+                            onPlayClick = {
+                                position = EPISODES_ROW
+                                onPlayItemClick(episode.id, null)
+                            },
+                            onMoreInfoClick = {
+                                position = EPISODES_ROW
+                                onNavigateToDetail(episode.id)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                                .then(
+                                    if (index == 0) {
+                                        Modifier
+                                            .focusRequester(focusRequesters[EPISODES_ROW])
+                                            .focusProperties { up = playFocusRequester }
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                        )
+                    }
                 }
             }
 
@@ -694,4 +747,40 @@ private fun buildSeasonMenu(
         title = title,
         items = items,
     )
+}
+
+/**
+ * Section header for the episodes list showing title and count.
+ */
+@Composable
+private fun EpisodeSectionHeader(
+    episodeCount: Int,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(24.dp)
+                .background(TvColors.BluePrimary, shape = MaterialTheme.shapes.small),
+        )
+        Text(
+            text = "Episodes",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = TvColors.TextPrimary,
+        )
+        if (!isLoading && episodeCount > 0) {
+            Text(
+                text = "($episodeCount)",
+                style = MaterialTheme.typography.titleMedium,
+                color = TvColors.TextSecondary,
+            )
+        }
+    }
 }
