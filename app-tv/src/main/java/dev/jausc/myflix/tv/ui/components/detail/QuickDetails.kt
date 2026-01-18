@@ -19,7 +19,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.ui.components.detail.ColoredMediaBadge as SharedColoredMediaBadge
 import dev.jausc.myflix.core.common.ui.components.detail.Dot as SharedDot
 import dev.jausc.myflix.core.common.ui.components.detail.DotSeparatedRow as SharedDotSeparatedRow
 import dev.jausc.myflix.core.common.ui.components.detail.MediaBadgesRow as SharedMediaBadgesRow
