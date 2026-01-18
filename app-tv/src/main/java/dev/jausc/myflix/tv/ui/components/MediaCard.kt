@@ -14,6 +14,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,8 +30,14 @@ import androidx.tv.material3.*
 import androidx.tv.material3.Glow
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.isDolbyVision
+import dev.jausc.myflix.core.common.model.isHdr
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.tv.ui.theme.TvColors
+
+// HDR/DV Badge Colors
+private val DolbyVisionOrange = Color(0xFFFF6B00)
+private val HdrBlue = Color(0xFF4169E1)
 
 /**
  * Standard card sizes used throughout the app.
@@ -167,6 +174,21 @@ private fun MediaCardInternal(
                     contentScale = ContentScale.Crop,
                 )
 
+                // HDR/DV badge (top-left corner)
+                if (item.isDolbyVision) {
+                    HdrBadge(
+                        text = "DV",
+                        color = DolbyVisionOrange,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                } else if (item.isHdr) {
+                    HdrBadge(
+                        text = "HDR",
+                        color = HdrBlue,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
+
                 if (item.progressPercent > 0f && item.progressPercent < 1f) {
                     Box(
                         modifier = Modifier
@@ -287,6 +309,21 @@ fun WideMediaCard(
                     contentScale = ContentScale.Crop,
                 )
 
+                // HDR/DV badge (top-left corner)
+                if (item.isDolbyVision) {
+                    HdrBadge(
+                        text = "DV",
+                        color = DolbyVisionOrange,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                } else if (item.isHdr) {
+                    HdrBadge(
+                        text = "HDR",
+                        color = HdrBlue,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
+
                 // Progress bar at bottom
                 if (item.progressPercent > 0f && item.progressPercent < 1f) {
                     Box(
@@ -341,5 +378,30 @@ fun WideMediaCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * HDR/Dolby Vision badge overlay for media cards
+ */
+@Composable
+private fun HdrBadge(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .padding(6.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(color),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+        )
     }
 }

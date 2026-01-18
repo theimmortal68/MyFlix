@@ -252,8 +252,44 @@ class PlayerController(
     companion object {
         private const val TAG = "PlayerController"
 
-        // Dolby Vision HDR transfer function constant
-        private const val HDR_TYPE_DOLBY_VISION = 1 // Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION
+        // HDR type constants from Display.HdrCapabilities
+        private const val HDR_TYPE_DOLBY_VISION = 1
+        private const val HDR_TYPE_HDR10 = 2
+        private const val HDR_TYPE_HLG = 3
+        private const val HDR_TYPE_HDR10_PLUS = 4
+
+        /**
+         * Get all supported HDR types for this device
+         */
+        fun getDeviceHdrCapabilities(context: Context): DeviceHdrCapabilities {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                return DeviceHdrCapabilities()
+            }
+
+            return try {
+                val supportedTypes = when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                        getHdrTypesApi34(context)
+                    }
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                        getHdrTypesApi30(context)
+                    }
+                    else -> {
+                        getHdrTypesLegacy(context)
+                    }
+                }
+
+                DeviceHdrCapabilities(
+                    supportsDolbyVision = supportedTypes.contains(HDR_TYPE_DOLBY_VISION),
+                    supportsHdr10 = supportedTypes.contains(HDR_TYPE_HDR10),
+                    supportsHdr10Plus = supportedTypes.contains(HDR_TYPE_HDR10_PLUS),
+                    supportsHlg = supportedTypes.contains(HDR_TYPE_HLG),
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to check HDR capabilities", e)
+                DeviceHdrCapabilities()
+            }
+        }
 
         /**
          * Check if device supports Dolby Vision playback
@@ -311,6 +347,19 @@ class PlayerController(
             return display.hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
         }
     }
+}
+
+/**
+ * Device HDR capability information
+ */
+data class DeviceHdrCapabilities(
+    val supportsDolbyVision: Boolean = false,
+    val supportsHdr10: Boolean = false,
+    val supportsHdr10Plus: Boolean = false,
+    val supportsHlg: Boolean = false,
+) {
+    val supportsAnyHdr: Boolean
+        get() = supportsDolbyVision || supportsHdr10 || supportsHdr10Plus || supportsHlg
 }
 
 /**

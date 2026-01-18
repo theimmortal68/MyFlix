@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -75,6 +76,8 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.DeviceHdrCapabilities
+import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.mobile.MobilePreferences
 
 /**
@@ -361,6 +364,16 @@ fun SettingsScreen(
                         checked = useTrailerFallback,
                         onCheckedChange = { preferences.setUseTrailerFallback(it) },
                     )
+                }
+            }
+
+            // Device Section
+            item {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val capabilities = remember { PlayerController.getDeviceHdrCapabilities(context) }
+
+                SettingsSection(title = "Device") {
+                    DeviceCapabilityItem(capabilities = capabilities)
                 }
             }
 
@@ -686,6 +699,80 @@ private fun ReorderableCheckboxItem(
                 )
             }
         }
+    }
+}
+
+// HDR/DV Badge Colors
+private val DolbyVisionOrange = Color(0xFFFF6B00)
+private val HdrBlue = Color(0xFF4169E1)
+
+@Composable
+private fun DeviceCapabilityItem(capabilities: DeviceHdrCapabilities) {
+    Column(
+        modifier = Modifier.padding(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Smartphone,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = "HDR Capability",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Video formats supported by this device",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+
+        // HDR format chips
+        Row(
+            modifier = Modifier.padding(top = 12.dp, start = 44.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CapabilityChip("Dolby Vision", capabilities.supportsDolbyVision, DolbyVisionOrange)
+            CapabilityChip("HDR10", capabilities.supportsHdr10, HdrBlue)
+            CapabilityChip("HDR10+", capabilities.supportsHdr10Plus, HdrBlue)
+            CapabilityChip("HLG", capabilities.supportsHlg, HdrBlue)
+        }
+    }
+}
+
+@Composable
+private fun CapabilityChip(label: String, supported: Boolean, activeColor: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(
+                if (supported) {
+                    activeColor.copy(alpha = 0.2f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                },
+            ),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (supported) activeColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }
 

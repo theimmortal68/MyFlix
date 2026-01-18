@@ -41,8 +41,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.formattedPremiereDate
+import dev.jausc.myflix.core.common.model.isDolbyVision
 import dev.jausc.myflix.core.common.model.isEpisode
+import dev.jausc.myflix.core.common.model.isHdr
 import dev.jausc.myflix.core.common.model.progressPercent
+
+// HDR/DV Badge Colors
+private val DolbyVisionOrange = Color(0xFFFF6B00)
+private val HdrBlue = Color(0xFF4169E1)
 
 /**
  * Progress bar overlay for continue watching items.
@@ -142,6 +148,21 @@ fun MobileMediaCard(
                         .fillMaxWidth()
                         .aspectRatio(2f / 3f),
                 )
+
+                // HDR/DV badge (top-left corner)
+                if (item.isDolbyVision) {
+                    HdrBadge(
+                        text = "DV",
+                        color = DolbyVisionOrange,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                } else if (item.isHdr) {
+                    HdrBadge(
+                        text = "HDR",
+                        color = HdrBlue,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
 
                 // Episode number badge in top right corner (for upcoming episodes)
                 if (isUpcomingEpisode && item.isEpisode) {
@@ -270,6 +291,21 @@ fun MobileWideMediaCard(
                         .aspectRatio(16f / 9f),
                 )
 
+                // HDR/DV badge (top-left corner)
+                if (item.isDolbyVision) {
+                    HdrBadge(
+                        text = "DV",
+                        color = DolbyVisionOrange,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                } else if (item.isHdr) {
+                    HdrBadge(
+                        text = "HDR",
+                        color = HdrBlue,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
+
                 // Episode number badge (for episodes)
                 if (item.isEpisode) {
                     val episodeNumber = item.indexNumber
@@ -334,5 +370,30 @@ fun MobileWideMediaCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * HDR/Dolby Vision badge overlay for media cards
+ */
+@Composable
+private fun HdrBadge(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .padding(6.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(color),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+        )
     }
 }
