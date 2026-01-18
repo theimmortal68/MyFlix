@@ -29,8 +29,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Visibility
@@ -310,7 +310,7 @@ fun EpisodeListRow(
                 onFavoriteToggle?.let { onToggle ->
                     EpisodeActionButton(
                         title = if (isFavorite) "Remove Favorite" else "Add to Favorites",
-                        icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.Favorite,
+                        icon = if (isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                         iconColor = if (isFavorite) IconColors.FavoriteFilled else IconColors.Favorite,
                         onClick = { onToggle(!isFavorite) },
                     )
