@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
+import androidx.tv.material3.Glow
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.progressPercent
@@ -132,7 +133,13 @@ private fun MediaCardInternal(
             focusedContainerColor = Color.Transparent,
         ),
         scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
+            focusedScale = 1.1f,
+        ),
+        glow = ClickableSurfaceDefaults.glow(
+            focusedGlow = Glow(
+                elevation = 12.dp,
+                elevationColor = TvColors.BluePrimary.copy(alpha = 0.5f)
+            )
         ),
     ) {
         Column {
@@ -256,7 +263,13 @@ fun WideMediaCard(
             ),
         ),
         scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
+            focusedScale = 1.05f,
+        ),
+        glow = ClickableSurfaceDefaults.glow(
+            focusedGlow = Glow(
+                elevation = 12.dp,
+                elevationColor = TvColors.BluePrimary.copy(alpha = 0.5f)
+            )
         ),
     ) {
         Column {

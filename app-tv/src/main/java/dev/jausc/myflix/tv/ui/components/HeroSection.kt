@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -582,7 +583,13 @@ private fun ExpandableHeroButton(
         interactionSource = interactionSource,
         scale = ButtonDefaults.scale(
             scale = 1f,
-            focusedScale = 1f, // No scale change on focus
+            focusedScale = 1.1f,
+        ),
+        glow = ButtonDefaults.glow(
+            focusedGlow = Glow(
+                elevation = 10.dp,
+                elevationColor = TvColors.BluePrimary.copy(alpha = 0.5f)
+            )
         ),
         colors = ButtonDefaults.colors(
             containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
