@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package dev.jausc.myflix.tv.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -53,16 +53,21 @@ data class LibraryUiState(
 }
 
 /**
- * ViewModel for the TV library screen with Plex-style filtering.
+ * Shared ViewModel for the library screen with Plex-style filtering.
  * Manages library items loading, filtering, sorting, and pagination.
  *
+ * @param libraryId The Jellyfin library ID
  * @param collectionType The library type ("movies", "tvshows", etc.) used for filtering
+ * @param jellyfinClient The Jellyfin API client
+ * @param preferences App preferences for saving filter state
+ * @param enableBackgroundPrefetch Whether to enable background prefetching (recommended for TV)
  */
 class LibraryViewModel(
     private val libraryId: String,
     private val collectionType: String?,
     private val jellyfinClient: JellyfinClient,
     private val preferences: AppPreferences,
+    private val enableBackgroundPrefetch: Boolean = false,
 ) : ViewModel() {
 
     /**
@@ -73,10 +78,11 @@ class LibraryViewModel(
         private val collectionType: String?,
         private val jellyfinClient: JellyfinClient,
         private val preferences: AppPreferences,
+        private val enableBackgroundPrefetch: Boolean = false,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            LibraryViewModel(libraryId, collectionType, jellyfinClient, preferences) as T
+            LibraryViewModel(libraryId, collectionType, jellyfinClient, preferences, enableBackgroundPrefetch) as T
     }
 
     /**
@@ -102,8 +108,10 @@ class LibraryViewModel(
         loadGenres()
         loadLibraryItems(resetList = true)
 
-        // Start background pre-fetching after initial load
-        startBackgroundPrefetch()
+        // Start background pre-fetching after initial load (if enabled)
+        if (enableBackgroundPrefetch) {
+            startBackgroundPrefetch()
+        }
     }
 
     /**
@@ -422,7 +430,7 @@ class LibraryViewModel(
     }
 
     /**
-     * Apply multiple filter changes at once (from filter dialog).
+     * Apply multiple filter changes at once (from filter dialog/sheet).
      */
     fun applyFilters(
         watchedFilter: WatchedFilter,

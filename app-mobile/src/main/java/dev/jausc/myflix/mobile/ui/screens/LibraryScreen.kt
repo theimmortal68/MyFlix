@@ -59,6 +59,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.viewmodel.LibraryUiState
+import dev.jausc.myflix.core.viewmodel.LibraryViewModel
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.model.progressPercent

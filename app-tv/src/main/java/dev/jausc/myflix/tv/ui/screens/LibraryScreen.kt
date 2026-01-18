@@ -36,6 +36,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
+import dev.jausc.myflix.core.viewmodel.LibraryUiState
+import dev.jausc.myflix.core.viewmodel.LibraryViewModel
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryViewMode
@@ -70,7 +72,13 @@ fun LibraryScreen(
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
         key = libraryId,
-        factory = LibraryViewModel.Factory(libraryId, collectionType, jellyfinClient, preferences),
+        factory = LibraryViewModel.Factory(
+            libraryId = libraryId,
+            collectionType = collectionType,
+            jellyfinClient = jellyfinClient,
+            preferences = preferences,
+            enableBackgroundPrefetch = true,
+        ),
     )
 
     // Collect UI state from ViewModel
