@@ -1,4 +1,4 @@
-package dev.jausc.myflix.mobile.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -91,7 +91,7 @@ data class PlayerMediaInfo(
 )
 
 /**
- * ViewModel for the mobile player screen.
+ * Shared ViewModel for player screens.
  * Manages item loading, playback reporting, and controls visibility.
  */
 class PlayerViewModel(
@@ -392,7 +392,7 @@ class PlayerViewModel(
 
     /**
      * Cancel the queue and hide countdown.
-     * Called when user presses Cancel or dismisses during countdown.
+     * Called when user presses Cancel or Back during countdown.
      */
     fun cancelQueue() {
         countdownJob?.cancel()

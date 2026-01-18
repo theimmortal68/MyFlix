@@ -47,6 +47,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.jausc.myflix.core.common.HeroContentBuilder
+import dev.jausc.myflix.core.viewmodel.HomeUiState
+import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -142,7 +145,7 @@ fun HomeScreen(
 
     // ViewModel with manual DI
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrClient),
+        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrClient, HeroContentBuilder.defaultConfig),
     )
 
     // Collect UI state from ViewModel

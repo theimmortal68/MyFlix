@@ -1,15 +1,15 @@
-package dev.jausc.myflix.mobile.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrRequest
-import dev.jausc.myflix.mobile.MobilePreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 private const val POLL_INTERVAL_MS = 30_000L
 
 /**
- * UI state for the mobile home screen.
+ * UI state for the home screen.
  */
 data class HomeUiState(
     val libraries: List<JellyfinItem> = emptyList(),
@@ -55,13 +55,14 @@ data class HomeUiState(
 }
 
 /**
- * ViewModel for the mobile home screen.
+ * Shared ViewModel for home screens.
  * Manages content loading, caching, and refresh with proper lifecycle handling.
  */
 class HomeViewModel(
     private val jellyfinClient: JellyfinClient,
-    private val preferences: MobilePreferences,
+    private val preferences: AppPreferences,
     private val seerrClient: SeerrClient? = null,
+    private val heroConfig: HeroContentBuilder.Config = HeroContentBuilder.defaultConfig,
 ) : ViewModel() {
 
     /**
@@ -69,18 +70,20 @@ class HomeViewModel(
      */
     class Factory(
         private val jellyfinClient: JellyfinClient,
-        private val preferences: MobilePreferences,
+        private val preferences: AppPreferences,
         private val seerrClient: SeerrClient? = null,
+        private val heroConfig: HeroContentBuilder.Config = HeroContentBuilder.defaultConfig,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(jellyfinClient, preferences, seerrClient) as T
+            HomeViewModel(jellyfinClient, preferences, seerrClient, heroConfig) as T
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     // Observe preference changes
+    val hideWatchedFromRecent = preferences.hideWatchedFromRecent
     val showSeasonPremieres = preferences.showSeasonPremieres
     val showGenreRows = preferences.showGenreRows
     val enabledGenres = preferences.enabledGenres
@@ -88,6 +91,14 @@ class HomeViewModel(
     val pinnedCollections = preferences.pinnedCollections
     val showSuggestions = preferences.showSuggestions
     val showSeerrRecentRequests = preferences.showSeerrRecentRequests
+    val hasSeenNavBarTip = preferences.hasSeenNavBarTip
+
+    /**
+     * Mark the nav bar tip as seen (first-run tip dismissed).
+     */
+    fun setHasSeenNavBarTip() {
+        preferences.setHasSeenNavBarTip(true)
+    }
 
     init {
         loadContent()
@@ -298,7 +309,7 @@ class HomeViewModel(
             nextUp = state.nextUp,
             recentMovies = state.recentMovies,
             recentShows = state.recentShows,
-            config = HeroContentBuilder.mobileConfig,
+            config = heroConfig,
         )
         _uiState.update { it.copy(featuredItems = featured) }
     }
@@ -317,6 +328,17 @@ class HomeViewModel(
 
     private fun findShowsLibraryId(libraries: List<JellyfinItem>): String? =
         libraries.find { it.collectionType == "tvshows" }?.id
+
+    /**
+     * Filter items based on hideWatchedFromRecent preference.
+     */
+    fun filterWatched(items: List<JellyfinItem>): List<JellyfinItem> {
+        return if (hideWatchedFromRecent.value) {
+            items.filter { it.userData?.played != true }
+        } else {
+            items
+        }
+    }
 
     private suspend fun loadRecentRequests() {
         val client = seerrClient ?: return

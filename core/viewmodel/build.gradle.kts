@@ -21,6 +21,8 @@ dependencies {
     // Core modules
     api(project(":core:common"))
     api(project(":core:network"))
+    api(project(":core:player"))
+    api(project(":core:seerr"))
 
     // Lifecycle - for ViewModels
     api("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.1")

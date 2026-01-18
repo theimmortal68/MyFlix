@@ -60,6 +60,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
+import dev.jausc.myflix.core.viewmodel.PlayerUiState
+import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import androidx.media3.ui.PlayerView
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream

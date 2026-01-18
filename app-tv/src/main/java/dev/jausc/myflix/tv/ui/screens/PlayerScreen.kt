@@ -48,6 +48,9 @@ import androidx.compose.material.icons.filled.ClosedCaptionOff
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
+import dev.jausc.myflix.core.viewmodel.PlayerUiState
+import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
 import dev.jausc.myflix.core.common.ui.ActionColors
