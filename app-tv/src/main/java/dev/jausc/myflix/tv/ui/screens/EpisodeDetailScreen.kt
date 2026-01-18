@@ -164,89 +164,82 @@ fun EpisodeDetailScreen(
         // Layer 2: Content
         Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
-            Box(
+            // Hero content - text on left with buttons at bottom, thumbnail on right (50% width)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.55f)
+                    .padding(start = 48.dp, top = 36.dp, end = 48.dp)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Hero content - text on left, thumbnail on right (50% width)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 48.dp, top = 36.dp, end = 48.dp),
+                // Episode info column (left side) - fills height to align buttons with thumbnail bottom
+                Column(
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    // Episode info column (left side)
-                    Column(
-                        verticalArrangement = Arrangement.Top,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        EpisodeDetailsHeader(
-                            episode = episode,
-                            onOverviewClick = { showOverview = true },
-                            descriptionFocusRequester = descriptionFocusRequester,
-                            downFocusRequester = playFocusRequester,
-                            upFocusRequester = navBarFocusRequester,
-                        )
-                    }
-
-                    // Episode thumbnail (right side, 50% width)
-                    EpisodeHeroThumbnail(
+                    // Top content: header info
+                    EpisodeDetailsHeader(
                         episode = episode,
-                        imageUrl = jellyfinClient.getPrimaryImageUrl(
-                            episode.id,
-                            episode.imageTags?.primary,
-                            maxWidth = 960,
-                        ),
-                        modifier = Modifier.fillMaxWidth(0.5f),
+                        onOverviewClick = { showOverview = true },
+                        descriptionFocusRequester = descriptionFocusRequester,
+                        downFocusRequester = playFocusRequester,
+                        upFocusRequester = navBarFocusRequester,
+                    )
+
+                    // Bottom content: action buttons aligned with thumbnail bottom
+                    ExpandablePlayButtons(
+                        resumePositionTicks = resumePositionTicks,
+                        watched = watched,
+                        favorite = favorite,
+                        onPlayClick = { resumeTicks ->
+                            onPlayClick(resumeTicks / 10_000)
+                        },
+                        onWatchedClick = onWatchedClick,
+                        onFavoriteClick = onFavoriteClick,
+                        onMoreClick = {
+                            dialogParams = buildEpisodeMenu(
+                                episode = episode,
+                                onGoToSeason = {
+                                    episode.parentId?.let { seasonId ->
+                                        onNavigateToDetail(seasonId)
+                                    }
+                                },
+                                onGoToShow = {
+                                    episode.seriesId?.let { seriesId ->
+                                        onNavigateToDetail(seriesId)
+                                    }
+                                },
+                                onMediaInfo = { mediaInfoItem = episode },
+                            )
+                        },
+                        buttonOnFocusChanged = {
+                            if (it.isFocused) {
+                                position = HEADER_ROW
+                                scope.launch {
+                                    bringIntoViewRequester.bringIntoView()
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .focusRequester(focusRequesters[HEADER_ROW])
+                            .focusProperties {
+                                down = focusRequesters[CHAPTERS_ROW]
+                                up = descriptionFocusRequester
+                            }
+                            .focusRestorer(playFocusRequester)
+                            .focusGroup(),
                     )
                 }
 
-                // Action buttons fixed at bottom of hero section
-                ExpandablePlayButtons(
-                    resumePositionTicks = resumePositionTicks,
-                    watched = watched,
-                    favorite = favorite,
-                    onPlayClick = { resumeTicks ->
-                        onPlayClick(resumeTicks / 10_000)
-                    },
-                    onWatchedClick = onWatchedClick,
-                    onFavoriteClick = onFavoriteClick,
-                    onMoreClick = {
-                        dialogParams = buildEpisodeMenu(
-                            episode = episode,
-                            onGoToSeason = {
-                                episode.parentId?.let { seasonId ->
-                                    onNavigateToDetail(seasonId)
-                                }
-                            },
-                            onGoToShow = {
-                                episode.seriesId?.let { seriesId ->
-                                    onNavigateToDetail(seriesId)
-                                }
-                            },
-                            onMediaInfo = { mediaInfoItem = episode },
-                        )
-                    },
-                    buttonOnFocusChanged = {
-                        if (it.isFocused) {
-                            position = HEADER_ROW
-                            scope.launch {
-                                bringIntoViewRequester.bringIntoView()
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 48.dp, bottom = 8.dp)
-                        .focusRequester(focusRequesters[HEADER_ROW])
-                        .focusProperties {
-                            down = focusRequesters[CHAPTERS_ROW]
-                            up = descriptionFocusRequester
-                        }
-                        .focusRestorer(playFocusRequester)
-                        .focusGroup(),
+                // Episode thumbnail (right side, 50% width)
+                EpisodeHeroThumbnail(
+                    episode = episode,
+                    imageUrl = jellyfinClient.getPrimaryImageUrl(
+                        episode.id,
+                        episode.imageTags?.primary,
+                        maxWidth = 960,
+                    ),
+                    modifier = Modifier.fillMaxWidth(0.5f),
                 )
             }
 
@@ -559,11 +552,11 @@ private fun EpisodeDetailsHeader(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Description - 4 lines max, clickable to show full overview
+        // Description - 5 lines max, clickable to show full overview
         episode.overview?.let { overview ->
             OverviewText(
                 overview = overview,
-                maxLines = 4,
+                maxLines = 5,
                 onClick = onOverviewClick,
                 modifier = Modifier
                     .fillMaxWidth()
