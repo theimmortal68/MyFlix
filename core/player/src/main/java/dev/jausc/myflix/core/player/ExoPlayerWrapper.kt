@@ -315,6 +315,23 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
         _state.value = _state.value.copy(speed = speed)
     }
 
+    /**
+     * Current subtitle style configuration.
+     * For ExoPlayer, subtitle styling is typically applied via CaptionStyleCompat
+     * in the UI layer when using client-side subtitle rendering.
+     * When using Jellyfin's server-side subtitle burning (via URL parameters),
+     * styling is controlled server-side and this has no effect.
+     */
+    var subtitleStyle: SubtitleStyle = SubtitleStyle.DEFAULT
+        private set
+
+    override fun setSubtitleStyle(style: SubtitleStyle) {
+        subtitleStyle = style
+        Log.d(TAG, "Subtitle style stored: size=${style.fontSize}, color=${style.fontColor}, opacity=${style.backgroundOpacity}")
+        // Note: For client-side subtitle rendering, apply this to SubtitleView via CaptionStyleCompat
+        // in the UI layer. Server-side subtitles are styled by Jellyfin, not the player.
+    }
+
     override fun release() {
         stopPositionTracking()
         scope.cancel()

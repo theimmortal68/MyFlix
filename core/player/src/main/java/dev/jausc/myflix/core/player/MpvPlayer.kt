@@ -246,6 +246,28 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
         }
     }
 
+    override fun setSubtitleStyle(style: SubtitleStyle) {
+        if (!initialized) return
+        try {
+            // Font size (MPV uses points, our enum has mpvPoints)
+            MPVLib.setPropertyInt("sub-font-size", style.fontSize.mpvPoints)
+
+            // Font color (MPV format: "#RRGGBB")
+            MPVLib.setPropertyString("sub-color", style.mpvFontColor)
+
+            // Background color with opacity (MPV format: "#AARRGGBB")
+            MPVLib.setPropertyString("sub-back-color", style.mpvBackgroundColor)
+
+            // Add outline for better readability
+            MPVLib.setPropertyString("sub-border-color", "#FF000000") // Black outline
+            MPVLib.setPropertyInt("sub-border-size", 2)
+
+            Log.d(TAG, "Subtitle style applied: size=${style.fontSize.mpvPoints}, color=${style.mpvFontColor}, bg=${style.mpvBackgroundColor}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to apply subtitle style", e)
+        }
+    }
+
     override fun release() {
         if (initialized) {
             MPVLib.removeObserver(this)

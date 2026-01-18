@@ -45,6 +45,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.ClosedCaptionOff
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -66,10 +67,14 @@ import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import dev.jausc.myflix.core.player.SubtitleStyle
+import dev.jausc.myflix.core.player.SubtitleFontSize
+import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.DialogSectionHeader
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
@@ -92,6 +97,18 @@ fun PlayerScreen(
 
     // Get preferred audio language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
+
+    // Get subtitle styling preferences
+    val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
+    val subtitleFontColorName by appPreferences.subtitleFontColor.collectAsState()
+    val subtitleBackgroundOpacity by appPreferences.subtitleBackgroundOpacity.collectAsState()
+    val subtitleStyle = remember(subtitleFontSizeName, subtitleFontColorName, subtitleBackgroundOpacity) {
+        SubtitleStyle(
+            fontSize = SubtitleFontSize.fromName(subtitleFontSizeName),
+            fontColor = SubtitleColor.fromName(subtitleFontColorName),
+            backgroundOpacity = subtitleBackgroundOpacity,
+        )
+    }
 
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
@@ -196,6 +213,13 @@ fun PlayerScreen(
         onDispose {
             playerController.stop()
             playerController.release()
+        }
+    }
+
+    // Apply subtitle style when it changes or player becomes ready
+    LaunchedEffect(subtitleStyle, playerController.isInitialized) {
+        if (playerController.isInitialized) {
+            playerController.setSubtitleStyle(subtitleStyle)
         }
     }
 
@@ -330,6 +354,12 @@ fun PlayerScreen(
                     onSubtitleSelected = { index ->
                         currentStartPositionMs = playbackState.position
                         viewModel.setSubtitleStreamIndex(index)
+                    },
+                    subtitleStyle = subtitleStyle,
+                    onSubtitleStyleChanged = { newStyle ->
+                        appPreferences.setSubtitleFontSize(newStyle.fontSize.name)
+                        appPreferences.setSubtitleFontColor(newStyle.fontColor.name)
+                        appPreferences.setSubtitleBackgroundOpacity(newStyle.backgroundOpacity)
                     },
                     onPlayNext = if (state.isQueueMode) viewModel::playNextNow else null,
                     onSeekRelative = { offset -> playerController.seekRelative(offset) },
@@ -517,6 +547,8 @@ private fun TvPlayerControlsOverlay(
     selectedSubtitleIndex: Int?,
     onAudioSelected: (Int?) -> Unit,
     onSubtitleSelected: (Int?) -> Unit,
+    subtitleStyle: SubtitleStyle,
+    onSubtitleStyleChanged: (SubtitleStyle) -> Unit,
     onPlayNext: (() -> Unit)?,
     onSeekRelative: (Long) -> Unit,
     onSeekTo: (Long) -> Unit,
@@ -729,6 +761,61 @@ private fun TvPlayerControlsOverlay(
                         entries
                     }
                     dialogParams = DialogParams(title = "Subtitles", items = items)
+                }
+                TvActionButton("Sub Style") {
+                    onUserInteraction()
+                    val items = mutableListOf<DialogItemEntry>()
+
+                    // Font Size section
+                    items.add(DialogSectionHeader("Font Size"))
+                    items.addAll(
+                        SubtitleFontSize.entries.map { size ->
+                            DialogItem(
+                                text = size.label,
+                                icon = Icons.Default.FormatSize,
+                                iconTint = if (subtitleStyle.fontSize == size) ActionColors.Subtitles else Color.Gray,
+                                onClick = {
+                                    onUserInteraction()
+                                    onSubtitleStyleChanged(subtitleStyle.copy(fontSize = size))
+                                },
+                            )
+                        },
+                    )
+
+                    // Font Color section
+                    items.add(DialogSectionHeader("Font Color"))
+                    items.addAll(
+                        SubtitleColor.entries.map { color ->
+                            DialogItem(
+                                text = color.label,
+                                icon = Icons.Default.ClosedCaption,
+                                iconTint = Color(color.argb),
+                                onClick = {
+                                    onUserInteraction()
+                                    onSubtitleStyleChanged(subtitleStyle.copy(fontColor = color))
+                                },
+                            )
+                        },
+                    )
+
+                    // Background Opacity section
+                    items.add(DialogSectionHeader("Background"))
+                    val opacities = listOf(0, 25, 50, 75, 100)
+                    items.addAll(
+                        opacities.map { opacity ->
+                            DialogItem(
+                                text = "$opacity%",
+                                icon = Icons.Default.FormatSize,
+                                iconTint = if (subtitleStyle.backgroundOpacity == opacity) ActionColors.Subtitles else Color.Gray,
+                                onClick = {
+                                    onUserInteraction()
+                                    onSubtitleStyleChanged(subtitleStyle.copy(backgroundOpacity = opacity))
+                                },
+                            )
+                        },
+                    )
+
+                    dialogParams = DialogParams(title = "Subtitle Style", items = items)
                 }
                 TvActionButton("Speed") {
                     onUserInteraction()

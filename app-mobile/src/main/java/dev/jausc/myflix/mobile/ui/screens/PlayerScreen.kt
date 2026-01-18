@@ -35,10 +35,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Info
@@ -77,6 +79,9 @@ import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import dev.jausc.myflix.core.player.SubtitleStyle
+import dev.jausc.myflix.core.player.SubtitleFontSize
+import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
 import kotlinx.coroutines.delay
@@ -95,6 +100,18 @@ fun PlayerScreen(
 
     // Get preferred audio language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
+
+    // Get subtitle styling preferences
+    val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
+    val subtitleFontColorName by appPreferences.subtitleFontColor.collectAsState()
+    val subtitleBackgroundOpacity by appPreferences.subtitleBackgroundOpacity.collectAsState()
+    val subtitleStyle = remember(subtitleFontSizeName, subtitleFontColorName, subtitleBackgroundOpacity) {
+        SubtitleStyle(
+            fontSize = SubtitleFontSize.fromName(subtitleFontSizeName),
+            fontColor = SubtitleColor.fromName(subtitleFontColorName),
+            backgroundOpacity = subtitleBackgroundOpacity,
+        )
+    }
 
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
@@ -196,6 +213,13 @@ fun PlayerScreen(
         }
     }
 
+    // Apply subtitle style when it changes or player becomes ready
+    LaunchedEffect(subtitleStyle, playerController.isInitialized) {
+        if (playerController.isInitialized) {
+            playerController.setSubtitleStyle(subtitleStyle)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -278,6 +302,12 @@ fun PlayerScreen(
                     onSubtitleSelected = { index ->
                         currentStartPositionMs = playbackState.position
                         viewModel.setSubtitleStreamIndex(index)
+                    },
+                    subtitleStyle = subtitleStyle,
+                    onSubtitleStyleChanged = { newStyle ->
+                        appPreferences.setSubtitleFontSize(newStyle.fontSize.name)
+                        appPreferences.setSubtitleFontColor(newStyle.fontColor.name)
+                        appPreferences.setSubtitleBackgroundOpacity(newStyle.backgroundOpacity)
                     },
                     onPlayNext = if (state.isQueueMode) viewModel::playNextNow else null,
                     onSeekRelative = { offset -> playerController.seekRelative(offset) },
@@ -456,6 +486,8 @@ private fun MobilePlayerControls(
     selectedSubtitleIndex: Int?,
     onAudioSelected: (Int?) -> Unit,
     onSubtitleSelected: (Int?) -> Unit,
+    subtitleStyle: SubtitleStyle,
+    onSubtitleStyleChanged: (SubtitleStyle) -> Unit,
     onPlayNext: (() -> Unit)?,
     onSeekRelative: (Long) -> Unit,
     onSeekTo: (Long) -> Unit,
@@ -689,6 +721,14 @@ private fun MobilePlayerControls(
                     },
                 )
                 PlayerActionButton(
+                    label = "Sub Style",
+                    icon = Icons.Default.FormatSize,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.SUB_STYLE
+                    },
+                )
+                PlayerActionButton(
                     label = "Speed",
                     icon = Icons.Default.Speed,
                     onClick = {
@@ -737,6 +777,7 @@ private fun MobilePlayerControls(
                 subtitleStreams = subtitleStreams,
                 selectedAudioIndex = selectedAudioIndex,
                 selectedSubtitleIndex = selectedSubtitleIndex,
+                subtitleStyle = subtitleStyle,
                 speed = speed,
                 displayMode = displayMode,
                 onAudioSelected = {
@@ -748,6 +789,10 @@ private fun MobilePlayerControls(
                     onUserInteraction()
                     onSubtitleSelected(it)
                     activeSheet = null
+                },
+                onSubtitleStyleChanged = {
+                    onUserInteraction()
+                    onSubtitleStyleChanged(it)
                 },
                 onSpeedSelected = {
                     onUserInteraction()
@@ -772,6 +817,7 @@ private fun MobilePlayerControls(
 private enum class PlayerSheet {
     AUDIO,
     SUBTITLES,
+    SUB_STYLE,
     SPEED,
     DISPLAY,
     CHAPTERS,
@@ -818,10 +864,12 @@ private fun MobilePlayerSheetContent(
     subtitleStreams: List<MediaStream>,
     selectedAudioIndex: Int?,
     selectedSubtitleIndex: Int?,
+    subtitleStyle: SubtitleStyle,
     speed: Float,
     displayMode: PlayerDisplayMode,
     onAudioSelected: (Int?) -> Unit,
     onSubtitleSelected: (Int?) -> Unit,
+    onSubtitleStyleChanged: (SubtitleStyle) -> Unit,
     onSpeedSelected: (Float) -> Unit,
     onDisplayModeSelected: (PlayerDisplayMode) -> Unit,
     onChapterSelected: (Long) -> Unit,
@@ -863,6 +911,39 @@ private fun MobilePlayerSheetContent(
                             onClick = { onSubtitleSelected(stream.index) },
                         )
                     }
+                }
+            }
+        }
+        PlayerSheet.SUB_STYLE -> {
+            SheetHeader(title = "Subtitle Style")
+            LazyColumn {
+                // Font Size section
+                item { SheetSectionHeader("Font Size") }
+                items(SubtitleFontSize.entries) { size ->
+                    SheetRow(
+                        title = size.label,
+                        selected = subtitleStyle.fontSize == size,
+                        onClick = { onSubtitleStyleChanged(subtitleStyle.copy(fontSize = size)) },
+                    )
+                }
+                // Font Color section
+                item { SheetSectionHeader("Font Color") }
+                items(SubtitleColor.entries) { color ->
+                    SheetRow(
+                        title = color.label,
+                        selected = subtitleStyle.fontColor == color,
+                        onClick = { onSubtitleStyleChanged(subtitleStyle.copy(fontColor = color)) },
+                    )
+                }
+                // Background Opacity section
+                item { SheetSectionHeader("Background") }
+                val opacities = listOf(0, 25, 50, 75, 100)
+                items(opacities) { opacity ->
+                    SheetRow(
+                        title = "$opacity%",
+                        selected = subtitleStyle.backgroundOpacity == opacity,
+                        onClick = { onSubtitleStyleChanged(subtitleStyle.copy(backgroundOpacity = opacity)) },
+                    )
                 }
             }
         }
@@ -946,6 +1027,17 @@ private fun SheetHeader(title: String) {
         style = MaterialTheme.typography.titleMedium,
         color = Color.White,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+    )
+}
+
+@Composable
+private fun SheetSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = Color.White.copy(alpha = 0.7f),
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp).padding(top = 8.dp),
     )
 }
 

@@ -74,6 +74,16 @@ object PreferenceKeys {
         /** Preferred audio language (ISO 639-2/B code like "eng", "jpn", "spa") */
         const val PREFERRED_AUDIO_LANGUAGE = "preferred_audio_language"
 
+        // Subtitle styling preferences
+        /** Subtitle font size (SMALL, MEDIUM, LARGE, EXTRA_LARGE) */
+        const val SUBTITLE_FONT_SIZE = "subtitle_font_size"
+
+        /** Subtitle font color (WHITE, YELLOW, GREEN, CYAN, BLUE, MAGENTA) */
+        const val SUBTITLE_FONT_COLOR = "subtitle_font_color"
+
+        /** Subtitle background opacity (0-100) */
+        const val SUBTITLE_BACKGROUND_OPACITY = "subtitle_background_opacity"
+
         // Home screen row preferences
         /** Show upcoming episodes (Season Premieres) row */
         const val SHOW_SEASON_PREMIERES = "show_season_premieres"
@@ -161,6 +171,10 @@ object PreferenceKeys {
         const val USE_TRAILER_FALLBACK = true
         /** null means use Jellyfin server's default audio track */
         val PREFERRED_AUDIO_LANGUAGE: String? = null
+        // Subtitle styling defaults
+        const val SUBTITLE_FONT_SIZE = "MEDIUM"
+        const val SUBTITLE_FONT_COLOR = "WHITE"
+        const val SUBTITLE_BACKGROUND_OPACITY = 75
         const val SHOW_SEASON_PREMIERES = true
         const val SHOW_GENRE_ROWS = false
         const val SHOW_COLLECTIONS = true

@@ -51,6 +51,22 @@ abstract class AppPreferences(context: Context) {
     }
     val preferredAudioLanguage: StateFlow<String?> by lazy { _preferredAudioLanguage.asStateFlow() }
 
+    // Subtitle Styling Preferences
+    private val _subtitleFontSize: MutableStateFlow<String> by lazy {
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SUBTITLE_FONT_SIZE, PreferenceKeys.Defaults.SUBTITLE_FONT_SIZE) ?: PreferenceKeys.Defaults.SUBTITLE_FONT_SIZE)
+    }
+    val subtitleFontSize: StateFlow<String> by lazy { _subtitleFontSize.asStateFlow() }
+
+    private val _subtitleFontColor: MutableStateFlow<String> by lazy {
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SUBTITLE_FONT_COLOR, PreferenceKeys.Defaults.SUBTITLE_FONT_COLOR) ?: PreferenceKeys.Defaults.SUBTITLE_FONT_COLOR)
+    }
+    val subtitleFontColor: StateFlow<String> by lazy { _subtitleFontColor.asStateFlow() }
+
+    private val _subtitleBackgroundOpacity: MutableStateFlow<Int> by lazy {
+        MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SUBTITLE_BACKGROUND_OPACITY, PreferenceKeys.Defaults.SUBTITLE_BACKGROUND_OPACITY))
+    }
+    val subtitleBackgroundOpacity: StateFlow<Int> by lazy { _subtitleBackgroundOpacity.asStateFlow() }
+
     // Home Screen Row Preferences
     private val _showSeasonPremieres: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_SEASON_PREMIERES, PreferenceKeys.Defaults.SHOW_SEASON_PREMIERES))
@@ -173,6 +189,35 @@ abstract class AppPreferences(context: Context) {
             prefs.edit().remove(PreferenceKeys.Prefs.PREFERRED_AUDIO_LANGUAGE).apply()
         }
         _preferredAudioLanguage.value = language
+    }
+
+    // Subtitle styling setters
+
+    /**
+     * Set the subtitle font size.
+     * @param size SubtitleFontSize enum name (SMALL, MEDIUM, LARGE, EXTRA_LARGE)
+     */
+    fun setSubtitleFontSize(size: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.SUBTITLE_FONT_SIZE, size).apply()
+        _subtitleFontSize.value = size
+    }
+
+    /**
+     * Set the subtitle font color.
+     * @param color SubtitleColor enum name (WHITE, YELLOW, GREEN, CYAN, BLUE, MAGENTA)
+     */
+    fun setSubtitleFontColor(color: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.SUBTITLE_FONT_COLOR, color).apply()
+        _subtitleFontColor.value = color
+    }
+
+    /**
+     * Set the subtitle background opacity (0-100).
+     */
+    fun setSubtitleBackgroundOpacity(opacity: Int) {
+        val clampedOpacity = opacity.coerceIn(0, 100)
+        prefs.edit().putInt(PreferenceKeys.Prefs.SUBTITLE_BACKGROUND_OPACITY, clampedOpacity).apply()
+        _subtitleBackgroundOpacity.value = clampedOpacity
     }
 
     // Home screen row setters

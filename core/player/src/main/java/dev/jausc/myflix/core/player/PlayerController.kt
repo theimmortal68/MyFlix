@@ -236,6 +236,10 @@ class PlayerController(
         currentPlayer?.cycleSubtitles()
     }
 
+    fun setSubtitleStyle(style: SubtitleStyle) {
+        currentPlayer?.setSubtitleStyle(style)
+    }
+
     fun release() {
         stateForwardingJob?.cancel()
         stateForwardingJob = null

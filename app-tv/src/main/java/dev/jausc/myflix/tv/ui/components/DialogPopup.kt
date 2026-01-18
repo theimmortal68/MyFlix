@@ -58,6 +58,12 @@ sealed interface DialogItemEntry
 object DialogItemDivider : DialogItemEntry
 
 /**
+ * A section header in the dialog list.
+ * Displays bold text to separate groups of items.
+ */
+data class DialogSectionHeader(val text: String) : DialogItemEntry
+
+/**
  * A single item in a long-press context dialog.
  *
  * @param text The display text for the item
@@ -190,6 +196,15 @@ private fun DialogPopupContent(
                                     .padding(vertical = 8.dp)
                                     .background(TvColors.TextSecondary.copy(alpha = 0.2f))
                                     .padding(vertical = 0.5.dp),
+                            )
+                        }
+                        is DialogSectionHeader -> {
+                            Text(
+                                text = item.text,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = TvColors.TextSecondary,
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                             )
                         }
                         is DialogItem -> {
