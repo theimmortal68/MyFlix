@@ -157,6 +157,7 @@ class DetailViewModel(
 
     /**
      * Select a season and load its episodes.
+     * Fetches full season details to get overview and accurate metadata.
      */
     fun selectSeason(season: JellyfinItem) {
         val currentItem = _uiState.value.item ?: return
@@ -170,6 +171,13 @@ class DetailViewModel(
         }
 
         viewModelScope.launch {
+            // Fetch full season details to get overview and accurate childCount
+            jellyfinClient.getItem(season.id)
+                .onSuccess { fullSeason ->
+                    _uiState.update { it.copy(selectedSeason = fullSeason) }
+                }
+
+            // Load episodes for the season
             jellyfinClient.getEpisodes(seriesId, season.id)
                 .onSuccess { episodes ->
                     _uiState.update {

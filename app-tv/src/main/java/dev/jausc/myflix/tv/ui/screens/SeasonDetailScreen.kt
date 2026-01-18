@@ -222,6 +222,7 @@ fun SeasonDetailScreen(
                         SeasonOnlyHeroContent(
                             series = series,
                             selectedSeason = state.selectedSeason,
+                            episodeCount = state.episodes.size,
                             onOverviewClick = { showOverview = true },
                             descriptionFocusRequester = descriptionFocusRequester,
                             downFocusRequester = playFocusRequester,
@@ -644,6 +645,7 @@ fun SeasonDetailScreen(
 private fun SeasonOnlyHeroContent(
     series: JellyfinItem,
     selectedSeason: JellyfinItem?,
+    episodeCount: Int,
     onOverviewClick: () -> Unit,
     descriptionFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
@@ -678,7 +680,7 @@ private fun SeasonOnlyHeroContent(
             Spacer(modifier = Modifier.height(6.dp))
 
             // Season rating row: year, episode count, official rating
-            val details = buildSeasonRatingLine(series, season)
+            val details = buildSeasonRatingLine(series, season, episodeCount.takeIf { it > 0 })
             if (details.isNotEmpty() || series.communityRating != null) {
                 DotSeparatedRow(
                     texts = details,
@@ -713,15 +715,21 @@ private fun SeasonOnlyHeroContent(
 
 /**
  * Build the rating line for a season: "2024 · 10 episodes · TV-14"
+ * @param episodeCount The actual loaded episode count (more accurate than season.childCount)
  */
-private fun buildSeasonRatingLine(series: JellyfinItem, season: JellyfinItem): List<String> = buildList {
+private fun buildSeasonRatingLine(
+    series: JellyfinItem,
+    season: JellyfinItem,
+    episodeCount: Int? = null,
+): List<String> = buildList {
     // Premiere year
     season.premiereDate?.take(4)?.let { add(it) }
         ?: series.productionYear?.let { add(it.toString()) }
 
-    // Episode count
-    season.childCount?.let { count ->
-        add("$count episode${if (count != 1) "s" else ""}")
+    // Episode count - prefer actual loaded count, fallback to season.childCount
+    val count = episodeCount ?: season.childCount
+    count?.let {
+        add("$it episode${if (it != 1) "s" else ""}")
     }
 
     // Official rating
