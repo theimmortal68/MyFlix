@@ -159,6 +159,7 @@ fun DetailScreen(
                     onEpisodeFavoriteToggle = { episodeId, favorite ->
                         viewModel.setFavorite(episodeId, favorite)
                     },
+                    onRefreshEpisodes = { viewModel.refreshEpisodes() },
                     onNavigate = onNavigate,
                     showUniversesInNav = showUniversesInNav,
                     modifier = Modifier.fillMaxSize(),

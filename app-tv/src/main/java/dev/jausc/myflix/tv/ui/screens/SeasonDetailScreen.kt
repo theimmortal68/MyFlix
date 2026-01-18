@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -34,6 +35,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -107,6 +111,7 @@ fun SeasonDetailScreen(
     onFavoriteClick: () -> Unit,
     onEpisodeWatchedToggle: (String, Boolean) -> Unit,
     onEpisodeFavoriteToggle: (String, Boolean) -> Unit,
+    onRefreshEpisodes: () -> Unit = {},
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
     modifier: Modifier = Modifier,
@@ -141,6 +146,20 @@ fun SeasonDetailScreen(
     }
     val featureSections = remember(state.specialFeatures) {
         buildFeatureSections(state.specialFeatures, emptySet())
+    }
+
+    // Refresh episodes when screen resumes (e.g., returning from episode detail)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onRefreshEpisodes()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Auto-select first season if none selected
