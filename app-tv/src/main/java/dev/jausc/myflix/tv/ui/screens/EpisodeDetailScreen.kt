@@ -170,24 +170,14 @@ fun EpisodeDetailScreen(
                     .fillMaxHeight(0.55f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Hero content - thumbnail on left, info on right
+                // Hero content - text on left, thumbnail on right (50% width)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     modifier = Modifier
-                        .fillMaxWidth(0.75f)
-                        .padding(start = 48.dp, top = 36.dp),
+                        .fillMaxWidth()
+                        .padding(start = 48.dp, top = 36.dp, end = 48.dp),
                 ) {
-                    // Episode thumbnail (320dp × 180dp, 16:9)
-                    EpisodeHeroThumbnail(
-                        episode = episode,
-                        imageUrl = jellyfinClient.getPrimaryImageUrl(
-                            episode.id,
-                            episode.imageTags?.primary,
-                            maxWidth = 640,
-                        ),
-                    )
-
-                    // Episode info column
+                    // Episode info column (left side)
                     Column(
                         verticalArrangement = Arrangement.Top,
                         modifier = Modifier.weight(1f),
@@ -200,6 +190,17 @@ fun EpisodeDetailScreen(
                             upFocusRequester = navBarFocusRequester,
                         )
                     }
+
+                    // Episode thumbnail (right side, 50% width)
+                    EpisodeHeroThumbnail(
+                        episode = episode,
+                        imageUrl = jellyfinClient.getPrimaryImageUrl(
+                            episode.id,
+                            episode.imageTags?.primary,
+                            maxWidth = 960,
+                        ),
+                        modifier = Modifier.fillMaxWidth(0.5f),
+                    )
                 }
 
                 // Action buttons fixed at bottom of hero section
@@ -457,7 +458,7 @@ fun EpisodeDetailScreen(
 
 /**
  * Episode thumbnail for hero section with progress bar.
- * Sized to match the text column height.
+ * Width is controlled by the modifier parameter.
  */
 @Composable
 private fun EpisodeHeroThumbnail(
@@ -467,7 +468,6 @@ private fun EpisodeHeroThumbnail(
 ) {
     Box(
         modifier = modifier
-            .width(320.dp)
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(12.dp)),
     ) {
