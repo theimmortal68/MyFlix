@@ -46,6 +46,11 @@ abstract class AppPreferences(context: Context) {
     }
     val useTrailerFallback: StateFlow<Boolean> by lazy { _useTrailerFallback.asStateFlow() }
 
+    private val _preferredAudioLanguage: MutableStateFlow<String?> by lazy {
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.PREFERRED_AUDIO_LANGUAGE, PreferenceKeys.Defaults.PREFERRED_AUDIO_LANGUAGE))
+    }
+    val preferredAudioLanguage: StateFlow<String?> by lazy { _preferredAudioLanguage.asStateFlow() }
+
     // Home Screen Row Preferences
     private val _showSeasonPremieres: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_SEASON_PREMIERES, PreferenceKeys.Defaults.SHOW_SEASON_PREMIERES))
@@ -154,6 +159,20 @@ abstract class AppPreferences(context: Context) {
     fun setUseTrailerFallback(useFallback: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.USE_TRAILER_FALLBACK, useFallback).apply()
         _useTrailerFallback.value = useFallback
+    }
+
+    /**
+     * Set the preferred audio language (ISO 639-2/B code like "eng", "jpn", "spa").
+     * When set, the player will automatically select audio tracks matching this language.
+     * Set to null to use Jellyfin's default audio track.
+     */
+    fun setPreferredAudioLanguage(language: String?) {
+        if (language != null) {
+            prefs.edit().putString(PreferenceKeys.Prefs.PREFERRED_AUDIO_LANGUAGE, language).apply()
+        } else {
+            prefs.edit().remove(PreferenceKeys.Prefs.PREFERRED_AUDIO_LANGUAGE).apply()
+        }
+        _preferredAudioLanguage.value = language
     }
 
     // Home screen row setters

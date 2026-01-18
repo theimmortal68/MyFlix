@@ -97,6 +97,7 @@ data class PlayerMediaInfo(
 class PlayerViewModel(
     private val itemId: String,
     private val jellyfinClient: JellyfinClient,
+    private val preferredAudioLanguage: String? = null,
     private var startPositionOverrideMs: Long? = null,
 ) : ViewModel() {
 
@@ -106,11 +107,12 @@ class PlayerViewModel(
     class Factory(
         private val itemId: String,
         private val jellyfinClient: JellyfinClient,
+        private val preferredAudioLanguage: String? = null,
         private val startPositionMs: Long? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PlayerViewModel(itemId, jellyfinClient, startPositionMs) as T
+            PlayerViewModel(itemId, jellyfinClient, preferredAudioLanguage, startPositionMs) as T
     }
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -145,8 +147,7 @@ class PlayerViewModel(
                     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
                     val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
                     val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }.sortedBy { it.index }
-                    val defaultAudioIndex = audioStreams.firstOrNull { it.isDefault }?.index
-                        ?: audioStreams.firstOrNull()?.index
+                    val defaultAudioIndex = selectAudioStreamIndex(audioStreams)
                     val defaultSubtitleIndex = subtitleStreams.firstOrNull { it.isDefault }?.index
                     val queueItem = PlayQueueManager.getCurrentItem()?.takeIf { it.itemId == currentItemId }
                     val selectedAudioIndex = queueItem?.audioStreamIndex ?: defaultAudioIndex
@@ -418,8 +419,7 @@ class PlayerViewModel(
                     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
                     val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
                     val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }.sortedBy { it.index }
-                    val defaultAudioIndex = audioStreams.firstOrNull { it.isDefault }?.index
-                        ?: audioStreams.firstOrNull()?.index
+                    val defaultAudioIndex = selectAudioStreamIndex(audioStreams)
                     val defaultSubtitleIndex = subtitleStreams.firstOrNull { it.isDefault }?.index
                     val queueItem = PlayQueueManager.getCurrentItem()?.takeIf { it.itemId == newItemId }
                     val selectedAudioIndex = queueItem?.audioStreamIndex ?: defaultAudioIndex
@@ -452,6 +452,29 @@ class PlayerViewModel(
                     }
                 }
         }
+    }
+
+    /**
+     * Select the best audio stream index based on user preference.
+     * Priority:
+     * 1. Audio stream matching preferred language
+     * 2. Server-marked default audio stream
+     * 3. First available audio stream
+     */
+    private fun selectAudioStreamIndex(audioStreams: List<MediaStream>): Int? {
+        // Try to find stream matching preferred language
+        if (preferredAudioLanguage != null) {
+            val matchingStream = audioStreams.firstOrNull {
+                it.language.equals(preferredAudioLanguage, ignoreCase = true)
+            }
+            if (matchingStream != null) {
+                return matchingStream.index
+            }
+        }
+
+        // Fall back to server default or first available
+        return audioStreams.firstOrNull { it.isDefault }?.index
+            ?: audioStreams.firstOrNull()?.index
     }
 
     override fun onCleared() {

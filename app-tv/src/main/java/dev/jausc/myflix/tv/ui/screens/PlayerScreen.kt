@@ -72,6 +72,7 @@ import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
+import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -81,6 +82,7 @@ fun PlayerScreen(
     itemId: String,
     startPositionMs: Long? = null,
     jellyfinClient: JellyfinClient,
+    appPreferences: AppPreferences,
     useMpvPlayer: Boolean = false,
     onBack: () -> Unit,
 ) {
@@ -88,10 +90,13 @@ fun PlayerScreen(
     val focusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
 
+    // Get preferred audio language from preferences
+    val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
+
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
         key = itemId,
-        factory = PlayerViewModel.Factory(itemId, jellyfinClient, startPositionMs),
+        factory = PlayerViewModel.Factory(itemId, jellyfinClient, preferredAudioLanguage, startPositionMs),
     )
 
     // Collect UI state from ViewModel
@@ -316,6 +321,11 @@ fun PlayerScreen(
                     onAudioSelected = { index ->
                         currentStartPositionMs = playbackState.position
                         viewModel.setAudioStreamIndex(index)
+                        // Save the selected audio language as preference
+                        val selectedStream = state.audioStreams.find { it.index == index }
+                        selectedStream?.language?.let { language ->
+                            appPreferences.setPreferredAudioLanguage(language)
+                        }
                     },
                     onSubtitleSelected = { index ->
                         currentStartPositionMs = playbackState.position

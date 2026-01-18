@@ -825,6 +825,7 @@ fun MyFlixTvApp() {
                     itemId = itemId,
                     startPositionMs = startPositionMs?.takeIf { it >= 0 },
                     jellyfinClient = jellyfinClient,
+                    appPreferences = tvPreferences,
                     useMpvPlayer = useMpvPlayer,
                     onBack = { navController.popBackStack() },
                 )

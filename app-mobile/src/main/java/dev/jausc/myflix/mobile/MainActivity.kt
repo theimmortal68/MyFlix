@@ -381,6 +381,7 @@ fun MyFlixMobileContent() {
                 itemId = itemId,
                 startPositionMs = startPositionMs?.takeIf { it >= 0 },
                 jellyfinClient = jellyfinClient,
+                appPreferences = mobilePreferences,
                 useMpvPlayer = useMpvPlayer,
                 onBack = { navController.popBackStack() },
             )

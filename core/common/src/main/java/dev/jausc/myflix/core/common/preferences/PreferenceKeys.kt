@@ -71,6 +71,9 @@ object PreferenceKeys {
         /** Use WebView fallback for Seerr trailers */
         const val USE_TRAILER_FALLBACK = "use_trailer_fallback"
 
+        /** Preferred audio language (ISO 639-2/B code like "eng", "jpn", "spa") */
+        const val PREFERRED_AUDIO_LANGUAGE = "preferred_audio_language"
+
         // Home screen row preferences
         /** Show upcoming episodes (Season Premieres) row */
         const val SHOW_SEASON_PREMIERES = "show_season_premieres"
@@ -156,6 +159,8 @@ object PreferenceKeys {
         // Default to true until PoToken implementation is verified on real device
         // WebView fallback works but doesn't support remote control (seek/pause)
         const val USE_TRAILER_FALLBACK = true
+        /** null means use Jellyfin server's default audio track */
+        val PREFERRED_AUDIO_LANGUAGE: String? = null
         const val SHOW_SEASON_PREMIERES = true
         const val SHOW_GENRE_ROWS = false
         const val SHOW_COLLECTIONS = true
