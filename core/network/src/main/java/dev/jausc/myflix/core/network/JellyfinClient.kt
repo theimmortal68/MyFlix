@@ -629,6 +629,26 @@ class JellyfinClient(
         return Result.failure(Exception("Failed after $maxRetries attempts"))
     }
 
+    /**
+     * Authorize a Quick Connect code (called by an already-authenticated client).
+     * This allows a logged-in mobile device to approve a Quick Connect request from a TV.
+     *
+     * POST /QuickConnect/Authorize?code={code}
+     *
+     * @param code The Quick Connect code to authorize
+     * @return Result containing true if authorization succeeded
+     */
+    suspend fun authorizeQuickConnect(code: String): Result<Boolean> = runCatching {
+        requireNotNull(serverUrl) { "Server URL not configured" }
+        requireNotNull(accessToken) { "Not authenticated" }
+
+        val response = httpClient.post("$serverUrl/QuickConnect/Authorize") {
+            parameter("code", code)
+            header("Authorization", "MediaBrowser Token=\"$accessToken\"")
+        }
+        response.status.isSuccess()
+    }
+
     @Suppress("NestedBlockDepth", "LabeledExpression")
     fun quickConnectFlow(serverUrl: String): Flow<QuickConnectFlowState> = flow {
         android.util.Log.d("JellyfinClient", "quickConnectFlow started with serverUrl: $serverUrl")

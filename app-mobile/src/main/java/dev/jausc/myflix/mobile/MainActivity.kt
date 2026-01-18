@@ -11,11 +11,14 @@
 
 package dev.jausc.myflix.mobile
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import java.net.URLDecoder
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -55,11 +58,55 @@ import dev.jausc.myflix.mobile.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.mobile.ui.screens.SettingsScreen
 import dev.jausc.myflix.mobile.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.mobile.ui.screens.TrailerWebViewScreen
+import dev.jausc.myflix.mobile.ui.components.QuickConnectAuthorizationDialog
 import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
 
+/**
+ * Deep link data parsed from incoming intents.
+ */
+sealed class DeepLinkData {
+    /**
+     * Quick Connect authorization request from TV app.
+     * URI format: myflix://quickconnect?server={encodedUrl}&code={code}
+     */
+    data class QuickConnectAuthorize(val serverUrl: String, val code: String) : DeepLinkData()
+}
+
+/**
+ * Parse a deep link URI into structured data.
+ */
+private fun parseDeepLink(uri: Uri): DeepLinkData? {
+    if (uri.scheme != "myflix") return null
+
+    return when (uri.host) {
+        "quickconnect" -> {
+            val serverUrl = uri.getQueryParameter("server")?.let {
+                try {
+                    URLDecoder.decode(it, "UTF-8")
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val code = uri.getQueryParameter("code")
+            if (serverUrl != null && code != null) {
+                DeepLinkData.QuickConnectAuthorize(serverUrl, code)
+            } else null
+        }
+        else -> null
+    }
+}
+
 class MainActivity : ComponentActivity() {
+    // State for pending deep link, shared with composable content
+    private var pendingDeepLink = mutableStateOf<DeepLinkData?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Handle deep link from launch intent
+        intent?.data?.let { uri ->
+            pendingDeepLink.value = parseDeepLink(uri)
+        }
 
         // Enable edge-to-edge display so content can draw behind system bars
         // This allows us to handle status bar insets manually for the overlay effect
@@ -71,15 +118,31 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    MyFlixMobileContent()
+                    MyFlixMobileContent(
+                        pendingDeepLink = pendingDeepLink.value,
+                        onDeepLinkHandled = { pendingDeepLink.value = null },
+                    )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+
+        // Handle deep link from new intent (app already running)
+        intent.data?.let { uri ->
+            pendingDeepLink.value = parseDeepLink(uri)
         }
     }
 }
 
 @Composable
-fun MyFlixMobileContent() {
+fun MyFlixMobileContent(
+    pendingDeepLink: DeepLinkData? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     val context = LocalContext.current
 
     val jellyfinClient = remember { JellyfinClient() }
@@ -206,6 +269,18 @@ fun MyFlixMobileContent() {
                 popUpTo("splash") { inclusive = true }
             }
         }
+    }
+
+    // Handle Quick Connect authorization deep link
+    if (pendingDeepLink is DeepLinkData.QuickConnectAuthorize && isInitialized) {
+        QuickConnectAuthorizationDialog(
+            serverUrl = pendingDeepLink.serverUrl,
+            code = pendingDeepLink.code,
+            serverManager = appState.serverManager,
+            jellyfinClient = jellyfinClient,
+            onDismiss = onDeepLinkHandled,
+            onAuthorized = onDeepLinkHandled,
+        )
     }
 
     NavHost(

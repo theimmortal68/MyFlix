@@ -53,6 +53,7 @@ import dev.jausc.myflix.core.network.QuickConnectFlowState
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import java.net.URLEncoder
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -496,7 +497,10 @@ private fun AuthMethodScreen(
                     quickConnectState = qcState
                     when (qcState) {
                         is QuickConnectFlowState.WaitingForApproval -> {
-                            qrBitmap = generateQrCode("${server.url}/web/#/quickconnect", 120)
+                            // Generate QR with deep link for MyFlix mobile app authorization
+                            val encodedUrl = URLEncoder.encode(server.url, "UTF-8")
+                            val qrContent = "myflix://quickconnect?server=$encodedUrl&code=${qcState.code}"
+                            qrBitmap = generateQrCode(qrContent, 120)
                         }
                         is QuickConnectFlowState.Authenticated -> {
                             viewModel.handleQuickConnectSuccess(qcState.authResponse) {
