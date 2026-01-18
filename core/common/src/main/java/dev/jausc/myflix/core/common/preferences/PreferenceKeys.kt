@@ -74,6 +74,9 @@ object PreferenceKeys {
         /** Preferred audio language (ISO 639-2/B code like "eng", "jpn", "spa") */
         const val PREFERRED_AUDIO_LANGUAGE = "preferred_audio_language"
 
+        /** Player display mode (FIT, FILL, ZOOM, STRETCH) */
+        const val PLAYER_DISPLAY_MODE = "player_display_mode"
+
         // Subtitle styling preferences
         /** Subtitle font size (SMALL, MEDIUM, LARGE, EXTRA_LARGE) */
         const val SUBTITLE_FONT_SIZE = "subtitle_font_size"
@@ -171,6 +174,8 @@ object PreferenceKeys {
         const val USE_TRAILER_FALLBACK = true
         /** null means use Jellyfin server's default audio track */
         val PREFERRED_AUDIO_LANGUAGE: String? = null
+        /** Default to FIT (letterbox/pillarbox) */
+        const val PLAYER_DISPLAY_MODE = "FIT"
         // Subtitle styling defaults
         const val SUBTITLE_FONT_SIZE = "MEDIUM"
         const val SUBTITLE_FONT_COLOR = "WHITE"

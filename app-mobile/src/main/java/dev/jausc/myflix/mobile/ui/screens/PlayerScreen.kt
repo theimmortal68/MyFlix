@@ -101,6 +101,9 @@ fun PlayerScreen(
     // Get preferred audio language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
 
+    // Get display mode preference
+    val displayModeName by appPreferences.playerDisplayMode.collectAsState()
+
     // Get subtitle styling preferences
     val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
     val subtitleFontColorName by appPreferences.subtitleFontColor.collectAsState()
@@ -127,7 +130,11 @@ fun PlayerScreen(
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
-    var displayMode by remember { mutableStateOf(PlayerDisplayMode.FIT) }
+    var displayMode by remember(displayModeName) {
+        mutableStateOf(
+            try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
+        )
+    }
 
     val selectedAudioIndex = state.selectedAudioStreamIndex
     val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
@@ -324,7 +331,10 @@ fun PlayerScreen(
                     onSeekTo = { position -> playerController.seekTo(position) },
                     onSpeedChanged = { speed -> playerController.setSpeed(speed) },
                     displayMode = displayMode,
-                    onDisplayModeChanged = { displayMode = it },
+                    onDisplayModeChanged = { mode ->
+                        displayMode = mode
+                        appPreferences.setPlayerDisplayMode(mode.name)
+                    },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onBack = onBack,
                 )

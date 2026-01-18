@@ -51,6 +51,14 @@ abstract class AppPreferences(context: Context) {
     }
     val preferredAudioLanguage: StateFlow<String?> by lazy { _preferredAudioLanguage.asStateFlow() }
 
+    private val _playerDisplayMode: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, PreferenceKeys.Defaults.PLAYER_DISPLAY_MODE)
+                ?: PreferenceKeys.Defaults.PLAYER_DISPLAY_MODE
+        )
+    }
+    val playerDisplayMode: StateFlow<String> by lazy { _playerDisplayMode.asStateFlow() }
+
     // Subtitle Styling Preferences
     private val _subtitleFontSize: MutableStateFlow<String> by lazy {
         MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SUBTITLE_FONT_SIZE, PreferenceKeys.Defaults.SUBTITLE_FONT_SIZE) ?: PreferenceKeys.Defaults.SUBTITLE_FONT_SIZE)
@@ -189,6 +197,15 @@ abstract class AppPreferences(context: Context) {
             prefs.edit().remove(PreferenceKeys.Prefs.PREFERRED_AUDIO_LANGUAGE).apply()
         }
         _preferredAudioLanguage.value = language
+    }
+
+    /**
+     * Set the player display mode (video scaling).
+     * @param mode PlayerDisplayMode enum name (FIT, FILL, ZOOM, STRETCH)
+     */
+    fun setPlayerDisplayMode(mode: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, mode).apply()
+        _playerDisplayMode.value = mode
     }
 
     // Subtitle styling setters
