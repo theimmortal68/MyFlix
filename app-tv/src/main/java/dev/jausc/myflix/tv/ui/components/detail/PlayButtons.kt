@@ -64,6 +64,7 @@ object IconColors {
     val More = Color(0xFF94A3B8) // Gray
     val Trailer = Color(0xFFFBBF24) // Yellow
     val MediaInfo = Color(0xFF3B82F6) // Blue - for media information
+    val Navigation = Color(0xFF34D399) // Green - for navigation arrows (Go to Season/Show)
 }
 
 /**

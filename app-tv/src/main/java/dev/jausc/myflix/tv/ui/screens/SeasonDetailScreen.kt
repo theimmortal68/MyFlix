@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +66,7 @@ import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeListRow
+import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
@@ -215,14 +217,17 @@ fun SeasonDetailScreen(
                         .padding(start = 48.dp, top = 64.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
-                    SeasonOnlyHeroContent(
-                        series = series,
-                        selectedSeason = state.selectedSeason,
-                        onOverviewClick = { showOverview = true },
-                        descriptionFocusRequester = descriptionFocusRequester,
-                        downFocusRequester = playFocusRequester,
-                        upFocusRequester = seasonTabFocusRequester,
-                    )
+                    // Key on selected season ID to force recomposition when season changes
+                    key(state.selectedSeason?.id) {
+                        SeasonOnlyHeroContent(
+                            series = series,
+                            selectedSeason = state.selectedSeason,
+                            onOverviewClick = { showOverview = true },
+                            descriptionFocusRequester = descriptionFocusRequester,
+                            downFocusRequester = playFocusRequester,
+                            upFocusRequester = seasonTabFocusRequester,
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -730,6 +735,7 @@ private fun buildSeasonMenu(
             DialogItem(
                 text = "Go to series",
                 icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                iconTint = IconColors.Navigation,
                 onClick = onGoToSeries,
             ),
         )
@@ -738,6 +744,7 @@ private fun buildSeasonMenu(
             DialogItem(
                 text = "Media Information",
                 icon = Icons.Outlined.Info,
+                iconTint = IconColors.MediaInfo,
                 onClick = onMediaInfo,
             ),
         )

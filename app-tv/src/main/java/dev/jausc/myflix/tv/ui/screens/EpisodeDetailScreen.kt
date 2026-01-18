@@ -22,6 +22,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +56,8 @@ import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogItemDivider
+import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
@@ -246,16 +249,19 @@ fun EpisodeDetailScreen(
                     onWatchedClick = onWatchedClick,
                     onFavoriteClick = onFavoriteClick,
                     onMoreClick = {
-                        dialogParams = DialogParams(
-                            title = episode.name,
-                            items = listOf(
-                                DialogItem(
-                                    text = "Media Info",
-                                    icon = Icons.Outlined.Info,
-                                    iconTint = IconColors.MediaInfo,
-                                    onClick = { mediaInfoItem = episode },
-                                ),
-                            ),
+                        dialogParams = buildEpisodeMenu(
+                            episode = episode,
+                            onGoToSeason = {
+                                episode.parentId?.let { seasonId ->
+                                    onNavigateToDetail(seasonId)
+                                }
+                            },
+                            onGoToShow = {
+                                episode.seriesId?.let { seriesId ->
+                                    onNavigateToDetail(seriesId)
+                                }
+                            },
+                            onMediaInfo = { mediaInfoItem = episode },
                         )
                     },
                     buttonOnFocusChanged = {
@@ -653,4 +659,59 @@ private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
     } else {
         null
     }
+}
+
+/**
+ * Build the episode context menu with navigation and media info options.
+ */
+private fun buildEpisodeMenu(
+    episode: JellyfinItem,
+    onGoToSeason: () -> Unit,
+    onGoToShow: () -> Unit,
+    onMediaInfo: () -> Unit,
+): DialogParams {
+    val items = buildList<DialogItemEntry> {
+        // Go to Season - only show if episode has a parent (season)
+        if (episode.parentId != null) {
+            add(
+                DialogItem(
+                    text = "Go to Season",
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                    iconTint = IconColors.Navigation,
+                    onClick = onGoToSeason,
+                ),
+            )
+        }
+
+        // Go to Show - only show if episode has a series
+        if (episode.seriesId != null) {
+            add(
+                DialogItem(
+                    text = "Go to Show",
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                    iconTint = IconColors.Navigation,
+                    onClick = onGoToShow,
+                ),
+            )
+        }
+
+        // Divider before Media Info
+        if (isNotEmpty()) {
+            add(DialogItemDivider)
+        }
+
+        add(
+            DialogItem(
+                text = "Media Info",
+                icon = Icons.Outlined.Info,
+                iconTint = IconColors.MediaInfo,
+                onClick = onMediaInfo,
+            ),
+        )
+    }
+
+    return DialogParams(
+        title = episode.name,
+        items = items,
+    )
 }
