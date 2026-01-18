@@ -264,7 +264,15 @@ internal class DefaultLoginAuthenticator(
             response.user.id,
             jellyfinClient.deviceId,
         )
-        appState.login(server.url, response.accessToken, response.user.id, username, password)
+        appState.login(
+            serverUrl = server.url,
+            accessToken = response.accessToken,
+            userId = response.user.id,
+            serverName = server.serverName,
+            userName = response.user.name,
+            username = username,
+            password = password,
+        )
     }
 
     override suspend fun onQuickConnectSuccess(server: ValidatedServerInfo, response: AuthResponse) {
@@ -274,6 +282,12 @@ internal class DefaultLoginAuthenticator(
             response.user.id,
             jellyfinClient.deviceId,
         )
-        appState.login(server.url, response.accessToken, response.user.id)
+        appState.login(
+            serverUrl = server.url,
+            accessToken = response.accessToken,
+            userId = response.user.id,
+            serverName = server.serverName,
+            userName = response.user.name,
+        )
     }
 }

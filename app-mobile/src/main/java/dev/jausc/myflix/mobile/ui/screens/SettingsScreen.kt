@@ -31,7 +31,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
@@ -69,6 +72,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.data.AppState
+import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.MobilePreferences
 
@@ -77,7 +82,18 @@ import dev.jausc.myflix.mobile.MobilePreferences
  * Provides toggle options for display and playback preferences.
  */
 @Composable
-fun SettingsScreen(preferences: MobilePreferences, jellyfinClient: JellyfinClient? = null, onBack: () -> Unit,) {
+fun SettingsScreen(
+    preferences: MobilePreferences,
+    jellyfinClient: JellyfinClient? = null,
+    appState: AppState? = null,
+    onBack: () -> Unit,
+    onAddServer: () -> Unit = {},
+) {
+    // Server state
+    val servers by appState?.servers?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    val activeServer by appState?.activeServer?.collectAsState() ?: remember { mutableStateOf(null) }
+    var showServerDialog by remember { mutableStateOf(false) }
+
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
@@ -149,6 +165,22 @@ fun SettingsScreen(preferences: MobilePreferences, jellyfinClient: JellyfinClien
         )
     }
 
+    // Server management dialog
+    if (showServerDialog && appState != null) {
+        ServerManagementDialog(
+            servers = servers,
+            activeServerId = activeServer?.serverId,
+            onDismiss = { showServerDialog = false },
+            onSwitchServer = { serverId ->
+                appState.switchServer(serverId)
+                showServerDialog = false
+            },
+            onRemoveServer = { serverId ->
+                appState.removeServer(serverId)
+            },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -184,6 +216,33 @@ fun SettingsScreen(preferences: MobilePreferences, jellyfinClient: JellyfinClien
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Servers Section
+            item {
+                SettingsSection(title = "Servers") {
+                    Column {
+                        // Current server display
+                        if (activeServer != null) {
+                            ServerInfoItem(
+                                server = activeServer!!,
+                                isActive = true,
+                                showManageButton = servers.size > 1,
+                                onManageClick = { showServerDialog = true },
+                            )
+                        }
+
+                        // Add Server button
+                        SettingsDivider()
+                        ActionSettingItem(
+                            title = "Add Server",
+                            description = "Connect to another Jellyfin server",
+                            icon = Icons.Outlined.Add,
+                            iconTint = Color(0xFF60A5FA),
+                            onClick = onAddServer,
+                        )
+                    }
+                }
+            }
+
             // Home Screen Section
             item {
                 SettingsSection(title = "Home Screen") {
@@ -628,4 +687,285 @@ private fun ReorderableCheckboxItem(
             }
         }
     }
+}
+
+@Composable
+private fun ServerInfoItem(
+    server: SavedServer,
+    isActive: Boolean,
+    showManageButton: Boolean,
+    onManageClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = showManageButton) { onManageClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Server icon
+        Icon(
+            imageVector = Icons.Outlined.Dns,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = if (isActive) Color(0xFF34D399) else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // Server info
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = server.serverName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (isActive) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF34D399).copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "Connected",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF34D399),
+                        )
+                    }
+                }
+            }
+            Text(
+                text = "${server.userName} • ${server.host}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        // Chevron indicator for manage
+        if (showManageButton) {
+            Text(
+                text = "Manage",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActionSettingItem(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    iconTint: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = iconTint,
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ServerManagementDialog(
+    servers: List<SavedServer>,
+    activeServerId: String?,
+    onDismiss: () -> Unit,
+    onSwitchServer: (String) -> Unit,
+    onRemoveServer: (String) -> Unit,
+) {
+    var serverToRemove by remember { mutableStateOf<SavedServer?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Manage Servers",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.height(300.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(servers.size) { index ->
+                    val server = servers[index]
+                    val isActive = server.serverId == activeServerId
+                    ServerListItem(
+                        server = server,
+                        isActive = isActive,
+                        onSelect = {
+                            if (!isActive) {
+                                onSwitchServer(server.serverId)
+                            }
+                        },
+                        onRemove = { serverToRemove = server },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+    )
+
+    // Confirm remove dialog
+    if (serverToRemove != null) {
+        ConfirmRemoveServerDialog(
+            server = serverToRemove!!,
+            onConfirm = {
+                onRemoveServer(serverToRemove!!.serverId)
+                serverToRemove = null
+            },
+            onDismiss = { serverToRemove = null },
+        )
+    }
+}
+
+@Composable
+private fun ServerListItem(
+    server: SavedServer,
+    isActive: Boolean,
+    onSelect: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isActive) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                } else {
+                    Color.Transparent
+                },
+            )
+            .clickable { onSelect() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Server icon
+        Icon(
+            imageVector = Icons.Outlined.Dns,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = if (isActive) Color(0xFF34D399) else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // Server info
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = server.serverName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (isActive) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF34D399).copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                    ) {
+                        Text(
+                            text = "Active",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF34D399),
+                        )
+                    }
+                }
+            }
+            Text(
+                text = "${server.userName} • ${server.host}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // Remove button
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(40.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Delete,
+                contentDescription = "Remove server",
+                tint = Color(0xFFEF4444).copy(alpha = 0.7f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfirmRemoveServerDialog(
+    server: SavedServer,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Remove Server?",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to remove \"${server.serverName}\"? You will need to log in again to access this server.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Remove", color = Color(0xFFEF4444))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }

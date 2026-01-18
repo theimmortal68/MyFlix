@@ -114,6 +114,8 @@ fun MyFlixMobileContent() {
                             serverUrl = creds.server,
                             accessToken = authResponse.accessToken,
                             userId = authResponse.user.id,
+                            serverName = "Debug Server",
+                            userName = authResponse.user.name,
                             username = creds.username,
                             password = creds.password,
                         )
@@ -274,7 +276,14 @@ fun MyFlixMobileContent() {
             SettingsScreen(
                 preferences = mobilePreferences,
                 jellyfinClient = jellyfinClient,
+                appState = appState,
                 onBack = { navController.popBackStack() },
+                onAddServer = {
+                    // Navigate to login to add a new server
+                    navController.navigate("login") {
+                        popUpTo("home") { inclusive = false }
+                    }
+                },
             )
         }
 

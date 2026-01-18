@@ -132,6 +132,9 @@ class JellyfinClient(
     var userId: String? = null
     var deviceId: String = "myflix_${System.currentTimeMillis()}"
 
+    /** Current server ID for multi-server support. Used to scope cached data. */
+    private var currentServerId: String? = null
+
     val isAuthenticated: Boolean get() = serverUrl != null && accessToken != null && userId != null
 
     // ==================== Caching ====================
@@ -185,6 +188,20 @@ class JellyfinClient(
         this.accessToken = accessToken
         this.userId = userId
         this.deviceId = deviceId
+    }
+
+    /**
+     * Set the server context for multi-server support.
+     * Clears the cache when switching to a different server to prevent data mixing.
+     *
+     * @param serverId The unique identifier for the server being switched to
+     */
+    fun setServerContext(serverId: String) {
+        if (currentServerId != serverId) {
+            android.util.Log.d("JellyfinClient", "Switching server context: $currentServerId -> $serverId")
+            clearCache()
+            currentServerId = serverId
+        }
     }
 
     fun logout() {

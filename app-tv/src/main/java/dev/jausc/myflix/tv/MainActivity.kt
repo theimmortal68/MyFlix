@@ -117,6 +117,8 @@ fun MyFlixTvApp() {
                             serverUrl = creds.server,
                             accessToken = authResponse.accessToken,
                             userId = authResponse.user.id,
+                            serverName = "Debug Server",
+                            userName = authResponse.user.name,
                             username = creds.username,
                             password = creds.password,
                         )
@@ -334,6 +336,7 @@ fun MyFlixTvApp() {
                 PreferencesScreen(
                     preferences = tvPreferences,
                     jellyfinClient = jellyfinClient,
+                    appState = appState,
                     onNavigateHome = { handleNavigation(NavItem.HOME) },
                     onNavigateSearch = { handleNavigation(NavItem.SEARCH) },
                     onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
@@ -345,6 +348,12 @@ fun MyFlixTvApp() {
                         navController.navigate(
                             NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
                         )
+                    },
+                    onAddServer = {
+                        // Navigate to login to add a new server
+                        navController.navigate("login") {
+                            popUpTo("home") { inclusive = false }
+                        }
                     },
                     showUniversesInNav = universesEnabled,
                 )

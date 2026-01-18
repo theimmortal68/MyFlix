@@ -18,9 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
@@ -54,6 +57,8 @@ import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.data.AppState
+import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
@@ -69,6 +74,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 fun PreferencesScreen(
     preferences: TvPreferences,
     jellyfinClient: JellyfinClient,
+    appState: AppState,
     onNavigateHome: () -> Unit,
     onNavigateSearch: () -> Unit,
     onNavigateMovies: () -> Unit,
@@ -78,9 +84,15 @@ fun PreferencesScreen(
     onNavigateUniverses: () -> Unit = {},
     onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
         { _, _, _ -> },
+    onAddServer: () -> Unit = {},
     showUniversesInNav: Boolean = false,
 ) {
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
+
+    // Server state
+    val servers by appState.servers.collectAsState()
+    val activeServer by appState.activeServer.collectAsState()
+    var showServerDialog by remember { mutableStateOf(false) }
 
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
@@ -162,6 +174,12 @@ fun PreferencesScreen(
                 .padding(horizontal = 48.dp, vertical = 24.dp),
         ) {
             PreferencesContent(
+                // Server settings
+                activeServer = activeServer,
+                servers = servers,
+                onManageServers = { showServerDialog = true },
+                onAddServer = onAddServer,
+                // Home screen settings
                 hideWatched = hideWatched,
                 onHideWatchedChanged = { preferences.setHideWatchedFromRecent(it) },
                 useMpvPlayer = useMpvPlayer,
@@ -227,10 +245,32 @@ fun PreferencesScreen(
             },
         )
     }
+
+    // Server Management Dialog
+    if (showServerDialog) {
+        ServerManagementDialog(
+            servers = servers,
+            activeServerId = activeServer?.serverId,
+            onDismiss = { showServerDialog = false },
+            onSwitchServer = { serverId ->
+                appState.switchServer(serverId)
+                showServerDialog = false
+            },
+            onRemoveServer = { serverId ->
+                appState.removeServer(serverId)
+            },
+        )
+    }
 }
 
 @Composable
 private fun PreferencesContent(
+    // Server settings
+    activeServer: SavedServer?,
+    servers: List<SavedServer>,
+    onManageServers: () -> Unit,
+    onAddServer: () -> Unit,
+    // Home screen settings
     hideWatched: Boolean,
     onHideWatchedChanged: (Boolean) -> Unit,
     useMpvPlayer: Boolean,
@@ -290,6 +330,33 @@ private fun PreferencesContent(
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = TvColors.TextPrimary,
+                    )
+                }
+            }
+        }
+
+        // Servers Section
+        item {
+            PreferencesSection(title = "Servers") {
+                Column {
+                    // Current server display
+                    if (activeServer != null) {
+                        ServerInfoItem(
+                            server = activeServer,
+                            isActive = true,
+                            showManageButton = servers.size > 1,
+                            onManageClick = onManageServers,
+                        )
+                    }
+
+                    // Add Server button
+                    PreferenceDivider()
+                    ActionPreferenceItem(
+                        title = "Add Server",
+                        description = "Connect to another Jellyfin server",
+                        icon = Icons.Outlined.Add,
+                        iconTint = Color(0xFF60A5FA),
+                        onClick = onAddServer,
                     )
                 }
             }
@@ -851,6 +918,418 @@ private fun SelectionItem(
                         modifier = Modifier.size(20.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServerInfoItem(
+    server: SavedServer,
+    isActive: Boolean,
+    showManageButton: Boolean,
+    onManageClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (isFocused) TvColors.FocusedSurface else Color.Transparent,
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter) &&
+                    showManageButton
+                ) {
+                    onManageClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Server icon
+        Icon(
+            imageVector = Icons.Outlined.Dns,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = if (isActive) Color(0xFF34D399) else TvColors.TextSecondary,
+        )
+
+        // Server info
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = server.serverName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = TvColors.TextPrimary,
+                )
+                if (isActive) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF34D399).copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "Connected",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF34D399),
+                        )
+                    }
+                }
+            }
+            Text(
+                text = "${server.userName} • ${server.host}",
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        // Manage button indicator
+        if (showManageButton && isFocused) {
+            Text(
+                text = "Manage",
+                style = MaterialTheme.typography.labelMedium,
+                color = TvColors.TextSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActionPreferenceItem(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    iconTint: Color,
+    onClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (isFocused) TvColors.FocusedSurface else Color.Transparent,
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Icon
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = iconTint,
+        )
+
+        // Text content
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = if (isFocused) TvColors.TextPrimary else TvColors.TextPrimary.copy(alpha = 0.9f),
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ServerManagementDialog(
+    servers: List<SavedServer>,
+    activeServerId: String?,
+    onDismiss: () -> Unit,
+    onSwitchServer: (String) -> Unit,
+    onRemoveServer: (String) -> Unit,
+) {
+    var serverToRemove by remember { mutableStateOf<SavedServer?>(null) }
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    // Request focus on first item when dialog opens
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            // Title
+            Text(
+                text = "Manage Servers",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            // Server list
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(servers) { server ->
+                    val isActive = server.serverId == activeServerId
+                    ServerListItem(
+                        server = server,
+                        isActive = isActive,
+                        onSelect = {
+                            if (!isActive) {
+                                onSwitchServer(server.serverId)
+                            }
+                        },
+                        onRemove = { serverToRemove = server },
+                        modifier = if (server == servers.first()) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Close button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Close",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+
+    // Confirm remove dialog
+    if (serverToRemove != null) {
+        ConfirmRemoveServerDialog(
+            server = serverToRemove!!,
+            onConfirm = {
+                onRemoveServer(serverToRemove!!.serverId)
+                serverToRemove = null
+            },
+            onDismiss = { serverToRemove = null },
+        )
+    }
+}
+
+@Composable
+private fun ServerListItem(
+    server: SavedServer,
+    isActive: Boolean,
+    onSelect: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    var isRemoveFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isActive -> TvColors.SurfaceLight.copy(alpha = 0.5f)
+                    else -> Color.Transparent
+                },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Main selectable area
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .onFocusChanged { isFocused = it.isFocused }
+                .focusable()
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                    ) {
+                        onSelect()
+                        true
+                    } else {
+                        false
+                    }
+                }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Server icon
+            Icon(
+                imageVector = Icons.Outlined.Dns,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = if (isActive) Color(0xFF34D399) else TvColors.TextSecondary,
+            )
+
+            // Server info
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = server.serverName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = TvColors.TextPrimary,
+                    )
+                    if (isActive) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFF34D399).copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 4.dp, vertical = 1.dp),
+                        ) {
+                            Text(
+                                text = "Active",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF34D399),
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = "${server.userName} • ${server.host}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextSecondary,
+                )
+            }
+        }
+
+        // Remove button
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (isRemoveFocused) Color(0xFFEF4444).copy(alpha = 0.2f) else Color.Transparent,
+                )
+                .onFocusChanged { isRemoveFocused = it.isFocused }
+                .focusable()
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                    ) {
+                        onRemove()
+                        true
+                    } else {
+                        false
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Delete,
+                contentDescription = "Remove server",
+                tint = if (isRemoveFocused) Color(0xFFEF4444) else TvColors.TextSecondary.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfirmRemoveServerDialog(
+    server: SavedServer,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val confirmFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        confirmFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            Text(
+                text = "Remove Server?",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            Text(
+                text = "Are you sure you want to remove \"${server.serverName}\"? You will need to log in again to access this server.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(bottom = 24.dp),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+
+                TvTextButton(
+                    text = "Remove",
+                    onClick = onConfirm,
+                    containerColor = Color(0xFFEF4444),
+                    modifier = Modifier.focusRequester(confirmFocusRequester),
+                )
             }
         }
     }
