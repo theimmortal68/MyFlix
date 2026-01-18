@@ -20,6 +20,7 @@ kotlin {
 dependencies {
     // Core modules
     api(project(":core:common"))
+    api(project(":core:data"))
     api(project(":core:network"))
     api(project(":core:player"))
     api(project(":core:seerr"))

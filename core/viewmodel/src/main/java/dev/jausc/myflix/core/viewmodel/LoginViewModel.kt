@@ -1,4 +1,4 @@
-package dev.jausc.myflix.tv.ui.screens
+package dev.jausc.myflix.core.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -46,7 +46,7 @@ data class LoginUiState(
 }
 
 /**
- * ViewModel for the TV login screen.
+ * Shared ViewModel for the login screen.
  * Manages server discovery, connection, and authentication state.
  */
 class LoginViewModel(
@@ -62,7 +62,7 @@ class LoginViewModel(
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            val authenticator = TvLoginAuthenticator(jellyfinClient, appState)
+            val authenticator = DefaultLoginAuthenticator(jellyfinClient, appState)
             return LoginViewModel(authenticator) as T
         }
     }
@@ -204,10 +204,10 @@ class LoginViewModel(
 }
 
 /**
- * TV-specific implementation of LoginAuthenticator.
+ * Default implementation of LoginAuthenticator.
  * Bridges the LoginViewModel to JellyfinClient and AppState.
  */
-internal class TvLoginAuthenticator(
+internal class DefaultLoginAuthenticator(
     private val jellyfinClient: JellyfinClient,
     private val appState: AppState,
 ) : LoginAuthenticator {

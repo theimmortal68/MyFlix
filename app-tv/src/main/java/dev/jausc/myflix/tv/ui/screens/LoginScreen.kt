@@ -41,6 +41,8 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.jausc.myflix.core.viewmodel.LoginUiState
+import dev.jausc.myflix.core.viewmodel.LoginViewModel
 import dev.jausc.myflix.core.common.ui.DiscoveredServerInfo
 import dev.jausc.myflix.core.common.ui.MyFlixLogo
 import dev.jausc.myflix.core.common.ui.PublicUserInfo
