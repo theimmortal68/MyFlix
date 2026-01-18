@@ -29,8 +29,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -198,6 +202,8 @@ fun EpisodeListRow(
     jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onMoreInfoClick: () -> Unit,
+    onWatchedToggle: ((Boolean) -> Unit)? = null,
+    onFavoriteToggle: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
     playButtonFocusRequester: FocusRequester? = null,
 ) {
@@ -275,6 +281,9 @@ fun EpisodeListRow(
             Spacer(modifier = Modifier.height(4.dp))
 
             // Action buttons
+            val isWatched = episode.userData?.played == true
+            val isFavorite = episode.userData?.isFavorite == true
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.focusGroup(),
@@ -286,6 +295,26 @@ fun EpisodeListRow(
                     onClick = onPlayClick,
                     modifier = Modifier.focusRequester(playFocus),
                 )
+
+                // Mark as Watched button
+                onWatchedToggle?.let { onToggle ->
+                    EpisodeActionButton(
+                        title = if (isWatched) "Unwatch" else "Watched",
+                        icon = if (isWatched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                        iconColor = IconColors.Watched,
+                        onClick = { onToggle(!isWatched) },
+                    )
+                }
+
+                // Favorite button
+                onFavoriteToggle?.let { onToggle ->
+                    EpisodeActionButton(
+                        title = if (isFavorite) "Unfavorite" else "Favorite",
+                        icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.Favorite,
+                        iconColor = if (isFavorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                        onClick = { onToggle(!isFavorite) },
+                    )
+                }
 
                 EpisodeActionButton(
                     title = "More Info",

@@ -35,10 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -67,7 +64,6 @@ import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
-import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.IconColors
@@ -86,9 +82,9 @@ import java.util.Locale
 // Row indices for focus management
 private const val HEADER_ROW = 0
 private const val CHAPTERS_ROW = HEADER_ROW + 1
-private const val GUEST_STARS_ROW = CHAPTERS_ROW + 1
-private const val CAST_ROW = GUEST_STARS_ROW + 1
-private const val CREW_ROW = CAST_ROW + 1
+private const val CAST_ROW = CHAPTERS_ROW + 1
+private const val GUEST_STARS_ROW = CAST_ROW + 1
+private const val CREW_ROW = GUEST_STARS_ROW + 1
 private const val RECOMMENDED_ROW = CREW_ROW + 1
 private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
 
@@ -157,26 +153,15 @@ fun EpisodeDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    // Layered UI: DynamicBackground → DetailBackdropLayer → Content
+    // Layered UI: DynamicBackground → Content (no backdrop image for cleaner look)
     Box(modifier = modifier.fillMaxSize()) {
-        // Layer 1: Dynamic gradient background
+        // Layer 1: Dynamic gradient background (based on series backdrop)
         DynamicBackground(
             gradientColors = gradientColors,
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Layer 2: Backdrop image (right side, behind content)
-        // DetailBackdropLayer automatically uses series backdrop for episodes
-        DetailBackdropLayer(
-            item = episode,
-            jellyfinClient = jellyfinClient,
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd),
-        )
-
-        // Layer 3: Content
+        // Layer 2: Content
         Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
             Box(
@@ -185,27 +170,6 @@ fun EpisodeDetailScreen(
                     .fillMaxHeight(0.55f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Shading overlay behind text content - fades from left to transparent
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.65f)
-                        .fillMaxHeight()
-                        .drawWithContent {
-                            drawContent()
-                            // Horizontal gradient: dark on left, transparent on right
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to Color.Black.copy(alpha = 0.7f),
-                                        0.4f to Color.Black.copy(alpha = 0.5f),
-                                        0.7f to Color.Black.copy(alpha = 0.25f),
-                                        1.0f to Color.Transparent,
-                                    ),
-                                ),
-                            )
-                        },
-                )
-
                 // Hero content - thumbnail on left, info on right
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -310,27 +274,6 @@ fun EpisodeDetailScreen(
                     }
                 }
 
-                // Guest Stars
-                if (guestStars.isNotEmpty()) {
-                    item(key = "guest_stars") {
-                        CastCrewSection(
-                            title = "Guest Stars",
-                            people = guestStars,
-                            jellyfinClient = jellyfinClient,
-                            onPersonClick = { person ->
-                                position = GUEST_STARS_ROW
-                                onNavigateToPerson(person.id)
-                            },
-                            onPersonLongClick = { _, _ ->
-                                position = GUEST_STARS_ROW
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[GUEST_STARS_ROW]),
-                        )
-                    }
-                }
-
                 // Series Cast
                 if (seriesCast.isNotEmpty()) {
                     item(key = "cast") {
@@ -348,6 +291,27 @@ fun EpisodeDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequesters[CAST_ROW]),
+                        )
+                    }
+                }
+
+                // Guest Stars
+                if (guestStars.isNotEmpty()) {
+                    item(key = "guest_stars") {
+                        CastCrewSection(
+                            title = "Guest Stars",
+                            people = guestStars,
+                            jellyfinClient = jellyfinClient,
+                            onPersonClick = { person ->
+                                position = GUEST_STARS_ROW
+                                onNavigateToPerson(person.id)
+                            },
+                            onPersonLongClick = { _, _ ->
+                                position = GUEST_STARS_ROW
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequesters[GUEST_STARS_ROW]),
                         )
                     }
                 }

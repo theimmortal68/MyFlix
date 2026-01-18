@@ -120,7 +120,7 @@ private fun ChapterCard(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.SurfaceElevated,
+            containerColor = Color.Transparent,
             focusedContainerColor = TvColors.BluePrimary,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),

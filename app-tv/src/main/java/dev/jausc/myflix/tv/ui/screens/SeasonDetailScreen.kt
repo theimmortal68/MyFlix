@@ -342,6 +342,12 @@ fun SeasonDetailScreen(
                                 position = EPISODES_ROW
                                 onNavigateToDetail(episode.id)
                             },
+                            onWatchedToggle = { newWatched ->
+                                onEpisodeWatchedToggle(episode.id, newWatched)
+                            },
+                            onFavoriteToggle = { newFavorite ->
+                                onEpisodeFavoriteToggle(episode.id, newFavorite)
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
