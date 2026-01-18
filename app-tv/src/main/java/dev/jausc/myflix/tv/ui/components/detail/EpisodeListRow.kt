@@ -309,7 +309,7 @@ fun EpisodeListRow(
                 // Favorite button
                 onFavoriteToggle?.let { onToggle ->
                     EpisodeActionButton(
-                        title = if (isFavorite) "Unfavorite" else "Favorite",
+                        title = if (isFavorite) "Remove Favorite" else "Add to Favorites",
                         icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.Favorite,
                         iconColor = if (isFavorite) IconColors.FavoriteFilled else IconColors.Favorite,
                         onClick = { onToggle(!isFavorite) },

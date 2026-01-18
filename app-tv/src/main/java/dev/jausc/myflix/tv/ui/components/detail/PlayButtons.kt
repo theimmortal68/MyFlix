@@ -160,7 +160,7 @@ fun ExpandablePlayButtons(
         // Favorite button
         item("favorite") {
             ExpandablePlayButton(
-                title = if (favorite) "Remove Favorite" else "Add to Favorite",
+                title = if (favorite) "Remove Favorite" else "Add to Favorites",
                 icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
                 onClick = onFavoriteClick,
@@ -261,7 +261,7 @@ fun SeriesActionButtons(
         // Favorite button
         item("favorite") {
             ExpandablePlayButton(
-                title = if (favorite) "Remove Favorite" else "Add to Favorite",
+                title = if (favorite) "Remove Favorite" else "Add to Favorites",
                 icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
                 onClick = onFavoriteClick,
