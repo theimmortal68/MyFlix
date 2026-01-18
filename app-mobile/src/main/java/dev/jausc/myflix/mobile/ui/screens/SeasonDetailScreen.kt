@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircle
@@ -872,8 +873,8 @@ private fun buildEpisodeMenu(
         )
         add(
             MenuItem(
-                text = if (favorite) "Remove favorite" else "Favorite",
-                icon = Icons.Outlined.Favorite,
+                text = if (favorite) "Remove Favorite" else "Add to Favorites",
+                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 onClick = onToggleFavorite,
             ),
         )
