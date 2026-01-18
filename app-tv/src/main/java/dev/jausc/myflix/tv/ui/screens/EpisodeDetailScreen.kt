@@ -34,7 +34,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -179,20 +182,41 @@ fun EpisodeDetailScreen(
                     .fillMaxHeight(0.55f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
+                // Shading overlay behind text content - fades from left to transparent
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.65f)
+                        .fillMaxHeight()
+                        .drawWithContent {
+                            drawContent()
+                            // Horizontal gradient: dark on left, transparent on right
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to Color.Black.copy(alpha = 0.7f),
+                                        0.4f to Color.Black.copy(alpha = 0.5f),
+                                        0.7f to Color.Black.copy(alpha = 0.25f),
+                                        1.0f to Color.Transparent,
+                                    ),
+                                ),
+                            )
+                        },
+                )
+
                 // Hero content - thumbnail on left, info on right
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     modifier = Modifier
-                        .fillMaxWidth(0.7f)
+                        .fillMaxWidth(0.75f)
                         .padding(start = 48.dp, top = 36.dp),
                 ) {
-                    // Episode thumbnail (280dp × 158dp, 16:9)
+                    // Episode thumbnail (320dp × 180dp, 16:9)
                     EpisodeHeroThumbnail(
                         episode = episode,
                         imageUrl = jellyfinClient.getPrimaryImageUrl(
                             episode.id,
                             episode.imageTags?.primary,
-                            maxWidth = 560,
+                            maxWidth = 640,
                         ),
                     )
 
@@ -463,6 +487,7 @@ fun EpisodeDetailScreen(
 
 /**
  * Episode thumbnail for hero section with progress bar.
+ * Sized to match the text column height.
  */
 @Composable
 private fun EpisodeHeroThumbnail(
@@ -472,7 +497,7 @@ private fun EpisodeHeroThumbnail(
 ) {
     Box(
         modifier = modifier
-            .width(280.dp)
+            .width(320.dp)
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(12.dp)),
     ) {
@@ -509,6 +534,7 @@ private fun EpisodeHeroThumbnail(
 
 /**
  * Episode details header with series name, episode title, metadata, and description.
+ * Matches the home screen HeroTitleSection styling: series name is large, episode name is subtitle.
  */
 @Composable
 private fun EpisodeDetailsHeader(
@@ -520,41 +546,39 @@ private fun EpisodeDetailsHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Series name + season/episode
-        val seasonLabel = buildSeasonEpisodeLabel(episode)
-        val seriesLine = listOfNotNull(seasonLabel, episode.seriesName).joinToString(" · ")
-        if (seriesLine.isNotEmpty()) {
+        // Series name - large title (matches home screen hero)
+        episode.seriesName?.let { seriesName ->
             Text(
-                text = seriesLine,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TvColors.BlueAccent,
-                maxLines = 1,
+                text = seriesName,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                ),
+                color = TvColors.TextPrimary,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(2.dp))
         }
 
-        // Episode title
+        // Episode name - smaller subtitle (matches home screen hero episode style)
         Text(
             text = episode.name,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-            ),
+            style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
             color = TvColors.TextPrimary,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Metadata line: 45m · TV-14 · ★8.5 · Jan 15, 2024
+        // Metadata line: S1 E3 · 45m · TV-14 · ★8.5 · Jan 15, 2024
         val details = buildEpisodeDetailLine(episode)
         if (details.isNotEmpty() || episode.communityRating != null) {
             DotSeparatedRow(
                 texts = details,
                 communityRating = episode.communityRating,
-                textStyle = MaterialTheme.typography.titleSmall,
+                textStyle = MaterialTheme.typography.bodySmall,
             )
         }
 
@@ -563,7 +587,7 @@ private fun EpisodeDetailsHeader(
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = episode)
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Description - 4 lines max, clickable to show full overview
         episode.overview?.let { overview ->
@@ -585,9 +609,12 @@ private fun EpisodeDetailsHeader(
 }
 
 /**
- * Build the metadata detail line for an episode: "45m · TV-14 · Jan 15, 2024"
+ * Build the metadata detail line for an episode: "S1 E3 · 45m · TV-14 · Jan 15, 2024"
  */
 private fun buildEpisodeDetailLine(episode: JellyfinItem): List<String> = buildList {
+    // Season and episode number
+    buildSeasonEpisodeLabel(episode)?.let { add(it) }
+
     // Runtime
     episode.runTimeTicks?.let { ticks ->
         val minutes = (ticks / 600_000_000L).toInt()
