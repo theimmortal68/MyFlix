@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -41,10 +42,6 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * @param modifier Modifier for the row
  * @param horizontalPadding Horizontal padding between cards
  */
-import androidx.compose.ui.graphics.graphicsLayer
-
-// ...
-
 @Composable
 fun <T> ItemRow(
     title: String,
