@@ -104,6 +104,7 @@ class PlayerViewModel(
     private val jellyfinClient: JellyfinClient,
     private val preferredAudioLanguage: String? = null,
     private val preferredSubtitleLanguage: String? = null,
+    private val maxStreamingBitrateMbps: Int = 0,
     private var startPositionOverrideMs: Long? = null,
 ) : ViewModel() {
 
@@ -115,6 +116,7 @@ class PlayerViewModel(
         private val jellyfinClient: JellyfinClient,
         private val preferredAudioLanguage: String? = null,
         private val preferredSubtitleLanguage: String? = null,
+        private val maxStreamingBitrateMbps: Int = 0,
         private val startPositionMs: Long? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -124,6 +126,7 @@ class PlayerViewModel(
                 jellyfinClient,
                 preferredAudioLanguage,
                 preferredSubtitleLanguage,
+                maxStreamingBitrateMbps,
                 startPositionMs,
             ) as T
     }
@@ -155,7 +158,9 @@ class PlayerViewModel(
 
             jellyfinClient.getItem(currentItemId)
                 .onSuccess { loadedItem ->
-                    val streamUrl = jellyfinClient.getStreamUrl(currentItemId)
+                    // Include max bitrate if set (0 = unlimited/direct play)
+                    val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
+                    val streamUrl = jellyfinClient.getStreamUrl(currentItemId, null, null, maxBitrate)
                     val mediaSource = loadedItem.mediaSources?.firstOrNull()
                     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
                     val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
@@ -433,7 +438,9 @@ class PlayerViewModel(
         viewModelScope.launch {
             jellyfinClient.getItem(newItemId)
                 .onSuccess { loadedItem ->
-                    val streamUrl = jellyfinClient.getStreamUrl(newItemId)
+                    // Include max bitrate if set (0 = unlimited/direct play)
+                    val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
+                    val streamUrl = jellyfinClient.getStreamUrl(newItemId, null, null, maxBitrate)
                     val mediaSource = loadedItem.mediaSources?.firstOrNull()
                     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
                     val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }

@@ -100,6 +100,7 @@ fun PlayerScreen(
     // Get preferred audio and subtitle language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
+    val maxStreamingBitrate by appPreferences.maxStreamingBitrate.collectAsState()
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -124,6 +125,7 @@ fun PlayerScreen(
             jellyfinClient = jellyfinClient,
             preferredAudioLanguage = preferredAudioLanguage,
             preferredSubtitleLanguage = preferredSubtitleLanguage,
+            maxStreamingBitrateMbps = maxStreamingBitrate,
             startPositionMs = startPositionMs,
         ),
     )

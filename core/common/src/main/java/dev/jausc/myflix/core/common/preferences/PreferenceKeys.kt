@@ -77,6 +77,9 @@ object PreferenceKeys {
         /** Preferred subtitle language (ISO 639-2/B code like "eng", "jpn", "spa") */
         const val PREFERRED_SUBTITLE_LANGUAGE = "preferred_subtitle_language"
 
+        /** Max streaming bitrate in Mbps (0 = unlimited/direct play) */
+        const val MAX_STREAMING_BITRATE = "max_streaming_bitrate"
+
         /** Player display mode (FIT, FILL, ZOOM, STRETCH) */
         const val PLAYER_DISPLAY_MODE = "player_display_mode"
 
@@ -179,6 +182,8 @@ object PreferenceKeys {
         val PREFERRED_AUDIO_LANGUAGE: String? = null
         /** null means use Jellyfin server's default subtitle track */
         val PREFERRED_SUBTITLE_LANGUAGE: String? = null
+        /** 0 = unlimited/direct play, otherwise value in Mbps */
+        const val MAX_STREAMING_BITRATE = 0
         /** Default to FIT (letterbox/pillarbox) */
         const val PLAYER_DISPLAY_MODE = "FIT"
         // Subtitle styling defaults

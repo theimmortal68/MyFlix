@@ -1481,18 +1481,27 @@ class JellyfinClient(
 
     // ==================== URL Helpers ====================
 
-    fun getStreamUrl(itemId: String): String = getStreamUrl(itemId, null, null)
+    fun getStreamUrl(itemId: String): String = getStreamUrl(itemId, null, null, null)
 
     fun getStreamUrl(
         itemId: String,
         audioStreamIndex: Int?,
         subtitleStreamIndex: Int?,
+        maxBitrateMbps: Int? = null,
     ): String {
+        // If no bitrate limit, use direct stream (Static=true)
+        // If bitrate limit set, request transcoding with MaxStreamingBitrate
+        val isDirectStream = maxBitrateMbps == null || maxBitrateMbps == 0
         val params = buildList {
-            add("Static=true")
+            add("Static=$isDirectStream")
             add("api_key=$accessToken")
             audioStreamIndex?.let { add("AudioStreamIndex=$it") }
             subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+            if (!isDirectStream && maxBitrateMbps != null) {
+                // Convert Mbps to bits per second
+                val bitrateBps = maxBitrateMbps * 1_000_000L
+                add("MaxStreamingBitrate=$bitrateBps")
+            }
         }
         return "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
     }

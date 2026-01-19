@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.Visibility
@@ -112,6 +113,7 @@ fun PreferencesScreen(
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
+    val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -129,6 +131,7 @@ fun PreferencesScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showAudioLanguageDialog by remember { mutableStateOf(false) }
     var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
+    var showBitrateDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -207,6 +210,8 @@ fun PreferencesScreen(
                 onEditAudioLanguage = { showAudioLanguageDialog = true },
                 preferredSubtitleLanguage = preferredSubtitleLanguage,
                 onEditSubtitleLanguage = { showSubtitleLanguageDialog = true },
+                maxStreamingBitrate = maxStreamingBitrate,
+                onEditMaxBitrate = { showBitrateDialog = true },
                 showSeasonPremieres = showSeasonPremieres,
                 onShowSeasonPremieresChanged = { preferences.setShowSeasonPremieres(it) },
                 showGenreRows = showGenreRows,
@@ -308,6 +313,18 @@ fun PreferencesScreen(
             },
         )
     }
+
+    // Bitrate Selection Dialog
+    if (showBitrateDialog) {
+        BitrateSelectionDialog(
+            currentSelection = maxStreamingBitrate,
+            onDismiss = { showBitrateDialog = false },
+            onSelect = { bitrate ->
+                preferences.setMaxStreamingBitrate(bitrate)
+                showBitrateDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -328,6 +345,8 @@ private fun PreferencesContent(
     onEditAudioLanguage: () -> Unit,
     preferredSubtitleLanguage: String?,
     onEditSubtitleLanguage: () -> Unit,
+    maxStreamingBitrate: Int,
+    onEditMaxBitrate: () -> Unit,
     // Home screen settings
     showSeasonPremieres: Boolean,
     onShowSeasonPremieresChanged: (Boolean) -> Unit,
@@ -528,6 +547,14 @@ private fun PreferencesContent(
                     icon = Icons.Outlined.Translate,
                     iconTint = if (preferredSubtitleLanguage != null) Color(0xFFFBBF24) else TvColors.TextSecondary,
                     onClick = onEditSubtitleLanguage,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Max Streaming Quality",
+                    description = getBitrateDisplayName(maxStreamingBitrate),
+                    icon = Icons.Outlined.Speed,
+                    iconTint = if (maxStreamingBitrate > 0) Color(0xFFEC4899) else TvColors.TextSecondary,
+                    onClick = onEditMaxBitrate,
                 )
             }
         }
@@ -1864,6 +1891,167 @@ private fun LanguageItem(
             text = name,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) Color(0xFF34D399) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+// Bitrate options (value in Mbps, 0 = unlimited)
+private val BITRATE_OPTIONS = listOf(
+    0 to "Unlimited (Direct Play)",
+    120 to "120 Mbps (4K Max)",
+    80 to "80 Mbps (4K)",
+    60 to "60 Mbps (4K)",
+    40 to "40 Mbps (1080p Max)",
+    25 to "25 Mbps (1080p)",
+    15 to "15 Mbps (1080p)",
+    10 to "10 Mbps (720p Max)",
+    8 to "8 Mbps (720p)",
+    5 to "5 Mbps (480p)",
+    3 to "3 Mbps (480p)",
+    1 to "1 Mbps (Low)",
+)
+
+/**
+ * Get display name for a bitrate value.
+ */
+private fun getBitrateDisplayName(bitrateMbps: Int): String {
+    return BITRATE_OPTIONS.find { it.first == bitrateMbps }?.second
+        ?: if (bitrateMbps == 0) "Unlimited" else "$bitrateMbps Mbps"
+}
+
+@Composable
+private fun BitrateSelectionDialog(
+    currentSelection: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            // Title
+            Text(
+                text = "Max Streaming Quality",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            // Subtitle
+            Text(
+                text = "Lower values force transcoding for larger files",
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            // Bitrate list
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(BITRATE_OPTIONS.size) { index ->
+                    val (bitrate, label) = BITRATE_OPTIONS[index]
+                    val isSelected = bitrate == currentSelection
+
+                    BitrateItem(
+                        label = label,
+                        isSelected = isSelected,
+                        onClick = { onSelect(bitrate) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BitrateItem(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFFEC4899).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFFEC4899), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Bitrate label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFFEC4899) else TvColors.TextPrimary,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }

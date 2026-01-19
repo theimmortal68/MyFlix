@@ -56,6 +56,12 @@ abstract class AppPreferences(context: Context) {
     }
     val preferredSubtitleLanguage: StateFlow<String?> by lazy { _preferredSubtitleLanguage.asStateFlow() }
 
+    private val _maxStreamingBitrate: MutableStateFlow<Int> by lazy {
+        MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.MAX_STREAMING_BITRATE, PreferenceKeys.Defaults.MAX_STREAMING_BITRATE))
+    }
+    /** Max streaming bitrate in Mbps. 0 = unlimited (direct play preferred). */
+    val maxStreamingBitrate: StateFlow<Int> by lazy { _maxStreamingBitrate.asStateFlow() }
+
     private val _playerDisplayMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, PreferenceKeys.Defaults.PLAYER_DISPLAY_MODE)
@@ -216,6 +222,15 @@ abstract class AppPreferences(context: Context) {
             prefs.edit().remove(PreferenceKeys.Prefs.PREFERRED_SUBTITLE_LANGUAGE).apply()
         }
         _preferredSubtitleLanguage.value = language
+    }
+
+    /**
+     * Set the max streaming bitrate in Mbps.
+     * Set to 0 for unlimited (prefer direct play).
+     */
+    fun setMaxStreamingBitrate(bitrateMbps: Int) {
+        prefs.edit().putInt(PreferenceKeys.Prefs.MAX_STREAMING_BITRATE, bitrateMbps).apply()
+        _maxStreamingBitrate.value = bitrateMbps
     }
 
     /**
