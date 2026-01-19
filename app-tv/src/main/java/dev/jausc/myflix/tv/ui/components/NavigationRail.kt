@@ -35,7 +35,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import dev.jausc.myflix.tv.R
+import dev.jausc.myflix.core.common.R
 
 /**
  * Navigation items for the rail
