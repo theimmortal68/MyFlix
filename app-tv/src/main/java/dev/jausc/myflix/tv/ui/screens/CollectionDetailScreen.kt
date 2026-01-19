@@ -36,11 +36,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +55,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
@@ -139,13 +145,26 @@ fun CollectionDetailScreen(
         }
     }
 
-    // Backdrop URL and dynamic gradient colors
-    val backdropUrl = remember(collection?.id) {
-        collection?.let {
-            jellyfinClient.getBackdropUrl(it.id, it.backdropImageTags?.firstOrNull())
+    // Backdrop URL and dynamic gradient colors - fall back to primary image if no backdrop
+    val backdropUrl = remember(collection?.id, collection?.backdropImageTags, collection?.imageTags?.primary) {
+        collection?.let { item ->
+            val hasBackdrop = !item.backdropImageTags.isNullOrEmpty()
+            if (hasBackdrop) {
+                jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull())
+            } else if (item.imageTags?.primary != null) {
+                // Fall back to primary image for gradient extraction
+                jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+            } else {
+                null
+            }
         }
     }
     val gradientColors = rememberGradientColors(backdropUrl)
+
+    // Check if collection has a real backdrop for the backdrop layer
+    val hasBackdrop = remember(collection?.backdropImageTags) {
+        !collection?.backdropImageTags.isNullOrEmpty()
+    }
 
     // Loading state
     if (isLoading) {
@@ -184,14 +203,27 @@ fun CollectionDetailScreen(
         )
 
         // Layer 2: Backdrop image (right side, behind content)
-        DetailBackdropLayer(
-            item = collectionItem,
-            jellyfinClient = jellyfinClient,
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd),
-        )
+        // Use backdrop if available, otherwise fall back to primary image
+        if (hasBackdrop) {
+            DetailBackdropLayer(
+                item = collectionItem,
+                jellyfinClient = jellyfinClient,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.9f)
+                    .align(Alignment.TopEnd),
+            )
+        } else {
+            // Fallback: use primary image as backdrop with similar styling
+            CollectionPrimaryBackdrop(
+                item = collectionItem,
+                jellyfinClient = jellyfinClient,
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .fillMaxHeight(0.75f)
+                    .align(Alignment.TopEnd),
+            )
+        }
 
         // Layer 3: Content
         Column(modifier = Modifier.fillMaxSize()) {
@@ -412,5 +444,61 @@ private fun CollectionActionButtons(
                 modifier = Modifier.size(14.dp),
             )
         }
+    }
+}
+
+/**
+ * Fallback backdrop using the primary poster image when no backdrop is available.
+ * Styled similarly to DetailBackdropLayer but positioned for portrait images.
+ */
+@Composable
+private fun CollectionPrimaryBackdrop(
+    item: JellyfinItem,
+    jellyfinClient: JellyfinClient,
+    modifier: Modifier = Modifier,
+) {
+    val primaryUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.TopEnd,
+    ) {
+        AsyncImage(
+            model = primaryUrl,
+            contentDescription = item.name,
+            contentScale = ContentScale.Fit,
+            alignment = Alignment.TopEnd,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = 48.dp, top = 24.dp)
+                .alpha(0.85f)
+                .drawWithContent {
+                    drawContent()
+                    // Left edge fade - blend into the content area
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Transparent,
+                                0.15f to Color.Black.copy(alpha = 0.6f),
+                                0.35f to Color.Black.copy(alpha = 0.9f),
+                                0.5f to Color.Black,
+                            ),
+                        ),
+                        blendMode = BlendMode.DstIn,
+                    )
+                    // Bottom edge fade
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black,
+                                0.6f to Color.Black.copy(alpha = 0.9f),
+                                0.8f to Color.Black.copy(alpha = 0.5f),
+                                0.95f to Color.Transparent,
+                            ),
+                        ),
+                        blendMode = BlendMode.DstIn,
+                    )
+                },
+        )
     }
 }
