@@ -37,6 +37,9 @@ dependencies {
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:${rootProject.extra["okHttpVersion"]}")
 
+    // AndroidX Core - for FileProvider in UpdateManager
+    implementation("androidx.core:core-ktx:1.16.0")
+
     // Serialization JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${rootProject.extra["serializationVersion"]}")
 

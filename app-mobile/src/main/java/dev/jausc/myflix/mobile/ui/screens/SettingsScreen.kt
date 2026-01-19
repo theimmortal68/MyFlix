@@ -43,9 +43,12 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.OndemandVideo
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -57,13 +60,16 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,8 +82,12 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.common.model.AppType
+import dev.jausc.myflix.core.network.UpdateManager
+import dev.jausc.myflix.core.common.model.UpdateInfo
 import dev.jausc.myflix.core.player.DeviceHdrCapabilities
 import dev.jausc.myflix.core.player.PlayerController
+import dev.jausc.myflix.mobile.BuildConfig
 import dev.jausc.myflix.mobile.MobilePreferences
 
 /**
@@ -377,18 +387,70 @@ fun SettingsScreen(
                 }
             }
 
-            // App Info
+            // About Section
             item {
-                Spacer(modifier = Modifier.height(24.dp))
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val scope = rememberCoroutineScope()
+                var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+                val updateManager = remember { UpdateManager(context) }
+
+                DisposableEffect(Unit) {
+                    onDispose { updateManager.close() }
+                }
+
+                SettingsSection(title = "About") {
+                    Column {
+                        // Version info
+                        InfoSettingItem(
+                            icon = Icons.Outlined.Info,
+                            title = "Version",
+                            value = BuildConfig.VERSION_NAME,
+                        )
+
+                        SettingsDivider()
+
+                        // Check for updates
+                        UpdateSettingItem(
+                            state = updateState,
+                            onCheck = {
+                                scope.launch {
+                                    updateState = UpdateState.Checking
+                                    updateManager.checkForUpdate(BuildConfig.VERSION_NAME, AppType.MOBILE)
+                                        .onSuccess { info ->
+                                            updateState = if (info.hasUpdate) {
+                                                UpdateState.Available(info)
+                                            } else {
+                                                UpdateState.UpToDate
+                                            }
+                                        }
+                                        .onFailure { e ->
+                                            updateState = UpdateState.Error(e.message ?: "Check failed")
+                                        }
+                                }
+                            },
+                            onDownload = { info ->
+                                val url = info.downloadUrl ?: return@UpdateSettingItem
+                                scope.launch {
+                                    updateState = UpdateState.Downloading(0f)
+                                    updateManager.downloadApk(url) { progress ->
+                                        updateState = UpdateState.Downloading(progress)
+                                    }.onSuccess { file ->
+                                        updateManager.installApk(file)
+                                        updateState = UpdateState.Idle
+                                    }.onFailure { e ->
+                                        updateState = UpdateState.Error(e.message ?: "Download failed")
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "MyFlix for Android",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "Version 1.0.0",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -1056,3 +1118,151 @@ private fun ConfirmRemoveServerDialog(
         },
     )
 }
+
+/**
+ * Update state for the update check UI.
+ */
+private sealed class UpdateState {
+    data object Idle : UpdateState()
+    data object Checking : UpdateState()
+    data class Available(val info: UpdateInfo) : UpdateState()
+    data class Downloading(val progress: Float) : UpdateState()
+    data object UpToDate : UpdateState()
+    data class Error(val message: String) : UpdateState()
+}
+
+@Composable
+private fun InfoSettingItem(
+    icon: ImageVector,
+    title: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun UpdateSettingItem(
+    state: UpdateState,
+    onCheck: () -> Unit,
+    onDownload: (UpdateInfo) -> Unit,
+) {
+    val (title, description, iconTint, isClickable) = when (state) {
+        is UpdateState.Idle -> UpdateItemState(
+            title = "Check for Updates",
+            description = "Check GitHub for new releases",
+            iconTint = Color(0xFF60A5FA),
+            isClickable = true,
+        )
+        is UpdateState.Checking -> UpdateItemState(
+            title = "Checking...",
+            description = "Connecting to GitHub",
+            iconTint = Color(0xFF60A5FA),
+            isClickable = false,
+        )
+        is UpdateState.Available -> UpdateItemState(
+            title = "Update to ${state.info.latestVersion}",
+            description = "Tap to download and install",
+            iconTint = Color(0xFF34D399),
+            isClickable = true,
+        )
+        is UpdateState.Downloading -> UpdateItemState(
+            title = "Downloading... ${(state.progress * 100).toInt()}%",
+            description = "Please wait",
+            iconTint = Color(0xFFFBBF24),
+            isClickable = false,
+        )
+        is UpdateState.UpToDate -> UpdateItemState(
+            title = "Up to Date",
+            description = "You have the latest version",
+            iconTint = Color(0xFF34D399),
+            isClickable = true,
+        )
+        is UpdateState.Error -> UpdateItemState(
+            title = "Check for Updates",
+            description = state.message,
+            iconTint = Color(0xFFEF4444),
+            isClickable = true,
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isClickable) {
+                when (state) {
+                    is UpdateState.Available -> onDownload(state.info)
+                    else -> onCheck()
+                }
+            }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.SystemUpdate,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = iconTint,
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        // Progress indicator for downloading
+        if (state is UpdateState.Downloading) {
+            LinearProgressIndicator(
+                progress = { state.progress },
+                modifier = Modifier.width(60.dp),
+                color = Color(0xFFFBBF24),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+        }
+    }
+}
+
+private data class UpdateItemState(
+    val title: String,
+    val description: String,
+    val iconTint: Color,
+    val isClickable: Boolean,
+)

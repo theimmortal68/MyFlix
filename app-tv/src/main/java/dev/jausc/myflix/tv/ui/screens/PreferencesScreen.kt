@@ -32,10 +32,13 @@ import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,12 +61,16 @@ import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.LibraryFinder
+import dev.jausc.myflix.core.common.model.AppType
+import dev.jausc.myflix.core.network.UpdateManager
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.UpdateInfo
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.DeviceHdrCapabilities
 import dev.jausc.myflix.core.player.PlayerController
+import dev.jausc.myflix.tv.BuildConfig
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
@@ -478,21 +485,83 @@ private fun PreferencesContent(
             }
         }
 
-        // Info section
+        // About Section
         item {
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+            val updateManager = remember { UpdateManager(context) }
+
+            DisposableEffect(Unit) {
+                onDispose { updateManager.close() }
+            }
+
+            PreferencesSection(title = "About") {
+                // Version info
+                InfoPreferenceItem(
+                    icon = Icons.Outlined.Info,
+                    title = "Version",
+                    value = BuildConfig.VERSION_NAME,
+                )
+
+                PreferenceDivider()
+
+                // Check for updates
+                UpdatePreferenceItem(
+                    state = updateState,
+                    onCheck = {
+                        scope.launch {
+                            updateState = UpdateState.Checking
+                            updateManager.checkForUpdate(BuildConfig.VERSION_NAME, AppType.TV)
+                                .onSuccess { info ->
+                                    updateState = if (info.hasUpdate) {
+                                        UpdateState.Available(info)
+                                    } else {
+                                        UpdateState.UpToDate
+                                    }
+                                }
+                                .onFailure { e ->
+                                    updateState = UpdateState.Error(e.message ?: "Check failed")
+                                }
+                        }
+                    },
+                    onDownload = { info ->
+                        val url = info.downloadUrl ?: return@UpdatePreferenceItem
+                        scope.launch {
+                            updateState = UpdateState.Downloading(0f)
+                            updateManager.downloadApk(url) { progress ->
+                                updateState = UpdateState.Downloading(progress)
+                            }.onSuccess { file ->
+                                updateManager.installApk(file)
+                                updateState = UpdateState.Idle
+                            }.onFailure { e ->
+                                updateState = UpdateState.Error(e.message ?: "Download failed")
+                            }
+                        }
+                    },
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
             Text(
                 text = "MyFlix for Android TV",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TvColors.TextSecondary,
             )
-            Text(
-                text = "Version 1.0.0",
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary.copy(alpha = 0.7f),
-            )
         }
     }
+}
+
+/**
+ * Update state for the update check UI.
+ */
+private sealed class UpdateState {
+    data object Idle : UpdateState()
+    data object Checking : UpdateState()
+    data class Available(val info: UpdateInfo) : UpdateState()
+    data class Downloading(val progress: Float) : UpdateState()
+    data object UpToDate : UpdateState()
+    data class Error(val message: String) : UpdateState()
 }
 
 @Composable
@@ -1418,3 +1487,166 @@ private fun ConfirmRemoveServerDialog(
         }
     }
 }
+
+@Composable
+private fun InfoPreferenceItem(
+    icon: ImageVector,
+    title: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = TvColors.TextSecondary,
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+            )
+        }
+
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TvColors.TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun UpdatePreferenceItem(
+    state: UpdateState,
+    onCheck: () -> Unit,
+    onDownload: (UpdateInfo) -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    val (title, description, iconTint, isClickable) = when (state) {
+        is UpdateState.Idle -> UpdateItemState(
+            title = "Check for Updates",
+            description = "Check GitHub for new releases",
+            iconTint = Color(0xFF60A5FA),
+            isClickable = true,
+        )
+        is UpdateState.Checking -> UpdateItemState(
+            title = "Checking...",
+            description = "Connecting to GitHub",
+            iconTint = Color(0xFF60A5FA),
+            isClickable = false,
+        )
+        is UpdateState.Available -> UpdateItemState(
+            title = "Update to ${state.info.latestVersion}",
+            description = "Press to download and install",
+            iconTint = Color(0xFF34D399),
+            isClickable = true,
+        )
+        is UpdateState.Downloading -> UpdateItemState(
+            title = "Downloading... ${(state.progress * 100).toInt()}%",
+            description = "Please wait",
+            iconTint = Color(0xFFFBBF24),
+            isClickable = false,
+        )
+        is UpdateState.UpToDate -> UpdateItemState(
+            title = "Up to Date",
+            description = "You have the latest version",
+            iconTint = Color(0xFF34D399),
+            isClickable = true,
+        )
+        is UpdateState.Error -> UpdateItemState(
+            title = "Check for Updates",
+            description = state.message,
+            iconTint = Color(0xFFEF4444),
+            isClickable = true,
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (isFocused && isClickable) TvColors.FocusedSurface else Color.Transparent,
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter) &&
+                    isClickable
+                ) {
+                    when (state) {
+                        is UpdateState.Available -> onDownload(state.info)
+                        else -> onCheck()
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.SystemUpdate,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = iconTint,
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = if (isFocused) TvColors.TextPrimary else TvColors.TextPrimary.copy(alpha = 0.9f),
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        // Progress indicator for downloading
+        if (state is UpdateState.Downloading) {
+            Box(
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(TvColors.SurfaceLight),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(state.progress)
+                        .background(Color(0xFFFBBF24)),
+                )
+            }
+        }
+    }
+}
+
+private data class UpdateItemState(
+    val title: String,
+    val description: String,
+    val iconTint: Color,
+    val isClickable: Boolean,
+)
