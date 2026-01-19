@@ -80,7 +80,7 @@ fun <T> ItemRow(
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
-            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 32.dp),
+            contentPadding = PaddingValues(start = horizontalPadding, top = 12.dp, end = horizontalPadding, bottom = 32.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { clip = false }
