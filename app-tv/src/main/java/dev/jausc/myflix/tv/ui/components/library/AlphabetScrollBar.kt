@@ -121,7 +121,6 @@ private fun AlphabetLetter(
                 }
             ),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(2.dp)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = containerColor,
             contentColor = contentColor,

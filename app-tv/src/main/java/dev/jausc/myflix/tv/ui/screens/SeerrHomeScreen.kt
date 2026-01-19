@@ -1107,9 +1107,6 @@ private fun SeerrGenreCard(
                 shape = RoundedCornerShape(12.dp),
             ),
         ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1.05f,
-        ),
     ) {
         Box(
             modifier = Modifier
@@ -1240,9 +1237,6 @@ private fun SeerrStudioCard(
                 shape = RoundedCornerShape(12.dp),
             ),
         ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1.05f,
-        ),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1345,9 +1339,6 @@ private fun SeerrNetworkCard(
                 border = BorderStroke(3.dp, TvColors.BluePrimary),
                 shape = RoundedCornerShape(12.dp),
             ),
-        ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1.05f,
         ),
     ) {
         Box(

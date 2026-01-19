@@ -353,7 +353,6 @@ private fun VoiceSearchButton(
                 shape = RoundedCornerShape(8.dp),
             ),
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
