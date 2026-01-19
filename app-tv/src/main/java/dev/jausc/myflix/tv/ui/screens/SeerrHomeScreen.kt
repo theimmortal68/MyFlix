@@ -669,7 +669,7 @@ private fun SeerrHeroSection(
     imdbRating: SeerrImdbRating? = null,
     modifier: Modifier = Modifier,
 ) {
-    // Content overlay (left side)
+    // Content overlay (left side, half screen width)
     AnimatedContent(
         targetState = media,
         transitionSpec = {
@@ -677,12 +677,12 @@ private fun SeerrHeroSection(
                 fadeOut(animationSpec = tween(300))
         },
         label = "seerr_hero_content",
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(0.5f),
         contentAlignment = Alignment.TopStart,
     ) { currentMedia ->
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth()
                 .padding(start = 48.dp, top = 36.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.Top,
         ) {
