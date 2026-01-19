@@ -155,7 +155,7 @@ fun MovieDetailScreen(
                     .fillMaxHeight(0.65f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Hero content (left 50%) - title, rating, genres, description
+                // Hero content (left 50%) - title, rating, genres, description, buttons
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
@@ -170,50 +170,49 @@ fun MovieDetailScreen(
                         downFocusRequester = playFocusRequester,
                         upFocusRequester = navBarFocusRequester,
                     )
-                }
 
-                // Action buttons fixed at bottom of hero section
-                ExpandablePlayButtons(
-                    resumePositionTicks = resumePositionTicks,
-                    watched = watched,
-                    favorite = favorite,
-                    onPlayClick = { resumeTicks ->
-                        onPlayClick(resumeTicks / 10_000)
-                    },
-                    onWatchedClick = onWatchedClick,
-                    onFavoriteClick = onFavoriteClick,
-                    onMoreClick = {
-                        dialogParams = DialogParams(
-                            title = movie.name,
-                            items = listOf(
-                                DialogItem(
-                                    text = "Media Info",
-                                    icon = Icons.Outlined.Info,
-                                    iconTint = IconColors.MediaInfo,
-                                    onClick = { mediaInfoItem = movie },
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Action buttons
+                    ExpandablePlayButtons(
+                        resumePositionTicks = resumePositionTicks,
+                        watched = watched,
+                        favorite = favorite,
+                        onPlayClick = { resumeTicks ->
+                            onPlayClick(resumeTicks / 10_000)
+                        },
+                        onWatchedClick = onWatchedClick,
+                        onFavoriteClick = onFavoriteClick,
+                        onMoreClick = {
+                            dialogParams = DialogParams(
+                                title = movie.name,
+                                items = listOf(
+                                    DialogItem(
+                                        text = "Media Info",
+                                        icon = Icons.Outlined.Info,
+                                        iconTint = IconColors.MediaInfo,
+                                        onClick = { mediaInfoItem = movie },
+                                    ),
                                 ),
-                            ),
-                        )
-                    },
-                    buttonOnFocusChanged = {
-                        if (it.isFocused) {
-                            position = HEADER_ROW
-                            scope.launch {
-                                bringIntoViewRequester.bringIntoView()
+                            )
+                        },
+                        buttonOnFocusChanged = {
+                            if (it.isFocused) {
+                                position = HEADER_ROW
+                                scope.launch {
+                                    bringIntoViewRequester.bringIntoView()
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 48.dp, bottom = 8.dp)
-                        .focusRequester(focusRequesters[HEADER_ROW])
-                        .focusProperties {
-                            down = focusRequesters[CHAPTERS_ROW]
-                            up = navBarFocusRequester
-                        }
-                        .focusRestorer(playFocusRequester)
-                        .focusGroup(),
-                )
+                        },
+                        modifier = Modifier
+                            .focusRequester(focusRequesters[HEADER_ROW])
+                            .focusProperties {
+                                down = focusRequesters[CHAPTERS_ROW]
+                            }
+                            .focusRestorer(playFocusRequester)
+                            .focusGroup(),
+                    )
+                }
             }
 
             // Scrollable content rows (below fixed hero)
