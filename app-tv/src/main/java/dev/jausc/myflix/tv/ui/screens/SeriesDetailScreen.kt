@@ -278,7 +278,7 @@ fun SeriesDetailScreen(
             LazyColumn(
                 contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 0.dp, bottom = 128.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f),
             ) {
 
             // Next Up - only show if not S1E1 (i.e., watching is in progress)

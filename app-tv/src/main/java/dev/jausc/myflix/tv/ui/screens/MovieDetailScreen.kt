@@ -214,7 +214,7 @@ fun MovieDetailScreen(
             LazyColumn(
                 contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 0.dp, bottom = 128.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f),
             ) {
             // Chapters (first item beneath hero section)
             if (!movie.chapters.isNullOrEmpty()) {
