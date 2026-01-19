@@ -680,7 +680,7 @@ private fun SeerrHeroSection(
     ) { currentMedia ->
         Column(
             modifier = Modifier
-                .widthIn(max = 500.dp)
+                .fillMaxWidth(0.5f)
                 .padding(start = 48.dp, top = 36.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.Top,
         ) {
