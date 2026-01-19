@@ -486,11 +486,11 @@ private fun MovieDetailsHeader(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Description - 4 lines max, clickable to show full overview
+        // Description - 3 lines max, clickable to show full overview
         movie.overview?.let { overview ->
             OverviewText(
                 overview = overview,
-                maxLines = 4,
+                maxLines = 3,
                 onClick = onOverviewClick,
                 modifier = Modifier
                     .fillMaxWidth()
