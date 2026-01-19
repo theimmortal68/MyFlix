@@ -360,15 +360,13 @@ fun SeerrHomeScreen(
 
                 // Layer 2: Hero info (fixed) + Content rows (scrolling)
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Fixed Hero Section (50% height to fully hide row above)
+                    // Hero Section (sized to fit content)
                     heroDisplayItem?.let { media ->
                         SeerrHeroSection(
                             media = media,
                             rtRating = heroRtRating,
                             imdbRating = heroImdbRating,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(0.50f),
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
 
@@ -680,27 +678,12 @@ private fun SeerrHeroSection(
         modifier = modifier,
         contentAlignment = Alignment.TopStart,
     ) { currentMedia ->
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth()
-                .background(
-                    Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.15f),
-                            0.3f to Color.Black.copy(alpha = 0.1f),
-                            0.5f to Color.Transparent,
-                        ),
-                    ),
-                ),
-            contentAlignment = Alignment.TopStart,
+                .widthIn(max = 500.dp)
+                .padding(start = 48.dp, top = 36.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.Top,
         ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 500.dp)
-                    .padding(start = 48.dp, top = 36.dp, bottom = 0.dp),
-                verticalArrangement = Arrangement.Top,
-            ) {
                 // Status badge
             val statusColor = when (currentMedia.availabilityStatus) {
                 SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
@@ -841,9 +824,8 @@ private fun SeerrHeroSection(
                     text = overview,
                     style = MaterialTheme.typography.bodySmall,
                     color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                    maxLines = 3,
+                    maxLines = 5,
                 )
-            }
             }
         }
     }
