@@ -125,7 +125,10 @@ fun CollectionDetailScreen(
             }
 
         // Load collection items
-        jellyfinClient.getCollectionItems(collectionId, limit = 100)
+        // For Universe Collections, sort by ProductionYear to respect timeline/release order
+        // For regular collections, default to SortName (Alphabetical)
+        val sortBy = if (showUniversesInNav) "ProductionYear,SortName" else "SortName"
+        jellyfinClient.getCollectionItems(collectionId, limit = 100, sortBy = sortBy)
             .onSuccess { result ->
                 items = result
             }

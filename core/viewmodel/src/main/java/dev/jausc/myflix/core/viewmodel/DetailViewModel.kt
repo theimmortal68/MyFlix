@@ -372,7 +372,8 @@ class DetailViewModel(
 
             val collectionItems = mutableMapOf<String, List<JellyfinItem>>()
             collections.forEach { collection ->
-                jellyfinClient.getCollectionItems(collection.id, limit = 12)
+                // Sort by ProductionYear for chronological order in franchised collections (MCU, Star Wars, etc.)
+                jellyfinClient.getCollectionItems(collection.id, limit = 12, sortBy = "ProductionYear,SortName")
                     .onSuccess { items ->
                         collectionItems[collection.id] = items.filter { it.id != currentItem.id }
                     }

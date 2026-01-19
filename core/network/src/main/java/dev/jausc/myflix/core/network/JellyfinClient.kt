@@ -1161,7 +1161,9 @@ class JellyfinClient(
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
-                parameter("sortBy", "SortName")
+                // Use ProductionYear for chronological order if filtering for franchises
+                val sortBy = if (excludeUniverseCollections) "ProductionYear,SortName" else "SortName"
+                parameter("sortBy", sortBy)
                 parameter("sortOrder", "Ascending")
                 parameter("recursive", true)
                 parameter("limit", limit)
@@ -1197,7 +1199,9 @@ class JellyfinClient(
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
-                parameter("sortBy", sortBy)
+                // Respect passed sortBy, but default to ProductionYear if it is SortName and we are excluding universes
+                val finalSortBy = if (sortBy == "SortName" && excludeUniverseCollections) "ProductionYear,SortName" else sortBy
+                parameter("sortBy", finalSortBy)
                 parameter("sortOrder", sortOrder)
                 parameter("recursive", true)
                 parameter("startIndex", startIndex)
@@ -1227,7 +1231,7 @@ class JellyfinClient(
     /**
      * Get collections tagged with "universe-collection".
      * Universe collections are BoxSets with a special tag for franchise groupings.
-     * Sorted by IndexNumber (Display Order) if set, falling back to SortName.
+     * Sorted by ProductionYear (Chronological) to ensure timeline order.
      */
     suspend fun getUniverseCollections(limit: Int = 50): Result<List<JellyfinItem>> {
         val key = CacheKeys.universeCollections(limit)
@@ -1237,7 +1241,7 @@ class JellyfinClient(
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
                 parameter("tags", "universe-collection")
-                parameter("sortBy", "IndexNumber,SortName")
+                parameter("sortBy", "ProductionYear,SortName")
                 parameter("sortOrder", "Ascending")
                 parameter("recursive", true)
                 parameter("limit", limit)
@@ -1251,15 +1255,20 @@ class JellyfinClient(
     /**
      * Get items in a specific collection (BoxSet).
      */
-    suspend fun getCollectionItems(collectionId: String, limit: Int = 50): Result<List<JellyfinItem>> {
-        val key = CacheKeys.collection(collectionId, limit)
+    suspend fun getCollectionItems(
+        collectionId: String,
+        limit: Int = 50,
+        sortBy: String = "SortName",
+        sortOrder: String = "Ascending",
+    ): Result<List<JellyfinItem>> {
+        val key = CacheKeys.collection(collectionId, limit, sortBy, sortOrder)
         getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("parentId", collectionId)
-                parameter("sortBy", "SortName")
-                parameter("sortOrder", "Ascending")
+                parameter("sortBy", sortBy)
+                parameter("sortOrder", sortOrder)
                 parameter("fields", Fields.CARD)
                 parameter("enableImageTypes", ImageTypes.HERO)
             }.body()
