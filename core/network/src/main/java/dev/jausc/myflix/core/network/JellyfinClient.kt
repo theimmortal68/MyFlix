@@ -233,7 +233,7 @@ class JellyfinClient(
         const val DETAIL =
             "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People," +
                 "ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CriticRating,Taglines,CollectionIds," +
-                "CollectionName,RemoteTrailers,LocalTrailerCount,ProductionLocations,Status"
+                "CollectionName,RemoteTrailers,LocalTrailerCount,ProductionLocations,Status,DisplayOrder"
 
         // Fields for episode listing
         const val EPISODE_LIST =

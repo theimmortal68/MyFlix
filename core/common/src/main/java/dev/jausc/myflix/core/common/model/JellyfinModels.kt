@@ -75,6 +75,8 @@ data class JellyfinItem(
     // Collections (BoxSets)
     @SerialName("CollectionIds") val collectionIds: List<String>? = null,
     @SerialName("CollectionName") val collectionName: String? = null,
+    // Display order for collections (e.g., "PremiereDate", "SortName")
+    @SerialName("DisplayOrder") val displayOrder: String? = null,
     // Trailers
     @SerialName("RemoteTrailers") val remoteTrailers: List<JellyfinRemoteTrailer>? = null,
     @SerialName("LocalTrailerCount") val localTrailerCount: Int? = null,

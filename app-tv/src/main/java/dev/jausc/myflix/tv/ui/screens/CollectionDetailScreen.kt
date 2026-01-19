@@ -115,27 +115,33 @@ fun CollectionDetailScreen(
         isLoading = true
         error = null
 
-        // Load collection details
+        // Load collection details first to get DisplayOrder
         jellyfinClient.getItem(collectionId)
             .onSuccess { item ->
                 collection = item
+
+                // Determine sort order based on server metadata (DisplayOrder)
+                // If DisplayOrder is not set, fallback to default behavior (Chronological for Universes, Alpha for others)
+                val sortBy = when (item.displayOrder) {
+                    "PremiereDate" -> "ProductionYear,PremiereDate,SortName"
+                    "DateCreated" -> "DateCreated,SortName"
+                    "SortName" -> "SortName"
+                    else -> if (showUniversesInNav) "ProductionYear,SortName" else "SortName"
+                }
+
+                // Load collection items with correct sorting
+                jellyfinClient.getCollectionItems(collectionId, limit = 100, sortBy = sortBy)
+                    .onSuccess { result ->
+                        items = result
+                    }
+                    .onFailure {
+                        if (error == null) {
+                            error = it.message ?: "Failed to load collection items"
+                        }
+                    }
             }
             .onFailure {
                 error = it.message ?: "Failed to load collection"
-            }
-
-        // Load collection items
-        // For Universe Collections, sort by ProductionYear to respect timeline/release order
-        // For regular collections, default to SortName (Alphabetical)
-        val sortBy = if (showUniversesInNav) "ProductionYear,SortName" else "SortName"
-        jellyfinClient.getCollectionItems(collectionId, limit = 100, sortBy = sortBy)
-            .onSuccess { result ->
-                items = result
-            }
-            .onFailure {
-                if (error == null) {
-                    error = it.message ?: "Failed to load collection items"
-                }
             }
 
         isLoading = false
