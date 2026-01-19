@@ -105,6 +105,9 @@ fun CollectionDetailScreen(
     val shuffleFocusRequester = remember { FocusRequester() }
     val navBarFocusRequester = remember { FocusRequester() }
 
+    // Track focused item in the grid for Master-Detail view
+    var focusedItem by remember { mutableStateOf<JellyfinItem?>(null) }
+
     // Load collection data
     LaunchedEffect(collectionId) {
         isLoading = true
@@ -145,9 +148,12 @@ fun CollectionDetailScreen(
         }
     }
 
+    // Determine which item to display in the hero/backdrop (Focused Item OR Collection)
+    val displayItem = focusedItem ?: collection
+
     // Backdrop URL and dynamic gradient colors - fall back to primary image if no backdrop
-    val backdropUrl = remember(collection?.id, collection?.backdropImageTags, collection?.imageTags?.primary) {
-        collection?.let { item ->
+    val backdropUrl = remember(displayItem?.id, displayItem?.backdropImageTags, displayItem?.imageTags?.primary) {
+        displayItem?.let { item ->
             val hasBackdrop = !item.backdropImageTags.isNullOrEmpty()
             if (hasBackdrop) {
                 jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull())
@@ -161,9 +167,9 @@ fun CollectionDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    // Check if collection has a real backdrop for the backdrop layer
-    val hasBackdrop = remember(collection?.backdropImageTags) {
-        !collection?.backdropImageTags.isNullOrEmpty()
+    // Check if display item has a real backdrop for the backdrop layer
+    val hasBackdrop = remember(displayItem?.backdropImageTags) {
+        !displayItem?.backdropImageTags.isNullOrEmpty()
     }
 
     // Loading state
@@ -204,25 +210,27 @@ fun CollectionDetailScreen(
 
         // Layer 2: Backdrop image (right side, behind content)
         // Use backdrop if available, otherwise fall back to primary image
-        if (hasBackdrop) {
-            DetailBackdropLayer(
-                item = collectionItem,
-                jellyfinClient = jellyfinClient,
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.9f)
-                    .align(Alignment.TopEnd),
-            )
-        } else {
-            // Fallback: use primary image as backdrop with similar styling
-            CollectionPrimaryBackdrop(
-                item = collectionItem,
-                jellyfinClient = jellyfinClient,
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .fillMaxHeight(0.75f)
-                    .align(Alignment.TopEnd),
-            )
+        if (displayItem != null) {
+            if (hasBackdrop) {
+                DetailBackdropLayer(
+                    item = displayItem,
+                    jellyfinClient = jellyfinClient,
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .fillMaxHeight(0.9f)
+                        .align(Alignment.TopEnd),
+                )
+            } else {
+                // Fallback: use primary image as backdrop with similar styling
+                CollectionPrimaryBackdrop(
+                    item = displayItem,
+                    jellyfinClient = jellyfinClient,
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .fillMaxHeight(0.75f)
+                        .align(Alignment.TopEnd),
+                )
+            }
         }
 
         // Layer 3: Content
@@ -234,11 +242,14 @@ fun CollectionDetailScreen(
                     .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                // Hero content (left 50%) - title, overview, item count
+                // Hero content (left 50%) - title, overview
+                // Using alpha to fade between Collection Info and Focused Item Info
+                // Collection Info (visible when NO item is focused)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 48.dp),
+                        .padding(start = 48.dp, top = 48.dp)
+                        .alpha(if (focusedItem == null) 1f else 0f),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     CollectionHeroContent(
@@ -247,7 +258,22 @@ fun CollectionDetailScreen(
                     )
                 }
 
+                // Focused Item Info (visible when item IS focused)
+                // Overlay on top of Collection Info
+                if (focusedItem != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .padding(start = 48.dp, top = 48.dp),
+                        verticalArrangement = Arrangement.Top,
+                    ) {
+                        ItemHeroContent(item = focusedItem!!)
+                    }
+                }
+
                 // Action buttons fixed at bottom of hero section
+                // Always present in the tree to receive focus (UP from grid)
+                // When focused, they clear `focusedItem` to show Collection Info
                 CollectionActionButtons(
                     favorite = favorite,
                     onShuffleClick = {
@@ -262,6 +288,7 @@ fun CollectionDetailScreen(
                     },
                     buttonOnFocusChanged = {
                         if (it.isFocused) {
+                            focusedItem = null // Revert to collection info
                             scope.launch {
                                 bringIntoViewRequester.bringIntoView()
                             }
@@ -271,6 +298,7 @@ fun CollectionDetailScreen(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 48.dp, bottom = 8.dp)
+                        .alpha(if (focusedItem == null) 1f else 0f) // Hide visually when item focused
                         .focusRequester(focusRequesters[HEADER_ROW])
                         .focusProperties {
                             down = focusRequesters[ITEMS_ROW]
@@ -308,7 +336,12 @@ fun CollectionDetailScreen(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(2f / 3f),
+                                .aspectRatio(2f / 3f)
+                                .onFocusChanged {
+                                    if (it.isFocused) {
+                                        focusedItem = item
+                                    }
+                                },
                         )
                     }
                 }
@@ -335,6 +368,93 @@ fun CollectionDetailScreen(
             focusRequester = navBarFocusRequester,
             modifier = Modifier.align(Alignment.TopCenter),
         )
+    }
+}
+
+/**
+ * Hero content for a focused item (Movie/Episode) within the collection.
+ * Displays Title, Year, Rating, and Overview.
+ */
+@Composable
+private fun ItemHeroContent(
+    item: JellyfinItem,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Title
+        Text(
+            text = item.name,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp,
+            ),
+            color = TvColors.TextPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Metadata Row (Year • Rating • Runtime)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item.productionYear?.let { year ->
+                Text(
+                    text = year.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TvColors.TextSecondary,
+                )
+            }
+            
+            item.officialRating?.let { rating ->
+                 Box(
+                    modifier = Modifier
+                        .drawWithContent {
+                            drawContent()
+                        }
+                        .background(TvColors.SurfaceElevated.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                ) {
+                    Text(
+                        text = rating,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = TvColors.TextPrimary,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            
+            item.communityRating?.let { rating ->
+                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                     Icon(
+                         imageVector = androidx.compose.material.icons.Icons.Outlined.Favorite, // Star replacement
+                         contentDescription = null,
+                         modifier = Modifier.size(14.dp),
+                         tint = Color(0xFFFFD700)
+                     )
+                     Text(
+                        text = String.format("%.1f", rating),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TvColors.TextSecondary,
+                     )
+                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Overview
+        item.overview?.let { overview ->
+            Text(
+                text = overview,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+            )
+        }
     }
 }
 

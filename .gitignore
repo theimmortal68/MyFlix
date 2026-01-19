@@ -52,6 +52,17 @@ node_modules/
 package-lock.json
 
 # Claude Code / AI assistant config
+
 .claude/
+
 .codex/
+
 AGENTS.md
+
+
+
+# Patches and temporary UI experiments
+
+/patches/
+
+/core/common/src/main/res/drawable/

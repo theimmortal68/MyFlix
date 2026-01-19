@@ -29,29 +29,31 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.R
 
 /**
  * Navigation items for the rail
  */
 enum class NavItem(
-    val icon: ImageVector,
+    val iconRes: Int,
     val label: String,
     val route: String,
     val color: Color,
 ) {
-    HOME(Icons.Outlined.Home, "Home", "home", Color(0xFF60A5FA)), // Blue
-    SEARCH(Icons.Outlined.Search, "Search", "search", Color(0xFFA78BFA)), // Purple
-    SHOWS(Icons.Outlined.Tv, "Shows", "shows", Color(0xFF34D399)), // Green
-    MOVIES(Icons.Outlined.Movie, "Movies", "movies", Color(0xFFFBBF24)), // Yellow/Gold
-    DISCOVER(Icons.Outlined.Explore, "Discover", "seerr", Color(0xFF8B5CF6)), // Violet (Seerr)
-    COLLECTIONS(Icons.Outlined.VideoLibrary, "Collections", "collections", Color(0xFFFF7043)), // Orange
-    UNIVERSES(Icons.Outlined.Hub, "Universes", "universes", Color(0xFF9575CD)), // Deep Purple
-    SETTINGS(Icons.Outlined.Settings, "Settings", "settings", Color(0xFFF472B6)), // Pink
+    HOME(R.drawable.ic_nav_home_color, "Home", "home", Color(0xFF60A5FA)), // Blue
+    SEARCH(R.drawable.ic_nav_search_color, "Search", "search", Color(0xFFA78BFA)), // Purple
+    SHOWS(R.drawable.ic_nav_shows_color, "Shows", "shows", Color(0xFF34D399)), // Green
+    MOVIES(R.drawable.ic_nav_movies_color, "Movies", "movies", Color(0xFFFBBF24)), // Yellow/Gold
+    DISCOVER(R.drawable.ic_nav_discover_color, "Discover", "seerr", Color(0xFF8B5CF6)), // Violet (Seerr)
+    COLLECTIONS(R.drawable.ic_nav_collections_color, "Collections", "collections", Color(0xFFFF7043)), // Orange
+    UNIVERSES(R.drawable.ic_nav_universes_color, "Universes", "universes", Color(0xFF9575CD)), // Deep Purple
+    SETTINGS(R.drawable.ic_nav_settings_color, "Settings", "settings", Color(0xFFF472B6)), // Pink
 }
 
 // White halo color for focus effect
@@ -177,12 +179,12 @@ private fun NavRailItem(
 
         // Icon
         Icon(
-            imageVector = item.icon,
+            painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
             modifier = Modifier
                 .size(28.dp)
                 .scale(iconScale),
-            tint = if (isFocused || isSelected) item.color else TvColors.TextSecondary,
+            tint = if (isFocused || isSelected) Color.Unspecified else TvColors.TextSecondary,
         )
     }
 }
@@ -250,12 +252,12 @@ fun NavRailItemWithLabel(item: NavItem, isSelected: Boolean, onClick: () -> Unit
             }
 
             Icon(
-                imageVector = item.icon,
+                painter = painterResource(id = item.iconRes),
                 contentDescription = item.label,
                 modifier = Modifier
                     .size(26.dp)
                     .scale(iconScale),
-                tint = if (isFocused || isSelected) item.color else TvColors.TextSecondary,
+                tint = if (isFocused || isSelected) Color.Unspecified else TvColors.TextSecondary,
             )
         }
 
