@@ -51,6 +51,11 @@ abstract class AppPreferences(context: Context) {
     }
     val preferredAudioLanguage: StateFlow<String?> by lazy { _preferredAudioLanguage.asStateFlow() }
 
+    private val _preferredSubtitleLanguage: MutableStateFlow<String?> by lazy {
+        MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.PREFERRED_SUBTITLE_LANGUAGE, PreferenceKeys.Defaults.PREFERRED_SUBTITLE_LANGUAGE))
+    }
+    val preferredSubtitleLanguage: StateFlow<String?> by lazy { _preferredSubtitleLanguage.asStateFlow() }
+
     private val _playerDisplayMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, PreferenceKeys.Defaults.PLAYER_DISPLAY_MODE)
@@ -197,6 +202,20 @@ abstract class AppPreferences(context: Context) {
             prefs.edit().remove(PreferenceKeys.Prefs.PREFERRED_AUDIO_LANGUAGE).apply()
         }
         _preferredAudioLanguage.value = language
+    }
+
+    /**
+     * Set the preferred subtitle language (ISO 639-2/B code like "eng", "jpn", "spa").
+     * When set, the player will automatically select subtitle tracks matching this language.
+     * Set to null to use Jellyfin's default subtitle track.
+     */
+    fun setPreferredSubtitleLanguage(language: String?) {
+        if (language != null) {
+            prefs.edit().putString(PreferenceKeys.Prefs.PREFERRED_SUBTITLE_LANGUAGE, language).apply()
+        } else {
+            prefs.edit().remove(PreferenceKeys.Prefs.PREFERRED_SUBTITLE_LANGUAGE).apply()
+        }
+        _preferredSubtitleLanguage.value = language
     }
 
     /**

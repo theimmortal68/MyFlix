@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -108,6 +110,8 @@ fun PreferencesScreen(
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
+    val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
+    val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -123,6 +127,8 @@ fun PreferencesScreen(
     var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var showGenreDialog by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
+    var showAudioLanguageDialog by remember { mutableStateOf(false) }
+    var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -197,6 +203,10 @@ fun PreferencesScreen(
                 onUseMpvPlayerChanged = { preferences.setUseMpvPlayer(it) },
                 useTrailerFallback = useTrailerFallback,
                 onUseTrailerFallbackChanged = { preferences.setUseTrailerFallback(it) },
+                preferredAudioLanguage = preferredAudioLanguage,
+                onEditAudioLanguage = { showAudioLanguageDialog = true },
+                preferredSubtitleLanguage = preferredSubtitleLanguage,
+                onEditSubtitleLanguage = { showSubtitleLanguageDialog = true },
                 showSeasonPremieres = showSeasonPremieres,
                 onShowSeasonPremieresChanged = { preferences.setShowSeasonPremieres(it) },
                 showGenreRows = showGenreRows,
@@ -272,6 +282,32 @@ fun PreferencesScreen(
             },
         )
     }
+
+    // Audio Language Selection Dialog
+    if (showAudioLanguageDialog) {
+        LanguageSelectionDialog(
+            title = "Preferred Audio Language",
+            currentSelection = preferredAudioLanguage,
+            onDismiss = { showAudioLanguageDialog = false },
+            onSelect = { language ->
+                preferences.setPreferredAudioLanguage(language)
+                showAudioLanguageDialog = false
+            },
+        )
+    }
+
+    // Subtitle Language Selection Dialog
+    if (showSubtitleLanguageDialog) {
+        LanguageSelectionDialog(
+            title = "Preferred Subtitle Language",
+            currentSelection = preferredSubtitleLanguage,
+            onDismiss = { showSubtitleLanguageDialog = false },
+            onSelect = { language ->
+                preferences.setPreferredSubtitleLanguage(language)
+                showSubtitleLanguageDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -281,13 +317,18 @@ private fun PreferencesContent(
     servers: List<SavedServer>,
     onManageServers: () -> Unit,
     onAddServer: () -> Unit,
-    // Home screen settings
+    // Playback settings
     hideWatched: Boolean,
     onHideWatchedChanged: (Boolean) -> Unit,
     useMpvPlayer: Boolean,
     onUseMpvPlayerChanged: (Boolean) -> Unit,
     useTrailerFallback: Boolean,
     onUseTrailerFallbackChanged: (Boolean) -> Unit,
+    preferredAudioLanguage: String?,
+    onEditAudioLanguage: () -> Unit,
+    preferredSubtitleLanguage: String?,
+    onEditSubtitleLanguage: () -> Unit,
+    // Home screen settings
     showSeasonPremieres: Boolean,
     onShowSeasonPremieresChanged: (Boolean) -> Unit,
     showGenreRows: Boolean,
@@ -471,6 +512,22 @@ private fun PreferencesContent(
                     iconTint = if (useTrailerFallback) Color(0xFF38BDF8) else TvColors.TextSecondary,
                     checked = useTrailerFallback,
                     onCheckedChange = onUseTrailerFallbackChanged,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Preferred Audio Language",
+                    description = getLanguageDisplayName(preferredAudioLanguage),
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    iconTint = if (preferredAudioLanguage != null) Color(0xFF34D399) else TvColors.TextSecondary,
+                    onClick = onEditAudioLanguage,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Preferred Subtitle Language",
+                    description = getLanguageDisplayName(preferredSubtitleLanguage),
+                    icon = Icons.Outlined.Translate,
+                    iconTint = if (preferredSubtitleLanguage != null) Color(0xFFFBBF24) else TvColors.TextSecondary,
+                    onClick = onEditSubtitleLanguage,
                 )
             }
         }
@@ -1650,3 +1707,164 @@ private data class UpdateItemState(
     val iconTint: Color,
     val isClickable: Boolean,
 )
+
+// Common language codes (ISO 639-2/B)
+private val LANGUAGE_OPTIONS = listOf(
+    null to "Server Default",
+    "eng" to "English",
+    "spa" to "Spanish",
+    "fre" to "French",
+    "ger" to "German",
+    "ita" to "Italian",
+    "por" to "Portuguese",
+    "rus" to "Russian",
+    "jpn" to "Japanese",
+    "kor" to "Korean",
+    "chi" to "Chinese",
+    "ara" to "Arabic",
+    "hin" to "Hindi",
+    "dut" to "Dutch",
+    "pol" to "Polish",
+    "tur" to "Turkish",
+    "swe" to "Swedish",
+    "nor" to "Norwegian",
+    "dan" to "Danish",
+    "fin" to "Finnish",
+)
+
+/**
+ * Get display name for a language code.
+ */
+private fun getLanguageDisplayName(code: String?): String {
+    return LANGUAGE_OPTIONS.find { it.first == code }?.second ?: code ?: "Server Default"
+}
+
+@Composable
+private fun LanguageSelectionDialog(
+    title: String,
+    currentSelection: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String?) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            // Title
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            // Language list
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(LANGUAGE_OPTIONS.size) { index ->
+                    val (code, name) = LANGUAGE_OPTIONS[index]
+                    val isSelected = code == currentSelection
+
+                    LanguageItem(
+                        name = name,
+                        isSelected = isSelected,
+                        onClick = { onSelect(code) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageItem(
+    name: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFF34D399).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFF34D399), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Language name
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFF34D399) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}

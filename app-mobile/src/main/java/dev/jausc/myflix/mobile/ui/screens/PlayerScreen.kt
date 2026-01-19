@@ -98,8 +98,9 @@ fun PlayerScreen(
 ) {
     val context = LocalContext.current
 
-    // Get preferred audio language from preferences
+    // Get preferred audio and subtitle language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
+    val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -119,7 +120,13 @@ fun PlayerScreen(
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
         key = itemId,
-        factory = PlayerViewModel.Factory(itemId, jellyfinClient, preferredAudioLanguage, startPositionMs),
+        factory = PlayerViewModel.Factory(
+            itemId = itemId,
+            jellyfinClient = jellyfinClient,
+            preferredAudioLanguage = preferredAudioLanguage,
+            preferredSubtitleLanguage = preferredSubtitleLanguage,
+            startPositionMs = startPositionMs,
+        ),
     )
 
     // Collect UI state from ViewModel
