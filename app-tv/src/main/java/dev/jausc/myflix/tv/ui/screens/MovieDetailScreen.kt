@@ -117,7 +117,6 @@ fun MovieDetailScreen(
     // Cast & crew (using extension properties from JellyfinItem)
     val cast = movie.actors
     val crew = movie.crew
-    val directorName = movie.directorNames
 
     // Backdrop URL and dynamic gradient colors
     val backdropUrl = remember(movie.id) {
@@ -148,23 +147,22 @@ fun MovieDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (55% height for badge row + 5 lines of description) - doesn't scroll
+            // Fixed hero section (50% height) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.55f)
+                    .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, genres, description, buttons
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 24.dp),
+                        .padding(start = 48.dp, top = 16.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     MovieDetailsHeader(
                         movie = movie,
-                        directorName = directorName,
                         onOverviewClick = { showOverview = true },
                         descriptionFocusRequester = descriptionFocusRequester,
                         downFocusRequester = playFocusRequester,
@@ -439,7 +437,6 @@ fun MovieDetailScreen(
 @Composable
 private fun MovieDetailsHeader(
     movie: JellyfinItem,
-    directorName: String?,
     onOverviewClick: () -> Unit,
     descriptionFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
@@ -490,11 +487,11 @@ private fun MovieDetailsHeader(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Description - 5 lines max, clickable to show full overview
+        // Description - 4 lines max, clickable to show full overview
         movie.overview?.let { overview ->
             OverviewText(
                 overview = overview,
-                maxLines = 5,
+                maxLines = 4,
                 onClick = onOverviewClick,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -504,16 +501,6 @@ private fun MovieDetailsHeader(
                         up = upFocusRequester
                     },
                 paddingValues = PaddingValues(0.dp),
-            )
-        }
-
-        // Director
-        directorName?.let {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Directed by $it",
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary.copy(alpha = 0.85f),
             )
         }
     }
