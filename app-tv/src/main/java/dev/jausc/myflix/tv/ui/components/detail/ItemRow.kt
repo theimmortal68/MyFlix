@@ -3,11 +3,9 @@
 package dev.jausc.myflix.tv.ui.components.detail
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -93,34 +91,28 @@ fun <T> ItemRow(
             itemsIndexed(items) { index, item ->
                 val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
-                val cardModifier = if (index == 0) {
-                    Modifier.focusRequester(firstFocus)
-                } else {
-                    Modifier
-                }.onFocusChanged {
-                    if (it.isFocused) {
-                        focusedIndex = index
-                        scope.launch {
-                            bringIntoViewRequester.bringIntoView()
-                        }
-                    }
-                    cardOnFocus?.invoke(it.isFocused, index)
-                }
-
-                // Wrap card in Box with padding to account for scale on focus (1.1x scale)
-                Box(
-                    modifier = Modifier
-                        .bringIntoViewRequester(bringIntoViewRequester)
-                        .padding(bottom = 16.dp),
-                ) {
-                    cardContent.invoke(
-                        index,
-                        item,
-                        cardModifier,
-                        { if (item != null) onItemClick.invoke(index, item) },
-                        { if (item != null) onItemLongClick.invoke(index, item) },
+                val cardModifier = Modifier
+                    .bringIntoViewRequester(bringIntoViewRequester)
+                    .then(
+                        if (index == 0) Modifier.focusRequester(firstFocus) else Modifier
                     )
-                }
+                    .onFocusChanged {
+                        if (it.isFocused) {
+                            focusedIndex = index
+                            scope.launch {
+                                bringIntoViewRequester.bringIntoView()
+                            }
+                        }
+                        cardOnFocus?.invoke(it.isFocused, index)
+                    }
+
+                cardContent.invoke(
+                    index,
+                    item,
+                    cardModifier,
+                    { if (item != null) onItemClick.invoke(index, item) },
+                    { if (item != null) onItemLongClick.invoke(index, item) },
+                )
             }
         }
     }
