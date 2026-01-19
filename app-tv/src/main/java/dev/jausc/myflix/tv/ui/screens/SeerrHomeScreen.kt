@@ -360,13 +360,15 @@ fun SeerrHomeScreen(
 
                 // Layer 2: Hero info (fixed) + Content rows (scrolling)
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Hero Section (sized to fit content)
+                    // Hero Section (fixed height for 5 lines of description)
                     heroDisplayItem?.let { media ->
                         SeerrHeroSection(
                             media = media,
                             rtRating = heroRtRating,
                             imdbRating = heroImdbRating,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp),
                         )
                     }
 
