@@ -147,18 +147,17 @@ fun MovieDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (50% height) - doesn't scroll
+            // Hero section - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.50f)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Hero content (left 50%) - title, rating, genres, description, buttons
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 16.dp),
+                        .padding(start = 48.dp, top = 36.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     MovieDetailsHeader(
