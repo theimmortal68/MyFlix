@@ -3,16 +3,21 @@
 package dev.jausc.myflix.tv.ui.components.detail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -22,6 +27,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -64,6 +70,7 @@ fun <T> ItemRow(
     val state = rememberLazyListState()
     val firstFocus = remember { FocusRequester() }
     var focusedIndex by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -84,6 +91,8 @@ fun <T> ItemRow(
                 .focusRestorer(firstFocus),
         ) {
             itemsIndexed(items) { index, item ->
+                val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
                 val cardModifier = if (index == 0) {
                     Modifier.focusRequester(firstFocus)
                 } else {
@@ -91,17 +100,27 @@ fun <T> ItemRow(
                 }.onFocusChanged {
                     if (it.isFocused) {
                         focusedIndex = index
+                        scope.launch {
+                            bringIntoViewRequester.bringIntoView()
+                        }
                     }
                     cardOnFocus?.invoke(it.isFocused, index)
                 }
 
-                cardContent.invoke(
-                    index,
-                    item,
-                    cardModifier,
-                    { if (item != null) onItemClick.invoke(index, item) },
-                    { if (item != null) onItemLongClick.invoke(index, item) },
-                )
+                // Wrap card in Box with padding to account for scale on focus (1.1x scale)
+                Box(
+                    modifier = Modifier
+                        .bringIntoViewRequester(bringIntoViewRequester)
+                        .padding(bottom = 16.dp),
+                ) {
+                    cardContent.invoke(
+                        index,
+                        item,
+                        cardModifier,
+                        { if (item != null) onItemClick.invoke(index, item) },
+                        { if (item != null) onItemLongClick.invoke(index, item) },
+                    )
+                }
             }
         }
     }
