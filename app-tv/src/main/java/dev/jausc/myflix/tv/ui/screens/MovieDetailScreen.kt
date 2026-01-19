@@ -29,7 +29,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -213,11 +212,9 @@ fun MovieDetailScreen(
 
             // Scrollable content rows (below fixed hero)
             LazyColumn(
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 0.dp, bottom = 128.dp),
+                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 0.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer { clip = false },
+                modifier = Modifier.weight(1f),
             ) {
             // Chapters (first item beneath hero section)
             if (!movie.chapters.isNullOrEmpty()) {

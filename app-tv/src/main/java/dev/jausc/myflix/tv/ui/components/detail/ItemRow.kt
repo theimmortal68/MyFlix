@@ -9,27 +9,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -72,7 +63,6 @@ fun <T> ItemRow(
     val state = rememberLazyListState()
     val firstFocus = remember { FocusRequester() }
     var focusedIndex by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -86,46 +76,22 @@ fun <T> ItemRow(
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
-            contentPadding = PaddingValues(start = horizontalPadding, top = 12.dp, end = horizontalPadding, bottom = 32.dp),
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { clip = false }
                 .focusRestorer(firstFocus),
         ) {
             itemsIndexed(items) { index, item ->
-                val bringIntoViewRequester = remember { BringIntoViewRequester() }
-                var itemRect by remember { mutableStateOf(Rect.Zero) }
-
-                val cardModifier = Modifier
-                    .bringIntoViewRequester(bringIntoViewRequester)
-                    .onGloballyPositioned { coordinates ->
-                        val position = coordinates.positionInParent()
-                        val size = coordinates.size
-                        itemRect = Rect(
-                            left = position.x,
-                            top = position.y,
-                            right = position.x + size.width,
-                            bottom = position.y + size.height,
-                        )
+                val cardModifier = if (index == 0) {
+                    Modifier.focusRequester(firstFocus)
+                } else {
+                    Modifier
+                }.onFocusChanged {
+                    if (it.isFocused) {
+                        focusedIndex = index
                     }
-                    .then(
-                        if (index == 0) Modifier.focusRequester(firstFocus) else Modifier
-                    )
-                    .onFocusChanged {
-                        if (it.isFocused) {
-                            focusedIndex = index
-                            scope.launch {
-                                // Expand rect to account for 1.1x scale on focus
-                                // Scale is from center, so bottom extends by 5% of height
-                                val scaleExpansion = itemRect.height * 0.05f
-                                val expandedRect = itemRect.copy(
-                                    bottom = itemRect.bottom + scaleExpansion,
-                                )
-                                bringIntoViewRequester.bringIntoView(expandedRect)
-                            }
-                        }
-                        cardOnFocus?.invoke(it.isFocused, index)
-                    }
+                    cardOnFocus?.invoke(it.isFocused, index)
+                }
 
                 cardContent.invoke(
                     index,
