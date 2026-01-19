@@ -581,6 +581,7 @@ private fun ExpandableHeroButton(
         modifier = modifier.height(20.dp),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
         interactionSource = interactionSource,
+        scale = ButtonDefaults.scale(focusedScale = 1f),
         glow = ButtonDefaults.glow(
             focusedGlow = Glow(
                 elevation = 10.dp,

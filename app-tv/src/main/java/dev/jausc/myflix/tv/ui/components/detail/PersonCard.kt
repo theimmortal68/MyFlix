@@ -51,6 +51,7 @@ fun PersonCard(
             containerColor = TvColors.Surface.copy(alpha = 0.5f),
             focusedContainerColor = TvColors.FocusedSurface,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Column(
             modifier = Modifier.padding(8.dp),

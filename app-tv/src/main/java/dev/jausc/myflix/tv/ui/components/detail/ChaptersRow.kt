@@ -123,6 +123,7 @@ private fun ChapterCard(
             containerColor = Color.Transparent,
             focusedContainerColor = TvColors.BluePrimary,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.width(210.dp),
     ) {
         Column(

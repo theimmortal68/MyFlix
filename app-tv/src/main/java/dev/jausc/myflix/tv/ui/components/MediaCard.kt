@@ -139,6 +139,7 @@ private fun MediaCardInternal(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         glow = ClickableSurfaceDefaults.glow(
             focusedGlow = Glow(
                 elevation = 12.dp,
@@ -281,6 +282,7 @@ fun WideMediaCard(
                 shape = MaterialTheme.shapes.medium,
             ),
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         glow = ClickableSurfaceDefaults.glow(
             focusedGlow = Glow(
                 elevation = 12.dp,

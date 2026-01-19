@@ -127,6 +127,7 @@ private fun AlphabetLetter(
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
