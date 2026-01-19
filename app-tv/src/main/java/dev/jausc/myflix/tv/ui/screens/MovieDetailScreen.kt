@@ -62,6 +62,8 @@ import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
+import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
+import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
@@ -73,8 +75,7 @@ private const val CAST_ROW = CHAPTERS_ROW + 1
 private const val CREW_ROW = CAST_ROW + 1
 private const val EXTRAS_ROW = CREW_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
-private const val RECOMMENDED_ROW = COLLECTIONS_ROW + 1
-private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
+private const val SIMILAR_ROW = COLLECTIONS_ROW + 1
 
 /**
  * Plex-style movie detail screen with backdrop hero.
@@ -106,6 +107,8 @@ fun MovieDetailScreen(
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
+    var showOverview by remember { mutableStateOf(false) }
+    val descriptionFocusRequester = remember { FocusRequester() }
 
     val resumePositionTicks = movie.userData?.playbackPositionTicks ?: 0L
     val watched = movie.userData?.played == true
@@ -145,7 +148,7 @@ fun MovieDetailScreen(
 
         // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
         Column(modifier = Modifier.fillMaxSize()) {
-            // Fixed hero section (65% height for badge row + 10 lines of description) - doesn't scroll
+            // Fixed hero section (65% height for badge row + 5 lines of description) - doesn't scroll
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -162,6 +165,10 @@ fun MovieDetailScreen(
                     MovieDetailsHeader(
                         movie = movie,
                         directorName = directorName,
+                        onOverviewClick = { showOverview = true },
+                        descriptionFocusRequester = descriptionFocusRequester,
+                        downFocusRequester = playFocusRequester,
+                        upFocusRequester = navBarFocusRequester,
                     )
                 }
 
@@ -353,41 +360,6 @@ fun MovieDetailScreen(
                 }
             }
 
-            // Recommended Items
-            if (state.recommendations.isNotEmpty()) {
-                item(key = "recommended") {
-                    ItemRow(
-                        title = "Recommended",
-                        items = state.recommendations,
-                        onItemClick = { _, item ->
-                            position = RECOMMENDED_ROW
-                            onNavigateToDetail(item.id)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = RECOMMENDED_ROW
-                            // TODO: Show item context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[RECOMMENDED_ROW]),
-                    )
-                }
-            }
-
             // Similar Items (More Like This)
             if (state.similarItems.isNotEmpty()) {
                 item(key = "similar") {
@@ -451,6 +423,16 @@ fun MovieDetailScreen(
             onDismiss = { mediaInfoItem = null },
         )
     }
+
+    // Overview dialog
+    if (showOverview) {
+        OverviewDialog(
+            title = movie.name,
+            overview = movie.overview.orEmpty(),
+            genres = movie.genres.orEmpty(),
+            onDismiss = { showOverview = false },
+        )
+    }
 }
 
 /**
@@ -461,6 +443,10 @@ fun MovieDetailScreen(
 private fun MovieDetailsHeader(
     movie: JellyfinItem,
     directorName: String?,
+    onOverviewClick: () -> Unit,
+    descriptionFocusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -507,15 +493,20 @@ private fun MovieDetailsHeader(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Description - allows 10 lines of text, uses full column width (50% of screen)
+        // Description - 5 lines max, clickable to show full overview
         movie.overview?.let { overview ->
-            Text(
-                text = overview,
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                maxLines = 10,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 18.sp,
+            OverviewText(
+                overview = overview,
+                maxLines = 5,
+                onClick = onOverviewClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(descriptionFocusRequester)
+                    .focusProperties {
+                        down = downFocusRequester
+                        up = upFocusRequester
+                    },
+                paddingValues = PaddingValues(0.dp),
             )
         }
 

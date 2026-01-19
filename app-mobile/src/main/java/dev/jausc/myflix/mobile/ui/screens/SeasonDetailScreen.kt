@@ -40,7 +40,6 @@ import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.videoQualityLabel
-import dev.jausc.myflix.core.common.util.FeatureSection
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -55,7 +54,6 @@ import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
-import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
@@ -93,14 +91,6 @@ fun SeasonDetailScreen(
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
 
-    // Cast & crew
-    val cast = remember(series.people) {
-        series.people?.filter { it.type == "Actor" } ?: emptyList()
-    }
-    val crew = remember(series.people) {
-        series.people?.filter { it.type != "Actor" } ?: emptyList()
-    }
-
     val selectedEpisode = remember(state.episodes, state.nextUpEpisode) {
         // Priority: nextUp > first non-watched > first episode
         val nextUp = state.nextUpEpisode?.let { next ->
@@ -111,9 +101,6 @@ fun SeasonDetailScreen(
     }
     val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
         state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
-    }
-    val guestStars = remember(selectedEpisode?.people) {
-        selectedEpisode?.people?.filter { it.type == "GuestStar" } ?: emptyList()
     }
 
     val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
@@ -392,60 +379,6 @@ fun SeasonDetailScreen(
                                             )
                                         }
                                     }
-        // Cast
-        if (cast.isNotEmpty()) {
-            item(key = "people") {
-                CastCrewSection(
-                    title = "Cast",
-                    people = cast,
-                    jellyfinClient = jellyfinClient,
-                    onPersonClick = { person ->
-                        onNavigateToPerson(person.id)
-                    },
-                    onPersonLongClick = { _, _ ->
-                        // TODO: Show person context menu
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // Guest Stars
-        if (guestStars.isNotEmpty()) {
-            item(key = "guest_stars") {
-                CastCrewSection(
-                    title = "Guest Stars",
-                    people = guestStars,
-                    jellyfinClient = jellyfinClient,
-                    onPersonClick = { person ->
-                        onNavigateToPerson(person.id)
-                    },
-                    onPersonLongClick = { _, _ ->
-                        // TODO: Show person context menu
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // Crew
-        if (crew.isNotEmpty()) {
-            item(key = "crew") {
-                CastCrewSection(
-                    title = "Crew",
-                    people = crew,
-                    jellyfinClient = jellyfinClient,
-                    onPersonClick = { person ->
-                        onNavigateToPerson(person.id)
-                    },
-                    onPersonLongClick = { _, _ ->
-                        // TODO: Show person context menu
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
         featureSections.forEach { section ->
             item(key = "feature_${section.title}") {
                 ItemRow(
@@ -506,61 +439,6 @@ fun SeasonDetailScreen(
             }
         }
 
-        // Recommended Items
-        if (state.recommendations.isNotEmpty()) {
-            item(key = "recommended") {
-                ItemRow(
-                    title = "Recommended",
-                    items = state.recommendations,
-                    onItemClick = { _, item -> onNavigateToDetail(item.id) },
-                    onItemLongClick = { _, _ ->
-                        // TODO: Show item context menu
-                    },
-                    cardContent = { _, item, onClick, onLongClick ->
-                        if (item != null) {
-                            MobileMediaCard(
-                                item = item,
-                                imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                    item.id,
-                                    item.imageTags?.primary,
-                                ),
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        // Similar Items (More Like This)
-        if (state.similarItems.isNotEmpty()) {
-            item(key = "similar") {
-                ItemRow(
-                    title = "More Like This",
-                    items = state.similarItems,
-                    onItemClick = { _, item -> onNavigateToDetail(item.id) },
-                    onItemLongClick = { _, _ ->
-                        // TODO: Show item context menu
-                    },
-                    cardContent = { _, item, onClick, onLongClick ->
-                        if (item != null) {
-                            MobileMediaCard(
-                                item = item,
-                                imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                    item.id,
-                                    item.imageTags?.primary,
-                                ),
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
     }
 
     // Popup menu

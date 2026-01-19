@@ -41,7 +41,6 @@ import androidx.compose.material.icons.outlined.Info
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
-import dev.jausc.myflix.core.common.util.FeatureSection
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
@@ -79,8 +78,7 @@ private const val CAST_ROW = SEASONS_ROW + 1
 private const val CREW_ROW = CAST_ROW + 1
 private const val EXTRAS_ROW = CREW_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
-private const val RECOMMENDED_ROW = COLLECTIONS_ROW + 1
-private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
+private const val SIMILAR_ROW = COLLECTIONS_ROW + 1
 
 /**
  * Plex-style series detail screen with backdrop hero and season tabs.
@@ -494,44 +492,6 @@ fun SeriesDetailScreen(
                             )
                         }
                     }
-                }
-            }
-
-            // Recommended Items
-            if (state.recommendations.isNotEmpty()) {
-                item(key = "recommended") {
-                    ItemRow(
-                        title = "Recommended",
-                        items = state.recommendations,
-                        onItemClick = { _, item ->
-                            position = RECOMMENDED_ROW
-                            onNavigateToDetail(item.id)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = RECOMMENDED_ROW
-                            // TODO: Show item context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        cardOnFocus = { isFocused, _ ->
-                            if (isFocused) focusedSeason = null
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[RECOMMENDED_ROW]),
-                    )
                 }
             }
 

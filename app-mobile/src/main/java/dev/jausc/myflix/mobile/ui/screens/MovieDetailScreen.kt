@@ -330,34 +330,6 @@ fun MovieDetailScreen(
             }
         }
 
-        // Recommended Items
-        if (state.recommendations.isNotEmpty()) {
-            item(key = "recommended") {
-                ItemRow(
-                    title = "Recommended",
-                    items = state.recommendations,
-                    onItemClick = { _, item -> onNavigateToDetail(item.id) },
-                    onItemLongClick = { _, _ ->
-                        // TODO: Show item context menu
-                    },
-                    cardContent = { _, item, onClick, onLongClick ->
-                        if (item != null) {
-                            MobileMediaCard(
-                                item = item,
-                                imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                    item.id,
-                                    item.imageTags?.primary,
-                                ),
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
         // Similar Items (More Like This)
         if (state.similarItems.isNotEmpty()) {
             item(key = "similar") {

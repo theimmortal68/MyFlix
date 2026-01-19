@@ -85,8 +85,7 @@ private const val CHAPTERS_ROW = HEADER_ROW + 1
 private const val CAST_ROW = CHAPTERS_ROW + 1
 private const val GUEST_STARS_ROW = CAST_ROW + 1
 private const val CREW_ROW = GUEST_STARS_ROW + 1
-private const val RECOMMENDED_ROW = CREW_ROW + 1
-private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
+private const val SIMILAR_ROW = CREW_ROW + 1
 
 /**
  * Episode detail screen showing full episode information.
@@ -331,41 +330,7 @@ fun EpisodeDetailScreen(
                     }
                 }
 
-                // Recommended Items
-                if (state.recommendations.isNotEmpty()) {
-                    item(key = "recommended") {
-                        ItemRow(
-                            title = "Recommended",
-                            items = state.recommendations,
-                            onItemClick = { _, item ->
-                                position = RECOMMENDED_ROW
-                                onNavigateToDetail(item.id)
-                            },
-                            onItemLongClick = { _, _ ->
-                                position = RECOMMENDED_ROW
-                            },
-                            cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                                if (item != null) {
-                                    MediaCard(
-                                        item = item,
-                                        imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                            item.id,
-                                            item.imageTags?.primary,
-                                        ),
-                                        onClick = onClick,
-                                        onLongClick = onLongClick,
-                                        modifier = cardModifier,
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[RECOMMENDED_ROW]),
-                        )
-                    }
-                }
-
-                // Similar Items
+                // Similar Items (More Like This)
                 val similarWithEpisodes = state.similarItems.filter {
                     (it.recursiveItemCount ?: 0) > 0
                 }

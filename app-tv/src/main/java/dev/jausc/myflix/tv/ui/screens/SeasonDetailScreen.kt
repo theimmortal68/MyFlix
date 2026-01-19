@@ -50,9 +50,6 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.common.model.actors
-import dev.jausc.myflix.core.common.model.crew
-import dev.jausc.myflix.core.common.util.FeatureSection
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -66,7 +63,6 @@ import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
-import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeListRow
@@ -85,13 +81,8 @@ import kotlinx.coroutines.launch
 private const val HEADER_ROW = 0
 private const val NEXT_UP_ROW = HEADER_ROW + 1
 private const val EPISODES_ROW = NEXT_UP_ROW + 1
-private const val CAST_ROW = EPISODES_ROW + 1
-private const val GUEST_STARS_ROW = CAST_ROW + 1
-private const val CREW_ROW = GUEST_STARS_ROW + 1
-private const val EXTRAS_ROW = CREW_ROW + 1
+private const val EXTRAS_ROW = EPISODES_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
-private const val RECOMMENDED_ROW = COLLECTIONS_ROW + 1
-private const val SIMILAR_ROW = RECOMMENDED_ROW + 1
 
 /**
  * Season detail screen with backdrop hero and season tabs.
@@ -121,7 +112,7 @@ fun SeasonDetailScreen(
 
     // Focus management
     var position by remember { mutableIntStateOf(0) }
-    val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
+    val focusRequesters = remember { List(COLLECTIONS_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val playFocusRequester = remember { FocusRequester() }
     val seasonTabFocusRequester = remember { FocusRequester() }
@@ -136,10 +127,6 @@ fun SeasonDetailScreen(
 
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
-
-    // Cast & crew (using extension properties from JellyfinItem)
-    val cast = series.actors
-    val crew = series.crew
 
     val selectedSeasonIndex = remember(state.selectedSeason, state.seasons) {
         state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }.coerceAtLeast(0)
@@ -420,50 +407,6 @@ fun SeasonDetailScreen(
                 }
             }
 
-            // Cast
-            if (cast.isNotEmpty()) {
-                item(key = "people") {
-                    CastCrewSection(
-                        title = "Cast",
-                        people = cast,
-                        jellyfinClient = jellyfinClient,
-                        onPersonClick = { person ->
-                            position = CAST_ROW
-                            onNavigateToPerson(person.id)
-                        },
-                        onPersonLongClick = { _, _ ->
-                            position = CAST_ROW
-                            // TODO: Show person context menu
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[CAST_ROW]),
-                    )
-                }
-            }
-
-            // Crew
-            if (crew.isNotEmpty()) {
-                item(key = "crew") {
-                    CastCrewSection(
-                        title = "Crew",
-                        people = crew,
-                        jellyfinClient = jellyfinClient,
-                        onPersonClick = { person ->
-                            position = CREW_ROW
-                            onNavigateToPerson(person.id)
-                        },
-                        onPersonLongClick = { _, _ ->
-                            position = CREW_ROW
-                            // TODO: Show person context menu
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[CREW_ROW]),
-                    )
-                }
-            }
-
             featureSections.forEach { section ->
                 item(key = "feature_${section.title}") {
                     ItemRow(
@@ -538,78 +481,6 @@ fun SeasonDetailScreen(
                 }
             }
 
-            // Recommended Items
-            if (state.recommendations.isNotEmpty()) {
-                item(key = "recommended") {
-                    ItemRow(
-                        title = "Recommended",
-                        items = state.recommendations,
-                        onItemClick = { _, item ->
-                            position = RECOMMENDED_ROW
-                            onNavigateToDetail(item.id)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = RECOMMENDED_ROW
-                            // TODO: Show item context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[RECOMMENDED_ROW]),
-                    )
-                }
-            }
-
-            // Similar Items (More Like This) - filter out series with no episodes
-            val similarWithEpisodes = state.similarItems.filter {
-                (it.recursiveItemCount ?: 0) > 0
-            }
-            if (similarWithEpisodes.isNotEmpty()) {
-                item(key = "similar") {
-                    ItemRow(
-                        title = "More Like This",
-                        items = similarWithEpisodes,
-                        onItemClick = { _, item ->
-                            position = SIMILAR_ROW
-                            onNavigateToDetail(item.id)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = SIMILAR_ROW
-                            // TODO: Show item context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[SIMILAR_ROW]),
-                    )
-                }
-            }
             }
         }
 
