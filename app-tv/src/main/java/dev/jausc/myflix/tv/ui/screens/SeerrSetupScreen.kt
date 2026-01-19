@@ -119,25 +119,55 @@ fun SeerrSetupScreen(
         val urlsToTry = mutableListOf<String>()
 
         if (!jellyfinServerUrl.isNullOrBlank()) {
-            // Extract base from Jellyfin URL (e.g., http://192.168.1.100:8096 -> http://192.168.1.100)
-            val baseUrl = jellyfinServerUrl
-                .replace(Regex(":\\d+/?$"), "") // Remove port
+            // Parse the Jellyfin URL to extract scheme, host, and port
+            val scheme = if (jellyfinServerUrl.startsWith("https://")) "https" else "http"
+            val hostWithPort = jellyfinServerUrl
+                .removePrefix("http://")
+                .removePrefix("https://")
                 .trimEnd('/')
+            val host = hostWithPort.replace(Regex(":\\d+$"), "")
 
-            // Common Seerr ports and paths
-            urlsToTry.addAll(
-                listOf(
-                    "$baseUrl:5055", // Default Jellyseerr/Overseerr port
-                    "$baseUrl:5056", // Alternative port
-                    "${baseUrl.replace("http://", "https://")}:5055", // HTTPS variant
-                    "$baseUrl/jellyseerr", // Reverse proxy path
-                    "$baseUrl/overseerr", // Reverse proxy path
-                    "$baseUrl/seerr", // Reverse proxy path
-                ),
-            )
+            // Check if host is an IP address (v4 or v6)
+            val isIpAddress = host.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$")) ||
+                host.startsWith("[") || // IPv6
+                host == "localhost" ||
+                host == "127.0.0.1"
+
+            if (isIpAddress) {
+                // For IP addresses: try common ports
+                val baseUrl = "$scheme://$host"
+                urlsToTry.addAll(
+                    listOf(
+                        "$baseUrl:5055", // Default Jellyseerr/Overseerr port
+                        "$baseUrl:5056", // Alternative port
+                        "${baseUrl.replace("http://", "https://")}:5055", // HTTPS variant
+                        "$baseUrl/jellyseerr", // Reverse proxy path
+                        "$baseUrl/overseerr", // Reverse proxy path
+                        "$baseUrl/seerr", // Reverse proxy path
+                    ),
+                )
+            } else {
+                // For FQDN: try substituting 'jellyfin' with seerr variants
+                if (host.contains("jellyfin", ignoreCase = true)) {
+                    listOf("seerr", "jellyseerr", "overseerr").forEach { replacement ->
+                        val newHost = host.replace("jellyfin", replacement, ignoreCase = true)
+                        urlsToTry.add("$scheme://$newHost")
+                        urlsToTry.add("https://$newHost") // Also try HTTPS
+                    }
+                }
+                // Also try as subpath on the same host
+                val baseUrl = "$scheme://$host"
+                urlsToTry.addAll(
+                    listOf(
+                        "$baseUrl/jellyseerr",
+                        "$baseUrl/overseerr",
+                        "$baseUrl/seerr",
+                    ),
+                )
+            }
         }
 
-        // Also try localhost variants
+        // Also try localhost variants as fallback
         urlsToTry.addAll(
             listOf(
                 "http://localhost:5055",

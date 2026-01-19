@@ -108,9 +108,7 @@ class SeerrClient(
      * Attempt to detect Seerr server based on Jellyfin URL.
      *
      * Detection strategy:
-     * 1. For FQDNs (e.g., jellyfin.myflix.media or jellyfin.local): Try subdomain substitution
-     *    - seerr.myflix.media, jellyseerr.myflix.media, overseerr.myflix.media
-     *    - seerr.local, jellyseerr.local, overseerr.local
+     * 1. For FQDNs containing "jellyfin": Try substituting with seerr, jellyseerr, overseerr
      * 2. For IP addresses: Try common ports (5055, 5056)
      *
      * @param jellyfinHost The Jellyfin server URL
@@ -121,18 +119,17 @@ class SeerrClient(
         val scheme = if (jellyfinHost.startsWith("https")) "https" else "http"
         val isIp = isIpAddress(host)
 
-        // For FQDNs (any hostname with dots that isn't an IP), try subdomain substitution
-        // This works for both jellyfin.domain.tld and jellyfin.local
-        if (!isIp && host.contains(".")) {
-            // Extract base domain (e.g., "myflix.media" from "jellyfin.myflix.media"
-            // or "local" from "jellyfin.local")
-            val parts = host.split(".")
-            val baseDomain = parts.drop(1).joinToString(".")
-
-            for (subdomain in SEERR_SUBDOMAINS) {
-                val testUrl = "$scheme://$subdomain.$baseDomain"
-                if (tryConnectToSeerr(testUrl)) {
-                    return@runCatching testUrl
+        // For FQDNs: Try substituting 'jellyfin' with seerr variants
+        if (!isIp && host.contains("jellyfin", ignoreCase = true)) {
+            for (replacement in listOf("seerr", "jellyseerr", "overseerr")) {
+                val newHost = host.replace("jellyfin", replacement, ignoreCase = true)
+                // Try with same scheme first
+                if (tryConnectToSeerr("$scheme://$newHost")) {
+                    return@runCatching "$scheme://$newHost"
+                }
+                // Also try HTTPS if original was HTTP
+                if (scheme == "http" && tryConnectToSeerr("https://$newHost")) {
+                    return@runCatching "https://$newHost"
                 }
             }
         }
