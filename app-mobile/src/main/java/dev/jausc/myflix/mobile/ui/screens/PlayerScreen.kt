@@ -102,6 +102,10 @@ fun PlayerScreen(
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by appPreferences.maxStreamingBitrate.collectAsState()
+    val skipDurationSeconds by appPreferences.skipDurationSeconds.collectAsState()
+
+    // Calculate skip duration in milliseconds
+    val skipStepMs = remember(skipDurationSeconds) { skipDurationSeconds * 1000L }
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -312,6 +316,7 @@ fun PlayerScreen(
                     item = state.item,
                     playbackState = playbackState,
                     playerController = playerController,
+                    skipStepMs = skipStepMs,
                     audioStreams = state.audioStreams,
                     subtitleStreams = state.subtitleStreams,
                     selectedAudioIndex = selectedAudioIndex,
@@ -525,6 +530,7 @@ private fun MobilePlayerControls(
     item: JellyfinItem?,
     playbackState: PlaybackState,
     playerController: PlayerController,
+    skipStepMs: Long,
     audioStreams: List<MediaStream>,
     subtitleStreams: List<MediaStream>,
     selectedAudioIndex: Int?,
@@ -626,6 +632,7 @@ private fun MobilePlayerControls(
         }
 
         // Center controls
+        val skipSeconds = (skipStepMs / 1000).toInt()
         Row(
             modifier = Modifier.align(Alignment.Center),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -634,13 +641,13 @@ private fun MobilePlayerControls(
             IconButton(
                 onClick = {
                     onUserInteraction()
-                    onSeekRelative(-PlayerConstants.SEEK_STEP_MS)
+                    onSeekRelative(-skipStepMs)
                 },
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastRewind,
-                    contentDescription = "Rewind 10s",
+                    contentDescription = "Rewind ${skipSeconds}s",
                     tint = Color.White,
                     modifier = Modifier.size(34.dp),
                 )
@@ -672,13 +679,13 @@ private fun MobilePlayerControls(
             IconButton(
                 onClick = {
                     onUserInteraction()
-                    onSeekRelative(PlayerConstants.SEEK_STEP_MS)
+                    onSeekRelative(skipStepMs)
                 },
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastForward,
-                    contentDescription = "Forward 10s",
+                    contentDescription = "Forward ${skipSeconds}s",
                     tint = Color.White,
                     modifier = Modifier.size(34.dp),
                 )

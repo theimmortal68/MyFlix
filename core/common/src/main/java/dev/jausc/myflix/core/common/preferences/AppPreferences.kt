@@ -62,6 +62,12 @@ abstract class AppPreferences(context: Context) {
     /** Max streaming bitrate in Mbps. 0 = unlimited (direct play preferred). */
     val maxStreamingBitrate: StateFlow<Int> by lazy { _maxStreamingBitrate.asStateFlow() }
 
+    private val _skipDurationSeconds: MutableStateFlow<Int> by lazy {
+        MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SKIP_DURATION_SECONDS, PreferenceKeys.Defaults.SKIP_DURATION_SECONDS))
+    }
+    /** Skip forward/backward duration in seconds. */
+    val skipDurationSeconds: StateFlow<Int> by lazy { _skipDurationSeconds.asStateFlow() }
+
     private val _playerDisplayMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, PreferenceKeys.Defaults.PLAYER_DISPLAY_MODE)
@@ -231,6 +237,14 @@ abstract class AppPreferences(context: Context) {
     fun setMaxStreamingBitrate(bitrateMbps: Int) {
         prefs.edit().putInt(PreferenceKeys.Prefs.MAX_STREAMING_BITRATE, bitrateMbps).apply()
         _maxStreamingBitrate.value = bitrateMbps
+    }
+
+    /**
+     * Set the skip forward/backward duration in seconds.
+     */
+    fun setSkipDurationSeconds(seconds: Int) {
+        prefs.edit().putInt(PreferenceKeys.Prefs.SKIP_DURATION_SECONDS, seconds).apply()
+        _skipDurationSeconds.value = seconds
     }
 
     /**

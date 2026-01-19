@@ -114,6 +114,7 @@ fun PreferencesScreen(
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
+    val skipDurationSeconds by preferences.skipDurationSeconds.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -132,6 +133,7 @@ fun PreferencesScreen(
     var showAudioLanguageDialog by remember { mutableStateOf(false) }
     var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
     var showBitrateDialog by remember { mutableStateOf(false) }
+    var showSkipDurationDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -212,6 +214,8 @@ fun PreferencesScreen(
                 onEditSubtitleLanguage = { showSubtitleLanguageDialog = true },
                 maxStreamingBitrate = maxStreamingBitrate,
                 onEditMaxBitrate = { showBitrateDialog = true },
+                skipDurationSeconds = skipDurationSeconds,
+                onEditSkipDuration = { showSkipDurationDialog = true },
                 showSeasonPremieres = showSeasonPremieres,
                 onShowSeasonPremieresChanged = { preferences.setShowSeasonPremieres(it) },
                 showGenreRows = showGenreRows,
@@ -325,6 +329,18 @@ fun PreferencesScreen(
             },
         )
     }
+
+    // Skip Duration Selection Dialog
+    if (showSkipDurationDialog) {
+        SkipDurationSelectionDialog(
+            currentSelection = skipDurationSeconds,
+            onDismiss = { showSkipDurationDialog = false },
+            onSelect = { duration ->
+                preferences.setSkipDurationSeconds(duration)
+                showSkipDurationDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -347,6 +363,8 @@ private fun PreferencesContent(
     onEditSubtitleLanguage: () -> Unit,
     maxStreamingBitrate: Int,
     onEditMaxBitrate: () -> Unit,
+    skipDurationSeconds: Int,
+    onEditSkipDuration: () -> Unit,
     // Home screen settings
     showSeasonPremieres: Boolean,
     onShowSeasonPremieresChanged: (Boolean) -> Unit,
@@ -555,6 +573,14 @@ private fun PreferencesContent(
                     icon = Icons.Outlined.Speed,
                     iconTint = if (maxStreamingBitrate > 0) Color(0xFFEC4899) else TvColors.TextSecondary,
                     onClick = onEditMaxBitrate,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Skip Duration",
+                    description = getSkipDurationDisplayName(skipDurationSeconds),
+                    icon = Icons.Outlined.Schedule,
+                    iconTint = Color(0xFF60A5FA),
+                    onClick = onEditSkipDuration,
                 )
             }
         }
@@ -2052,6 +2078,161 @@ private fun BitrateItem(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) Color(0xFFEC4899) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+// Skip duration options (in seconds)
+private val SKIP_DURATION_OPTIONS = listOf(
+    5 to "5 seconds",
+    10 to "10 seconds",
+    15 to "15 seconds",
+    20 to "20 seconds",
+    30 to "30 seconds",
+    60 to "1 minute",
+)
+
+/**
+ * Get display name for a skip duration value.
+ */
+private fun getSkipDurationDisplayName(seconds: Int): String {
+    return SKIP_DURATION_OPTIONS.find { it.first == seconds }?.second
+        ?: if (seconds >= 60) "${seconds / 60} minute(s)" else "$seconds seconds"
+}
+
+@Composable
+private fun SkipDurationSelectionDialog(
+    currentSelection: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            // Title
+            Text(
+                text = "Skip Duration",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            // Subtitle
+            Text(
+                text = "Duration for skip forward/backward buttons",
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            // Duration list
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(SKIP_DURATION_OPTIONS.size) { index ->
+                    val (duration, label) = SKIP_DURATION_OPTIONS[index]
+                    val isSelected = duration == currentSelection
+
+                    SkipDurationItem(
+                        label = label,
+                        isSelected = isSelected,
+                        onClick = { onSelect(duration) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkipDurationItem(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFF60A5FA).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFF60A5FA), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Duration label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFF60A5FA) else TvColors.TextPrimary,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }

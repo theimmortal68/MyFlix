@@ -101,6 +101,11 @@ fun PlayerScreen(
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by appPreferences.maxStreamingBitrate.collectAsState()
+    val skipDurationSeconds by appPreferences.skipDurationSeconds.collectAsState()
+
+    // Calculate skip durations in milliseconds
+    val skipStepMs = remember(skipDurationSeconds) { skipDurationSeconds * 1000L }
+    val skipStepLongMs = remember(skipDurationSeconds) { skipDurationSeconds * 6000L } // 6x for long seek
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -278,22 +283,22 @@ fun PlayerScreen(
                                 true
                             }
                             Key.DirectionLeft -> {
-                                playerController.seekRelative(-PlayerConstants.SEEK_STEP_MS)
+                                playerController.seekRelative(-skipStepMs)
                                 viewModel.showControls()
                                 true
                             }
                             Key.DirectionRight -> {
-                                playerController.seekRelative(PlayerConstants.SEEK_STEP_MS)
+                                playerController.seekRelative(skipStepMs)
                                 viewModel.showControls()
                                 true
                             }
                             Key.DirectionUp -> {
-                                playerController.seekRelative(PlayerConstants.SEEK_STEP_LONG_MS)
+                                playerController.seekRelative(skipStepLongMs)
                                 viewModel.showControls()
                                 true
                             }
                             Key.DirectionDown -> {
-                                playerController.seekRelative(-PlayerConstants.SEEK_STEP_LONG_MS)
+                                playerController.seekRelative(-skipStepLongMs)
                                 viewModel.showControls()
                                 true
                             }
@@ -366,6 +371,8 @@ fun PlayerScreen(
                     item = state.item,
                     playbackState = playbackState,
                     onPlayPause = { playerController.togglePause() },
+                    skipStepMs = skipStepMs,
+                    skipStepLongMs = skipStepLongMs,
                     audioStreams = state.audioStreams,
                     subtitleStreams = state.subtitleStreams,
                     selectedAudioIndex = selectedAudioIndex,
@@ -587,6 +594,8 @@ private fun TvPlayerControlsOverlay(
     item: JellyfinItem?,
     playbackState: dev.jausc.myflix.core.player.PlaybackState,
     onPlayPause: () -> Unit,
+    skipStepMs: Long,
+    skipStepLongMs: Long,
     audioStreams: List<MediaStream>,
     subtitleStreams: List<MediaStream>,
     selectedAudioIndex: Int?,
@@ -674,14 +683,15 @@ private fun TvPlayerControlsOverlay(
         }
 
         // Center controls
+        val skipSeconds = (skipStepMs / 1000).toInt()
         Row(
             modifier = Modifier.align(Alignment.Center),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TvControlButton(label = "-10s") {
+            TvControlButton(label = "-${skipSeconds}s") {
                 onUserInteraction()
-                onSeekRelative(-PlayerConstants.SEEK_STEP_MS)
+                onSeekRelative(-skipStepMs)
             }
             TvControlButton(
                 label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
@@ -690,9 +700,9 @@ private fun TvPlayerControlsOverlay(
                 onUserInteraction()
                 onPlayPause()
             }
-            TvControlButton(label = "+10s") {
+            TvControlButton(label = "+${skipSeconds}s") {
                 onUserInteraction()
-                onSeekRelative(PlayerConstants.SEEK_STEP_MS)
+                onSeekRelative(skipStepMs)
             }
             if (onPlayNext != null) {
                 TvControlButton(label = "Next") {
@@ -934,8 +944,10 @@ private fun TvPlayerControlsOverlay(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
+            val longSeekSeconds = (skipStepLongMs / 1000).toInt()
+            val longSeekLabel = if (longSeekSeconds >= 60) "${longSeekSeconds / 60}min" else "${longSeekSeconds}s"
             Text(
-                text = "◀ -10s  |  ▶ +10s  |  ▲ +1min  |  ▼ -1min  |  OK Play/Pause",
+                text = "◀ -${skipSeconds}s  |  ▶ +${skipSeconds}s  |  ▲ +$longSeekLabel  |  ▼ -$longSeekLabel  |  OK Play/Pause",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.align(Alignment.CenterHorizontally),
