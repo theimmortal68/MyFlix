@@ -87,16 +87,11 @@ fun CollectionsLibraryScreen(
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
     val gradientColors = rememberGradientColors(focusedImageUrl)
 
-    // Calculate available letters from items
-    val availableLetters = remember(state.items) {
-        state.items.mapNotNull { item ->
-            val firstChar = item.name.firstOrNull()?.uppercaseChar()
-            when {
-                firstChar == null -> null
-                firstChar.isLetter() -> firstChar
-                else -> '#'
-            }
-        }.toSet()
+    // All letters are always available - the API handles filtering
+    // If a letter has no items, the user will see "0 items" which is acceptable
+    // This provides immediate responsiveness rather than waiting for slow alphabet index
+    val availableLetters = remember {
+        setOf('#') + ('A'..'Z').toSet()
     }
 
     // Pagination - load more when near end
