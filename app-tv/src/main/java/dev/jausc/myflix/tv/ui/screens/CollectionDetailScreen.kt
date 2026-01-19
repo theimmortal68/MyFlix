@@ -212,28 +212,16 @@ fun CollectionDetailScreen(
         )
 
         // Layer 2: Backdrop image (right side, behind content)
-        // Use backdrop if available, otherwise fall back to primary image
-        if (displayItem != null) {
-            if (hasBackdrop) {
-                DetailBackdropLayer(
-                    item = displayItem,
-                    jellyfinClient = jellyfinClient,
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .fillMaxHeight(0.9f)
-                        .align(Alignment.TopEnd),
-                )
-            } else {
-                // Fallback: use primary image as backdrop with similar styling
-                CollectionPrimaryBackdrop(
-                    item = displayItem,
-                    jellyfinClient = jellyfinClient,
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .fillMaxHeight(0.75f)
-                        .align(Alignment.TopEnd),
-                )
-            }
+        // Only show backdrop if available (no poster fallback for cleaner look on universe collections)
+        if (displayItem != null && hasBackdrop) {
+            DetailBackdropLayer(
+                item = displayItem,
+                jellyfinClient = jellyfinClient,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.9f)
+                    .align(Alignment.TopEnd),
+            )
         }
 
         // Layer 3: Content
