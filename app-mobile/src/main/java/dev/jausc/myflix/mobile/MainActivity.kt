@@ -13,6 +13,9 @@ package dev.jausc.myflix.mobile
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.app.PictureInPictureParams
+import android.util.Rational
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -100,6 +103,10 @@ class MainActivity : ComponentActivity() {
     // State for pending deep link, shared with composable content
     private var pendingDeepLink = mutableStateOf<DeepLinkData?>(null)
 
+    // Track if player is active for Picture-in-Picture
+    private var isPlayerActive = false
+    private var playerAspectRatio = Rational(16, 9)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -121,9 +128,31 @@ class MainActivity : ComponentActivity() {
                     MyFlixMobileContent(
                         pendingDeepLink = pendingDeepLink.value,
                         onDeepLinkHandled = { pendingDeepLink.value = null },
+                        onPlayerActiveChange = { active, ratio ->
+                            isPlayerActive = active
+                            ratio?.let { playerAspectRatio = it }
+                            if (active && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                setPictureInPictureParams(
+                                    PictureInPictureParams.Builder()
+                                        .setAspectRatio(playerAspectRatio)
+                                        .build()
+                                )
+                            }
+                        }
                     )
                 }
             }
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (isPlayerActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            enterPictureInPictureMode(
+                PictureInPictureParams.Builder()
+                    .setAspectRatio(playerAspectRatio)
+                    .build()
+            )
         }
     }
 
@@ -142,6 +171,7 @@ class MainActivity : ComponentActivity() {
 fun MyFlixMobileContent(
     pendingDeepLink: DeepLinkData? = null,
     onDeepLinkHandled: () -> Unit = {},
+    onPlayerActiveChange: (Boolean, Rational?) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
 
@@ -468,6 +498,7 @@ fun MyFlixMobileContent(
                 appPreferences = mobilePreferences,
                 useMpvPlayer = useMpvPlayer,
                 onBack = { navController.popBackStack() },
+                onPlayerActiveChange = onPlayerActiveChange,
             )
         }
 

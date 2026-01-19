@@ -42,22 +42,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.mobile.R
+import dev.jausc.myflix.core.common.R as CoreR
 
 /**
  * Navigation menu items for mobile.
  */
 enum class MobileNavItem(
     val label: String,
-    val icon: ImageVector,
+    val iconRes: Int,
 ) {
-    HOME("Home", Icons.Default.Home),
-    SEARCH("Search", Icons.Default.Search),
-    MOVIES("Movies", Icons.Default.Movie),
-    SHOWS("TV Shows", Icons.Default.Tv),
-    DISCOVER("Discover", Icons.Outlined.Explore),
-    SETTINGS("Settings", Icons.Default.Settings),
+    HOME("Home", CoreR.drawable.ic_nav_home_color),
+    SEARCH("Search", CoreR.drawable.ic_nav_search_color),
+    MOVIES("Movies", CoreR.drawable.ic_nav_movies_color),
+    SHOWS("TV Shows", CoreR.drawable.ic_nav_shows_color),
+    DISCOVER("Discover", CoreR.drawable.ic_nav_discover_color),
+    SETTINGS("Settings", CoreR.drawable.ic_nav_settings_color),
 }
 
 /**
@@ -162,10 +165,10 @@ fun MobileTopBar(selectedItem: MobileNavItem, onItemSelected: (MobileNavItem) ->
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                imageVector = item.icon,
+                                painter = painterResource(id = item.iconRes),
                                 contentDescription = item.label,
                                 tint = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
+                                    Color.Unspecified
                                 } else {
                                     MaterialTheme.colorScheme.onSurface
                                 },

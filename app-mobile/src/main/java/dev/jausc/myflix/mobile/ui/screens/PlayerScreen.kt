@@ -14,6 +14,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.util.Rational
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -95,8 +96,30 @@ fun PlayerScreen(
     appPreferences: AppPreferences,
     useMpvPlayer: Boolean = false,
     onBack: () -> Unit,
+    onPlayerActiveChange: (Boolean, Rational?) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
+
+    // PiP Mode detection
+    var isInPipMode by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        val activity = context.findActivity() as? androidx.activity.ComponentActivity
+        val consumer = androidx.core.util.Consumer<androidx.core.app.PictureInPictureModeChangedInfo> { info ->
+            isInPipMode = info.isInPictureInPictureMode
+        }
+        
+        // Initial check
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            isInPipMode = activity?.isInPictureInPictureMode == true
+        }
+
+        activity?.addOnPictureInPictureModeChangedListener(consumer)
+
+        onDispose {
+            activity?.removeOnPictureInPictureModeChangedListener(consumer)
+        }
+    }
 
     // Get preferred audio and subtitle language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
@@ -147,6 +170,22 @@ fun PlayerScreen(
         mutableStateOf(
             try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
         )
+    }
+    
+    // Update active state and aspect ratio for PiP
+    LaunchedEffect(playbackState.videoWidth, playbackState.videoHeight) {
+        if (playbackState.videoWidth > 0 && playbackState.videoHeight > 0) {
+            val ratio = Rational(playbackState.videoWidth, playbackState.videoHeight)
+            onPlayerActiveChange(true, ratio)
+        } else {
+            onPlayerActiveChange(true, Rational(16, 9))
+        }
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            onPlayerActiveChange(false, null)
+        }
     }
 
     val selectedAudioIndex = state.selectedAudioStreamIndex
@@ -254,7 +293,11 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable { viewModel.toggleControls() },
+            .clickable { 
+                if (!isInPipMode) {
+                    viewModel.toggleControls() 
+                }
+            },
     ) {
         if (state.isLoading || !state.playerReady || effectiveStreamUrl == null) {
             Box(
@@ -311,7 +354,7 @@ fun PlayerScreen(
             }
 
             // Controls overlay
-            if (state.showControls) {
+            if (state.showControls && !isInPipMode) {
                 MobilePlayerControls(
                     item = state.item,
                     playbackState = playbackState,
@@ -356,7 +399,7 @@ fun PlayerScreen(
 
             // Auto-play countdown overlay
             val nextQueueItem = state.nextQueueItem
-            if (state.showAutoPlayCountdown && nextQueueItem != null) {
+            if (state.showAutoPlayCountdown && nextQueueItem != null && !isInPipMode) {
                 AutoPlayCountdown(
                     nextItem = nextQueueItem,
                     countdownSeconds = state.countdownSecondsRemaining,
@@ -371,7 +414,7 @@ fun PlayerScreen(
             }
 
             // Skip segment button (intro/outro)
-            if (state.activeSegment != null && !state.showControls && !state.showAutoPlayCountdown) {
+            if (state.activeSegment != null && !state.showControls && !state.showAutoPlayCountdown && !isInPipMode) {
                 SkipSegmentButton(
                     label = viewModel.getSkipButtonLabel(),
                     onSkip = {
@@ -1183,4 +1226,13 @@ private fun SkipSegmentButton(
             )
         }
     }
+}
+
+private fun android.content.Context.findActivity(): android.app.Activity? {
+    var context = this
+    while (context is android.content.ContextWrapper) {
+        if (context is android.app.Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
