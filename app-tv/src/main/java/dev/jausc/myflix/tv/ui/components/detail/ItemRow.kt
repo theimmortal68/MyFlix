@@ -41,6 +41,10 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * @param modifier Modifier for the row
  * @param horizontalPadding Horizontal padding between cards
  */
+import androidx.compose.ui.graphics.graphicsLayer
+
+// ...
+
 @Composable
 fun <T> ItemRow(
     title: String,
@@ -76,9 +80,10 @@ fun <T> ItemRow(
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
-            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 24.dp),
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 32.dp),
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer { clip = false }
                 .focusRestorer(firstFocus),
         ) {
             itemsIndexed(items) { index, item ->
