@@ -127,8 +127,8 @@ class CollectionsViewModel(
         jellyfinClient.getCollectionsFiltered(
             limit = PAGE_SIZE,
             startIndex = startIndex,
-            sortBy = "SortName",
-            sortOrder = "Ascending",
+            sortBy = null,
+            sortOrder = null,
             nameStartsWith = nameStartsWith,
             excludeUniverseCollections = excludeUniverseCollections,
         )
@@ -153,8 +153,8 @@ class CollectionsViewModel(
             jellyfinClient.getCollectionsFiltered(
                 limit = PAGE_SIZE,
                 startIndex = startIndex,
-                sortBy = "SortName",
-                sortOrder = "Ascending",
+                sortBy = null,
+                sortOrder = null,
                 nameStartsWith = nameStartsWith,
                 excludeUniverseCollections = excludeUniverseCollections,
             )

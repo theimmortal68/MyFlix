@@ -224,10 +224,10 @@ class JellyfinClient(
     private object Fields {
         // Minimal fields for card display (home screen rows)
         // ChildCount/RecursiveItemCount needed to filter shows without episodes
-        const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating,ChildCount,RecursiveItemCount"
+        const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating,ChildCount,RecursiveItemCount,DisplayOrder"
 
         // Fields for episode cards (need series info)
-        const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CriticRating"
+        const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CriticRating,DisplayOrder"
 
         // Full fields for detail screens
         const val DETAIL =
@@ -1154,17 +1154,17 @@ class JellyfinClient(
     suspend fun getCollections(
         limit: Int = 50,
         excludeUniverseCollections: Boolean = false,
+        sortBy: String? = null,
+        sortOrder: String? = null,
     ): Result<List<JellyfinItem>> {
-        val key = CacheKeys.collections(limit) + if (excludeUniverseCollections) ":noUniverse" else ""
+        val key = CacheKeys.collections(limit) + if (excludeUniverseCollections) ":noUniverse" else "" + ":$sortBy:$sortOrder"
         getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
-                // Use ProductionYear for chronological order if filtering for franchises
-                val sortBy = if (excludeUniverseCollections) "ProductionYear,SortName" else "SortName"
-                parameter("sortBy", sortBy)
-                parameter("sortOrder", "Ascending")
+                if (sortBy != null) parameter("sortBy", sortBy)
+                if (sortOrder != null) parameter("sortOrder", sortOrder)
                 parameter("recursive", true)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD + ",Tags")
@@ -1188,21 +1188,19 @@ class JellyfinClient(
     suspend fun getCollectionsFiltered(
         limit: Int = 100,
         startIndex: Int = 0,
-        sortBy: String = "SortName",
-        sortOrder: String = "Ascending",
+        sortBy: String? = null,
+        sortOrder: String? = null,
         nameStartsWith: String? = null,
         excludeUniverseCollections: Boolean = false,
     ): Result<ItemsResponse> {
-        val key = CacheKeys.collectionsFiltered(limit, startIndex, sortBy, sortOrder, nameStartsWith, excludeUniverseCollections)
+        val key = CacheKeys.collectionsFiltered(limit, startIndex, sortBy ?: "Default", sortOrder ?: "Default", nameStartsWith, excludeUniverseCollections)
         getCached<ItemsResponse>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
-                // Respect passed sortBy, but default to ProductionYear if it is SortName and we are excluding universes
-                val finalSortBy = if (sortBy == "SortName" && excludeUniverseCollections) "ProductionYear,SortName" else sortBy
-                parameter("sortBy", finalSortBy)
-                parameter("sortOrder", sortOrder)
+                if (sortBy != null) parameter("sortBy", sortBy)
+                if (sortOrder != null) parameter("sortOrder", sortOrder)
                 parameter("recursive", true)
                 parameter("startIndex", startIndex)
                 parameter("limit", limit)
@@ -1231,18 +1229,21 @@ class JellyfinClient(
     /**
      * Get collections tagged with "universe-collection".
      * Universe collections are BoxSets with a special tag for franchise groupings.
-     * Sorted by ProductionYear (Chronological) to ensure timeline order.
      */
-    suspend fun getUniverseCollections(limit: Int = 50): Result<List<JellyfinItem>> {
-        val key = CacheKeys.universeCollections(limit)
+    suspend fun getUniverseCollections(
+        limit: Int = 50,
+        sortBy: String? = null,
+        sortOrder: String? = null,
+    ): Result<List<JellyfinItem>> {
+        val key = CacheKeys.universeCollections(limit) + ":$sortBy:$sortOrder"
         getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("includeItemTypes", "BoxSet")
                 parameter("tags", "universe-collection")
-                parameter("sortBy", "ProductionYear,SortName")
-                parameter("sortOrder", "Ascending")
+                if (sortBy != null) parameter("sortBy", sortBy)
+                if (sortOrder != null) parameter("sortOrder", sortOrder)
                 parameter("recursive", true)
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
@@ -1258,17 +1259,17 @@ class JellyfinClient(
     suspend fun getCollectionItems(
         collectionId: String,
         limit: Int = 50,
-        sortBy: String = "SortName",
-        sortOrder: String = "Ascending",
+        sortBy: String? = null,
+        sortOrder: String? = null,
     ): Result<List<JellyfinItem>> {
-        val key = CacheKeys.collection(collectionId, limit, sortBy, sortOrder)
+        val key = CacheKeys.collection(collectionId, limit, sortBy ?: "Default", sortOrder ?: "Default")
         getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
                 header("Authorization", authHeader())
                 parameter("parentId", collectionId)
-                parameter("sortBy", sortBy)
-                parameter("sortOrder", sortOrder)
+                if (sortBy != null) parameter("sortBy", sortBy)
+                if (sortOrder != null) parameter("sortOrder", sortOrder)
                 parameter("fields", Fields.CARD)
                 parameter("enableImageTypes", ImageTypes.HERO)
             }.body()

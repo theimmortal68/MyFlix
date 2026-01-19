@@ -372,15 +372,8 @@ class DetailViewModel(
 
             val collectionItems = mutableMapOf<String, List<JellyfinItem>>()
             collections.forEach { collection ->
-                // Determine sort based on server metadata (DisplayOrder)
-                val sortBy = when (collection.displayOrder) {
-                    "PremiereDate" -> "ProductionYear,PremiereDate,SortName"
-                    "DateCreated" -> "DateCreated,SortName"
-                    "SortName" -> "SortName"
-                    else -> if (collection.tags?.contains("universe-collection") == true) "ProductionYear,SortName" else "SortName"
-                }
-
-                jellyfinClient.getCollectionItems(collection.id, limit = 12, sortBy = sortBy)
+                // By NOT specifying sortBy, we respect the server's configured Display Order
+                jellyfinClient.getCollectionItems(collection.id, limit = 12, sortBy = null)
                     .onSuccess { items ->
                         collectionItems[collection.id] = items.filter { it.id != currentItem.id }
                     }

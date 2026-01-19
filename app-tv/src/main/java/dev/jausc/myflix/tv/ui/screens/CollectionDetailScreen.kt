@@ -115,22 +115,14 @@ fun CollectionDetailScreen(
         isLoading = true
         error = null
 
-        // Load collection details first to get DisplayOrder
+        // Load collection details
         jellyfinClient.getItem(collectionId)
             .onSuccess { item ->
                 collection = item
 
-                // Determine sort order based on server metadata (DisplayOrder)
-                // If DisplayOrder is not set, fallback to default behavior (Chronological for Universes, Alpha for others)
-                val sortBy = when (item.displayOrder) {
-                    "PremiereDate" -> "ProductionYear,PremiereDate,SortName"
-                    "DateCreated" -> "DateCreated,SortName"
-                    "SortName" -> "SortName"
-                    else -> if (showUniversesInNav) "ProductionYear,SortName" else "SortName"
-                }
-
-                // Load collection items with correct sorting
-                jellyfinClient.getCollectionItems(collectionId, limit = 100, sortBy = sortBy)
+                // Load collection items. By NOT specifying sortBy, we respect the server's
+                // configured Display Order (Release Date, Sort Name, etc.) for the collection.
+                jellyfinClient.getCollectionItems(collectionId, limit = 100, sortBy = null)
                     .onSuccess { result ->
                         items = result
                     }

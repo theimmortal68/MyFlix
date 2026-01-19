@@ -105,8 +105,8 @@ object CacheKeys {
     fun universeCollections(limit: Int): String = "universeCollections:$limit"
 
     /** Items in a specific collection */
-    fun collection(collectionId: String, limit: Int, sortBy: String = "SortName", sortOrder: String = "Ascending"): String =
-        "collection:$collectionId:$limit:$sortBy:$sortOrder"
+    fun collection(collectionId: String, limit: Int, sortBy: String? = null, sortOrder: String? = null): String =
+        "collection:$collectionId:$limit:${sortBy ?: "Default"}:${sortOrder ?: "Default"}"
 
     /** Special features (extras) for an item */
     fun specialFeatures(itemId: String, limit: Int): String =
