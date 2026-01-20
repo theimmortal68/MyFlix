@@ -29,6 +29,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Add
@@ -113,6 +115,8 @@ fun SettingsScreen(
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
     val skipIntroMode by preferences.skipIntroMode.collectAsState()
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
+    val skipForwardSeconds by preferences.skipForwardSeconds.collectAsState()
+    val skipBackwardSeconds by preferences.skipBackwardSeconds.collectAsState()
     val refreshRateMode by preferences.refreshRateMode.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
@@ -131,6 +135,8 @@ fun SettingsScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showSkipIntroModeDialog by remember { mutableStateOf(false) }
     var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
+    var showSkipForwardDialog by remember { mutableStateOf(false) }
+    var showSkipBackwardDialog by remember { mutableStateOf(false) }
     var showRefreshRateModeDialog by remember { mutableStateOf(false) }
 
     // Load available options when needed
@@ -223,6 +229,32 @@ fun SettingsScreen(
             onSelect = { mode ->
                 preferences.setSkipCreditsMode(mode)
                 showSkipCreditsModeDialog = false
+            },
+        )
+    }
+
+    // Skip forward duration dialog
+    if (showSkipForwardDialog) {
+        SkipDurationSelectionDialog(
+            title = "Skip Forward",
+            currentSelection = skipForwardSeconds,
+            onDismiss = { showSkipForwardDialog = false },
+            onSelect = { duration ->
+                preferences.setSkipForwardSeconds(duration)
+                showSkipForwardDialog = false
+            },
+        )
+    }
+
+    // Skip backward duration dialog
+    if (showSkipBackwardDialog) {
+        SkipDurationSelectionDialog(
+            title = "Skip Backward",
+            currentSelection = skipBackwardSeconds,
+            onDismiss = { showSkipBackwardDialog = false },
+            onSelect = { duration ->
+                preferences.setSkipBackwardSeconds(duration)
+                showSkipBackwardDialog = false
             },
         )
     }
@@ -434,6 +466,22 @@ fun SettingsScreen(
                         icon = Icons.Outlined.Schedule,
                         iconTint = if (skipCreditsMode != "OFF") Color(0xFFF97316) else MaterialTheme.colorScheme.onSurfaceVariant,
                         onClick = { showSkipCreditsModeDialog = true },
+                    )
+                    SettingsDivider()
+                    ActionSettingItem(
+                        title = "Skip Forward",
+                        description = getSkipDurationDisplayName(skipForwardSeconds),
+                        icon = Icons.Default.FastForward,
+                        iconTint = Color(0xFF60A5FA),
+                        onClick = { showSkipForwardDialog = true },
+                    )
+                    SettingsDivider()
+                    ActionSettingItem(
+                        title = "Skip Backward",
+                        description = getSkipDurationDisplayName(skipBackwardSeconds),
+                        icon = Icons.Default.FastRewind,
+                        iconTint = Color(0xFF60A5FA),
+                        onClick = { showSkipBackwardDialog = true },
                     )
                     SettingsDivider()
                     ActionSettingItem(
@@ -1497,6 +1545,96 @@ private fun RefreshRateModeSelectionDialog(
 
                         Text(
                             text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSelected) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+/**
+ * Available skip duration options in seconds.
+ */
+private val SKIP_DURATION_OPTIONS = listOf(5, 10, 15, 20, 30, 45, 60)
+
+/**
+ * Get display name for skip duration.
+ */
+private fun getSkipDurationDisplayName(seconds: Int): String {
+    return if (seconds >= 60) {
+        "${seconds / 60}m"
+    } else {
+        "${seconds}s"
+    }
+}
+
+/**
+ * Dialog for selecting skip duration.
+ */
+@Composable
+private fun SkipDurationSelectionDialog(
+    title: String,
+    currentSelection: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Column {
+                SKIP_DURATION_OPTIONS.forEach { seconds ->
+                    val isSelected = seconds == currentSelection
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) Color(0xFF10B981).copy(alpha = 0.15f) else Color.Transparent
+                            )
+                            .clickable { onSelect(seconds) }
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Radio-style indicator
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) Color(0xFF10B981) else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.White)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = getSkipDurationDisplayName(seconds),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isSelected) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,

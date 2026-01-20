@@ -104,15 +104,18 @@ fun PlayerScreen(
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by appPreferences.maxStreamingBitrate.collectAsState()
-    val skipDurationSeconds by appPreferences.skipDurationSeconds.collectAsState()
+    val skipForwardSeconds by appPreferences.skipForwardSeconds.collectAsState()
+    val skipBackwardSeconds by appPreferences.skipBackwardSeconds.collectAsState()
 
     // Get skip mode preferences (OFF, ASK, AUTO)
     val skipIntroMode by appPreferences.skipIntroMode.collectAsState()
     val skipCreditsMode by appPreferences.skipCreditsMode.collectAsState()
 
     // Calculate skip durations in milliseconds
-    val skipStepMs = remember(skipDurationSeconds) { skipDurationSeconds * 1000L }
-    val skipStepLongMs = remember(skipDurationSeconds) { skipDurationSeconds * 6000L } // 6x for long seek
+    val skipForwardMs = remember(skipForwardSeconds) { skipForwardSeconds * 1000L }
+    val skipBackwardMs = remember(skipBackwardSeconds) { skipBackwardSeconds * 1000L }
+    val skipForwardLongMs = remember(skipForwardSeconds) { skipForwardSeconds * 6000L } // 6x for long seek
+    val skipBackwardLongMs = remember(skipBackwardSeconds) { skipBackwardSeconds * 6000L } // 6x for long seek
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -323,22 +326,22 @@ fun PlayerScreen(
                                 true
                             }
                             Key.DirectionLeft -> {
-                                playerController.seekRelative(-skipStepMs)
+                                playerController.seekRelative(-skipBackwardMs)
                                 viewModel.showControls()
                                 true
                             }
                             Key.DirectionRight -> {
-                                playerController.seekRelative(skipStepMs)
+                                playerController.seekRelative(skipForwardMs)
                                 viewModel.showControls()
                                 true
                             }
                             Key.DirectionUp -> {
-                                playerController.seekRelative(skipStepLongMs)
+                                playerController.seekRelative(skipForwardLongMs)
                                 viewModel.showControls()
                                 true
                             }
                             Key.DirectionDown -> {
-                                playerController.seekRelative(-skipStepLongMs)
+                                playerController.seekRelative(-skipBackwardLongMs)
                                 viewModel.showControls()
                                 true
                             }
@@ -411,8 +414,10 @@ fun PlayerScreen(
                     item = state.item,
                     playbackState = playbackState,
                     onPlayPause = { playerController.togglePause() },
-                    skipStepMs = skipStepMs,
-                    skipStepLongMs = skipStepLongMs,
+                    skipForwardMs = skipForwardMs,
+                    skipBackwardMs = skipBackwardMs,
+                    skipForwardLongMs = skipForwardLongMs,
+                    skipBackwardLongMs = skipBackwardLongMs,
                     audioStreams = state.audioStreams,
                     subtitleStreams = state.subtitleStreams,
                     selectedAudioIndex = selectedAudioIndex,
@@ -660,8 +665,10 @@ private fun TvPlayerControlsOverlay(
     item: JellyfinItem?,
     playbackState: dev.jausc.myflix.core.player.PlaybackState,
     onPlayPause: () -> Unit,
-    skipStepMs: Long,
-    skipStepLongMs: Long,
+    skipForwardMs: Long,
+    skipBackwardMs: Long,
+    skipForwardLongMs: Long,
+    skipBackwardLongMs: Long,
     audioStreams: List<MediaStream>,
     subtitleStreams: List<MediaStream>,
     selectedAudioIndex: Int?,
@@ -751,15 +758,16 @@ private fun TvPlayerControlsOverlay(
         }
 
         // Center controls
-        val skipSeconds = (skipStepMs / 1000).toInt()
+        val skipBackwardLabel = (skipBackwardMs / 1000).toInt()
+        val skipForwardLabel = (skipForwardMs / 1000).toInt()
         Row(
             modifier = Modifier.align(Alignment.Center),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TvControlButton(label = "-${skipSeconds}s") {
+            TvControlButton(label = "-${skipBackwardLabel}s") {
                 onUserInteraction()
-                onSeekRelative(-skipStepMs)
+                onSeekRelative(-skipBackwardMs)
             }
             TvControlButton(
                 label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
@@ -768,9 +776,9 @@ private fun TvPlayerControlsOverlay(
                 onUserInteraction()
                 onPlayPause()
             }
-            TvControlButton(label = "+${skipSeconds}s") {
+            TvControlButton(label = "+${skipForwardLabel}s") {
                 onUserInteraction()
-                onSeekRelative(skipStepMs)
+                onSeekRelative(skipForwardMs)
             }
             if (onPlayNext != null) {
                 TvControlButton(label = "Next") {
@@ -1030,10 +1038,12 @@ private fun TvPlayerControlsOverlay(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            val longSeekSeconds = (skipStepLongMs / 1000).toInt()
-            val longSeekLabel = if (longSeekSeconds >= 60) "${longSeekSeconds / 60}min" else "${longSeekSeconds}s"
+            val longForwardSeconds = (skipForwardLongMs / 1000).toInt()
+            val longBackwardSeconds = (skipBackwardLongMs / 1000).toInt()
+            val longForwardLabel = if (longForwardSeconds >= 60) "${longForwardSeconds / 60}min" else "${longForwardSeconds}s"
+            val longBackwardLabel = if (longBackwardSeconds >= 60) "${longBackwardSeconds / 60}min" else "${longBackwardSeconds}s"
             Text(
-                text = "◀ -${skipSeconds}s  |  ▶ +${skipSeconds}s  |  ▲ +$longSeekLabel  |  ▼ -$longSeekLabel  |  OK Play/Pause",
+                text = "◀ -${skipBackwardLabel}s  |  ▶ +${skipForwardLabel}s  |  ▲ +$longForwardLabel  |  ▼ -$longBackwardLabel  |  OK Play/Pause",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.align(Alignment.CenterHorizontally),

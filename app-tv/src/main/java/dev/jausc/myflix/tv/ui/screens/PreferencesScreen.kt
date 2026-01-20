@@ -28,6 +28,8 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.FastRewind
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
@@ -118,7 +120,8 @@ fun PreferencesScreen(
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
-    val skipDurationSeconds by preferences.skipDurationSeconds.collectAsState()
+    val skipForwardSeconds by preferences.skipForwardSeconds.collectAsState()
+    val skipBackwardSeconds by preferences.skipBackwardSeconds.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -137,7 +140,8 @@ fun PreferencesScreen(
     var showAudioLanguageDialog by remember { mutableStateOf(false) }
     var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
     var showBitrateDialog by remember { mutableStateOf(false) }
-    var showSkipDurationDialog by remember { mutableStateOf(false) }
+    var showSkipForwardDialog by remember { mutableStateOf(false) }
+    var showSkipBackwardDialog by remember { mutableStateOf(false) }
     var showSkipIntroModeDialog by remember { mutableStateOf(false) }
     var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
     var showRefreshRateModeDialog by remember { mutableStateOf(false) }
@@ -227,8 +231,10 @@ fun PreferencesScreen(
                 onEditSubtitleLanguage = { showSubtitleLanguageDialog = true },
                 maxStreamingBitrate = maxStreamingBitrate,
                 onEditMaxBitrate = { showBitrateDialog = true },
-                skipDurationSeconds = skipDurationSeconds,
-                onEditSkipDuration = { showSkipDurationDialog = true },
+                skipForwardSeconds = skipForwardSeconds,
+                onEditSkipForward = { showSkipForwardDialog = true },
+                skipBackwardSeconds = skipBackwardSeconds,
+                onEditSkipBackward = { showSkipBackwardDialog = true },
                 showSeasonPremieres = showSeasonPremieres,
                 onShowSeasonPremieresChanged = { preferences.setShowSeasonPremieres(it) },
                 showGenreRows = showGenreRows,
@@ -343,14 +349,28 @@ fun PreferencesScreen(
         )
     }
 
-    // Skip Duration Selection Dialog
-    if (showSkipDurationDialog) {
+    // Skip Forward Duration Selection Dialog
+    if (showSkipForwardDialog) {
         SkipDurationSelectionDialog(
-            currentSelection = skipDurationSeconds,
-            onDismiss = { showSkipDurationDialog = false },
+            title = "Skip Forward",
+            currentSelection = skipForwardSeconds,
+            onDismiss = { showSkipForwardDialog = false },
             onSelect = { duration ->
-                preferences.setSkipDurationSeconds(duration)
-                showSkipDurationDialog = false
+                preferences.setSkipForwardSeconds(duration)
+                showSkipForwardDialog = false
+            },
+        )
+    }
+
+    // Skip Backward Duration Selection Dialog
+    if (showSkipBackwardDialog) {
+        SkipDurationSelectionDialog(
+            title = "Skip Backward",
+            currentSelection = skipBackwardSeconds,
+            onDismiss = { showSkipBackwardDialog = false },
+            onSelect = { duration ->
+                preferences.setSkipBackwardSeconds(duration)
+                showSkipBackwardDialog = false
             },
         )
     }
@@ -419,8 +439,10 @@ private fun PreferencesContent(
     onEditSubtitleLanguage: () -> Unit,
     maxStreamingBitrate: Int,
     onEditMaxBitrate: () -> Unit,
-    skipDurationSeconds: Int,
-    onEditSkipDuration: () -> Unit,
+    skipForwardSeconds: Int,
+    onEditSkipForward: () -> Unit,
+    skipBackwardSeconds: Int,
+    onEditSkipBackward: () -> Unit,
     // Home screen settings
     showSeasonPremieres: Boolean,
     onShowSeasonPremieresChanged: (Boolean) -> Unit,
@@ -648,11 +670,19 @@ private fun PreferencesContent(
                 )
                 PreferenceDivider()
                 ActionPreferenceItem(
-                    title = "Skip Duration",
-                    description = getSkipDurationDisplayName(skipDurationSeconds),
-                    icon = Icons.Outlined.Schedule,
+                    title = "Skip Forward",
+                    description = getSkipDurationDisplayName(skipForwardSeconds),
+                    icon = Icons.Outlined.FastForward,
                     iconTint = Color(0xFF60A5FA),
-                    onClick = onEditSkipDuration,
+                    onClick = onEditSkipForward,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Skip Backward",
+                    description = getSkipDurationDisplayName(skipBackwardSeconds),
+                    icon = Icons.Outlined.FastRewind,
+                    iconTint = Color(0xFF60A5FA),
+                    onClick = onEditSkipBackward,
                 )
                 PreferenceDivider()
                 ActionPreferenceItem(
@@ -2166,6 +2196,7 @@ private fun getSkipDurationDisplayName(seconds: Int): String {
 
 @Composable
 private fun SkipDurationSelectionDialog(
+    title: String,
     currentSelection: Int,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
@@ -2186,7 +2217,7 @@ private fun SkipDurationSelectionDialog(
         ) {
             // Title
             Text(
-                text = "Skip Duration",
+                text = title,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = TvColors.TextPrimary,
@@ -2195,7 +2226,7 @@ private fun SkipDurationSelectionDialog(
 
             // Subtitle
             Text(
-                text = "Duration for skip forward/backward buttons",
+                text = "Duration for $title button",
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextSecondary,
                 modifier = Modifier.padding(bottom = 16.dp),

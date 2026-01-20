@@ -80,8 +80,11 @@ object PreferenceKeys {
         /** Max streaming bitrate in Mbps (0 = unlimited/direct play) */
         const val MAX_STREAMING_BITRATE = "max_streaming_bitrate"
 
-        /** Skip forward/backward duration in seconds (short seek) */
-        const val SKIP_DURATION_SECONDS = "skip_duration_seconds"
+        /** Skip forward duration in seconds */
+        const val SKIP_FORWARD_SECONDS = "skip_forward_seconds"
+
+        /** Skip backward duration in seconds */
+        const val SKIP_BACKWARD_SECONDS = "skip_backward_seconds"
 
         /** Player display mode (FIT, FILL, ZOOM, STRETCH) */
         const val PLAYER_DISPLAY_MODE = "player_display_mode"
@@ -197,8 +200,10 @@ object PreferenceKeys {
         val PREFERRED_SUBTITLE_LANGUAGE: String? = null
         /** 0 = unlimited/direct play, otherwise value in Mbps */
         const val MAX_STREAMING_BITRATE = 0
-        /** Default skip duration: 10 seconds */
-        const val SKIP_DURATION_SECONDS = 10
+        /** Default skip forward duration: 10 seconds */
+        const val SKIP_FORWARD_SECONDS = 10
+        /** Default skip backward duration: 10 seconds */
+        const val SKIP_BACKWARD_SECONDS = 10
         /** Default to FIT (letterbox/pillarbox) */
         const val PLAYER_DISPLAY_MODE = "FIT"
         /** Default refresh rate mode: OFF (no switching) */

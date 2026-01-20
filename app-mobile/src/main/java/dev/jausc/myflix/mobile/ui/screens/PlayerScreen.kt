@@ -129,14 +129,16 @@ fun PlayerScreen(
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by appPreferences.maxStreamingBitrate.collectAsState()
-    val skipDurationSeconds by appPreferences.skipDurationSeconds.collectAsState()
+    val skipForwardSeconds by appPreferences.skipForwardSeconds.collectAsState()
+    val skipBackwardSeconds by appPreferences.skipBackwardSeconds.collectAsState()
 
     // Get skip mode preferences (OFF, ASK, AUTO)
     val skipIntroMode by appPreferences.skipIntroMode.collectAsState()
     val skipCreditsMode by appPreferences.skipCreditsMode.collectAsState()
 
-    // Calculate skip duration in milliseconds
-    val skipStepMs = remember(skipDurationSeconds) { skipDurationSeconds * 1000L }
+    // Calculate skip durations in milliseconds
+    val skipForwardMs = remember(skipForwardSeconds) { skipForwardSeconds * 1000L }
+    val skipBackwardMs = remember(skipBackwardSeconds) { skipBackwardSeconds * 1000L }
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -399,7 +401,8 @@ fun PlayerScreen(
                     item = state.item,
                     playbackState = playbackState,
                     playerController = playerController,
-                    skipStepMs = skipStepMs,
+                    skipForwardMs = skipForwardMs,
+                    skipBackwardMs = skipBackwardMs,
                     audioStreams = state.audioStreams,
                     subtitleStreams = state.subtitleStreams,
                     selectedAudioIndex = selectedAudioIndex,
@@ -638,7 +641,8 @@ private fun MobilePlayerControls(
     item: JellyfinItem?,
     playbackState: PlaybackState,
     playerController: PlayerController,
-    skipStepMs: Long,
+    skipForwardMs: Long,
+    skipBackwardMs: Long,
     audioStreams: List<MediaStream>,
     subtitleStreams: List<MediaStream>,
     selectedAudioIndex: Int?,
@@ -742,7 +746,8 @@ private fun MobilePlayerControls(
         }
 
         // Center controls
-        val skipSeconds = (skipStepMs / 1000).toInt()
+        val skipBackwardLabel = (skipBackwardMs / 1000).toInt()
+        val skipForwardLabel = (skipForwardMs / 1000).toInt()
         Row(
             modifier = Modifier.align(Alignment.Center),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -751,13 +756,13 @@ private fun MobilePlayerControls(
             IconButton(
                 onClick = {
                     onUserInteraction()
-                    onSeekRelative(-skipStepMs)
+                    onSeekRelative(-skipBackwardMs)
                 },
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastRewind,
-                    contentDescription = "Rewind ${skipSeconds}s",
+                    contentDescription = "Rewind ${skipBackwardLabel}s",
                     tint = Color.White,
                     modifier = Modifier.size(34.dp),
                 )
@@ -789,13 +794,13 @@ private fun MobilePlayerControls(
             IconButton(
                 onClick = {
                     onUserInteraction()
-                    onSeekRelative(skipStepMs)
+                    onSeekRelative(skipForwardMs)
                 },
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
                     Icons.Default.FastForward,
-                    contentDescription = "Forward ${skipSeconds}s",
+                    contentDescription = "Forward ${skipForwardLabel}s",
                     tint = Color.White,
                     modifier = Modifier.size(34.dp),
                 )

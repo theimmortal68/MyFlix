@@ -62,11 +62,17 @@ abstract class AppPreferences(context: Context) {
     /** Max streaming bitrate in Mbps. 0 = unlimited (direct play preferred). */
     val maxStreamingBitrate: StateFlow<Int> by lazy { _maxStreamingBitrate.asStateFlow() }
 
-    private val _skipDurationSeconds: MutableStateFlow<Int> by lazy {
-        MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SKIP_DURATION_SECONDS, PreferenceKeys.Defaults.SKIP_DURATION_SECONDS))
+    private val _skipForwardSeconds: MutableStateFlow<Int> by lazy {
+        MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SKIP_FORWARD_SECONDS, PreferenceKeys.Defaults.SKIP_FORWARD_SECONDS))
     }
-    /** Skip forward/backward duration in seconds. */
-    val skipDurationSeconds: StateFlow<Int> by lazy { _skipDurationSeconds.asStateFlow() }
+    /** Skip forward duration in seconds. */
+    val skipForwardSeconds: StateFlow<Int> by lazy { _skipForwardSeconds.asStateFlow() }
+
+    private val _skipBackwardSeconds: MutableStateFlow<Int> by lazy {
+        MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SKIP_BACKWARD_SECONDS, PreferenceKeys.Defaults.SKIP_BACKWARD_SECONDS))
+    }
+    /** Skip backward duration in seconds. */
+    val skipBackwardSeconds: StateFlow<Int> by lazy { _skipBackwardSeconds.asStateFlow() }
 
     private val _playerDisplayMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
@@ -271,9 +277,14 @@ abstract class AppPreferences(context: Context) {
     /**
      * Set the skip forward/backward duration in seconds.
      */
-    fun setSkipDurationSeconds(seconds: Int) {
-        prefs.edit().putInt(PreferenceKeys.Prefs.SKIP_DURATION_SECONDS, seconds).apply()
-        _skipDurationSeconds.value = seconds
+    fun setSkipForwardSeconds(seconds: Int) {
+        prefs.edit().putInt(PreferenceKeys.Prefs.SKIP_FORWARD_SECONDS, seconds).apply()
+        _skipForwardSeconds.value = seconds
+    }
+
+    fun setSkipBackwardSeconds(seconds: Int) {
+        prefs.edit().putInt(PreferenceKeys.Prefs.SKIP_BACKWARD_SECONDS, seconds).apply()
+        _skipBackwardSeconds.value = seconds
     }
 
     /**
