@@ -1513,7 +1513,7 @@ class JellyfinClient(
             }
             "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
         } else {
-            // Transcode via HLS - use master.m3u8 endpoint with transcoding parameters
+            // Transcode via HLS - use main.m3u8 endpoint with bitrate limit
             val bitrateBps = maxBitrateMbps * 1_000_000L
             val playSessionId = java.util.UUID.randomUUID().toString().replace("-", "")
             val params = buildList {
@@ -1525,8 +1525,6 @@ class JellyfinClient(
                 add("MaxStreamingBitrate=$bitrateBps")
                 add("VideoCodec=h264")
                 add("AudioCodec=aac")
-                add("TranscodeReasons=ContainerBitrateExceedsLimit")
-                add("CopyTimestamps=false")
                 add("TranscodingMaxAudioChannels=6")
                 add("SegmentContainer=ts")
                 add("MinSegments=1")
@@ -1534,7 +1532,7 @@ class JellyfinClient(
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
             }
-            "$baseUrl/Videos/$itemId/master.m3u8?${params.joinToString("&")}"
+            "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
         }
     }
 
