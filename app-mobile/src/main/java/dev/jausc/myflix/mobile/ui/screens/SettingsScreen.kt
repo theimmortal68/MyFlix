@@ -79,6 +79,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -112,6 +113,7 @@ fun SettingsScreen(
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
     val skipIntroMode by preferences.skipIntroMode.collectAsState()
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
+    val refreshRateMode by preferences.refreshRateMode.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -129,6 +131,7 @@ fun SettingsScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showSkipIntroModeDialog by remember { mutableStateOf(false) }
     var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
+    var showRefreshRateModeDialog by remember { mutableStateOf(false) }
 
     // Load available options when needed
     LaunchedEffect(showGenreRows, showCollections) {
@@ -220,6 +223,18 @@ fun SettingsScreen(
             onSelect = { mode ->
                 preferences.setSkipCreditsMode(mode)
                 showSkipCreditsModeDialog = false
+            },
+        )
+    }
+
+    // Refresh rate mode dialog
+    if (showRefreshRateModeDialog) {
+        RefreshRateModeSelectionDialog(
+            currentSelection = refreshRateMode,
+            onDismiss = { showRefreshRateModeDialog = false },
+            onSelect = { mode ->
+                preferences.setRefreshRateMode(mode)
+                showRefreshRateModeDialog = false
             },
         )
     }
@@ -419,6 +434,14 @@ fun SettingsScreen(
                         icon = Icons.Outlined.Schedule,
                         iconTint = if (skipCreditsMode != "OFF") Color(0xFFF97316) else MaterialTheme.colorScheme.onSurfaceVariant,
                         onClick = { showSkipCreditsModeDialog = true },
+                    )
+                    SettingsDivider()
+                    ActionSettingItem(
+                        title = "Refresh Rate",
+                        description = getRefreshRateModeDisplayName(refreshRateMode),
+                        icon = Icons.Outlined.Smartphone,
+                        iconTint = if (refreshRateMode != "OFF") Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { showRefreshRateModeDialog = true },
                     )
                 }
             }
@@ -1327,6 +1350,13 @@ private fun getSkipModeDisplayName(mode: String): String {
     return SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 }
 
+/**
+ * Get display name for a refresh rate mode value.
+ */
+private fun getRefreshRateModeDisplayName(mode: String): String {
+    return PlaybackOptions.getRefreshRateModeLabel(mode)
+}
+
 @Composable
 private fun SkipModeSelectionDialog(
     title: String,
@@ -1391,6 +1421,84 @@ private fun SkipModeSelectionDialog(
                             text = label,
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isSelected) Color(0xFF22C55E) else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+private fun RefreshRateModeSelectionDialog(
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth(0.9f),
+        title = {
+            Text(
+                text = "Refresh Rate",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Match display refresh rate to video for smoother playback",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                PlaybackOptions.REFRESH_RATE_MODE_OPTIONS.forEach { (mode, label) ->
+                    val isSelected = mode == currentSelection
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) Color(0xFF10B981).copy(alpha = 0.15f) else Color.Transparent
+                            )
+                            .clickable { onSelect(mode) }
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Radio-style indicator
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) Color(0xFF10B981) else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.White)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSelected) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     }

@@ -10,6 +10,7 @@
 
 package dev.jausc.myflix.mobile.ui.screens
 
+import android.app.Activity
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Info
@@ -85,6 +87,7 @@ import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -138,6 +141,9 @@ fun PlayerScreen(
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
 
+    // Get refresh rate mode preference
+    val refreshRateMode by appPreferences.refreshRateMode.collectAsState()
+
     // Get subtitle styling preferences
     val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
     val subtitleFontColorName by appPreferences.subtitleFontColor.collectAsState()
@@ -176,7 +182,10 @@ fun PlayerScreen(
             try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
         )
     }
-    
+
+    // Current bitrate - can be changed during playback (0 = no limit / direct play)
+    var currentBitrate by remember { mutableIntStateOf(maxStreamingBitrate) }
+
     // Update active state and aspect ratio for PiP
     LaunchedEffect(playbackState.videoWidth, playbackState.videoHeight) {
         if (playbackState.videoWidth > 0 && playbackState.videoHeight > 0) {
@@ -195,12 +204,18 @@ fun PlayerScreen(
 
     val selectedAudioIndex = state.selectedAudioStreamIndex
     val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
-    val effectiveStreamUrl = remember(state.streamUrl, state.item?.id, selectedAudioIndex, selectedSubtitleIndex) {
+    val effectiveStreamUrl = remember(
+        state.streamUrl,
+        state.item?.id,
+        selectedAudioIndex,
+        selectedSubtitleIndex,
+        currentBitrate,
+    ) {
         val item = state.item
         if (state.streamUrl == null || item == null) {
             null
         } else {
-            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex)
+            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex, currentBitrate)
         }
     }
 
@@ -284,6 +299,26 @@ fun PlayerScreen(
         onDispose {
             playerController.stop()
             playerController.release()
+            // Reset refresh rate when leaving player
+            (context as? Activity)?.let { activity ->
+                PlayerController.resetRefreshRate(activity)
+            }
+        }
+    }
+
+    // Apply refresh rate when playback starts or mode changes
+    LaunchedEffect(playbackState.isPlaying, refreshRateMode, playbackState.videoWidth) {
+        if (playbackState.isPlaying && playbackState.videoWidth > 0) {
+            (context as? Activity)?.let { activity ->
+                // Use video frame rate if available, otherwise estimate from common frame rates
+                val videoFps = if (playbackState.videoHeight > 0) {
+                    // Most content is 24fps (movies) or 30fps (TV), default to 24 for cinematic content
+                    24f
+                } else {
+                    0f
+                }
+                PlayerController.applyRefreshRate(activity, refreshRateMode, videoFps)
+            }
         }
     }
 
@@ -396,6 +431,12 @@ fun PlayerScreen(
                     onDisplayModeChanged = { mode ->
                         displayMode = mode
                         appPreferences.setPlayerDisplayMode(mode.name)
+                    },
+                    currentBitrate = currentBitrate,
+                    onBitrateChanged = { bitrate ->
+                        currentStartPositionMs = playbackState.position
+                        currentBitrate = bitrate
+                        appPreferences.setMaxStreamingBitrate(bitrate)
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onBack = onBack,
@@ -612,6 +653,8 @@ private fun MobilePlayerControls(
     onSpeedChanged: (Float) -> Unit,
     displayMode: PlayerDisplayMode,
     onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
+    currentBitrate: Int,
+    onBitrateChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -864,6 +907,14 @@ private fun MobilePlayerControls(
                     },
                 )
                 PlayerActionButton(
+                    label = "Quality",
+                    icon = Icons.Default.HighQuality,
+                    onClick = {
+                        onUserInteraction()
+                        activeSheet = PlayerSheet.QUALITY
+                    },
+                )
+                PlayerActionButton(
                     label = "Chapters",
                     icon = Icons.AutoMirrored.Filled.List,
                     onClick = {
@@ -923,6 +974,12 @@ private fun MobilePlayerControls(
                     onDisplayModeChanged(it)
                     activeSheet = null
                 },
+                currentBitrate = currentBitrate,
+                onBitrateSelected = {
+                    onUserInteraction()
+                    onBitrateChanged(it)
+                    activeSheet = null
+                },
                 onChapterSelected = { chapterMs ->
                     onUserInteraction()
                     onSeekTo(chapterMs)
@@ -939,6 +996,7 @@ private enum class PlayerSheet {
     SUB_STYLE,
     SPEED,
     DISPLAY,
+    QUALITY,
     CHAPTERS,
     INFO,
 }
@@ -991,6 +1049,8 @@ private fun MobilePlayerSheetContent(
     onSubtitleStyleChanged: (SubtitleStyle) -> Unit,
     onSpeedSelected: (Float) -> Unit,
     onDisplayModeSelected: (PlayerDisplayMode) -> Unit,
+    currentBitrate: Int,
+    onBitrateSelected: (Int) -> Unit,
     onChapterSelected: (Long) -> Unit,
 ) {
     when (sheet) {
@@ -1087,6 +1147,18 @@ private fun MobilePlayerSheetContent(
                         title = mode.label,
                         selected = displayMode == mode,
                         onClick = { onDisplayModeSelected(mode) },
+                    )
+                }
+            }
+        }
+        PlayerSheet.QUALITY -> {
+            SheetHeader(title = "Streaming Quality")
+            LazyColumn {
+                items(PlaybackOptions.BITRATE_OPTIONS) { (bitrate, label) ->
+                    SheetRow(
+                        title = label,
+                        selected = currentBitrate == bitrate,
+                        onClick = { onBitrateSelected(bitrate) },
                     )
                 }
             }
@@ -1260,3 +1332,5 @@ private fun android.content.Context.findActivity(): android.app.Activity? {
     }
     return null
 }
+
+/** Bitrate options for streaming quality selection (Mbps, label) */

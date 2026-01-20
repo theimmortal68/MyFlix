@@ -10,6 +10,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import android.app.Activity
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
@@ -81,6 +82,7 @@ import dev.jausc.myflix.tv.ui.components.DialogSectionHeader
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -114,6 +116,9 @@ fun PlayerScreen(
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
+
+    // Get refresh rate mode preference
+    val refreshRateMode by appPreferences.refreshRateMode.collectAsState()
 
     // Get subtitle styling preferences
     val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
@@ -153,14 +158,24 @@ fun PlayerScreen(
             try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
         )
     }
+
+    // Current bitrate - can be changed during playback (0 = no limit / direct play)
+    var currentBitrate by remember { mutableIntStateOf(maxStreamingBitrate) }
+
     val selectedAudioIndex = state.selectedAudioStreamIndex
     val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
-    val effectiveStreamUrl = remember(state.streamUrl, state.item?.id, selectedAudioIndex, selectedSubtitleIndex) {
+    val effectiveStreamUrl = remember(
+        state.streamUrl,
+        state.item?.id,
+        selectedAudioIndex,
+        selectedSubtitleIndex,
+        currentBitrate,
+    ) {
         val item = state.item
         if (state.streamUrl == null || item == null) {
             null
         } else {
-            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex)
+            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex, currentBitrate)
         }
     }
     var currentStartPositionMs by remember(state.item?.id) { mutableLongStateOf(state.startPositionMs) }
@@ -251,6 +266,26 @@ fun PlayerScreen(
         onDispose {
             playerController.stop()
             playerController.release()
+            // Reset refresh rate when leaving player
+            (context as? Activity)?.let { activity ->
+                PlayerController.resetRefreshRate(activity)
+            }
+        }
+    }
+
+    // Apply refresh rate when playback starts or mode changes
+    LaunchedEffect(playbackState.isPlaying, refreshRateMode, playbackState.videoWidth) {
+        if (playbackState.isPlaying && playbackState.videoWidth > 0) {
+            (context as? Activity)?.let { activity ->
+                // Use video frame rate if available, otherwise estimate from common frame rates
+                val videoFps = if (playbackState.videoHeight > 0) {
+                    // Most content is 24fps (movies) or 30fps (TV), default to 24 for cinematic content
+                    24f
+                } else {
+                    0f
+                }
+                PlayerController.applyRefreshRate(activity, refreshRateMode, videoFps)
+            }
         }
     }
 
@@ -409,6 +444,13 @@ fun PlayerScreen(
                     onDisplayModeChanged = { mode ->
                         displayMode = mode
                         appPreferences.setPlayerDisplayMode(mode.name)
+                    },
+                    currentBitrate = currentBitrate,
+                    onBitrateChanged = { bitrate ->
+                        currentStartPositionMs = playbackState.position
+                        currentBitrate = bitrate
+                        // Also save as preference for future playback
+                        appPreferences.setMaxStreamingBitrate(bitrate)
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     playPauseFocusRequester = playPauseFocusRequester,
@@ -634,6 +676,8 @@ private fun TvPlayerControlsOverlay(
     onSpeedChanged: (Float) -> Unit,
     displayMode: PlayerDisplayMode,
     onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
+    currentBitrate: Int,
+    onBitrateChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
     playPauseFocusRequester: FocusRequester,
 ) {
@@ -932,6 +976,24 @@ private fun TvPlayerControlsOverlay(
                         },
                     )
                 }
+                TvActionButton("Quality") {
+                    onUserInteraction()
+                    dialogParams = DialogParams(
+                        title = "Streaming Quality",
+                        items = PlaybackOptions.BITRATE_OPTIONS.map { (bitrate, label) ->
+                            val isSelected = bitrate == currentBitrate
+                            DialogItem(
+                                text = if (isSelected) "$label ✓" else label,
+                                icon = Icons.Default.Speed,
+                                iconTint = if (isSelected) ActionColors.Play else ActionColors.Audio,
+                                onClick = {
+                                    onUserInteraction()
+                                    onBitrateChanged(bitrate)
+                                },
+                            )
+                        },
+                    )
+                }
                 TvActionButton("Chapters") {
                     onUserInteraction()
                     val chapters = item?.chapters.orEmpty()
@@ -1094,3 +1156,4 @@ private fun SkipSegmentButton(
         }
     }
 }
+

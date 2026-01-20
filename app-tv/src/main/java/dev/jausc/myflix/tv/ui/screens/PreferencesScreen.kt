@@ -65,6 +65,7 @@ import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.AppType
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.core.network.UpdateManager
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.UpdateInfo
@@ -113,6 +114,7 @@ fun PreferencesScreen(
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
     val skipIntroMode by preferences.skipIntroMode.collectAsState()
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
+    val refreshRateMode by preferences.refreshRateMode.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
@@ -138,6 +140,7 @@ fun PreferencesScreen(
     var showSkipDurationDialog by remember { mutableStateOf(false) }
     var showSkipIntroModeDialog by remember { mutableStateOf(false) }
     var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
+    var showRefreshRateModeDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -216,6 +219,8 @@ fun PreferencesScreen(
                 onEditSkipIntroMode = { showSkipIntroModeDialog = true },
                 skipCreditsMode = skipCreditsMode,
                 onEditSkipCreditsMode = { showSkipCreditsModeDialog = true },
+                refreshRateMode = refreshRateMode,
+                onEditRefreshRateMode = { showRefreshRateModeDialog = true },
                 preferredAudioLanguage = preferredAudioLanguage,
                 onEditAudioLanguage = { showAudioLanguageDialog = true },
                 preferredSubtitleLanguage = preferredSubtitleLanguage,
@@ -375,6 +380,17 @@ fun PreferencesScreen(
             },
         )
     }
+
+    if (showRefreshRateModeDialog) {
+        RefreshRateModeSelectionDialog(
+            currentSelection = refreshRateMode,
+            onDismiss = { showRefreshRateModeDialog = false },
+            onSelect = { mode ->
+                preferences.setRefreshRateMode(mode)
+                showRefreshRateModeDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -395,6 +411,8 @@ private fun PreferencesContent(
     onEditSkipIntroMode: () -> Unit,
     skipCreditsMode: String,
     onEditSkipCreditsMode: () -> Unit,
+    refreshRateMode: String,
+    onEditRefreshRateMode: () -> Unit,
     preferredAudioLanguage: String?,
     onEditAudioLanguage: () -> Unit,
     preferredSubtitleLanguage: String?,
@@ -635,6 +653,14 @@ private fun PreferencesContent(
                     icon = Icons.Outlined.Schedule,
                     iconTint = Color(0xFF60A5FA),
                     onClick = onEditSkipDuration,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Refresh Rate",
+                    description = getRefreshRateModeDisplayName(refreshRateMode),
+                    icon = Icons.Outlined.Tv,
+                    iconTint = if (refreshRateMode != "OFF") Color(0xFF10B981) else TvColors.TextSecondary,
+                    onClick = onEditRefreshRateMode,
                 )
             }
         }
@@ -974,7 +1000,7 @@ private fun SelectionDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.85f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
@@ -1406,7 +1432,7 @@ private fun ServerManagementDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.7f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
@@ -1610,7 +1636,7 @@ private fun ConfirmRemoveServerDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
@@ -1862,7 +1888,7 @@ private fun LanguageSelectionDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.6f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
@@ -1976,28 +2002,11 @@ private fun LanguageItem(
     }
 }
 
-// Bitrate options (value in Mbps, 0 = unlimited)
-private val BITRATE_OPTIONS = listOf(
-    0 to "Unlimited (Direct Play)",
-    120 to "120 Mbps (4K Max)",
-    80 to "80 Mbps (4K)",
-    60 to "60 Mbps (4K)",
-    40 to "40 Mbps (1080p Max)",
-    25 to "25 Mbps (1080p)",
-    15 to "15 Mbps (1080p)",
-    10 to "10 Mbps (720p Max)",
-    8 to "8 Mbps (720p)",
-    5 to "5 Mbps (480p)",
-    3 to "3 Mbps (480p)",
-    1 to "1 Mbps (Low)",
-)
-
 /**
  * Get display name for a bitrate value.
  */
 private fun getBitrateDisplayName(bitrateMbps: Int): String {
-    return BITRATE_OPTIONS.find { it.first == bitrateMbps }?.second
-        ?: if (bitrateMbps == 0) "Unlimited" else "$bitrateMbps Mbps"
+    return PlaybackOptions.getBitrateLabel(bitrateMbps)
 }
 
 @Composable
@@ -2015,7 +2024,7 @@ private fun BitrateSelectionDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.6f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
@@ -2044,8 +2053,8 @@ private fun BitrateSelectionDialog(
                     .heightIn(max = 400.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                items(BITRATE_OPTIONS.size) { index ->
-                    val (bitrate, label) = BITRATE_OPTIONS[index]
+                items(PlaybackOptions.BITRATE_OPTIONS.size) { index ->
+                    val (bitrate, label) = PlaybackOptions.BITRATE_OPTIONS[index]
                     val isSelected = bitrate == currentSelection
 
                     BitrateItem(
@@ -2170,7 +2179,7 @@ private fun SkipDurationSelectionDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
@@ -2306,6 +2315,13 @@ private fun getSkipModeDisplayName(mode: String): String {
     return SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 }
 
+/**
+ * Get display name for a refresh rate mode value.
+ */
+private fun getRefreshRateModeDisplayName(mode: String): String {
+    return PlaybackOptions.getRefreshRateModeLabel(mode)
+}
+
 @Composable
 private fun SkipModeSelectionDialog(
     title: String,
@@ -2439,6 +2455,143 @@ private fun SkipModeItem(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) Color(0xFF22C55E) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun RefreshRateModeSelectionDialog(
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            // Title
+            Text(
+                text = "Refresh Rate",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            // Subtitle
+            Text(
+                text = "Match display refresh rate to video for smoother playback",
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            // Mode list
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(max = 250.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(PlaybackOptions.REFRESH_RATE_MODE_OPTIONS.size) { index ->
+                    val (mode, label) = PlaybackOptions.REFRESH_RATE_MODE_OPTIONS[index]
+                    val isSelected = mode == currentSelection
+
+                    RefreshRateModeItem(
+                        label = label,
+                        isSelected = isSelected,
+                        onClick = { onSelect(mode) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RefreshRateModeItem(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFF10B981).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFF10B981), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Mode label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFF10B981) else TvColors.TextPrimary,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }

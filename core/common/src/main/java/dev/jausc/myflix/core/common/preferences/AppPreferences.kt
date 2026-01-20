@@ -76,6 +76,15 @@ abstract class AppPreferences(context: Context) {
     }
     val playerDisplayMode: StateFlow<String> by lazy { _playerDisplayMode.asStateFlow() }
 
+    private val _refreshRateMode: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.REFRESH_RATE_MODE, PreferenceKeys.Defaults.REFRESH_RATE_MODE)
+                ?: PreferenceKeys.Defaults.REFRESH_RATE_MODE
+        )
+    }
+    /** Refresh rate mode: OFF (no switching), AUTO (match video), 60 (force 60Hz), 120 (force 120Hz). */
+    val refreshRateMode: StateFlow<String> by lazy { _refreshRateMode.asStateFlow() }
+
     // Media Segment Preferences (skip intro/credits)
     // Values: "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
     private val _skipIntroMode: MutableStateFlow<String> by lazy {
@@ -274,6 +283,15 @@ abstract class AppPreferences(context: Context) {
     fun setPlayerDisplayMode(mode: String) {
         prefs.edit().putString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, mode).apply()
         _playerDisplayMode.value = mode
+    }
+
+    /**
+     * Set the refresh rate switching mode.
+     * @param mode OFF (no switching), AUTO (match video frame rate), 60 (force 60Hz), 120 (force 120Hz)
+     */
+    fun setRefreshRateMode(mode: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.REFRESH_RATE_MODE, mode).apply()
+        _refreshRateMode.value = mode
     }
 
     // Media segment setters

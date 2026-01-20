@@ -86,6 +86,9 @@ object PreferenceKeys {
         /** Player display mode (FIT, FILL, ZOOM, STRETCH) */
         const val PLAYER_DISPLAY_MODE = "player_display_mode"
 
+        /** Refresh rate switching mode (OFF, AUTO, 60, 120) */
+        const val REFRESH_RATE_MODE = "refresh_rate_mode"
+
         // Media segment preferences (skip intro/credits)
         /** Skip intro behavior: OFF, ASK, AUTO */
         const val SKIP_INTRO_MODE = "skip_intro_mode"
@@ -198,6 +201,8 @@ object PreferenceKeys {
         const val SKIP_DURATION_SECONDS = 10
         /** Default to FIT (letterbox/pillarbox) */
         const val PLAYER_DISPLAY_MODE = "FIT"
+        /** Default refresh rate mode: OFF (no switching) */
+        const val REFRESH_RATE_MODE = "OFF"
         // Media segment defaults (OFF, ASK, AUTO)
         const val SKIP_INTRO_MODE = "ASK"
         const val SKIP_CREDITS_MODE = "ASK"
