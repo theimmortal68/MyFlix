@@ -1815,6 +1815,9 @@ class JellyfinClient(
         positionTicks: Long = 0,
         playSessionId: String? = null,
         playMethod: String = "DirectPlay",
+        audioStreamIndex: Int? = null,
+        subtitleStreamIndex: Int? = null,
+        maxStreamingBitrate: Long? = null,
     ): Result<Unit> = runCatching {
         val sessionId = playSessionId ?: "${itemId}_${System.currentTimeMillis()}"
         currentPlaySessionId = sessionId
@@ -1827,6 +1830,9 @@ class JellyfinClient(
             canSeek = true,
             isPaused = false,
             isMuted = false,
+            audioStreamIndex = audioStreamIndex,
+            subtitleStreamIndex = subtitleStreamIndex,
+            maxStreamingBitrate = maxStreamingBitrate,
         )
         android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing itemId=$itemId")
         val response = httpClient.post("$baseUrl/Sessions/Playing") {
@@ -1848,6 +1854,9 @@ class JellyfinClient(
         isPaused: Boolean = false,
         mediaSourceId: String? = null,
         playMethod: String = "DirectPlay",
+        audioStreamIndex: Int? = null,
+        subtitleStreamIndex: Int? = null,
+        maxStreamingBitrate: Long? = null,
     ): Result<Unit> = runCatching {
         val body = PlaybackProgressInfo(
             itemId = itemId,
@@ -1858,6 +1867,9 @@ class JellyfinClient(
             playMethod = playMethod,
             playSessionId = currentPlaySessionId,
             canSeek = true,
+            audioStreamIndex = audioStreamIndex,
+            subtitleStreamIndex = subtitleStreamIndex,
+            maxStreamingBitrate = maxStreamingBitrate,
         )
         val response = httpClient.post("$baseUrl/Sessions/Playing/Progress") {
             header("Authorization", authHeader())
@@ -1918,6 +1930,9 @@ private data class PlaybackStartInfo(
     @SerialName("CanSeek") val canSeek: Boolean,
     @SerialName("IsPaused") val isPaused: Boolean,
     @SerialName("IsMuted") val isMuted: Boolean,
+    @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
+    @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
+    @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long? = null,
 )
 
 @Serializable
@@ -1930,6 +1945,9 @@ private data class PlaybackProgressInfo(
     @SerialName("PlayMethod") val playMethod: String,
     @SerialName("PlaySessionId") val playSessionId: String?,
     @SerialName("CanSeek") val canSeek: Boolean,
+    @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
+    @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
+    @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long? = null,
 )
 
 @Serializable

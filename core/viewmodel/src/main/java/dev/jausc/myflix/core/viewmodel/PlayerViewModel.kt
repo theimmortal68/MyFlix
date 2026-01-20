@@ -58,6 +58,7 @@ data class PlayerUiState(
     // Playback session tracking
     val playSessionId: String? = null,
     val playMethod: String = "DirectPlay",
+    val maxStreamingBitrate: Long? = null,
     // Queue/Auto-play state
     val showAutoPlayCountdown: Boolean = false,
     val nextQueueItem: QueueItem? = null,
@@ -209,6 +210,7 @@ class PlayerViewModel(
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
                             playSessionId = playSessionId,
                             playMethod = playMethod,
+                            maxStreamingBitrate = maxBitrate?.let { it.toLong() * 1_000_000L },
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
@@ -253,6 +255,9 @@ class PlayerViewModel(
                 positionTicks = positionTicks,
                 playSessionId = state.playSessionId,
                 playMethod = state.playMethod,
+                audioStreamIndex = state.selectedAudioStreamIndex,
+                subtitleStreamIndex = state.selectedSubtitleStreamIndex,
+                maxStreamingBitrate = state.maxStreamingBitrate,
             )
 
             // Persist active session for crash recovery
@@ -279,6 +284,9 @@ class PlayerViewModel(
                 isPaused,
                 mediaSourceId = state.mediaSourceId,
                 playMethod = state.playMethod,
+                audioStreamIndex = state.selectedAudioStreamIndex,
+                subtitleStreamIndex = state.selectedSubtitleStreamIndex,
+                maxStreamingBitrate = state.maxStreamingBitrate,
             )
 
             // Update persisted session position for crash recovery
@@ -301,6 +309,9 @@ class PlayerViewModel(
                 isPaused,
                 mediaSourceId = state.mediaSourceId,
                 playMethod = state.playMethod,
+                audioStreamIndex = state.selectedAudioStreamIndex,
+                subtitleStreamIndex = state.selectedSubtitleStreamIndex,
+                maxStreamingBitrate = state.maxStreamingBitrate,
             )
         }
     }
@@ -533,6 +544,7 @@ class PlayerViewModel(
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
                             playSessionId = playSessionId,
                             playMethod = playMethod,
+                            maxStreamingBitrate = maxBitrate?.let { it.toLong() * 1_000_000L },
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
