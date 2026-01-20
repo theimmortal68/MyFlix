@@ -47,6 +47,7 @@ dependencies {
     val media3Version = rootProject.extra["media3Version"] as String
     api("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-common:$media3Version")
+    implementation("androidx.media3:media3-exoplayer-hls:$media3Version") // HLS streaming support
 
     // Jellyfin's FFmpeg extension for DTS/DTS-HD/DTS:X/TrueHD audio decoding
     // Version must match Media3 version
