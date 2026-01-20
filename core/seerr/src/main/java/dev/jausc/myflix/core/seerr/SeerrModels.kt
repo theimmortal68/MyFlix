@@ -1000,7 +1000,6 @@ object NetworkColors {
 /**
  * Popular movie studios for browsing.
  * TMDB production company IDs with logo paths from TMDb.
- * Logo URLs use duotone filter: https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa){logoPath}
  */
 object PopularStudios {
     val studios = listOf(
@@ -1017,15 +1016,14 @@ object PopularStudios {
         SeerrStudio(41077, "A24", "/1ZXsGaFPgrgS6ZZGS37AqD5uU12.png"),
     )
 
-    /** Build the duotone filtered image URL for a logo */
+    /** Build the image URL for a studio logo */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
+        "https://image.tmdb.org/t/p/w500$logoPath"
 }
 
 /**
  * Popular TV networks for browsing.
  * TMDB network IDs with logo paths from TMDb.
- * Logo URLs use duotone filter: https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa){logoPath}
  */
 object PopularNetworks {
     val networks = listOf(
@@ -1053,9 +1051,9 @@ object PopularNetworks {
         SeerrNetwork(14, "PBS", "/qs66Qaw2OwTgVqfff2LPAAOxypG.png"),
     )
 
-    /** Build the duotone filtered image URL for a logo */
+    /** Build the image URL for a network logo */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
+        "https://image.tmdb.org/t/p/w500$logoPath"
 }
 
 /**

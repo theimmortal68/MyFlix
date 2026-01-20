@@ -52,6 +52,8 @@ import dev.jausc.myflix.tv.ui.screens.PersonDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrActorDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrCollectionDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByNetworkScreen
+import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByStudioScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverMoviesScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTrendingScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTvScreen
@@ -417,6 +419,14 @@ fun MyFlixTvApp() {
                             val encodedName = NavigationHelper.encodeNavArg(genreName)
                             navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
                         },
+                        onNavigateStudio = { studioId, studioName ->
+                            val encodedName = NavigationHelper.encodeNavArg(studioName)
+                            navController.navigate("seerr/studio/$studioId/$encodedName")
+                        },
+                        onNavigateNetwork = { networkId, networkName ->
+                            val encodedName = NavigationHelper.encodeNavArg(networkName)
+                            navController.navigate("seerr/network/$networkId/$encodedName")
+                        },
                         showUniversesInNav = universesEnabled,
                     )
                 }
@@ -540,6 +550,48 @@ fun MyFlixTvApp() {
                     mediaType = genreMediaType,
                     genreId = genreId,
                     genreName = genreName,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = "seerr/studio/{studioId}/{studioName}",
+                arguments = listOf(
+                    navArgument("studioId") { type = NavType.IntType },
+                    navArgument("studioName") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val studioId = backStackEntry.arguments?.getInt("studioId") ?: return@composable
+                val studioNameEncoded = backStackEntry.arguments?.getString("studioName") ?: ""
+                val studioName = NavigationHelper.decodeNavArg(studioNameEncoded)
+                SeerrDiscoverByStudioScreen(
+                    seerrClient = seerrClient,
+                    studioId = studioId,
+                    studioName = studioName,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = "seerr/network/{networkId}/{networkName}",
+                arguments = listOf(
+                    navArgument("networkId") { type = NavType.IntType },
+                    navArgument("networkName") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                val networkId = backStackEntry.arguments?.getInt("networkId") ?: return@composable
+                val networkNameEncoded = backStackEntry.arguments?.getString("networkName") ?: ""
+                val networkName = NavigationHelper.decodeNavArg(networkNameEncoded)
+                SeerrDiscoverByNetworkScreen(
+                    seerrClient = seerrClient,
+                    networkId = networkId,
+                    networkName = networkName,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },

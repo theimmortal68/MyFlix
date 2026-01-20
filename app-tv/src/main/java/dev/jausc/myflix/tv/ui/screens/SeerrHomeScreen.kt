@@ -366,7 +366,7 @@ fun SeerrHomeScreen(
                             media = media,
                             rtRating = heroRtRating,
                             imdbRating = heroImdbRating,
-                            modifier = Modifier.height(240.dp),
+                            modifier = Modifier.height(224.dp),
                         )
                     }
 
@@ -667,7 +667,7 @@ private fun SeerrHeroSection(
     imdbRating: SeerrImdbRating? = null,
     modifier: Modifier = Modifier,
 ) {
-    // Content overlay (left side, half screen width)
+    // Content overlay (title full width, other text half width)
     AnimatedContent(
         targetState = media,
         transitionSpec = {
@@ -675,7 +675,7 @@ private fun SeerrHeroSection(
                 fadeOut(animationSpec = tween(300))
         },
         label = "seerr_hero_content",
-        modifier = modifier.fillMaxWidth(0.5f),
+        modifier = modifier,
         contentAlignment = Alignment.TopStart,
     ) { currentMedia ->
         Column(
@@ -684,7 +684,10 @@ private fun SeerrHeroSection(
                 .padding(start = 48.dp, top = 36.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.Top,
         ) {
-                // Status badge
+            // Half-width modifier for non-title text
+            val halfWidthModifier = Modifier.fillMaxWidth(0.5f)
+
+            // Status badge
             val statusColor = when (currentMedia.availabilityStatus) {
                 SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
                 SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
@@ -732,10 +735,11 @@ private fun SeerrHeroSection(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Rating row with release date
+            // Rating row with release date (constrained to half width)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = halfWidthModifier,
             ) {
                 // Full release date formatted (e.g., "November 14, 2025")
                 currentMedia.displayReleaseDate?.let { dateStr ->
@@ -818,13 +822,14 @@ private fun SeerrHeroSection(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Overview
+            // Overview (constrained to half width)
             currentMedia.overview?.let { overview ->
                 Text(
                     text = overview,
                     style = MaterialTheme.typography.bodySmall,
                     color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     maxLines = 5,
+                    modifier = halfWidthModifier,
                 )
             }
         }
