@@ -297,9 +297,11 @@ fun PlayerScreen(
         }
     }
 
-    // Cleanup player resources (ViewModel handles playback stop reporting)
+    // Cleanup player resources and report playback stopped
     DisposableEffect(Unit) {
         onDispose {
+            // Report playback stopped BEFORE releasing player
+            viewModel.stopPlayback(playerController.state.value.position)
             playerController.stop()
             playerController.release()
             // Reset refresh rate when leaving player

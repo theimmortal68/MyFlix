@@ -301,13 +301,31 @@ class PlayerViewModel(
      * Report playback stopped.
      * Should be called synchronously on dispose (use runBlocking if needed).
      */
-    suspend fun reportPlaybackStopped(positionMs: Long) {
+    private suspend fun reportPlaybackStopped(positionMs: Long) {
         val positionTicks = positionMs * TICKS_PER_MS
         val mediaSourceId = _uiState.value.mediaSourceId
+        android.util.Log.d("PlayerViewModel", "reportPlaybackStopped: itemId=$currentItemId position=${positionMs}ms")
         jellyfinClient.reportPlaybackStopped(currentItemId, positionTicks, mediaSourceId = mediaSourceId)
 
         // Clear persisted session since we properly reported stop
         appPreferences?.clearActivePlaybackSession()
+        android.util.Log.d("PlayerViewModel", "reportPlaybackStopped: completed and cleared session")
+    }
+
+    /**
+     * Stop playback and report to server. Call this before navigation.
+     * Uses runBlocking to ensure the network call completes.
+     */
+    fun stopPlayback(currentPositionMs: Long) {
+        if (!playbackStarted) {
+            android.util.Log.d("PlayerViewModel", "stopPlayback: playback not started, skipping report")
+            return
+        }
+        android.util.Log.d("PlayerViewModel", "stopPlayback: reporting stop at ${currentPositionMs}ms")
+        kotlinx.coroutines.runBlocking {
+            reportPlaybackStopped(currentPositionMs)
+        }
+        playbackStarted = false // Prevent duplicate reporting in onCleared
     }
 
     fun setAudioStreamIndex(index: Int?) {
@@ -610,11 +628,15 @@ class PlayerViewModel(
         controlsHideJob?.cancel()
         countdownJob?.cancel()
 
-        // Report playback stopped synchronously to ensure it completes
+        // Report playback stopped if not already done via stopPlayback()
         if (playbackStarted && lastKnownPositionMs > 0) {
+            android.util.Log.d("PlayerViewModel", "onCleared: reporting stop (fallback)")
             kotlinx.coroutines.runBlocking {
                 reportPlaybackStopped(lastKnownPositionMs)
             }
+            playbackStarted = false
+        } else {
+            android.util.Log.d("PlayerViewModel", "onCleared: stop already reported or not started")
         }
 
         // Clear queue when player is destroyed
