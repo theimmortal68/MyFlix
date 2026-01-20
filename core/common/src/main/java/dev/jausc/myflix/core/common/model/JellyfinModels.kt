@@ -509,4 +509,54 @@ data class PlaybackInfoRequest(
     @SerialName("AllowVideoStreamCopy") val allowVideoStreamCopy: Boolean = true,
     @SerialName("AllowAudioStreamCopy") val allowAudioStreamCopy: Boolean = true,
     @SerialName("AutoOpenLiveStream") val autoOpenLiveStream: Boolean = true,
+    @SerialName("DeviceProfile") val deviceProfile: DeviceProfile? = null,
+)
+
+/**
+ * Device profile that tells the server what codecs and formats the client supports.
+ * The server uses this to decide whether to direct play or transcode.
+ */
+@Serializable
+data class DeviceProfile(
+    @SerialName("Name") val name: String = "MyFlix-Android",
+    @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Int? = null,
+    @SerialName("DirectPlayProfiles") val directPlayProfiles: List<DirectPlayProfile> = emptyList(),
+    @SerialName("TranscodingProfiles") val transcodingProfiles: List<TranscodingProfile> = emptyList(),
+    @SerialName("SubtitleProfiles") val subtitleProfiles: List<SubtitleProfile> = emptyList(),
+)
+
+/**
+ * Defines what formats/codecs can be played directly without transcoding.
+ */
+@Serializable
+data class DirectPlayProfile(
+    @SerialName("Type") val type: String = "Video",
+    @SerialName("Container") val container: String? = null,
+    @SerialName("VideoCodec") val videoCodec: String? = null,
+    @SerialName("AudioCodec") val audioCodec: String? = null,
+)
+
+/**
+ * Defines transcode targets when direct play is not possible.
+ */
+@Serializable
+data class TranscodingProfile(
+    @SerialName("Type") val type: String = "Video",
+    @SerialName("Container") val container: String = "ts",
+    @SerialName("VideoCodec") val videoCodec: String = "h264",
+    @SerialName("AudioCodec") val audioCodec: String = "aac,mp3",
+    @SerialName("Protocol") val protocol: String = "hls",
+    @SerialName("Context") val context: String = "Streaming",
+    @SerialName("MaxAudioChannels") val maxAudioChannels: Int? = null,
+    @SerialName("CopyTimestamps") val copyTimestamps: Boolean = false,
+    @SerialName("EnableSubtitlesInManifest") val enableSubtitlesInManifest: Boolean = true,
+)
+
+/**
+ * Defines subtitle format support.
+ */
+@Serializable
+data class SubtitleProfile(
+    @SerialName("Format") val format: String,
+    @SerialName("Method") val method: String,
 )

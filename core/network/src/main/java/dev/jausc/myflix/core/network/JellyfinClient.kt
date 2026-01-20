@@ -2,6 +2,8 @@ package dev.jausc.myflix.core.network
 
 import android.content.Context
 import dev.jausc.myflix.core.common.model.AuthResponse
+import dev.jausc.myflix.core.common.model.DeviceProfile
+import dev.jausc.myflix.core.common.model.DirectPlayProfile
 import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -10,6 +12,8 @@ import dev.jausc.myflix.core.common.model.MediaSegmentsResponse
 import dev.jausc.myflix.core.common.model.PlaybackInfoRequest
 import dev.jausc.myflix.core.common.model.PlaybackInfoResponse
 import dev.jausc.myflix.core.common.model.ServerInfo
+import dev.jausc.myflix.core.common.model.SubtitleProfile
+import dev.jausc.myflix.core.common.model.TranscodingProfile
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -1514,6 +1518,52 @@ class JellyfinClient(
         val isDirectPlay = maxBitrateMbps == null || maxBitrateMbps == 0
         val bitrateBps = if (isDirectPlay) null else maxBitrateMbps * 1_000_000
 
+        // Build device profile to tell server what codecs we support
+        // When transcoding is needed, only advertise H264 support to force HEVC transcoding
+        val deviceProfile = DeviceProfile(
+            name = "MyFlix-Android",
+            maxStreamingBitrate = bitrateBps,
+            directPlayProfiles = listOf(
+                DirectPlayProfile(
+                    type = "Video",
+                    container = "mp4,mkv,webm,m4v,mov,ts",
+                    // Only advertise H264 when we want transcoding - server will transcode HEVC
+                    videoCodec = if (isDirectPlay) "h264,hevc,vp8,vp9,av1" else "h264,vp8,vp9",
+                    audioCodec = "aac,mp3,ac3,eac3,flac,opus,vorbis,pcm",
+                ),
+                DirectPlayProfile(
+                    type = "Audio",
+                    container = "mp3,aac,flac,m4a,ogg,opus,wav",
+                ),
+            ),
+            transcodingProfiles = listOf(
+                TranscodingProfile(
+                    type = "Video",
+                    container = "ts",
+                    videoCodec = "h264",
+                    audioCodec = "aac,mp3,ac3",
+                    protocol = "hls",
+                    context = "Streaming",
+                    copyTimestamps = false,
+                    enableSubtitlesInManifest = true,
+                ),
+                TranscodingProfile(
+                    type = "Audio",
+                    container = "ts",
+                    videoCodec = "",
+                    audioCodec = "aac",
+                    protocol = "hls",
+                    context = "Streaming",
+                ),
+            ),
+            subtitleProfiles = listOf(
+                SubtitleProfile(format = "vtt", method = "Embed"),
+                SubtitleProfile(format = "srt", method = "External"),
+                SubtitleProfile(format = "ass", method = "External"),
+                SubtitleProfile(format = "ssa", method = "External"),
+            ),
+        )
+
         val request = PlaybackInfoRequest(
             mediaSourceId = mediaSourceId,
             maxStreamingBitrate = bitrateBps,
@@ -1525,6 +1575,7 @@ class JellyfinClient(
             allowVideoStreamCopy = isDirectPlay,
             allowAudioStreamCopy = isDirectPlay,
             autoOpenLiveStream = true,
+            deviceProfile = deviceProfile,
         )
 
         android.util.Log.d(
