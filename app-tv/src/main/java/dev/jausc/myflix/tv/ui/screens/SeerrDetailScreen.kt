@@ -227,10 +227,13 @@ fun SeerrDetailScreen(
             val result = if (currentMedia.isMovie) {
                 seerrClient.requestMovie(tmdbId, request4k)
             } else {
+                // For TV shows, Overseerr requires explicit season numbers
                 val seasonsToRequest = if (selectedSeasons.isNotEmpty()) {
                     selectedSeasons.toList()
                 } else {
-                    null // Request all seasons
+                    // Request all seasons - generate list [1, 2, ..., numberOfSeasons]
+                    val numSeasons = currentMedia.numberOfSeasons ?: 1
+                    (1..numSeasons).toList()
                 }
                 seerrClient.requestTVShow(tmdbId, seasonsToRequest, request4k)
             }
