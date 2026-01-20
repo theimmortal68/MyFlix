@@ -222,26 +222,38 @@ class JellyfinClient(
      * This enables remote control features (pause, stop, seek) from the Jellyfin dashboard.
      */
     suspend fun registerSessionCapabilities(): Result<Unit> = runCatching {
-        val body = SessionCapabilities(
-            playableMediaTypes = listOf("Audio", "Video"),
+        // Use ClientCapabilitiesDto schema - only include fields that exist in the API
+        val body = ClientCapabilitiesDto(
+            playableMediaTypes = listOf("Video", "Audio"),
             supportedCommands = listOf(
+                // Navigation
                 "MoveUp", "MoveDown", "MoveLeft", "MoveRight",
                 "PageUp", "PageDown",
+                "PreviousLetter", "NextLetter",
                 "Select", "Back",
-                "PlayMediaSource",
-                "PlayTrailers",
-                "PlayState",
+                // Playback control
+                "PlayState", "PlayNext", "Play",
+                "PlayMediaSource", "PlayTrailers",
+                "SetRepeatMode", "SetShuffleQueue", "SetPlaybackOrder",
+                // Volume
                 "Mute", "Unmute", "ToggleMute",
                 "SetVolume", "VolumeUp", "VolumeDown",
+                // Stream selection
                 "SetAudioStreamIndex", "SetSubtitleStreamIndex",
+                "SetMaxStreamingBitrate",
+                // UI
+                "ToggleOsd", "ToggleOsdMenu", "ToggleContextMenu", "ToggleFullscreen",
                 "DisplayContent", "DisplayMessage",
                 "GoHome", "GoToSettings", "GoToSearch",
-                "Seek",
+                // Misc
+                "SendKey", "SendString",
+                "ChannelUp", "ChannelDown", "Guide",
+                "ToggleStats",
             ),
             supportsMediaControl = true,
-            supportsPersistentIdentifier = true,
-            supportsSync = false,
+            supportsPersistentIdentifier = false, // Match Jellyfin Web behavior
         )
+        android.util.Log.d("JellyfinClient", "registerSessionCapabilities: sending ${body.supportedCommands.size} commands")
         val response = httpClient.post("$baseUrl/Sessions/Capabilities/Full") {
             header("Authorization", authHeader())
             setBody(body)
@@ -250,6 +262,7 @@ class JellyfinClient(
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
             android.util.Log.e("JellyfinClient", "registerSessionCapabilities failed: $errorBody")
+            throw Exception("Failed to register capabilities: ${response.status}")
         }
     }
 
@@ -1664,6 +1677,7 @@ class JellyfinClient(
         val streamUrl: String,
         val playSessionId: String?,
         val liveStreamId: String?,
+        val playMethod: String,
     )
 
     /**
@@ -1693,15 +1707,21 @@ class JellyfinClient(
             ?: throw Exception("No media sources available")
 
         val transcodingUrl = source.transcodingUrl
-        val streamUrl: String = if (!transcodingUrl.isNullOrBlank()) {
-            // Use transcoding URL if available (server determined we need transcode)
+
+        // Determine play method based on server response
+        val playMethod: String
+        val streamUrl: String
+
+        if (!transcodingUrl.isNullOrBlank()) {
+            // Server determined transcoding is needed
+            playMethod = "Transcode"
             val url = if (transcodingUrl.startsWith("http")) {
                 transcodingUrl
             } else {
                 "$baseUrl$transcodingUrl"
             }
             // Ensure API key is in URL
-            if (!url.contains("api_key=") && !url.contains("ApiKey=")) {
+            streamUrl = if (!url.contains("api_key=") && !url.contains("ApiKey=")) {
                 if (url.contains("?")) "$url&api_key=$accessToken"
                 else "$url?api_key=$accessToken"
             } else {
@@ -1709,7 +1729,7 @@ class JellyfinClient(
             }
         } else if (isTranscoding) {
             // Transcoding requested but no transcodingUrl returned - construct HLS URL directly
-            // Request H264 transcoding with auto stream copy disabled to force re-encode
+            playMethod = "Transcode"
             val bitrateBps = maxBitrateMbps * 1_000_000
             val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
             val params = buildList {
@@ -1724,9 +1744,10 @@ class JellyfinClient(
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
             }
-            "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
-        } else {
-            // Direct play/stream - use simple stream endpoint
+            streamUrl = "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
+        } else if (source.supportsDirectPlay) {
+            // Direct play - file can be played as-is
+            playMethod = "DirectPlay"
             val params = buildList {
                 add("Static=true")
                 add("api_key=$accessToken")
@@ -1735,11 +1756,39 @@ class JellyfinClient(
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
             }
-            "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
+            streamUrl = "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
+        } else if (source.supportsDirectStream) {
+            // Direct stream - container remuxing without transcoding
+            playMethod = "DirectStream"
+            val params = buildList {
+                add("Static=true")
+                add("api_key=$accessToken")
+                mediaSourceId?.let { add("MediaSourceId=$it") }
+                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+                playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
+            }
+            streamUrl = "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
+        } else {
+            // Fallback to transcode if nothing else is supported
+            playMethod = "Transcode"
+            val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
+            val params = buildList {
+                add("MediaSourceId=$actualMediaSourceId")
+                add("api_key=$accessToken")
+                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+                playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
+            }
+            streamUrl = "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
         }
 
-        android.util.Log.d("JellyfinClient", "getStreamUrlWithSession: $streamUrl liveStreamId=${source.liveStreamId}")
-        StreamUrlResult(streamUrl, playbackInfo.playSessionId, source.liveStreamId)
+        android.util.Log.d(
+            "JellyfinClient",
+            "getStreamUrlWithSession: playMethod=$playMethod supportsDirectPlay=${source.supportsDirectPlay} " +
+                "supportsDirectStream=${source.supportsDirectStream} transcodingUrl=${transcodingUrl != null}",
+        )
+        StreamUrlResult(streamUrl, playbackInfo.playSessionId, source.liveStreamId, playMethod)
     }
 
     // ==================== URL Helpers ====================
@@ -1981,12 +2030,11 @@ class JellyfinClient(
 // ==================== Session Capabilities ====================
 
 @Serializable
-private data class SessionCapabilities(
+private data class ClientCapabilitiesDto(
     @SerialName("PlayableMediaTypes") val playableMediaTypes: List<String>,
     @SerialName("SupportedCommands") val supportedCommands: List<String>,
     @SerialName("SupportsMediaControl") val supportsMediaControl: Boolean,
     @SerialName("SupportsPersistentIdentifier") val supportsPersistentIdentifier: Boolean,
-    @SerialName("SupportsSync") val supportsSync: Boolean,
 )
 
 // ==================== Playback Report Data Classes ====================

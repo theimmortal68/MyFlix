@@ -179,7 +179,6 @@ class PlayerViewModel(
 
                     // Get stream URL with proper session tracking (uses PlaybackInfo API)
                     val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
-                    val isTranscoding = maxBitrate != null
                     val streamResult = jellyfinClient.getStreamUrlWithSession(
                         itemId = currentItemId,
                         mediaSourceId = mediaSource?.id,
@@ -193,10 +192,11 @@ class PlayerViewModel(
                             streamUrl = jellyfinClient.getStreamUrl(currentItemId, selectedAudioIndex, selectedSubtitleIndex),
                             playSessionId = null,
                             liveStreamId = null,
+                            playMethod = "DirectPlay",
                         )
                     }
-                    val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
-                    val transcodeReasons = if (isTranscoding) listOf("ContainerBitrateExceedsLimit") else null
+                    // Use server-determined play method
+                    val playMethod = streamResult.playMethod
 
                     val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
@@ -219,7 +219,8 @@ class PlayerViewModel(
                             liveStreamId = streamResult.liveStreamId,
                             playMethod = playMethod,
                             maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
-                            transcodeReasons = transcodeReasons,
+                            // Server determines transcode reasons itself based on active job
+                            transcodeReasons = null,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
@@ -534,7 +535,6 @@ class PlayerViewModel(
 
                     // Get stream URL with proper session tracking (uses PlaybackInfo API)
                     val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
-                    val isTranscoding = maxBitrate != null
                     val streamResult = jellyfinClient.getStreamUrlWithSession(
                         itemId = newItemId,
                         mediaSourceId = mediaSource?.id,
@@ -547,10 +547,11 @@ class PlayerViewModel(
                             streamUrl = jellyfinClient.getStreamUrl(newItemId, selectedAudioIndex, selectedSubtitleIndex),
                             playSessionId = null,
                             liveStreamId = null,
+                            playMethod = "DirectPlay",
                         )
                     }
-                    val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
-                    val transcodeReasons = if (isTranscoding) listOf("ContainerBitrateExceedsLimit") else null
+                    // Use server-determined play method
+                    val playMethod = streamResult.playMethod
 
                     val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
@@ -571,7 +572,8 @@ class PlayerViewModel(
                             liveStreamId = streamResult.liveStreamId,
                             playMethod = playMethod,
                             maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
-                            transcodeReasons = transcodeReasons,
+                            // Server determines transcode reasons itself based on active job
+                            transcodeReasons = null,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
