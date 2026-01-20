@@ -1018,7 +1018,7 @@ object PopularStudios {
 
     /** Build the image URL for a studio logo */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/original$logoPath"
+        "https://media.themoviedb.org/t/p/original$logoPath"
 }
 
 /**
@@ -1031,10 +1031,10 @@ object PopularNetworks {
         SeerrNetwork(1024, "Amazon", "/ifhbNuuVnlwYy5oXA5VIb2YR8AZ.png"),
         SeerrNetwork(2739, "Disney+", "/gJ8VX6JSu3ciXHuC2dDGAo2lvwM.png"),
         SeerrNetwork(453, "Hulu", "/pqUTCleNUiTLAVlelGxUgWn1ELh.png"),
-        SeerrNetwork(3186, "Max", "/xEJItn5XWPvziq2iNxeEIyqezZI.png"),
-        SeerrNetwork(2552, "Apple TV+", "/4KAy34EHvRM25Ih8wb82AuiWN41.png"),
+        SeerrNetwork(3186, "Max", "/nmU0UMDJB3dRRQSTUqawzF2Od1a.png"),
+        SeerrNetwork(2552, "Apple TV+", "/bngHRFi794mnMq34gfVcm9nDxN1.png"),
         SeerrNetwork(4330, "Paramount+", "/fi83B1oztoS47xxcemFdPMhIzK.png"),
-        SeerrNetwork(3353, "Peacock", "/xTHltMrZPAJFLQ6qyCBjAnXSmZt.png"),
+        SeerrNetwork(3353, "Peacock", "/gIAcGTjKKr0KOHL5s4O36roJ8p7.png"),
         SeerrNetwork(16, "CBS", "/nm8d7P7MJNiBLdgIzUK0gkuEA4r.png"),
         SeerrNetwork(2, "ABC", "/ndAvF4JLsliGreX87jAc9GdjmJY.png"),
         SeerrNetwork(6, "NBC", "/o3OedEP0f9mfZr33jz2BfXOUK5.png"),
@@ -1042,18 +1042,18 @@ object PopularNetworks {
         SeerrNetwork(174, "AMC", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png"),
         SeerrNetwork(71, "The CW", "/ge9hzeaU7nMtQ4PjkFlc68dGAJ9.png"),
         SeerrNetwork(88, "FX", "/aexGjtcs42DgRtZh7zOxayiry4J.png"),
-        SeerrNetwork(41, "TNT", "/6ISsKwa2XUhSC6oBtHZjxf0u8FJ.png"),
+        SeerrNetwork(41, "TNT", "/6ISsKwa2XUhSC6oBtHZjYf6xFqv.png"),
         SeerrNetwork(30, "USA Network", "/g1e0H0Ka97IG5SyInMXdJkHGKiH.png"),
-        SeerrNetwork(84, "TBS", "/x1KIiZmYINmYFcIqMVLc1J7TBQn.png"),
+        SeerrNetwork(68, "TBS", "/65r0kR6MfOBYF0gEQsJGM6v5fEG.png"),
         SeerrNetwork(80, "Adult Swim", "/9AKyspxVzywuaMuZ1Bvilu8sXly.png"),
         SeerrNetwork(56, "Cartoon Network", "/c5OC6oVCg6QP4eqzW6XIq17CQjI.png"),
         SeerrNetwork(4, "BBC One", "/mVn7xESaTNmjBUyUtGNvDQd3CT1.png"),
-        SeerrNetwork(14, "PBS", "/qs66Qaw2OwTgVqfff2LPAAOxypG.png"),
+        SeerrNetwork(14, "PBS", "/4Fn4eQmEmJZ9YWjiIhZ6cF1QHAi.png"),
     )
 
     /** Build the image URL for a network logo */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/original$logoPath"
+        "https://media.themoviedb.org/t/p/original$logoPath"
 }
 
 /**

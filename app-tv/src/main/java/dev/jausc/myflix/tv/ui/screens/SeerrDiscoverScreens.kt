@@ -960,7 +960,7 @@ private suspend fun loadMoviesWithFilters(
     }
 
     // Add company (studio) filter
-    companyId?.let { params["company"] = it.toString() }
+    companyId?.let { params["studio"] = it.toString() }
 
     // Add minimum rating filter
     minRating?.let { params["voteAverageGte"] = it.toString() }
