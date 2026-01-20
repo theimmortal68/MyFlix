@@ -7,6 +7,8 @@ import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSegment
 import dev.jausc.myflix.core.common.model.MediaSegmentsResponse
+import dev.jausc.myflix.core.common.model.PlaybackInfoRequest
+import dev.jausc.myflix.core.common.model.PlaybackInfoResponse
 import dev.jausc.myflix.core.common.model.ServerInfo
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -1489,51 +1491,157 @@ class JellyfinClient(
         invalidateCache(CacheKeys.item(itemId), CacheKeys.Patterns.RESUME)
     }
 
+    // ==================== Playback Info API ====================
+
+    /**
+     * Get playback info from server, which determines if transcoding is needed
+     * and returns the appropriate stream URL.
+     *
+     * @param itemId The item to play
+     * @param mediaSourceId Optional media source ID
+     * @param audioStreamIndex Audio stream index to select
+     * @param subtitleStreamIndex Subtitle stream index to select
+     * @param maxBitrateMbps Max streaming bitrate in Mbps (null = unlimited/direct play)
+     * @return PlaybackInfoResponse with media sources and transcoding URLs
+     */
+    suspend fun getPlaybackInfo(
+        itemId: String,
+        mediaSourceId: String? = null,
+        audioStreamIndex: Int? = null,
+        subtitleStreamIndex: Int? = null,
+        maxBitrateMbps: Int? = null,
+    ): Result<PlaybackInfoResponse> = runCatching {
+        val isDirectPlay = maxBitrateMbps == null || maxBitrateMbps == 0
+        val bitrateBps = if (isDirectPlay) null else maxBitrateMbps * 1_000_000
+
+        val request = PlaybackInfoRequest(
+            mediaSourceId = mediaSourceId,
+            maxStreamingBitrate = bitrateBps,
+            audioStreamIndex = audioStreamIndex,
+            subtitleStreamIndex = subtitleStreamIndex,
+            enableDirectPlay = isDirectPlay,
+            enableDirectStream = isDirectPlay,
+            enableTranscoding = !isDirectPlay,
+            allowVideoStreamCopy = isDirectPlay,
+            allowAudioStreamCopy = isDirectPlay,
+            autoOpenLiveStream = true,
+        )
+
+        android.util.Log.d(
+            "JellyfinClient",
+            "getPlaybackInfo: POST $baseUrl/Items/$itemId/PlaybackInfo " +
+                "directPlay=$isDirectPlay bitrate=$bitrateBps",
+        )
+
+        val response = httpClient.post("$baseUrl/Items/$itemId/PlaybackInfo") {
+            header("Authorization", authHeader())
+            parameter("userId", userId)
+            setBody(request)
+        }
+
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            android.util.Log.e("JellyfinClient", "getPlaybackInfo failed: $errorBody")
+            throw Exception("PlaybackInfo failed: ${response.status}")
+        }
+
+        val playbackInfo: PlaybackInfoResponse = response.body()
+        android.util.Log.d(
+            "JellyfinClient",
+            "getPlaybackInfo: playSessionId=${playbackInfo.playSessionId} " +
+                "sources=${playbackInfo.mediaSources.size}",
+        )
+
+        // Log transcoding URL if present
+        playbackInfo.mediaSources.firstOrNull()?.let { source ->
+            android.util.Log.d(
+                "JellyfinClient",
+                "getPlaybackInfo: directPlay=${source.supportsDirectPlay} " +
+                    "directStream=${source.supportsDirectStream} " +
+                    "transcode=${source.supportsTranscoding} " +
+                    "transcodingUrl=${source.transcodingUrl?.take(100)}...",
+            )
+        }
+
+        playbackInfo
+    }
+
+    /**
+     * Get the stream URL for playback.
+     * Uses PlaybackInfo API when transcoding is needed for proper session tracking.
+     *
+     * @return Pair of (streamUrl, playSessionId)
+     */
+    suspend fun getStreamUrlWithSession(
+        itemId: String,
+        mediaSourceId: String? = null,
+        audioStreamIndex: Int? = null,
+        subtitleStreamIndex: Int? = null,
+        maxBitrateMbps: Int? = null,
+    ): Result<Pair<String, String?>> = runCatching {
+        val playbackInfo = getPlaybackInfo(
+            itemId = itemId,
+            mediaSourceId = mediaSourceId,
+            audioStreamIndex = audioStreamIndex,
+            subtitleStreamIndex = subtitleStreamIndex,
+            maxBitrateMbps = maxBitrateMbps,
+        ).getOrThrow()
+
+        val source = playbackInfo.mediaSources.firstOrNull()
+            ?: throw Exception("No media sources available")
+
+        val transcodingUrl = source.transcodingUrl
+        val streamUrl: String = if (!transcodingUrl.isNullOrBlank()) {
+            // Use transcoding URL if available (server determined we need transcode)
+            val url = if (transcodingUrl.startsWith("http")) {
+                transcodingUrl
+            } else {
+                "$baseUrl$transcodingUrl"
+            }
+            // Ensure API key is in URL
+            if (!url.contains("api_key=") && !url.contains("ApiKey=")) {
+                if (url.contains("?")) "$url&api_key=$accessToken"
+                else "$url?api_key=$accessToken"
+            } else {
+                url
+            }
+        } else {
+            // Direct play/stream - use simple stream endpoint
+            val params = buildList {
+                add("Static=true")
+                add("api_key=$accessToken")
+                mediaSourceId?.let { add("MediaSourceId=$it") }
+                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+                playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
+            }
+            "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
+        }
+
+        android.util.Log.d("JellyfinClient", "getStreamUrlWithSession: $streamUrl")
+        Pair(streamUrl, playbackInfo.playSessionId)
+    }
+
     // ==================== URL Helpers ====================
 
+    /** Simple stream URL for direct play (no bitrate limit) */
     fun getStreamUrl(itemId: String): String = getStreamUrl(itemId, null, null, null)
 
+    /** Simple stream URL builder - use getStreamUrlWithSession for transcoding support */
     fun getStreamUrl(
         itemId: String,
         audioStreamIndex: Int?,
         subtitleStreamIndex: Int?,
-        maxBitrateMbps: Int? = null,
+        @Suppress("UNUSED_PARAMETER") maxBitrateMbps: Int? = null,
     ): String {
-        // If no bitrate limit, use direct stream
-        // If bitrate limit set, use HLS transcoding endpoint
-        val isDirectStream = maxBitrateMbps == null || maxBitrateMbps == 0
-
-        return if (isDirectStream) {
-            // Direct stream - use simple stream endpoint
-            val params = buildList {
-                add("Static=true")
-                add("api_key=$accessToken")
-                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
-                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
-            }
-            "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
-        } else {
-            // Transcode via HLS - use main.m3u8 endpoint with bitrate limit
-            val bitrateBps = maxBitrateMbps * 1_000_000L
-            val playSessionId = java.util.UUID.randomUUID().toString().replace("-", "")
-            val params = buildList {
-                add("api_key=$accessToken")
-                add("DeviceId=$deviceId")
-                add("PlaySessionId=$playSessionId")
-                add("VideoBitrate=$bitrateBps")
-                add("AudioBitrate=384000") // 384kbps audio
-                add("MaxStreamingBitrate=$bitrateBps")
-                add("VideoCodec=h264")
-                add("AudioCodec=aac")
-                add("TranscodingMaxAudioChannels=6")
-                add("SegmentContainer=ts")
-                add("MinSegments=1")
-                add("BreakOnNonKeyFrames=true")
-                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
-                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
-            }
-            "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
+        // Simple direct stream URL - for transcoding, use getStreamUrlWithSession instead
+        val params = buildList {
+            add("Static=true")
+            add("api_key=$accessToken")
+            audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+            subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
         }
+        return "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
     }
 
     /**

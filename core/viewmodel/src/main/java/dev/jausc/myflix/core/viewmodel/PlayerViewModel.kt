@@ -161,9 +161,6 @@ class PlayerViewModel(
 
             jellyfinClient.getItem(currentItemId)
                 .onSuccess { loadedItem ->
-                    // Include max bitrate if set (0 = unlimited/direct play)
-                    val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
-                    val streamUrl = jellyfinClient.getStreamUrl(currentItemId, null, null, maxBitrate)
                     val mediaSource = loadedItem.mediaSources?.firstOrNull()
                     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
                     val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
@@ -173,6 +170,21 @@ class PlayerViewModel(
                     val queueItem = PlayQueueManager.getCurrentItem()?.takeIf { it.itemId == currentItemId }
                     val selectedAudioIndex = queueItem?.audioStreamIndex ?: defaultAudioIndex
                     val selectedSubtitleIndex = queueItem?.subtitleStreamIndex ?: defaultSubtitleIndex
+
+                    // Get stream URL with proper session tracking (uses PlaybackInfo API)
+                    val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
+                    val (streamUrl, _) = jellyfinClient.getStreamUrlWithSession(
+                        itemId = currentItemId,
+                        mediaSourceId = mediaSource?.id,
+                        audioStreamIndex = selectedAudioIndex,
+                        subtitleStreamIndex = selectedSubtitleIndex,
+                        maxBitrateMbps = maxBitrate,
+                    ).getOrElse {
+                        // Fallback to simple URL on error
+                        android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
+                        Pair(jellyfinClient.getStreamUrl(currentItemId, selectedAudioIndex, selectedSubtitleIndex), null)
+                    }
+
                     val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L
@@ -468,9 +480,6 @@ class PlayerViewModel(
         viewModelScope.launch {
             jellyfinClient.getItem(newItemId)
                 .onSuccess { loadedItem ->
-                    // Include max bitrate if set (0 = unlimited/direct play)
-                    val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
-                    val streamUrl = jellyfinClient.getStreamUrl(newItemId, null, null, maxBitrate)
                     val mediaSource = loadedItem.mediaSources?.firstOrNull()
                     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
                     val audioStreams = mediaStreams.filter { it.type == "Audio" }.sortedBy { it.index }
@@ -480,6 +489,20 @@ class PlayerViewModel(
                     val queueItem = PlayQueueManager.getCurrentItem()?.takeIf { it.itemId == newItemId }
                     val selectedAudioIndex = queueItem?.audioStreamIndex ?: defaultAudioIndex
                     val selectedSubtitleIndex = queueItem?.subtitleStreamIndex ?: defaultSubtitleIndex
+
+                    // Get stream URL with proper session tracking (uses PlaybackInfo API)
+                    val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
+                    val (streamUrl, _) = jellyfinClient.getStreamUrlWithSession(
+                        itemId = newItemId,
+                        mediaSourceId = mediaSource?.id,
+                        audioStreamIndex = selectedAudioIndex,
+                        subtitleStreamIndex = selectedSubtitleIndex,
+                        maxBitrateMbps = maxBitrate,
+                    ).getOrElse {
+                        android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
+                        Pair(jellyfinClient.getStreamUrl(newItemId, selectedAudioIndex, selectedSubtitleIndex), null)
+                    }
+
                     val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
                     } ?: 0L

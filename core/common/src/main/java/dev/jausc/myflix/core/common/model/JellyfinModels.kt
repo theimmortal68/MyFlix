@@ -114,6 +114,12 @@ data class MediaSource(
     @SerialName("Bitrate") val bitrate: Long? = null,
     @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
     @SerialName("MediaStreams") val mediaStreams: List<MediaStream>? = null,
+    // Playback capability flags (from PlaybackInfo response)
+    @SerialName("SupportsDirectPlay") val supportsDirectPlay: Boolean = true,
+    @SerialName("SupportsDirectStream") val supportsDirectStream: Boolean = true,
+    @SerialName("SupportsTranscoding") val supportsTranscoding: Boolean = true,
+    @SerialName("TranscodingUrl") val transcodingUrl: String? = null,
+    @SerialName("ETag") val eTag: String? = null,
 )
 
 @Serializable
@@ -164,7 +170,7 @@ data class JellyfinRemoteTrailer(
 
 @Serializable
 data class PlaybackInfoResponse(
-    @SerialName("MediaSources") val mediaSources: List<MediaSource>,
+    @SerialName("MediaSources") val mediaSources: List<MediaSource> = emptyList(),
     @SerialName("PlaySessionId") val playSessionId: String? = null,
 )
 
@@ -482,4 +488,25 @@ data class MediaSegment(
 @Serializable
 data class MediaSegmentsResponse(
     @SerialName("Items") val items: List<MediaSegment>,
+)
+
+// ==================== Playback Info API Models ====================
+
+/**
+ * Request body for POST /Items/{itemId}/PlaybackInfo
+ * Used to get proper streaming URLs with transcoding support.
+ */
+@Serializable
+data class PlaybackInfoRequest(
+    @SerialName("MediaSourceId") val mediaSourceId: String? = null,
+    @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Int? = null,
+    @SerialName("StartTimeTicks") val startTimeTicks: Long? = null,
+    @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
+    @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
+    @SerialName("EnableDirectPlay") val enableDirectPlay: Boolean = true,
+    @SerialName("EnableDirectStream") val enableDirectStream: Boolean = true,
+    @SerialName("EnableTranscoding") val enableTranscoding: Boolean = true,
+    @SerialName("AllowVideoStreamCopy") val allowVideoStreamCopy: Boolean = true,
+    @SerialName("AllowAudioStreamCopy") val allowAudioStreamCopy: Boolean = true,
+    @SerialName("AutoOpenLiveStream") val autoOpenLiveStream: Boolean = true,
 )
