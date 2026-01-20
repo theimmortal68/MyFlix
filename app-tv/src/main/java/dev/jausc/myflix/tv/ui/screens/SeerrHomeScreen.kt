@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,6 +76,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -1232,14 +1235,28 @@ private fun SeerrStudioCard(
             contentAlignment = Alignment.Center,
         ) {
             if (logoUrl != null) {
-                AsyncImage(
-                    model = logoUrl,
-                    contentDescription = studio.name,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentScale = ContentScale.Fit,
-                )
+                val painter = rememberAsyncImagePainter(model = logoUrl)
+                val state = painter.state.collectAsState().value
+
+                if (state is AsyncImagePainter.State.Error || state is AsyncImagePainter.State.Empty) {
+                    Text(
+                        text = studio.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        maxLines = 2,
+                    )
+                } else {
+                    Image(
+                        painter = painter,
+                        contentDescription = studio.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             } else {
                 Text(
                     text = studio.name,
@@ -1336,14 +1353,28 @@ private fun SeerrNetworkCard(
             contentAlignment = Alignment.Center,
         ) {
             if (logoUrl != null) {
-                AsyncImage(
-                    model = logoUrl,
-                    contentDescription = network.name,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentScale = ContentScale.Fit,
-                )
+                val painter = rememberAsyncImagePainter(model = logoUrl)
+                val state = painter.state.collectAsState().value
+
+                if (state is AsyncImagePainter.State.Error || state is AsyncImagePainter.State.Empty) {
+                    Text(
+                        text = network.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        maxLines = 2,
+                    )
+                } else {
+                    Image(
+                        painter = painter,
+                        contentDescription = network.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             } else {
                 Text(
                     text = network.name,
