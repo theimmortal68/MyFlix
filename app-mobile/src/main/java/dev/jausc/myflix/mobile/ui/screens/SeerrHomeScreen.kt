@@ -11,6 +11,7 @@
 
 package dev.jausc.myflix.mobile.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +65,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.rememberCoroutineScope
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
@@ -881,7 +884,7 @@ private fun MobileSeerrStudioCard(
             .height(70.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = Color.White,
         ),
     ) {
         Box(
@@ -889,20 +892,34 @@ private fun MobileSeerrStudioCard(
             contentAlignment = Alignment.Center,
         ) {
             if (logoUrl != null) {
-                AsyncImage(
-                    model = logoUrl,
-                    contentDescription = studio.name,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    contentScale = ContentScale.Fit,
-                )
+                val painter = rememberAsyncImagePainter(model = logoUrl)
+                val state = painter.state.collectAsState().value
+
+                if (state is AsyncImagePainter.State.Error || state is AsyncImagePainter.State.Empty) {
+                    Text(
+                        text = studio.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        maxLines = 2,
+                    )
+                } else {
+                    Image(
+                        painter = painter,
+                        contentDescription = studio.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             } else {
                 Text(
                     text = studio.name,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.Black,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )
@@ -957,7 +974,7 @@ private fun MobileSeerrNetworkBrowseRow(
 }
 
 /**
- * A card displaying a network with TMDb logo using duotone filter.
+ * A card displaying a network with TMDb logo.
  */
 @Composable
 private fun MobileSeerrNetworkCard(
@@ -973,7 +990,7 @@ private fun MobileSeerrNetworkCard(
             .height(70.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = Color.White,
         ),
     ) {
         Box(
@@ -981,20 +998,34 @@ private fun MobileSeerrNetworkCard(
             contentAlignment = Alignment.Center,
         ) {
             if (logoUrl != null) {
-                AsyncImage(
-                    model = logoUrl,
-                    contentDescription = network.name,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    contentScale = ContentScale.Fit,
-                )
+                val painter = rememberAsyncImagePainter(model = logoUrl)
+                val state = painter.state.collectAsState().value
+
+                if (state is AsyncImagePainter.State.Error || state is AsyncImagePainter.State.Empty) {
+                    Text(
+                        text = network.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        maxLines = 2,
+                    )
+                } else {
+                    Image(
+                        painter = painter,
+                        contentDescription = network.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             } else {
                 Text(
                     text = network.name,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.Black,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )

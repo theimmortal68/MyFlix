@@ -221,6 +221,62 @@ fun SeerrDiscoverByGenreScreen(
 }
 
 @Composable
+fun SeerrDiscoverByStudioScreen(
+    seerrClient: SeerrClient,
+    studioId: Int,
+    studioName: String,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    SeerrFilterableMediaListScreen(
+        title = studioName,
+        onBack = onBack,
+        seerrClient = seerrClient,
+        onMediaClick = onMediaClick,
+        filterConfig = DiscoverFilterConfig(
+            showGenreFilter = true,
+            showReleaseStatusFilter = true,
+            defaultMediaType = MediaTypeFilter.MOVIES,
+        ),
+        loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
+            loadMobileMoviesWithFilters(
+                seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear,
+                companyId = studioId,
+            )
+        },
+        genreMediaType = "movie",
+    )
+}
+
+@Composable
+fun SeerrDiscoverByNetworkScreen(
+    seerrClient: SeerrClient,
+    networkId: Int,
+    networkName: String,
+    onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    SeerrFilterableMediaListScreen(
+        title = networkName,
+        onBack = onBack,
+        seerrClient = seerrClient,
+        onMediaClick = onMediaClick,
+        filterConfig = DiscoverFilterConfig(
+            showGenreFilter = true,
+            showReleaseStatusFilter = true,
+            defaultMediaType = MediaTypeFilter.TV_SHOWS,
+        ),
+        loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
+            loadMobileTvWithFilters(
+                seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear,
+                networkId = networkId,
+            )
+        },
+        genreMediaType = "tv",
+    )
+}
+
+@Composable
 private fun SeerrMediaListScreen(
     title: String,
     onBack: () -> Unit,
@@ -1148,6 +1204,7 @@ private suspend fun loadMobileMoviesWithFilters(
     minRating: Float?,
     yearFrom: Int?,
     yearTo: Int?,
+    companyId: Int? = null,
 ): Result<SeerrDiscoverResult> {
     val params = mutableMapOf<String, String>()
 
@@ -1160,6 +1217,9 @@ private suspend fun loadMobileMoviesWithFilters(
     if (genreIds.isNotEmpty()) {
         params["genre"] = genreIds.joinToString(",")
     }
+
+    // Add company (studio) filter
+    companyId?.let { params["studio"] = it.toString() }
 
     // Add minimum rating filter
     minRating?.let { params["voteAverageGte"] = it.toString() }
@@ -1196,6 +1256,7 @@ private suspend fun loadMobileTvWithFilters(
     minRating: Float?,
     yearFrom: Int?,
     yearTo: Int?,
+    networkId: Int? = null,
 ): Result<SeerrDiscoverResult> {
     val params = mutableMapOf<String, String>()
 
@@ -1208,6 +1269,9 @@ private suspend fun loadMobileTvWithFilters(
     if (genreIds.isNotEmpty()) {
         params["genre"] = genreIds.joinToString(",")
     }
+
+    // Add network filter
+    networkId?.let { params["network"] = it.toString() }
 
     // Add minimum rating filter
     minRating?.let { params["voteAverageGte"] = it.toString() }
