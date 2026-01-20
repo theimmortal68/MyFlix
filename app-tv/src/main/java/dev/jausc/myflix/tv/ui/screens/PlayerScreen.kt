@@ -114,8 +114,6 @@ fun PlayerScreen(
     // Calculate skip durations in milliseconds
     val skipForwardMs = remember(skipForwardSeconds) { skipForwardSeconds * 1000L }
     val skipBackwardMs = remember(skipBackwardSeconds) { skipBackwardSeconds * 1000L }
-    val skipForwardLongMs = remember(skipForwardSeconds) { skipForwardSeconds * 6000L } // 6x for long seek
-    val skipBackwardLongMs = remember(skipBackwardSeconds) { skipBackwardSeconds * 6000L } // 6x for long seek
 
     // Get display mode preference
     val displayModeName by appPreferences.playerDisplayMode.collectAsState()
@@ -336,13 +334,7 @@ fun PlayerScreen(
                                 viewModel.showControls()
                                 true
                             }
-                            Key.DirectionUp -> {
-                                playerController.seekRelative(skipForwardLongMs)
-                                viewModel.showControls()
-                                true
-                            }
-                            Key.DirectionDown -> {
-                                playerController.seekRelative(-skipBackwardLongMs)
+                            Key.DirectionUp, Key.DirectionDown -> {
                                 viewModel.showControls()
                                 true
                             }
@@ -417,8 +409,6 @@ fun PlayerScreen(
                     onPlayPause = { playerController.togglePause() },
                     skipForwardMs = skipForwardMs,
                     skipBackwardMs = skipBackwardMs,
-                    skipForwardLongMs = skipForwardLongMs,
-                    skipBackwardLongMs = skipBackwardLongMs,
                     audioStreams = state.audioStreams,
                     subtitleStreams = state.subtitleStreams,
                     selectedAudioIndex = selectedAudioIndex,
@@ -668,8 +658,6 @@ private fun TvPlayerControlsOverlay(
     onPlayPause: () -> Unit,
     skipForwardMs: Long,
     skipBackwardMs: Long,
-    skipForwardLongMs: Long,
-    skipBackwardLongMs: Long,
     audioStreams: List<MediaStream>,
     subtitleStreams: List<MediaStream>,
     selectedAudioIndex: Int?,
@@ -1039,12 +1027,8 @@ private fun TvPlayerControlsOverlay(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            val longForwardSeconds = (skipForwardLongMs / 1000).toInt()
-            val longBackwardSeconds = (skipBackwardLongMs / 1000).toInt()
-            val longForwardLabel = if (longForwardSeconds >= 60) "${longForwardSeconds / 60}min" else "${longForwardSeconds}s"
-            val longBackwardLabel = if (longBackwardSeconds >= 60) "${longBackwardSeconds / 60}min" else "${longBackwardSeconds}s"
             Text(
-                text = "◀ -${skipBackwardLabel}s  |  ▶ +${skipForwardLabel}s  |  ▲ +$longForwardLabel  |  ▼ -$longBackwardLabel  |  OK Play/Pause",
+                text = "◀ -${skipBackwardLabel}s  |  ▶ +${skipForwardLabel}s  |  OK Play/Pause",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.align(Alignment.CenterHorizontally),
