@@ -1499,21 +1499,39 @@ class JellyfinClient(
         subtitleStreamIndex: Int?,
         maxBitrateMbps: Int? = null,
     ): String {
-        // If no bitrate limit, use direct stream (Static=true)
-        // If bitrate limit set, request transcoding with MaxStreamingBitrate
+        // If no bitrate limit, use direct stream
+        // If bitrate limit set, use HLS transcoding endpoint
         val isDirectStream = maxBitrateMbps == null || maxBitrateMbps == 0
-        val params = buildList {
-            add("Static=$isDirectStream")
-            add("api_key=$accessToken")
-            audioStreamIndex?.let { add("AudioStreamIndex=$it") }
-            subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
-            if (!isDirectStream && maxBitrateMbps != null) {
-                // Convert Mbps to bits per second
-                val bitrateBps = maxBitrateMbps * 1_000_000L
-                add("MaxStreamingBitrate=$bitrateBps")
+
+        return if (isDirectStream) {
+            // Direct stream - use simple stream endpoint
+            val params = buildList {
+                add("Static=true")
+                add("api_key=$accessToken")
+                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
             }
+            "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
+        } else {
+            // Transcode via HLS - use main.m3u8 endpoint which forces transcoding
+            val bitrateBps = maxBitrateMbps * 1_000_000L
+            val params = buildList {
+                add("api_key=$accessToken")
+                add("DeviceId=$deviceId")
+                add("VideoBitrate=$bitrateBps")
+                add("AudioBitrate=384000") // 384kbps audio
+                add("MaxStreamingBitrate=$bitrateBps")
+                add("VideoCodec=h264")
+                add("AudioCodec=aac")
+                add("TranscodingMaxAudioChannels=6")
+                add("SegmentContainer=ts")
+                add("MinSegments=1")
+                add("BreakOnNonKeyFrames=true")
+                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+            }
+            "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
         }
-        return "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
     }
 
     /**

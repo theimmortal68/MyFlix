@@ -305,7 +305,11 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
 
     override fun seekRelative(offsetMs: Long) {
         player?.let {
-            val newPosition = (it.currentPosition + offsetMs).coerceIn(0, it.duration)
+            val duration = it.duration
+            // Skip seek if duration is not yet known (C.TIME_UNSET = Long.MIN_VALUE + 1)
+            if (duration <= 0) return@let
+
+            val newPosition = (it.currentPosition + offsetMs).coerceIn(0, duration)
             it.seekTo(newPosition)
         }
     }
