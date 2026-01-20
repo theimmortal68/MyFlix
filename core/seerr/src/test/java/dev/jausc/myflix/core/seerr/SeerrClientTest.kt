@@ -369,7 +369,7 @@ class SeerrClientTest {
                         "name": "Test Show",
                         "overview": "A test show description",
                         "firstAirDate": "2023-06-01",
-                        "numberOfSeasons": 3
+                        "number_of_seasons": 3
                     }""",
                     headers = headersOf(HttpHeaders.ContentType, "application/json")
                 )
