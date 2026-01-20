@@ -8,8 +8,12 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dev.jausc.myflix.core.common.preferences.PreferenceKeys
 import dev.jausc.myflix.core.network.JellyfinClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = PreferenceKeys.DataStore.STORE_NAME
@@ -17,6 +21,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 
 class AppState(private val context: Context, val jellyfinClient: JellyfinClient) {
     val isLoggedIn: Boolean get() = jellyfinClient.isAuthenticated
+
+    // Coroutine scope for fire-and-forget operations
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Server manager for multi-server support
     val serverManager: ServerManager by lazy {
@@ -70,6 +77,8 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         if (active != null) {
             jellyfinClient.configure(active.serverUrl, active.accessToken, active.userId, deviceId)
             jellyfinClient.setServerContext(active.serverId)
+            // Register session capabilities for remote control support
+            jellyfinClient.registerSessionCapabilities()
         }
     }
 
@@ -173,6 +182,9 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         jellyfinClient.configure(serverUrl, accessToken, userId, jellyfinClient.deviceId)
         jellyfinClient.setServerContext(server.serverId)
 
+        // Register session capabilities for remote control support
+        jellyfinClient.registerSessionCapabilities()
+
         // Save Seerr credentials
         this.username = username
         this.password = password
@@ -192,6 +204,9 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         // Configure JellyfinClient with new server
         jellyfinClient.configure(server.serverUrl, server.accessToken, server.userId, jellyfinClient.deviceId)
         jellyfinClient.setServerContext(server.serverId)
+
+        // Register session capabilities for remote control support (fire and forget)
+        scope.launch { jellyfinClient.registerSessionCapabilities() }
 
         Log.d(TAG, "Switched to server: ${server.serverName}")
         return Result.success(server)

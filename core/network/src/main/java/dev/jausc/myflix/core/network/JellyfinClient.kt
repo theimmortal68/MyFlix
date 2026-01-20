@@ -217,6 +217,42 @@ class JellyfinClient(
         clearCache()
     }
 
+    /**
+     * Register session capabilities with the server.
+     * This enables remote control features (pause, stop, seek) from the Jellyfin dashboard.
+     */
+    suspend fun registerSessionCapabilities(): Result<Unit> = runCatching {
+        val body = SessionCapabilities(
+            playableMediaTypes = listOf("Audio", "Video"),
+            supportedCommands = listOf(
+                "MoveUp", "MoveDown", "MoveLeft", "MoveRight",
+                "PageUp", "PageDown",
+                "Select", "Back",
+                "PlayMediaSource",
+                "PlayTrailers",
+                "PlayState",
+                "Mute", "Unmute", "ToggleMute",
+                "SetVolume", "VolumeUp", "VolumeDown",
+                "SetAudioStreamIndex", "SetSubtitleStreamIndex",
+                "DisplayContent", "DisplayMessage",
+                "GoHome", "GoToSettings", "GoToSearch",
+                "Seek",
+            ),
+            supportsMediaControl = true,
+            supportsPersistentIdentifier = true,
+            supportsSync = false,
+        )
+        val response = httpClient.post("$baseUrl/Sessions/Capabilities/Full") {
+            header("Authorization", authHeader())
+            setBody(body)
+        }
+        android.util.Log.d("JellyfinClient", "registerSessionCapabilities: status=${response.status}")
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            android.util.Log.e("JellyfinClient", "registerSessionCapabilities failed: $errorBody")
+        }
+    }
+
     private val baseUrl: String get() = serverUrl ?: error("Server URL not set")
 
     private fun authHeader(token: String? = accessToken): String {
@@ -1921,6 +1957,17 @@ class JellyfinClient(
         invalidateCache(CacheKeys.Patterns.RESUME, CacheKeys.Patterns.NEXT_UP, CacheKeys.item(itemId))
     }
 }
+
+// ==================== Session Capabilities ====================
+
+@Serializable
+private data class SessionCapabilities(
+    @SerialName("PlayableMediaTypes") val playableMediaTypes: List<String>,
+    @SerialName("SupportedCommands") val supportedCommands: List<String>,
+    @SerialName("SupportsMediaControl") val supportsMediaControl: Boolean,
+    @SerialName("SupportsPersistentIdentifier") val supportsPersistentIdentifier: Boolean,
+    @SerialName("SupportsSync") val supportsSync: Boolean,
+)
 
 // ==================== Playback Report Data Classes ====================
 
