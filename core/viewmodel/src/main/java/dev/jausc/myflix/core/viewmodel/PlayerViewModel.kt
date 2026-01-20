@@ -59,6 +59,7 @@ data class PlayerUiState(
     val playSessionId: String? = null,
     val playMethod: String = "DirectPlay",
     val maxStreamingBitrate: Long? = null,
+    val transcodeReasons: List<String>? = null,
     // Queue/Auto-play state
     val showAutoPlayCountdown: Boolean = false,
     val nextQueueItem: QueueItem? = null,
@@ -190,6 +191,7 @@ class PlayerViewModel(
                         Pair(jellyfinClient.getStreamUrl(currentItemId, selectedAudioIndex, selectedSubtitleIndex), null)
                     }
                     val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
+                    val transcodeReasons = if (isTranscoding) listOf("ContainerBitrateExceedsLimit") else null
 
                     val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
@@ -211,6 +213,7 @@ class PlayerViewModel(
                             playSessionId = playSessionId,
                             playMethod = playMethod,
                             maxStreamingBitrate = maxBitrate?.let { it.toLong() * 1_000_000L },
+                            transcodeReasons = transcodeReasons,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
@@ -258,6 +261,7 @@ class PlayerViewModel(
                 audioStreamIndex = state.selectedAudioStreamIndex,
                 subtitleStreamIndex = state.selectedSubtitleStreamIndex,
                 maxStreamingBitrate = state.maxStreamingBitrate,
+                transcodeReasons = state.transcodeReasons,
             )
 
             // Persist active session for crash recovery
@@ -287,6 +291,7 @@ class PlayerViewModel(
                 audioStreamIndex = state.selectedAudioStreamIndex,
                 subtitleStreamIndex = state.selectedSubtitleStreamIndex,
                 maxStreamingBitrate = state.maxStreamingBitrate,
+                transcodeReasons = state.transcodeReasons,
             )
 
             // Update persisted session position for crash recovery
@@ -312,6 +317,7 @@ class PlayerViewModel(
                 audioStreamIndex = state.selectedAudioStreamIndex,
                 subtitleStreamIndex = state.selectedSubtitleStreamIndex,
                 maxStreamingBitrate = state.maxStreamingBitrate,
+                transcodeReasons = state.transcodeReasons,
             )
         }
     }
@@ -526,6 +532,7 @@ class PlayerViewModel(
                         Pair(jellyfinClient.getStreamUrl(newItemId, selectedAudioIndex, selectedSubtitleIndex), null)
                     }
                     val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
+                    val transcodeReasons = if (isTranscoding) listOf("ContainerBitrateExceedsLimit") else null
 
                     val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
@@ -545,6 +552,7 @@ class PlayerViewModel(
                             playSessionId = playSessionId,
                             playMethod = playMethod,
                             maxStreamingBitrate = maxBitrate?.let { it.toLong() * 1_000_000L },
+                            transcodeReasons = transcodeReasons,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,

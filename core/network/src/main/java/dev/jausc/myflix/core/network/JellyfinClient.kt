@@ -1818,6 +1818,7 @@ class JellyfinClient(
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
         maxStreamingBitrate: Long? = null,
+        transcodeReasons: List<String>? = null,
     ): Result<Unit> = runCatching {
         val sessionId = playSessionId ?: "${itemId}_${System.currentTimeMillis()}"
         currentPlaySessionId = sessionId
@@ -1833,6 +1834,7 @@ class JellyfinClient(
             audioStreamIndex = audioStreamIndex,
             subtitleStreamIndex = subtitleStreamIndex,
             maxStreamingBitrate = maxStreamingBitrate,
+            transcodeReasons = transcodeReasons,
         )
         android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing itemId=$itemId")
         val response = httpClient.post("$baseUrl/Sessions/Playing") {
@@ -1857,6 +1859,7 @@ class JellyfinClient(
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
         maxStreamingBitrate: Long? = null,
+        transcodeReasons: List<String>? = null,
     ): Result<Unit> = runCatching {
         val body = PlaybackProgressInfo(
             itemId = itemId,
@@ -1870,6 +1873,7 @@ class JellyfinClient(
             audioStreamIndex = audioStreamIndex,
             subtitleStreamIndex = subtitleStreamIndex,
             maxStreamingBitrate = maxStreamingBitrate,
+            transcodeReasons = transcodeReasons,
         )
         val response = httpClient.post("$baseUrl/Sessions/Playing/Progress") {
             header("Authorization", authHeader())
@@ -1933,6 +1937,7 @@ private data class PlaybackStartInfo(
     @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
     @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
     @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long? = null,
+    @SerialName("TranscodeReasons") val transcodeReasons: List<String>? = null,
 )
 
 @Serializable
@@ -1948,6 +1953,7 @@ private data class PlaybackProgressInfo(
     @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
     @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
     @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long? = null,
+    @SerialName("TranscodeReasons") val transcodeReasons: List<String>? = null,
 )
 
 @Serializable
