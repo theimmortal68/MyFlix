@@ -1518,8 +1518,10 @@ class JellyfinClient(
         val isDirectPlay = maxBitrateMbps == null || maxBitrateMbps == 0
         val bitrateBps = if (isDirectPlay) null else maxBitrateMbps * 1_000_000
 
-        // Build device profile to tell server what codecs we support
-        // When transcoding is needed, only advertise H264 support to force HEVC transcoding
+        // Build device profile to tell server what codecs we can accept
+        // DirectPlayProfiles = what we CAN play (transcoded output)
+        // TranscodingProfiles = what format to transcode TO
+        // Request flags control whether we want direct play or transcoding
         val deviceProfile = DeviceProfile(
             name = "MyFlix-Android",
             maxStreamingBitrate = bitrateBps,
@@ -1527,8 +1529,8 @@ class JellyfinClient(
                 DirectPlayProfile(
                     type = "Video",
                     container = "mp4,mkv,webm,m4v,mov,ts",
-                    // Only advertise H264 when we want transcoding - server will transcode HEVC
-                    videoCodec = if (isDirectPlay) "h264,hevc,vp8,vp9,av1" else "h264,vp8,vp9",
+                    // Include all codecs we can play (h264 is what we'll get from transcoding)
+                    videoCodec = "h264,hevc,vp8,vp9,av1",
                     audioCodec = "aac,mp3,ac3,eac3,flac,opus,vorbis,pcm",
                 ),
                 DirectPlayProfile(
@@ -1574,6 +1576,7 @@ class JellyfinClient(
             enableTranscoding = !isDirectPlay,
             allowVideoStreamCopy = isDirectPlay,
             allowAudioStreamCopy = isDirectPlay,
+            enableAutoStreamCopy = isDirectPlay, // Disable stream copy to force re-encode
             autoOpenLiveStream = true,
             deviceProfile = deviceProfile,
         )
@@ -1630,6 +1633,8 @@ class JellyfinClient(
         subtitleStreamIndex: Int? = null,
         maxBitrateMbps: Int? = null,
     ): Result<Pair<String, String?>> = runCatching {
+        val isTranscoding = maxBitrateMbps != null && maxBitrateMbps > 0
+
         val playbackInfo = getPlaybackInfo(
             itemId = itemId,
             mediaSourceId = mediaSourceId,
@@ -1656,6 +1661,23 @@ class JellyfinClient(
             } else {
                 url
             }
+        } else if (isTranscoding) {
+            // Transcoding requested but no transcodingUrl returned - construct HLS URL directly
+            // This forces the server to transcode via the HLS endpoint
+            val bitrateBps = maxBitrateMbps * 1_000_000
+            val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
+            val params = buildList {
+                add("api_key=$accessToken")
+                add("MediaSourceId=$actualMediaSourceId")
+                add("MaxStreamingBitrate=$bitrateBps")
+                add("VideoCodec=h264")
+                add("AudioCodec=aac,mp3,ac3")
+                add("TranscodingMaxAudioChannels=6")
+                audioStreamIndex?.let { add("AudioStreamIndex=$it") }
+                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+                playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
+            }
+            "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
         } else {
             // Direct play/stream - use simple stream endpoint
             val params = buildList {

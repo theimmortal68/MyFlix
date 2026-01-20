@@ -508,6 +508,7 @@ data class PlaybackInfoRequest(
     @SerialName("EnableTranscoding") val enableTranscoding: Boolean = true,
     @SerialName("AllowVideoStreamCopy") val allowVideoStreamCopy: Boolean = true,
     @SerialName("AllowAudioStreamCopy") val allowAudioStreamCopy: Boolean = true,
+    @SerialName("EnableAutoStreamCopy") val enableAutoStreamCopy: Boolean = true,
     @SerialName("AutoOpenLiveStream") val autoOpenLiveStream: Boolean = true,
     @SerialName("DeviceProfile") val deviceProfile: DeviceProfile? = null,
 )
