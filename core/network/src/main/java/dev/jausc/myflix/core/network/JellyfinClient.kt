@@ -1663,21 +1663,23 @@ class JellyfinClient(
             }
         } else if (isTranscoding) {
             // Transcoding requested but no transcodingUrl returned - construct HLS URL directly
-            // This forces the server to transcode via the HLS endpoint
+            // Use master.m3u8 with transcoding parameters (matches VoidTV/Elefin approach)
             val bitrateBps = maxBitrateMbps * 1_000_000
             val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
             val params = buildList {
-                add("api_key=$accessToken")
                 add("MediaSourceId=$actualMediaSourceId")
+                add("api_key=$accessToken")
                 add("MaxStreamingBitrate=$bitrateBps")
                 add("VideoCodec=h264")
-                add("AudioCodec=aac,mp3,ac3")
-                add("TranscodingMaxAudioChannels=6")
+                add("AudioCodec=aac,mp3")
+                add("TranscodingContainer=ts")
+                add("TranscodingProtocol=hls")
+                add("EnableAutoStreamCopy=true")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
             }
-            "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
+            "$baseUrl/Videos/$itemId/master.m3u8?${params.joinToString("&")}"
         } else {
             // Direct play/stream - use simple stream endpoint
             val params = buildList {
