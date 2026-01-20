@@ -376,8 +376,8 @@ fun SeerrHomeScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .focusRequester(contentFocusRequester),
-                        contentPadding = PaddingValues(top = 16.dp, bottom = 300.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 300.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         // Quick action buttons row
                         item(key = "quick_actions") {
