@@ -197,22 +197,22 @@ fun SeerrRequestsScreen(
             updatingRequestId = request.id
             actionMessage = null
 
-            // First cancel the request
+            // First delete media to remove from Sonarr/Radarr (must be done before canceling request)
+            val mediaId = request.media?.id
+            var mediaDeleted = false
+            if (mediaId != null) {
+                seerrClient.deleteMedia(mediaId)
+                    .onSuccess { mediaDeleted = true }
+                    .onFailure { /* Media might not exist in Sonarr/Radarr yet */ }
+            }
+
+            // Then cancel the request
             seerrClient.cancelRequest(request.id)
                 .onSuccess {
-                    // Then delete the media to remove from Sonarr/Radarr
-                    val mediaId = request.media?.id
-                    if (mediaId != null) {
-                        seerrClient.deleteMedia(mediaId)
-                            .onSuccess {
-                                actionMessage = "Request canceled and media removed"
-                            }
-                            .onFailure {
-                                // Request was canceled but media deletion failed
-                                actionMessage = "Request canceled (media removal failed)"
-                            }
+                    actionMessage = if (mediaDeleted) {
+                        "Request canceled and media removed"
                     } else {
-                        actionMessage = "Request canceled"
+                        "Request canceled"
                     }
                     loadRequests(pageToLoad = 1, append = false)
                 }

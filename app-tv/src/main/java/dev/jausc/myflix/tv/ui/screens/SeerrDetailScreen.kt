@@ -267,13 +267,17 @@ fun SeerrDetailScreen(
 
         scope.launch {
             isCanceling = true
+
+            // First delete media to remove from Sonarr/Radarr (must be done before canceling)
+            val mediaId = currentMedia.mediaInfo?.id
+            if (mediaId != null) {
+                seerrClient.deleteMedia(mediaId)
+                // Ignore failures - media might not be in Sonarr/Radarr yet
+            }
+
+            // Then cancel the request
             seerrClient.cancelRequest(activeRequest.id)
                 .onSuccess {
-                    // Delete media to remove from Sonarr/Radarr
-                    val mediaId = currentMedia.mediaInfo?.id
-                    if (mediaId != null) {
-                        seerrClient.deleteMedia(mediaId)
-                    }
                     // Refresh media to get updated status
                     val refreshResult = if (currentMedia.isMovie) {
                         seerrClient.getMovie(tmdbId)
