@@ -257,7 +257,7 @@ fun SeerrDetailScreen(
         }
     }
 
-    // Handle cancel request
+    // Handle cancel request - also deletes media from Sonarr/Radarr
     fun handleCancelRequest() {
         val currentMedia = media ?: return
         // Find an active (non-declined) request to cancel
@@ -269,6 +269,11 @@ fun SeerrDetailScreen(
             isCanceling = true
             seerrClient.cancelRequest(activeRequest.id)
                 .onSuccess {
+                    // Delete media to remove from Sonarr/Radarr
+                    val mediaId = currentMedia.mediaInfo?.id
+                    if (mediaId != null) {
+                        seerrClient.deleteMedia(mediaId)
+                    }
                     // Refresh media to get updated status
                     val refreshResult = if (currentMedia.isMovie) {
                         seerrClient.getMovie(tmdbId)

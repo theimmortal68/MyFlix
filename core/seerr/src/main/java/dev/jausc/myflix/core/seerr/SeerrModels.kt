@@ -40,7 +40,9 @@ data class SeerrMedia(
     val genreIds: List<Int>? = null,
     val genres: List<SeerrGenre>? = null,
     val runtime: Int? = null,
+    @SerialName("number_of_seasons")
     val numberOfSeasons: Int? = null,
+    @SerialName("number_of_episodes")
     val numberOfEpisodes: Int? = null,
     val mediaInfo: SeerrMediaInfo? = null,
     val credits: SeerrCredits? = null,

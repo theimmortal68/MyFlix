@@ -196,9 +196,24 @@ fun SeerrRequestsScreen(
         scope.launch {
             updatingRequestId = request.id
             actionMessage = null
+
+            // First cancel the request
             seerrClient.cancelRequest(request.id)
                 .onSuccess {
-                    actionMessage = "Request canceled"
+                    // Then delete the media to remove from Sonarr/Radarr
+                    val mediaId = request.media?.id
+                    if (mediaId != null) {
+                        seerrClient.deleteMedia(mediaId)
+                            .onSuccess {
+                                actionMessage = "Request canceled and media removed"
+                            }
+                            .onFailure {
+                                // Request was canceled but media deletion failed
+                                actionMessage = "Request canceled (media removal failed)"
+                            }
+                    } else {
+                        actionMessage = "Request canceled"
+                    }
                     loadRequests(pageToLoad = 1, append = false)
                 }
                 .onFailure { actionMessage = it.message ?: "Failed to cancel request" }
@@ -535,145 +550,155 @@ private fun CompactRequestRow(
     val canDecline = showAdminActions && request.isPendingApproval
     val canCancel = request.status != SeerrRequestStatus.DECLINED
 
-    Surface(
-        onClick = onClick,
+    // Use Column to separate the clickable info row from the focusable action buttons
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        // Clickable info row - navigates to detail
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+            colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = TvColors.Surface,
+                focusedContainerColor = TvColors.FocusedSurface,
+            ),
+            scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
         ) {
-            // Title (or loading placeholder)
-            Text(
-                text = mediaTitle ?: "Loading...",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (mediaTitle != null) TvColors.TextPrimary else TvColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-
-            // Media type badge
-            Box(
+            Row(
                 modifier = Modifier
-                    .background(
-                        color = if (mediaType == "movie") Color(0xFF8B5CF6) else Color(0xFF60A5FA),
-                        shape = RoundedCornerShape(4.dp),
-                    )
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // Title (or loading placeholder)
                 Text(
-                    text = if (mediaType == "movie") "Movie" else "TV",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                )
-            }
-
-            // Request status badge
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = statusColor.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(4.dp),
-                    )
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = statusColor,
-                )
-            }
-
-            // Availability badge
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = availabilityColor.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(4.dp),
-                    )
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = availabilityText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = availabilityColor,
-                )
-            }
-
-            // Requester
-            request.requestedBy?.name?.let { requester ->
-                Text(
-                    text = requester,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TvColors.TextSecondary,
+                    text = mediaTitle ?: "Loading...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (mediaTitle != null) TvColors.TextPrimary else TvColors.TextSecondary,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-            }
 
-            // Action buttons (inline)
-            if (canApprove || canDecline || canCancel) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (canApprove) {
-                        Button(
-                            onClick = onApprove,
-                            enabled = !isUpdating,
-                            modifier = Modifier.height(20.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
-                            colors = ButtonDefaults.colors(
-                                containerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
-                                contentColor = Color(0xFF22C55E),
-                                focusedContainerColor = Color(0xFF22C55E),
-                                focusedContentColor = Color.White,
-                            ),
-                        ) {
-                            Text("Approve", style = MaterialTheme.typography.labelSmall)
-                        }
+                // Media type badge
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = if (mediaType == "movie") Color(0xFF8B5CF6) else Color(0xFF60A5FA),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = if (mediaType == "movie") "Movie" else "TV",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+
+                // Request status badge
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = statusColor.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                    )
+                }
+
+                // Availability badge
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = availabilityColor.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = availabilityText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = availabilityColor,
+                    )
+                }
+
+                // Requester
+                request.requestedBy?.name?.let { requester ->
+                    Text(
+                        text = requester,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TvColors.TextSecondary,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+
+        // Action buttons - separate from Surface so they can receive D-pad focus
+        if (canApprove || canDecline || canCancel) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (canApprove) {
+                    Button(
+                        onClick = onApprove,
+                        enabled = !isUpdating,
+                        modifier = Modifier.height(28.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
+                            contentColor = Color(0xFF22C55E),
+                            focusedContainerColor = Color(0xFF22C55E),
+                            focusedContentColor = Color.White,
+                        ),
+                    ) {
+                        Text("Approve", style = MaterialTheme.typography.labelSmall)
                     }
-                    if (canDecline) {
-                        Button(
-                            onClick = onDecline,
-                            enabled = !isUpdating,
-                            modifier = Modifier.height(20.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
-                            colors = ButtonDefaults.colors(
-                                containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
-                                contentColor = Color(0xFFEF4444),
-                                focusedContainerColor = Color(0xFFEF4444),
-                                focusedContentColor = Color.White,
-                            ),
-                        ) {
-                            Text("Decline", style = MaterialTheme.typography.labelSmall)
-                        }
+                }
+                if (canDecline) {
+                    Button(
+                        onClick = onDecline,
+                        enabled = !isUpdating,
+                        modifier = Modifier.height(28.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                            contentColor = Color(0xFFEF4444),
+                            focusedContainerColor = Color(0xFFEF4444),
+                            focusedContentColor = Color.White,
+                        ),
+                    ) {
+                        Text("Decline", style = MaterialTheme.typography.labelSmall)
                     }
-                    if (canCancel) {
-                        Button(
-                            onClick = onCancel,
-                            enabled = !isUpdating,
-                            modifier = Modifier.height(20.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                            scale = ButtonDefaults.scale(focusedScale = 1f),
-                            colors = ButtonDefaults.colors(
-                                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                                contentColor = TvColors.TextPrimary,
-                                focusedContainerColor = TvColors.BluePrimary,
-                                focusedContentColor = Color.White,
-                            ),
-                        ) {
-                            Text("Cancel", style = MaterialTheme.typography.labelSmall)
-                        }
+                }
+                if (canCancel) {
+                    Button(
+                        onClick = onCancel,
+                        enabled = !isUpdating,
+                        modifier = Modifier.height(28.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                            contentColor = Color(0xFFEF4444),
+                            focusedContainerColor = Color(0xFFEF4444),
+                            focusedContentColor = Color.White,
+                        ),
+                    ) {
+                        Text("Cancel", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }

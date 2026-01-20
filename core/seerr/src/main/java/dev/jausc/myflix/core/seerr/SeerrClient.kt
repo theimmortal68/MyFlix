@@ -938,6 +938,20 @@ class SeerrClient(
     }
 
     /**
+     * Delete media from Jellyseerr/Overseerr.
+     * This also removes the media from Sonarr/Radarr when properly configured.
+     *
+     * @param mediaId The internal Jellyseerr media ID (from mediaInfo.id, not tmdbId)
+     */
+    suspend fun deleteMedia(mediaId: Int): Result<Unit> = runCatching {
+        requireAuth()
+        val response = httpClient.delete("$baseUrl/api/v1/media/$mediaId")
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to delete media: ${response.status}")
+        }
+    }
+
+    /**
      * Approve a request (admin).
      */
     suspend fun approveRequest(requestId: Int): Result<SeerrRequest> = runCatching {
