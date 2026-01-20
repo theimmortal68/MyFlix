@@ -670,7 +670,7 @@ fun MyFlixTvApp() {
                     seerrClient = seerrClient,
                     onBack = { navController.popBackStack() },
                     onNavigateToDetail = { tmdbId, mediaType ->
-                        navController.navigate("seerr/detail/$tmdbId/$mediaType")
+                        navController.navigate("seerr/$mediaType/$tmdbId")
                     },
                 )
             }
