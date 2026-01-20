@@ -58,6 +58,7 @@ import androidx.tv.material3.*
 import androidx.tv.material3.Border
 import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
 import dev.jausc.myflix.core.common.model.subtitleLabel
@@ -102,6 +103,10 @@ fun PlayerScreen(
     val preferredSubtitleLanguage by appPreferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by appPreferences.maxStreamingBitrate.collectAsState()
     val skipDurationSeconds by appPreferences.skipDurationSeconds.collectAsState()
+
+    // Get skip mode preferences (OFF, ASK, AUTO)
+    val skipIntroMode by appPreferences.skipIntroMode.collectAsState()
+    val skipCreditsMode by appPreferences.skipCreditsMode.collectAsState()
 
     // Calculate skip durations in milliseconds
     val skipStepMs = remember(skipDurationSeconds) { skipDurationSeconds * 1000L }
@@ -422,8 +427,27 @@ fun PlayerScreen(
                 )
             }
 
-            // Skip segment button (intro/outro)
-            if (state.activeSegment != null && !state.showControls && !state.showAutoPlayCountdown) {
+            // Skip segment button (intro/outro) - respects user preferences
+            val activeSegment = state.activeSegment
+            val currentSkipMode = when (activeSegment?.type) {
+                MediaSegmentType.Intro -> skipIntroMode
+                MediaSegmentType.Outro -> skipCreditsMode
+                else -> "OFF"
+            }
+
+            // Auto-skip: automatically skip when entering a segment and mode is AUTO
+            LaunchedEffect(activeSegment?.id, currentSkipMode) {
+                if (activeSegment != null && currentSkipMode == "AUTO") {
+                    viewModel.getSkipTargetMs()?.let { targetMs ->
+                        playerController.seekTo(targetMs)
+                    }
+                }
+            }
+
+            // Show skip button only when mode is ASK
+            if (activeSegment != null && currentSkipMode == "ASK" &&
+                !state.showControls && !state.showAutoPlayCountdown
+            ) {
                 SkipSegmentButton(
                     label = viewModel.getSkipButtonLabel(),
                     onSkip = {

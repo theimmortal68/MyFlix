@@ -76,6 +76,26 @@ abstract class AppPreferences(context: Context) {
     }
     val playerDisplayMode: StateFlow<String> by lazy { _playerDisplayMode.asStateFlow() }
 
+    // Media Segment Preferences (skip intro/credits)
+    // Values: "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
+    private val _skipIntroMode: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.SKIP_INTRO_MODE, PreferenceKeys.Defaults.SKIP_INTRO_MODE)
+                ?: PreferenceKeys.Defaults.SKIP_INTRO_MODE
+        )
+    }
+    /** Skip intro mode: OFF (disabled), ASK (show button), AUTO (skip automatically). */
+    val skipIntroMode: StateFlow<String> by lazy { _skipIntroMode.asStateFlow() }
+
+    private val _skipCreditsMode: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.SKIP_CREDITS_MODE, PreferenceKeys.Defaults.SKIP_CREDITS_MODE)
+                ?: PreferenceKeys.Defaults.SKIP_CREDITS_MODE
+        )
+    }
+    /** Skip credits mode: OFF (disabled), ASK (show button), AUTO (skip automatically). */
+    val skipCreditsMode: StateFlow<String> by lazy { _skipCreditsMode.asStateFlow() }
+
     // Subtitle Styling Preferences
     private val _subtitleFontSize: MutableStateFlow<String> by lazy {
         MutableStateFlow(prefs.getString(PreferenceKeys.Prefs.SUBTITLE_FONT_SIZE, PreferenceKeys.Defaults.SUBTITLE_FONT_SIZE) ?: PreferenceKeys.Defaults.SUBTITLE_FONT_SIZE)
@@ -254,6 +274,26 @@ abstract class AppPreferences(context: Context) {
     fun setPlayerDisplayMode(mode: String) {
         prefs.edit().putString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, mode).apply()
         _playerDisplayMode.value = mode
+    }
+
+    // Media segment setters
+
+    /**
+     * Set the skip intro behavior.
+     * @param mode "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
+     */
+    fun setSkipIntroMode(mode: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.SKIP_INTRO_MODE, mode).apply()
+        _skipIntroMode.value = mode
+    }
+
+    /**
+     * Set the skip credits behavior.
+     * @param mode "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
+     */
+    fun setSkipCreditsMode(mode: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.SKIP_CREDITS_MODE, mode).apply()
+        _skipCreditsMode.value = mode
     }
 
     // Subtitle styling setters

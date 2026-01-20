@@ -110,6 +110,8 @@ fun SettingsScreen(
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
+    val skipIntroMode by preferences.skipIntroMode.collectAsState()
+    val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -125,6 +127,8 @@ fun SettingsScreen(
     // Dialog state
     var showGenreDialog by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
+    var showSkipIntroModeDialog by remember { mutableStateOf(false) }
+    var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
 
     // Load available options when needed
     LaunchedEffect(showGenreRows, showCollections) {
@@ -190,6 +194,32 @@ fun SettingsScreen(
             },
             onRemoveServer = { serverId ->
                 appState.removeServer(serverId)
+            },
+        )
+    }
+
+    // Skip intro mode dialog
+    if (showSkipIntroModeDialog) {
+        SkipModeSelectionDialog(
+            title = "Skip Intro",
+            currentSelection = skipIntroMode,
+            onDismiss = { showSkipIntroModeDialog = false },
+            onSelect = { mode ->
+                preferences.setSkipIntroMode(mode)
+                showSkipIntroModeDialog = false
+            },
+        )
+    }
+
+    // Skip credits mode dialog
+    if (showSkipCreditsModeDialog) {
+        SkipModeSelectionDialog(
+            title = "Skip Credits",
+            currentSelection = skipCreditsMode,
+            onDismiss = { showSkipCreditsModeDialog = false },
+            onSelect = { mode ->
+                preferences.setSkipCreditsMode(mode)
+                showSkipCreditsModeDialog = false
             },
         )
     }
@@ -373,6 +403,22 @@ fun SettingsScreen(
                         iconTint = if (useTrailerFallback) Color(0xFF38BDF8) else MaterialTheme.colorScheme.onSurfaceVariant,
                         checked = useTrailerFallback,
                         onCheckedChange = { preferences.setUseTrailerFallback(it) },
+                    )
+                    SettingsDivider()
+                    ActionSettingItem(
+                        title = "Skip Intro",
+                        description = getSkipModeDisplayName(skipIntroMode),
+                        icon = Icons.Outlined.Schedule,
+                        iconTint = if (skipIntroMode != "OFF") Color(0xFF22C55E) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { showSkipIntroModeDialog = true },
+                    )
+                    SettingsDivider()
+                    ActionSettingItem(
+                        title = "Skip Credits",
+                        description = getSkipModeDisplayName(skipCreditsMode),
+                        icon = Icons.Outlined.Schedule,
+                        iconTint = if (skipCreditsMode != "OFF") Color(0xFFF97316) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { showSkipCreditsModeDialog = true },
                     )
                 }
             }
@@ -1266,3 +1312,94 @@ private data class UpdateItemState(
     val iconTint: Color,
     val isClickable: Boolean,
 )
+
+// Skip mode options (OFF, ASK, AUTO)
+private val SKIP_MODE_OPTIONS = listOf(
+    "OFF" to "Off",
+    "ASK" to "Ask (show button)",
+    "AUTO" to "Auto (skip automatically)",
+)
+
+/**
+ * Get display name for a skip mode value.
+ */
+private fun getSkipModeDisplayName(mode: String): String {
+    return SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
+}
+
+@Composable
+private fun SkipModeSelectionDialog(
+    title: String,
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Choose behavior when segment is detected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                SKIP_MODE_OPTIONS.forEach { (mode, label) ->
+                    val isSelected = mode == currentSelection
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) Color(0xFF22C55E).copy(alpha = 0.15f) else Color.Transparent
+                            )
+                            .clickable { onSelect(mode) }
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Radio-style indicator
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) Color(0xFF22C55E) else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.White)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSelected) Color(0xFF22C55E) else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}

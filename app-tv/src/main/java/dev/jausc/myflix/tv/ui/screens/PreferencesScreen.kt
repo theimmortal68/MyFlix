@@ -111,6 +111,8 @@ fun PreferencesScreen(
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
+    val skipIntroMode by preferences.skipIntroMode.collectAsState()
+    val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
@@ -134,6 +136,8 @@ fun PreferencesScreen(
     var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
     var showBitrateDialog by remember { mutableStateOf(false) }
     var showSkipDurationDialog by remember { mutableStateOf(false) }
+    var showSkipIntroModeDialog by remember { mutableStateOf(false) }
+    var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -208,6 +212,10 @@ fun PreferencesScreen(
                 onUseMpvPlayerChanged = { preferences.setUseMpvPlayer(it) },
                 useTrailerFallback = useTrailerFallback,
                 onUseTrailerFallbackChanged = { preferences.setUseTrailerFallback(it) },
+                skipIntroMode = skipIntroMode,
+                onEditSkipIntroMode = { showSkipIntroModeDialog = true },
+                skipCreditsMode = skipCreditsMode,
+                onEditSkipCreditsMode = { showSkipCreditsModeDialog = true },
                 preferredAudioLanguage = preferredAudioLanguage,
                 onEditAudioLanguage = { showAudioLanguageDialog = true },
                 preferredSubtitleLanguage = preferredSubtitleLanguage,
@@ -341,6 +349,32 @@ fun PreferencesScreen(
             },
         )
     }
+
+    // Skip Intro Mode Selection Dialog
+    if (showSkipIntroModeDialog) {
+        SkipModeSelectionDialog(
+            title = "Skip Intro",
+            currentSelection = skipIntroMode,
+            onDismiss = { showSkipIntroModeDialog = false },
+            onSelect = { mode ->
+                preferences.setSkipIntroMode(mode)
+                showSkipIntroModeDialog = false
+            },
+        )
+    }
+
+    // Skip Credits Mode Selection Dialog
+    if (showSkipCreditsModeDialog) {
+        SkipModeSelectionDialog(
+            title = "Skip Credits",
+            currentSelection = skipCreditsMode,
+            onDismiss = { showSkipCreditsModeDialog = false },
+            onSelect = { mode ->
+                preferences.setSkipCreditsMode(mode)
+                showSkipCreditsModeDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -357,6 +391,10 @@ private fun PreferencesContent(
     onUseMpvPlayerChanged: (Boolean) -> Unit,
     useTrailerFallback: Boolean,
     onUseTrailerFallbackChanged: (Boolean) -> Unit,
+    skipIntroMode: String,
+    onEditSkipIntroMode: () -> Unit,
+    skipCreditsMode: String,
+    onEditSkipCreditsMode: () -> Unit,
     preferredAudioLanguage: String?,
     onEditAudioLanguage: () -> Unit,
     preferredSubtitleLanguage: String?,
@@ -549,6 +587,22 @@ private fun PreferencesContent(
                     iconTint = if (useTrailerFallback) Color(0xFF38BDF8) else TvColors.TextSecondary,
                     checked = useTrailerFallback,
                     onCheckedChange = onUseTrailerFallbackChanged,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Skip Intro",
+                    description = getSkipModeDisplayName(skipIntroMode),
+                    icon = Icons.Outlined.Schedule,
+                    iconTint = if (skipIntroMode != "OFF") Color(0xFF22C55E) else TvColors.TextSecondary,
+                    onClick = onEditSkipIntroMode,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Skip Credits",
+                    description = getSkipModeDisplayName(skipCreditsMode),
+                    icon = Icons.Outlined.Schedule,
+                    iconTint = if (skipCreditsMode != "OFF") Color(0xFFF97316) else TvColors.TextSecondary,
+                    onClick = onEditSkipCreditsMode,
                 )
                 PreferenceDivider()
                 ActionPreferenceItem(
@@ -2233,6 +2287,158 @@ private fun SkipDurationItem(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) Color(0xFF60A5FA) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+// Skip mode options (OFF, ASK, AUTO)
+private val SKIP_MODE_OPTIONS = listOf(
+    "OFF" to "Off",
+    "ASK" to "Ask (show button)",
+    "AUTO" to "Auto (skip automatically)",
+)
+
+/**
+ * Get display name for a skip mode value.
+ */
+private fun getSkipModeDisplayName(mode: String): String {
+    return SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
+}
+
+@Composable
+private fun SkipModeSelectionDialog(
+    title: String,
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TvColors.Surface)
+                .padding(24.dp),
+        ) {
+            // Title
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            // Subtitle
+            Text(
+                text = "Choose behavior when segment is detected",
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            // Mode list
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(max = 200.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(SKIP_MODE_OPTIONS.size) { index ->
+                    val (mode, label) = SKIP_MODE_OPTIONS[index]
+                    val isSelected = mode == currentSelection
+
+                    SkipModeItem(
+                        label = label,
+                        isSelected = isSelected,
+                        onClick = { onSelect(mode) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkipModeItem(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFF22C55E).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFF22C55E), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Mode label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFF22C55E) else TvColors.TextPrimary,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }

@@ -86,6 +86,13 @@ object PreferenceKeys {
         /** Player display mode (FIT, FILL, ZOOM, STRETCH) */
         const val PLAYER_DISPLAY_MODE = "player_display_mode"
 
+        // Media segment preferences (skip intro/credits)
+        /** Skip intro behavior: OFF, ASK, AUTO */
+        const val SKIP_INTRO_MODE = "skip_intro_mode"
+
+        /** Skip credits behavior: OFF, ASK, AUTO */
+        const val SKIP_CREDITS_MODE = "skip_credits_mode"
+
         // Subtitle styling preferences
         /** Subtitle font size (SMALL, MEDIUM, LARGE, EXTRA_LARGE) */
         const val SUBTITLE_FONT_SIZE = "subtitle_font_size"
@@ -191,6 +198,9 @@ object PreferenceKeys {
         const val SKIP_DURATION_SECONDS = 10
         /** Default to FIT (letterbox/pillarbox) */
         const val PLAYER_DISPLAY_MODE = "FIT"
+        // Media segment defaults (OFF, ASK, AUTO)
+        const val SKIP_INTRO_MODE = "ASK"
+        const val SKIP_CREDITS_MODE = "ASK"
         // Subtitle styling defaults
         const val SUBTITLE_FONT_SIZE = "MEDIUM"
         const val SUBTITLE_FONT_COLOR = "WHITE"
