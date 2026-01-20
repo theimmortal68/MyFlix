@@ -166,20 +166,8 @@ fun PlayerScreen(
 
     val selectedAudioIndex = state.selectedAudioStreamIndex
     val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
-    val effectiveStreamUrl = remember(
-        state.streamUrl,
-        state.item?.id,
-        selectedAudioIndex,
-        selectedSubtitleIndex,
-        currentBitrate,
-    ) {
-        val item = state.item
-        if (state.streamUrl == null || item == null) {
-            null
-        } else {
-            jellyfinClient.getStreamUrl(item.id, selectedAudioIndex, selectedSubtitleIndex, currentBitrate)
-        }
-    }
+    // Use the stream URL from ViewModel (which uses PlaybackInfo API with transcoding support)
+    val effectiveStreamUrl = state.streamUrl
     var currentStartPositionMs by remember(state.item?.id) { mutableLongStateOf(state.startPositionMs) }
 
     LaunchedEffect(state.item?.id, state.startPositionMs) {
