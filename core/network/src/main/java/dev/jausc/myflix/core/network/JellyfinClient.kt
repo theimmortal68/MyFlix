@@ -1663,13 +1663,17 @@ class JellyfinClient(
             }
         } else if (isTranscoding) {
             // Transcoding requested but no transcodingUrl returned - construct HLS URL directly
-            // Let server decide codec based on its transcoding configuration
+            // Request H264 transcoding with auto stream copy disabled to force re-encode
             val bitrateBps = maxBitrateMbps * 1_000_000
             val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
             val params = buildList {
                 add("MediaSourceId=$actualMediaSourceId")
                 add("api_key=$accessToken")
                 add("MaxStreamingBitrate=$bitrateBps")
+                add("VideoBitrate=$bitrateBps")
+                add("VideoCodec=h264")
+                add("AudioCodec=aac")
+                add("EnableAutoStreamCopy=false")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
