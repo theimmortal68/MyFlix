@@ -1663,13 +1663,15 @@ class JellyfinClient(
             }
         } else if (isTranscoding) {
             // Transcoding requested but no transcodingUrl returned - construct HLS URL directly
-            // Use minimal parameters - server will determine codec based on bitrate
+            // Must specify VideoCodec=h264 to force transcoding from HEVC to H264
             val bitrateBps = maxBitrateMbps * 1_000_000
             val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
             val params = buildList {
                 add("MediaSourceId=$actualMediaSourceId")
                 add("api_key=$accessToken")
                 add("MaxStreamingBitrate=$bitrateBps")
+                add("VideoCodec=h264") // Force transcode to H264
+                add("AudioCodec=aac")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
