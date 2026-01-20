@@ -107,31 +107,32 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 
 ### Playback - Video
 - [x] Dual player backend architecture (ExoPlayer + MPV)
-- [ ] Video zoom/aspect ratio (fit/crop/fill/stretch cycle)
-- [ ] HDR detection and handling
-- [ ] Dolby Vision support
-- [ ] Buffer mode selection (low/medium/high)
-- [ ] External subtitles during direct play
-- [ ] Subtitle styling customization
+- [x] Video zoom/aspect ratio (fit/crop/fill/stretch cycle)
+- [x] HDR detection and handling
+- [x] Dolby Vision support
+- [x] Max bitrate/quality selection
+- [x] Direct play preference
+- [x] Subtitle styling customization
 - [x] Resume playback position
-- [ ] Background video (audio continues when backgrounded)
+- [ ] Refresh rate switching
+- [ ] HDR fallback option
 
 ### Playback - Audio
+- [x] Audio track selection
+- [x] Audio language memory (remembered between episodes)
 - [ ] Audio Night Mode (dynamic range compression)
-- [ ] Audio Delay Offset (sync delay)
-- [ ] Stereo downmix (7.1/5.1 -> stereo)
-- [ ] DTS/TrueHD runtime capability detection
-- [ ] DTS capability toggle in settings
-- [ ] DTS-only audio delay mode
-- [ ] Audio track selection and memory
+- [ ] Audio passthrough (direct bitstream)
+- [ ] Audio delay adjustment
 
 ### Playback - Advanced
-- [ ] Media Segments integration (skip intro/outro/credits)
-- [ ] Per-segment-type skip settings
+- [x] Media Segments integration (skip intro/credits)
+- [x] Configurable skip modes (Off/Ask/Auto) per segment type
+- [x] Chapter selection in player
+- [x] Configurable skip forward/back duration
+- [x] Auto-play next episode with countdown
+- [ ] Trick play thumbnails during seek
 - [ ] Theme music during browsing
-- [ ] Remember audio/subtitle preferences per series
-- [ ] Multi-version/multi-source support
-- [ ] Collection binge mode (auto-queue next item)
+- [ ] Configurable auto-play delay
 
 ### Home Screen
 - [x] User-selectable collection rows
@@ -146,41 +147,43 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 - [x] Recent Requests row (Jellyseerr, optional)
 
 ### Search and Discovery
-- [x] Text search (basic)
-- [ ] Voice search
-- [ ] Search suggestions
+- [x] Text search
+- [x] Voice search (TV)
 - [x] Seerr discover filters (sort, rating, year range)
+- [ ] Search history
+- [ ] Search suggestions
 
 ### Server and Authentication
 - [x] Server discovery (UDP)
 - [x] Manual server entry
 - [x] QR code login display
-- [ ] Multiple server support
+- [x] Multiple server support
 - [x] Quick Connect support
+- [x] Server switching UI
 
 ### Integrations
-- [x] Jellyseerr integration
-- [ ] OTA updates from GitHub releases
+- [x] Jellyseerr integration (browse, request, admin)
+- [x] OTA updates from GitHub releases
 - [ ] Dream Service (screensaver)
-- [ ] Photo player/slideshow
+- [ ] Android TV channels/recommendations
 
 ## Roadmap
 
-### Near-term
-- Video zoom/aspect ratio controls
-- Audio track selection and memory
-- Subtitle styling customization
-- Loading states and skeleton screens
-- Retry buttons for failed API calls
+### Near-term (Polish)
+- Trick play thumbnails during seek
+- Search history
+- Theme/appearance options
+- Cache management UI
 
-### Mid-term
-- Media Segments integration (skip intro/credits)
-- Voice search (TV)
-- Multiple server support
-- HDR detection and handling
+### Mid-term (Enhanced Experience)
+- Theme song playback on detail screens
+- Trailers row on detail screens
+- Audio passthrough option
+- Night mode (audio compression)
+- Configurable auto-play delay
 
-### Long-term
-- OTA updates from GitHub releases
-- Universe Collections integration
+### Long-term (Platform Integration)
 - Dream Service (screensaver)
-- Dolby Vision support
+- Android TV channels/recommendations
+- Live TV support
+- Refresh rate switching
