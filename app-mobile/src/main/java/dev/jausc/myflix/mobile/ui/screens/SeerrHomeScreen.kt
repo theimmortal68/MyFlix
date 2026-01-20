@@ -884,7 +884,7 @@ private fun MobileSeerrStudioCard(
             .height(70.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
         Box(
@@ -900,7 +900,7 @@ private fun MobileSeerrStudioCard(
                         text = studio.name,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         maxLines = 2,
                     )
@@ -919,7 +919,7 @@ private fun MobileSeerrStudioCard(
                     text = studio.name,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )
@@ -990,7 +990,7 @@ private fun MobileSeerrNetworkCard(
             .height(70.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
         Box(
@@ -1006,7 +1006,7 @@ private fun MobileSeerrNetworkCard(
                         text = network.name,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         maxLines = 2,
                     )
@@ -1025,7 +1025,7 @@ private fun MobileSeerrNetworkCard(
                     text = network.name,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )

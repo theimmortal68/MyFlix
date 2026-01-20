@@ -1219,8 +1219,8 @@ private fun SeerrStudioCard(
             shape = RoundedCornerShape(12.dp),
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White,
-            focusedContainerColor = Color.White,
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.SurfaceLight,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1243,7 +1243,7 @@ private fun SeerrStudioCard(
                         text = studio.name,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = TvColors.TextPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         maxLines = 2,
                     )
@@ -1262,7 +1262,7 @@ private fun SeerrStudioCard(
                     text = studio.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = TvColors.TextPrimary,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )
@@ -1337,8 +1337,8 @@ private fun SeerrNetworkCard(
             shape = RoundedCornerShape(12.dp),
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White,
-            focusedContainerColor = Color.White,
+            containerColor = TvColors.Surface,
+            focusedContainerColor = TvColors.SurfaceLight,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1361,7 +1361,7 @@ private fun SeerrNetworkCard(
                         text = network.name,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = TvColors.TextPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         maxLines = 2,
                     )
@@ -1380,7 +1380,7 @@ private fun SeerrNetworkCard(
                     text = network.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = TvColors.TextPrimary,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )

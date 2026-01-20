@@ -1016,9 +1016,9 @@ object PopularStudios {
         SeerrStudio(41077, "A24", "/1ZXsGaFPgrgS6ZZGS37AqD5uU12.png"),
     )
 
-    /** Build the image URL for a studio logo */
+    /** Build the image URL for a studio logo (white duotone for dark backgrounds) */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w300$logoPath"
+        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
 }
 
 /**
@@ -1051,9 +1051,9 @@ object PopularNetworks {
         SeerrNetwork(14, "PBS", "/4Fn4eQmEmJZ9YWjiIhZ6cF1QHAi.png"),
     )
 
-    /** Build the image URL for a network logo */
+    /** Build the image URL for a network logo (white duotone for dark backgrounds) */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w300$logoPath"
+        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
 }
 
 /**
