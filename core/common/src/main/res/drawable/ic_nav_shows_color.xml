@@ -3,12 +3,13 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Duotone TV/Shows icon - Green (#34D399) -->
+    <!-- Background layer (lighter) - TV screen -->
     <path
-        android:fillColor="#34A853"
-        android:pathData="M2,12 A10,10 0 1,1 22,12 A10,10 0 1,1 2,12 Z" />
+        android:fillColor="#4034D399"
+        android:pathData="M4,5h16v10H4z" />
+    <!-- Foreground layer (full color) - TV frame -->
     <path
-        android:fillColor="#188038"
-        android:pathData="M7,7 L17,17 M17,7 L7,17"
-        android:strokeWidth="2"
-        android:strokeColor="#FFFFFF" />
+        android:fillColor="#34D399"
+        android:pathData="M20,3H4a2,2 0,0 0,-2 2v10a2,2 0,0 0,2 2h6v2H8v2h8v-2h-2v-2h6a2,2 0,0 0,2 -2V5a2,2 0,0 0,-2 -2zM20,15H4V5h16v10z" />
 </vector>

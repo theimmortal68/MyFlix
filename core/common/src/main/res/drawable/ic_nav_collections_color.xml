@@ -3,12 +3,23 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Duotone Collections/Video Library icon - Orange (#FF7043) -->
+    <!-- Background layer (lighter) - stacked cards -->
     <path
-        android:fillColor="#FF9800"
-        android:pathData="M2,12 A10,10 0 1,1 22,12 A10,10 0 1,1 2,12 Z" />
+        android:fillColor="#40FF7043"
+        android:pathData="M4,8h14v12H4z" />
     <path
-        android:fillColor="#F57C00"
-        android:pathData="M7,7 L17,17 M17,7 L7,17"
-        android:strokeWidth="2"
-        android:strokeColor="#FFFFFF" />
+        android:fillColor="#40FF7043"
+        android:pathData="M6,6h14v12H6z" />
+    <!-- Foreground layer (full color) - front card frame -->
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M8,4v2h12v12h2V4H8z" />
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M18,8H4a1,1 0,0 0,-1 1v11a1,1 0,0 0,1 1h14a1,1 0,0 0,1 -1V9a1,1 0,0 0,-1 -1zM17,19H5V10h12v9z" />
+    <!-- Play triangle -->
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M9,12v5l4.5,-2.5z" />
 </vector>

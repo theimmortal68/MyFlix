@@ -3,12 +3,13 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Duotone Search icon - Purple (#A78BFA) -->
+    <!-- Background layer (lighter) - magnifying glass fill -->
     <path
-        android:fillColor="#9C27B0"
-        android:pathData="M2,12 A10,10 0 1,1 22,12 A10,10 0 1,1 2,12 Z" />
+        android:fillColor="#40A78BFA"
+        android:pathData="M10.5,4.5a6,6 0,1 0,0 12a6,6 0,0 0,0 -12z" />
+    <!-- Foreground layer (full color) - ring and handle -->
     <path
-        android:fillColor="#7B1FA2"
-        android:pathData="M7,7 L17,17 M17,7 L7,17"
-        android:strokeWidth="2"
-        android:strokeColor="#FFFFFF" />
+        android:fillColor="#A78BFA"
+        android:pathData="M10.5,2a8.5,8.5 0,1 0,5.262 15.176l4.031,4.031a1.5,1.5 0,0 0,2.121 -2.121l-4.031,-4.031A8.5,8.5 0,0 0,10.5 2zM4,10.5a6.5,6.5 0,1 1,13 0a6.5,6.5 0,0 1,-13 0z" />
 </vector>

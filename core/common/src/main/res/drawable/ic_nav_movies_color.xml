@@ -3,12 +3,17 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Duotone Movies/Film icon - Gold (#FBBF24) -->
+    <!-- Background layer (lighter) - clapperboard body -->
     <path
-        android:fillColor="#FBC02D"
-        android:pathData="M2,12 A10,10 0 1,1 22,12 A10,10 0 1,1 2,12 Z" />
+        android:fillColor="#40FBBF24"
+        android:pathData="M4,9h16v11a1,1 0,0 1,-1 1H5a1,1 0,0 1,-1 -1V9z" />
+    <!-- Foreground layer (full color) - clapperboard top -->
     <path
-        android:fillColor="#F57F17"
-        android:pathData="M7,7 L17,17 M17,7 L7,17"
-        android:strokeWidth="2"
-        android:strokeColor="#FFFFFF" />
+        android:fillColor="#FBBF24"
+        android:pathData="M20,3H4a1,1 0,0 0,-1 1v4h18V4a1,1 0,0 0,-1 -1zM6,6.5L8.5,4l1,1L7,7.5L6,6.5zM10.5,6.5L13,4l1,1l-2.5,2.5l-1,-1zM15,6.5L17.5,4l1,1L16,7.5L15,6.5z" />
+    <!-- Play triangle in center -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M10,11v6l5,-3z" />
 </vector>
