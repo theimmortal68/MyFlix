@@ -55,6 +55,9 @@ data class PlayerUiState(
     val subtitleStreams: List<MediaStream> = emptyList(),
     val selectedAudioStreamIndex: Int? = null,
     val selectedSubtitleStreamIndex: Int? = null,
+    // Playback session tracking
+    val playSessionId: String? = null,
+    val playMethod: String = "DirectPlay",
     // Queue/Auto-play state
     val showAutoPlayCountdown: Boolean = false,
     val nextQueueItem: QueueItem? = null,
@@ -173,7 +176,8 @@ class PlayerViewModel(
 
                     // Get stream URL with proper session tracking (uses PlaybackInfo API)
                     val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
-                    val (streamUrl, _) = jellyfinClient.getStreamUrlWithSession(
+                    val isTranscoding = maxBitrate != null
+                    val (streamUrl, playSessionId) = jellyfinClient.getStreamUrlWithSession(
                         itemId = currentItemId,
                         mediaSourceId = mediaSource?.id,
                         audioStreamIndex = selectedAudioIndex,
@@ -184,6 +188,7 @@ class PlayerViewModel(
                         android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
                         Pair(jellyfinClient.getStreamUrl(currentItemId, selectedAudioIndex, selectedSubtitleIndex), null)
                     }
+                    val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
 
                     val defaultStartPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
@@ -202,6 +207,8 @@ class PlayerViewModel(
                             subtitleStreams = subtitleStreams,
                             selectedAudioStreamIndex = selectedAudioIndex,
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
+                            playSessionId = playSessionId,
+                            playMethod = playMethod,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
@@ -239,15 +246,17 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            val mediaSourceId = _uiState.value.mediaSourceId
+            val state = _uiState.value
             jellyfinClient.reportPlaybackStart(
                 currentItemId,
-                mediaSourceId = mediaSourceId,
+                mediaSourceId = state.mediaSourceId,
                 positionTicks = positionTicks,
+                playSessionId = state.playSessionId,
+                playMethod = state.playMethod,
             )
 
             // Persist active session for crash recovery
-            appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, mediaSourceId)
+            appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, state.mediaSourceId)
         }
     }
 
@@ -263,16 +272,17 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            val mediaSourceId = _uiState.value.mediaSourceId
+            val state = _uiState.value
             jellyfinClient.reportPlaybackProgress(
                 currentItemId,
                 positionTicks,
                 isPaused,
-                mediaSourceId = mediaSourceId,
+                mediaSourceId = state.mediaSourceId,
+                playMethod = state.playMethod,
             )
 
             // Update persisted session position for crash recovery
-            appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, mediaSourceId)
+            appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, state.mediaSourceId)
         }
     }
 
@@ -284,12 +294,13 @@ class PlayerViewModel(
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
-            val mediaSourceId = _uiState.value.mediaSourceId
+            val state = _uiState.value
             jellyfinClient.reportPlaybackProgress(
                 currentItemId,
                 positionTicks,
                 isPaused,
-                mediaSourceId = mediaSourceId,
+                mediaSourceId = state.mediaSourceId,
+                playMethod = state.playMethod,
             )
         }
     }
@@ -492,7 +503,8 @@ class PlayerViewModel(
 
                     // Get stream URL with proper session tracking (uses PlaybackInfo API)
                     val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
-                    val (streamUrl, _) = jellyfinClient.getStreamUrlWithSession(
+                    val isTranscoding = maxBitrate != null
+                    val (streamUrl, playSessionId) = jellyfinClient.getStreamUrlWithSession(
                         itemId = newItemId,
                         mediaSourceId = mediaSource?.id,
                         audioStreamIndex = selectedAudioIndex,
@@ -502,6 +514,7 @@ class PlayerViewModel(
                         android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
                         Pair(jellyfinClient.getStreamUrl(newItemId, selectedAudioIndex, selectedSubtitleIndex), null)
                     }
+                    val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
 
                     val startPositionMs = loadedItem.userData?.playbackPositionTicks?.let {
                         it / TICKS_PER_MS
@@ -518,6 +531,8 @@ class PlayerViewModel(
                             subtitleStreams = subtitleStreams,
                             selectedAudioStreamIndex = selectedAudioIndex,
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
+                            playSessionId = playSessionId,
+                            playMethod = playMethod,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,

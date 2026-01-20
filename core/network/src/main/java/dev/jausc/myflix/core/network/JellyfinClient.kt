@@ -1813,14 +1813,16 @@ class JellyfinClient(
         itemId: String,
         mediaSourceId: String? = null,
         positionTicks: Long = 0,
+        playSessionId: String? = null,
+        playMethod: String = "DirectPlay",
     ): Result<Unit> = runCatching {
-        val sessionId = "${itemId}_${System.currentTimeMillis()}"
+        val sessionId = playSessionId ?: "${itemId}_${System.currentTimeMillis()}"
         currentPlaySessionId = sessionId
         val body = PlaybackStartInfo(
             itemId = itemId,
             mediaSourceId = mediaSourceId ?: itemId,
             positionTicks = positionTicks,
-            playMethod = "DirectPlay",
+            playMethod = playMethod,
             playSessionId = sessionId,
             canSeek = true,
             isPaused = false,
@@ -1845,6 +1847,7 @@ class JellyfinClient(
         positionTicks: Long,
         isPaused: Boolean = false,
         mediaSourceId: String? = null,
+        playMethod: String = "DirectPlay",
     ): Result<Unit> = runCatching {
         val body = PlaybackProgressInfo(
             itemId = itemId,
@@ -1852,7 +1855,7 @@ class JellyfinClient(
             positionTicks = positionTicks,
             isPaused = isPaused,
             isMuted = false,
-            playMethod = "DirectPlay",
+            playMethod = playMethod,
             playSessionId = currentPlaySessionId,
             canSeek = true,
         )
