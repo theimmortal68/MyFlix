@@ -517,8 +517,9 @@ fun SeerrRequestsScreen(
 }
 
 /**
- * Compact single/two-line request row.
- * Shows: Title | Type Badge | Status Badge | Requester | Actions
+ * Compact single-line request row.
+ * Shows: Title | Type Badge | Status Badge | Requester | Actions (all on one line)
+ * D-pad: Down focuses the row, Right navigates to action buttons
  */
 @Composable
 private fun CompactRequestRow(
@@ -550,15 +551,16 @@ private fun CompactRequestRow(
     val canDecline = showAdminActions && request.isPendingApproval
     val canCancel = request.status != SeerrRequestStatus.DECLINED
 
-    // Use Column to separate the clickable info row from the focusable action buttons
-    Column(
+    // Single row with info Surface on left, action buttons on right
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Clickable info row - navigates to detail
+        // Clickable info row - navigates to detail (takes remaining space)
         Surface(
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
             shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
             colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
                 containerColor = TvColors.Surface,
@@ -644,63 +646,56 @@ private fun CompactRequestRow(
             }
         }
 
-        // Action buttons - separate from Surface so they can receive D-pad focus
-        if (canApprove || canDecline || canCancel) {
-            Row(
-                modifier = Modifier.padding(start = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Action buttons - inline on the right, D-pad right from Surface focuses these
+        if (canApprove) {
+            Button(
+                onClick = onApprove,
+                enabled = !isUpdating,
+                modifier = Modifier.height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                colors = ButtonDefaults.colors(
+                    containerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
+                    contentColor = Color(0xFF22C55E),
+                    focusedContainerColor = Color(0xFF22C55E),
+                    focusedContentColor = Color.White,
+                ),
             ) {
-                if (canApprove) {
-                    Button(
-                        onClick = onApprove,
-                        enabled = !isUpdating,
-                        modifier = Modifier.height(28.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
-                            contentColor = Color(0xFF22C55E),
-                            focusedContainerColor = Color(0xFF22C55E),
-                            focusedContentColor = Color.White,
-                        ),
-                    ) {
-                        Text("Approve", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-                if (canDecline) {
-                    Button(
-                        onClick = onDecline,
-                        enabled = !isUpdating,
-                        modifier = Modifier.height(28.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
-                            contentColor = Color(0xFFEF4444),
-                            focusedContainerColor = Color(0xFFEF4444),
-                            focusedContentColor = Color.White,
-                        ),
-                    ) {
-                        Text("Decline", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-                if (canCancel) {
-                    Button(
-                        onClick = onCancel,
-                        enabled = !isUpdating,
-                        modifier = Modifier.height(28.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
-                            contentColor = Color(0xFFEF4444),
-                            focusedContainerColor = Color(0xFFEF4444),
-                            focusedContentColor = Color.White,
-                        ),
-                    ) {
-                        Text("Cancel", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
+                Text("Approve", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        if (canDecline) {
+            Button(
+                onClick = onDecline,
+                enabled = !isUpdating,
+                modifier = Modifier.height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                colors = ButtonDefaults.colors(
+                    containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                    contentColor = Color(0xFFEF4444),
+                    focusedContainerColor = Color(0xFFEF4444),
+                    focusedContentColor = Color.White,
+                ),
+            ) {
+                Text("Decline", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        if (canCancel) {
+            Button(
+                onClick = onCancel,
+                enabled = !isUpdating,
+                modifier = Modifier.height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                colors = ButtonDefaults.colors(
+                    containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                    contentColor = Color(0xFFEF4444),
+                    focusedContainerColor = Color(0xFFEF4444),
+                    focusedContentColor = Color.White,
+                ),
+            ) {
+                Text("Cancel", style = MaterialTheme.typography.labelSmall)
             }
         }
     }
