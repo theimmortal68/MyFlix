@@ -1336,6 +1336,8 @@ private fun SkipModeSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth(0.9f),
         title = {
             Text(
                 text = title,

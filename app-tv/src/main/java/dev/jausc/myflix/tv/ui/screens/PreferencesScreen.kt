@@ -2322,7 +2322,7 @@ private fun SkipModeSelectionDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(TvColors.Surface)
                 .padding(24.dp),
