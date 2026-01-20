@@ -1198,7 +1198,7 @@ private fun SeerrStudioBrowseRow(
 }
 
 /**
- * A card displaying a studio with TMDb logo using duotone filter.
+ * A card displaying a studio with TMDb logo.
  */
 @Composable
 private fun SeerrStudioCard(
@@ -1216,8 +1216,8 @@ private fun SeerrStudioCard(
             shape = RoundedCornerShape(12.dp),
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.SurfaceLight,
+            containerColor = Color.White,
+            focusedContainerColor = Color.White,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1245,7 +1245,7 @@ private fun SeerrStudioCard(
                     text = studio.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = TvColors.TextPrimary,
+                    color = Color.Black,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )
@@ -1302,7 +1302,7 @@ private fun SeerrNetworkBrowseRow(
 }
 
 /**
- * A card displaying a network with TMDb logo using duotone filter.
+ * A card displaying a network with TMDb logo.
  */
 @Composable
 private fun SeerrNetworkCard(
@@ -1320,8 +1320,8 @@ private fun SeerrNetworkCard(
             shape = RoundedCornerShape(12.dp),
         ),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.SurfaceLight,
+            containerColor = Color.White,
+            focusedContainerColor = Color.White,
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1349,7 +1349,7 @@ private fun SeerrNetworkCard(
                     text = network.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = TvColors.TextPrimary,
+                    color = Color.Black,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     maxLines = 2,
                 )

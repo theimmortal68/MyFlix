@@ -1018,7 +1018,7 @@ object PopularStudios {
 
     /** Build the image URL for a studio logo */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w500$logoPath"
+        "https://image.tmdb.org/t/p/original$logoPath"
 }
 
 /**
@@ -1053,7 +1053,7 @@ object PopularNetworks {
 
     /** Build the image URL for a network logo */
     fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w500$logoPath"
+        "https://image.tmdb.org/t/p/original$logoPath"
 }
 
 /**
