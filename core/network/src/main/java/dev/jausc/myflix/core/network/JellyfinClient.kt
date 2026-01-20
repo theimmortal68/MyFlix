@@ -1642,13 +1642,14 @@ class JellyfinClient(
                 "sources=${playbackInfo.mediaSources.size}",
         )
 
-        // Log transcoding URL if present
+        // Log transcoding URL and liveStreamId if present
         playbackInfo.mediaSources.firstOrNull()?.let { source ->
             android.util.Log.d(
                 "JellyfinClient",
                 "getPlaybackInfo: directPlay=${source.supportsDirectPlay} " +
                     "directStream=${source.supportsDirectStream} " +
                     "transcode=${source.supportsTranscoding} " +
+                    "liveStreamId=${source.liveStreamId} " +
                     "transcodingUrl=${source.transcodingUrl?.take(100)}...",
             )
         }
@@ -1883,7 +1884,11 @@ class JellyfinClient(
             maxStreamingBitrate = maxStreamingBitrate,
             transcodeReasons = transcodeReasons,
         )
-        android.util.Log.d("JellyfinClient", "reportPlaybackStart: POST $baseUrl/Sessions/Playing itemId=$itemId")
+        android.util.Log.d(
+            "JellyfinClient",
+            "reportPlaybackStart: POST $baseUrl/Sessions/Playing itemId=$itemId " +
+                "playMethod=$playMethod playSessionId=$sessionId liveStreamId=$liveStreamId",
+        )
         val response = httpClient.post("$baseUrl/Sessions/Playing") {
             header("Authorization", authHeader())
             setBody(body)
@@ -1997,6 +2002,8 @@ private data class PlaybackStartInfo(
     @SerialName("CanSeek") val canSeek: Boolean,
     @SerialName("IsPaused") val isPaused: Boolean,
     @SerialName("IsMuted") val isMuted: Boolean,
+    @SerialName("RepeatMode") val repeatMode: String = "RepeatNone",
+    @SerialName("PlaybackOrder") val playbackOrder: String = "Default",
     @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
     @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
     @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long? = null,
@@ -2014,6 +2021,8 @@ private data class PlaybackProgressInfo(
     @SerialName("PlaySessionId") val playSessionId: String?,
     @SerialName("LiveStreamId") val liveStreamId: String? = null,
     @SerialName("CanSeek") val canSeek: Boolean,
+    @SerialName("RepeatMode") val repeatMode: String = "RepeatNone",
+    @SerialName("PlaybackOrder") val playbackOrder: String = "Default",
     @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
     @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
     @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long? = null,
