@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.runtime.Composable
@@ -72,6 +73,7 @@ import dev.jausc.myflix.core.seerr.SeerrCrewMember
 import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeason
@@ -122,6 +124,7 @@ fun SeerrDetailScreen(
     var seasons by remember { mutableStateOf<List<SeerrSeason>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isRequesting by remember { mutableStateOf(false) }
+    var isCanceling by remember { mutableStateOf(false) }
     var requestSuccess by remember { mutableStateOf(false) }
     var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var isBlacklisting by remember { mutableStateOf(false) }
@@ -251,6 +254,31 @@ fun SeerrDetailScreen(
                 .onFailure { errorMessage = "Request failed: ${it.message}" }
 
             isRequesting = false
+        }
+    }
+
+    // Handle cancel request
+    fun handleCancelRequest() {
+        val currentMedia = media ?: return
+        // Find an active (non-declined) request to cancel
+        val activeRequest = currentMedia.mediaInfo?.requests
+            ?.firstOrNull { it.status != SeerrRequestStatus.DECLINED }
+            ?: return
+
+        scope.launch {
+            isCanceling = true
+            seerrClient.cancelRequest(activeRequest.id)
+                .onSuccess {
+                    // Refresh media to get updated status
+                    val refreshResult = if (currentMedia.isMovie) {
+                        seerrClient.getMovie(tmdbId)
+                    } else {
+                        seerrClient.getTVShow(tmdbId)
+                    }
+                    refreshResult.onSuccess { media = it }
+                }
+                .onFailure { errorMessage = "Failed to cancel request: ${it.message}" }
+            isCanceling = false
         }
     }
 
@@ -467,12 +495,13 @@ fun SeerrDetailScreen(
 
                                             SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> {
                                                 TvIconTextButton(
-                                                    icon = Icons.Outlined.Schedule,
-                                                    text = "Requested",
-                                                    onClick = { },
+                                                    icon = Icons.Outlined.Close,
+                                                    text = if (isCanceling) "Canceling..." else "Cancel Request",
+                                                    onClick = { handleCancelRequest() },
                                                     modifier = Modifier.focusRequester(actionButtonFocusRequester),
-                                                    enabled = false,
-                                                    containerColor = Color(0xFFFBBF24).copy(alpha = 0.3f),
+                                                    enabled = !isCanceling,
+                                                    isLoading = isCanceling,
+                                                    containerColor = Color(0xFFFBBF24),
                                                 )
                                             }
 

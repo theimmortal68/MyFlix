@@ -68,6 +68,7 @@ private const val REQUEST_PAGE_SIZE = 20
 fun SeerrRequestsScreen(
     seerrClient: SeerrClient,
     onBack: () -> Unit,
+    onNavigateToDetail: (tmdbId: Int, mediaType: String) -> Unit,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -424,6 +425,11 @@ fun SeerrRequestsScreen(
                             mediaTitle = mediaTitle,
                             showAdminActions = requestScope == SeerrRequestScope.ALL,
                             isUpdating = updatingRequestId == request.id,
+                            onClick = {
+                                if (tmdbId != null && mediaType != "unknown") {
+                                    onNavigateToDetail(tmdbId, mediaType)
+                                }
+                            },
                             onApprove = { handleApprove(request) },
                             onDecline = { handleDecline(request) },
                             onCancel = { handleCancel(request) },
@@ -456,6 +462,7 @@ private fun CompactRequestCard(
     mediaTitle: String?,
     showAdminActions: Boolean,
     isUpdating: Boolean,
+    onClick: () -> Unit,
     onApprove: () -> Unit,
     onDecline: () -> Unit,
     onCancel: () -> Unit,
@@ -480,6 +487,7 @@ private fun CompactRequestCard(
     val canCancel = request.status != SeerrRequestStatus.DECLINED
 
     Card(
+        onClick = onClick,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),

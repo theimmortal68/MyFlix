@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
@@ -77,6 +78,7 @@ import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
+import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeasonStatus
 import dev.jausc.myflix.core.seerr.SeerrStatusColors
@@ -116,6 +118,7 @@ fun SeerrDetailScreen(
     var similar by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isRequesting by remember { mutableStateOf(false) }
+    var isCanceling by remember { mutableStateOf(false) }
     var requestSuccess by remember { mutableStateOf(false) }
     var isBlacklisting by remember { mutableStateOf(false) }
     var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
@@ -233,6 +236,31 @@ fun SeerrDetailScreen(
                     errorMessage = it.message ?: "Request failed"
                 }
             isRequesting = false
+        }
+    }
+
+    // Handle cancel request
+    fun handleCancelRequest() {
+        val currentMedia = media ?: return
+        // Find an active (non-declined) request to cancel
+        val activeRequest = currentMedia.mediaInfo?.requests
+            ?.firstOrNull { it.status != SeerrRequestStatus.DECLINED }
+            ?: return
+
+        scope.launch {
+            isCanceling = true
+            seerrClient.cancelRequest(activeRequest.id)
+                .onSuccess {
+                    // Refresh media to get updated status
+                    val refreshResult = if (mediaType == "movie") {
+                        seerrClient.getMovie(tmdbId)
+                    } else {
+                        seerrClient.getTVShow(tmdbId)
+                    }
+                    refreshResult.onSuccess { media = it }
+                }
+                .onFailure { errorMessage = "Failed to cancel request: ${it.message}" }
+            isCanceling = false
         }
     }
 
@@ -439,6 +467,7 @@ fun SeerrDetailScreen(
                             MobileSeerrRequestSection(
                                 status = currentMedia.availabilityStatus,
                                 isRequesting = isRequesting,
+                                isCanceling = isCanceling,
                                 requestSuccess = requestSuccess,
                                 isBlacklisting = isBlacklisting,
                                 isTvShow = currentMedia.isTvShow,
@@ -457,6 +486,7 @@ fun SeerrDetailScreen(
                                 onClearSeasons = { selectedSeasons = emptySet() },
                                 onToggle4k = { request4k = !request4k },
                                 onRequest = { requestMedia() },
+                                onCancelRequest = { handleCancelRequest() },
                                 onBlacklist = { handleBlacklist() },
                             )
 
@@ -746,6 +776,7 @@ private data class RequestStatusInfo(
 private fun MobileSeerrRequestSection(
     status: Int?,
     isRequesting: Boolean,
+    isCanceling: Boolean,
     requestSuccess: Boolean,
     isBlacklisting: Boolean,
     isTvShow: Boolean,
@@ -758,6 +789,7 @@ private fun MobileSeerrRequestSection(
     onClearSeasons: () -> Unit,
     onToggle4k: () -> Unit,
     onRequest: () -> Unit,
+    onCancelRequest: () -> Unit,
     onBlacklist: () -> Unit,
 ) {
     val statusInfo = when (status) {
@@ -891,7 +923,7 @@ private fun MobileSeerrRequestSection(
             )
         }
 
-        // Request button
+        // Request button (for items that can be requested)
         if (statusAllowsRequest) {
             Spacer(modifier = Modifier.height(12.dp))
             Button(
@@ -927,6 +959,38 @@ private fun MobileSeerrRequestSection(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Request")
+                }
+            }
+        }
+
+        // Cancel Request button (for pending/processing items)
+        if (status == SeerrMediaStatus.PENDING || status == SeerrMediaStatus.PROCESSING) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onCancelRequest,
+                enabled = !isCanceling,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFBBF24),
+                    contentColor = Color.Black,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (isCanceling) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.Black,
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Canceling...")
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cancel Request")
                 }
             }
         }
