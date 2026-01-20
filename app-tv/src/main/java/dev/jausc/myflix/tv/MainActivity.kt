@@ -139,6 +139,18 @@ fun MyFlixTvApp() {
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
             jellyfinClient.getLibraries().onSuccess { libraries = it }
+
+            // Crash recovery: Check for orphaned playback sessions
+            tvPreferences.getActivePlaybackSession()?.let { session ->
+                android.util.Log.d("MyFlix", "Crash recovery: Found orphaned session for item ${session.itemId}")
+                jellyfinClient.reportPlaybackStopped(
+                    session.itemId,
+                    session.positionTicks,
+                    mediaSourceId = session.mediaSourceId,
+                )
+                tvPreferences.clearActivePlaybackSession()
+                android.util.Log.d("MyFlix", "Crash recovery: Reported playback stopped")
+            }
         } else {
             libraries = emptyList()
         }

@@ -224,6 +224,20 @@ fun MyFlixMobileContent(
         }
 
         isInitialized = true
+
+        // Crash recovery: Check for orphaned playback sessions
+        if (appState.isLoggedIn) {
+            mobilePreferences.getActivePlaybackSession()?.let { session ->
+                android.util.Log.d("MyFlix", "Crash recovery: Found orphaned session for item ${session.itemId}")
+                jellyfinClient.reportPlaybackStopped(
+                    session.itemId,
+                    session.positionTicks,
+                    mediaSourceId = session.mediaSourceId,
+                )
+                mobilePreferences.clearActivePlaybackSession()
+                android.util.Log.d("MyFlix", "Crash recovery: Reported playback stopped")
+            }
+        }
     }
 
     // Initialize SeerrClient with stored session cookie or Jellyfin credentials

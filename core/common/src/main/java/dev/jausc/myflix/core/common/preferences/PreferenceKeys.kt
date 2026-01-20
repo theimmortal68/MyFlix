@@ -181,6 +181,16 @@ object PreferenceKeys {
         // First-run tips
         /** Whether user has seen the nav bar tip */
         const val HAS_SEEN_NAV_BAR_TIP = "has_seen_nav_bar_tip"
+
+        // Active playback session tracking (for crash recovery)
+        /** Item ID of active playback session (empty if none) */
+        const val ACTIVE_PLAYBACK_ITEM_ID = "active_playback_item_id"
+
+        /** Position in ticks of active playback session */
+        const val ACTIVE_PLAYBACK_POSITION_TICKS = "active_playback_position_ticks"
+
+        /** Media source ID of active playback session */
+        const val ACTIVE_PLAYBACK_MEDIA_SOURCE_ID = "active_playback_media_source_id"
     }
 
     // ==================== Default Values ====================

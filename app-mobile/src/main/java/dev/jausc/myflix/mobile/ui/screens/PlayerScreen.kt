@@ -164,6 +164,7 @@ fun PlayerScreen(
         factory = PlayerViewModel.Factory(
             itemId = itemId,
             jellyfinClient = jellyfinClient,
+            appPreferences = appPreferences,
             preferredAudioLanguage = preferredAudioLanguage,
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             maxStreamingBitrateMbps = maxStreamingBitrate,

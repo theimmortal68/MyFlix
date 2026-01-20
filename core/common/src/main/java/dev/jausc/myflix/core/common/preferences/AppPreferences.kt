@@ -641,4 +641,59 @@ abstract class AppPreferences(context: Context) {
             .remove(PreferenceKeys.Prefs.LIBRARY_PARENTAL_RATINGS_PREFIX + libraryId)
             .apply()
     }
+
+    // ==================== Active Playback Session Tracking ====================
+
+    /**
+     * Data class to hold active playback session info for crash recovery.
+     */
+    data class ActivePlaybackSession(
+        val itemId: String,
+        val positionTicks: Long,
+        val mediaSourceId: String?,
+    )
+
+    /**
+     * Save the active playback session info.
+     * Called when playback starts and periodically during playback.
+     * This allows us to report playback stopped if the app crashes.
+     */
+    fun setActivePlaybackSession(itemId: String, positionTicks: Long, mediaSourceId: String?) {
+        prefs.edit()
+            .putString(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_ITEM_ID, itemId)
+            .putLong(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_POSITION_TICKS, positionTicks)
+            .putString(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_MEDIA_SOURCE_ID, mediaSourceId)
+            .apply()
+    }
+
+    /**
+     * Clear the active playback session info.
+     * Called when playback is properly stopped.
+     */
+    fun clearActivePlaybackSession() {
+        prefs.edit()
+            .remove(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_ITEM_ID)
+            .remove(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_POSITION_TICKS)
+            .remove(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_MEDIA_SOURCE_ID)
+            .apply()
+    }
+
+    /**
+     * Get any orphaned playback session that wasn't properly stopped.
+     * Returns null if there's no active session.
+     * Call this on app startup to recover from crashes.
+     */
+    fun getActivePlaybackSession(): ActivePlaybackSession? {
+        val itemId = prefs.getString(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_ITEM_ID, null)
+        if (itemId.isNullOrBlank()) return null
+
+        val positionTicks = prefs.getLong(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_POSITION_TICKS, 0L)
+        val mediaSourceId = prefs.getString(PreferenceKeys.Prefs.ACTIVE_PLAYBACK_MEDIA_SOURCE_ID, null)
+
+        return ActivePlaybackSession(
+            itemId = itemId,
+            positionTicks = positionTicks,
+            mediaSourceId = mediaSourceId,
+        )
+    }
 }

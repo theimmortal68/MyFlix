@@ -102,6 +102,7 @@ data class PlayerMediaInfo(
 class PlayerViewModel(
     private val itemId: String,
     private val jellyfinClient: JellyfinClient,
+    private val appPreferences: dev.jausc.myflix.core.common.preferences.AppPreferences?,
     private val preferredAudioLanguage: String? = null,
     private val preferredSubtitleLanguage: String? = null,
     private val maxStreamingBitrateMbps: Int = 0,
@@ -114,6 +115,7 @@ class PlayerViewModel(
     class Factory(
         private val itemId: String,
         private val jellyfinClient: JellyfinClient,
+        private val appPreferences: dev.jausc.myflix.core.common.preferences.AppPreferences?,
         private val preferredAudioLanguage: String? = null,
         private val preferredSubtitleLanguage: String? = null,
         private val maxStreamingBitrateMbps: Int = 0,
@@ -124,6 +126,7 @@ class PlayerViewModel(
             PlayerViewModel(
                 itemId,
                 jellyfinClient,
+                appPreferences,
                 preferredAudioLanguage,
                 preferredSubtitleLanguage,
                 maxStreamingBitrateMbps,
@@ -230,6 +233,9 @@ class PlayerViewModel(
                 mediaSourceId = mediaSourceId,
                 positionTicks = positionTicks,
             )
+
+            // Persist active session for crash recovery
+            appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, mediaSourceId)
         }
     }
 
@@ -252,6 +258,9 @@ class PlayerViewModel(
                 isPaused,
                 mediaSourceId = mediaSourceId,
             )
+
+            // Update persisted session position for crash recovery
+            appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, mediaSourceId)
         }
     }
 
@@ -296,6 +305,9 @@ class PlayerViewModel(
         val positionTicks = positionMs * TICKS_PER_MS
         val mediaSourceId = _uiState.value.mediaSourceId
         jellyfinClient.reportPlaybackStopped(currentItemId, positionTicks, mediaSourceId = mediaSourceId)
+
+        // Clear persisted session since we properly reported stop
+        appPreferences?.clearActivePlaybackSession()
     }
 
     fun setAudioStreamIndex(index: Int?) {
