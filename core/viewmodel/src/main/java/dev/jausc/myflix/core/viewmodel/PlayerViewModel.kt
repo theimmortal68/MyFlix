@@ -57,6 +57,7 @@ data class PlayerUiState(
     val selectedSubtitleStreamIndex: Int? = null,
     // Playback session tracking
     val playSessionId: String? = null,
+    val liveStreamId: String? = null,
     val playMethod: String = "DirectPlay",
     val maxStreamingBitrate: Long? = null,
     val transcodeReasons: List<String>? = null,
@@ -179,7 +180,7 @@ class PlayerViewModel(
                     // Get stream URL with proper session tracking (uses PlaybackInfo API)
                     val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
                     val isTranscoding = maxBitrate != null
-                    val (streamUrl, playSessionId) = jellyfinClient.getStreamUrlWithSession(
+                    val streamResult = jellyfinClient.getStreamUrlWithSession(
                         itemId = currentItemId,
                         mediaSourceId = mediaSource?.id,
                         audioStreamIndex = selectedAudioIndex,
@@ -188,7 +189,11 @@ class PlayerViewModel(
                     ).getOrElse {
                         // Fallback to simple URL on error
                         android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
-                        Pair(jellyfinClient.getStreamUrl(currentItemId, selectedAudioIndex, selectedSubtitleIndex), null)
+                        JellyfinClient.StreamUrlResult(
+                            streamUrl = jellyfinClient.getStreamUrl(currentItemId, selectedAudioIndex, selectedSubtitleIndex),
+                            playSessionId = null,
+                            liveStreamId = null,
+                        )
                     }
                     val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
                     val transcodeReasons = if (isTranscoding) listOf("ContainerBitrateExceedsLimit") else null
@@ -202,7 +207,7 @@ class PlayerViewModel(
                     _uiState.update {
                         it.copy(
                             item = loadedItem,
-                            streamUrl = streamUrl,
+                            streamUrl = streamResult.streamUrl,
                             startPositionMs = startPositionMs,
                             isLoading = false,
                             mediaSourceId = mediaSource?.id,
@@ -210,9 +215,10 @@ class PlayerViewModel(
                             subtitleStreams = subtitleStreams,
                             selectedAudioStreamIndex = selectedAudioIndex,
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
-                            playSessionId = playSessionId,
+                            playSessionId = streamResult.playSessionId,
+                            liveStreamId = streamResult.liveStreamId,
                             playMethod = playMethod,
-                            maxStreamingBitrate = maxBitrate?.let { it.toLong() * 1_000_000L },
+                            maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
                             transcodeReasons = transcodeReasons,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
@@ -257,6 +263,7 @@ class PlayerViewModel(
                 mediaSourceId = state.mediaSourceId,
                 positionTicks = positionTicks,
                 playSessionId = state.playSessionId,
+                liveStreamId = state.liveStreamId,
                 playMethod = state.playMethod,
                 audioStreamIndex = state.selectedAudioStreamIndex,
                 subtitleStreamIndex = state.selectedSubtitleStreamIndex,
@@ -287,6 +294,7 @@ class PlayerViewModel(
                 positionTicks,
                 isPaused,
                 mediaSourceId = state.mediaSourceId,
+                liveStreamId = state.liveStreamId,
                 playMethod = state.playMethod,
                 audioStreamIndex = state.selectedAudioStreamIndex,
                 subtitleStreamIndex = state.selectedSubtitleStreamIndex,
@@ -313,6 +321,7 @@ class PlayerViewModel(
                 positionTicks,
                 isPaused,
                 mediaSourceId = state.mediaSourceId,
+                liveStreamId = state.liveStreamId,
                 playMethod = state.playMethod,
                 audioStreamIndex = state.selectedAudioStreamIndex,
                 subtitleStreamIndex = state.selectedSubtitleStreamIndex,
@@ -343,9 +352,14 @@ class PlayerViewModel(
      */
     private suspend fun reportPlaybackStopped(positionMs: Long) {
         val positionTicks = positionMs * TICKS_PER_MS
-        val mediaSourceId = _uiState.value.mediaSourceId
+        val state = _uiState.value
         android.util.Log.d("PlayerViewModel", "reportPlaybackStopped: itemId=$currentItemId position=${positionMs}ms")
-        jellyfinClient.reportPlaybackStopped(currentItemId, positionTicks, mediaSourceId = mediaSourceId)
+        jellyfinClient.reportPlaybackStopped(
+            currentItemId,
+            positionTicks,
+            mediaSourceId = state.mediaSourceId,
+            liveStreamId = state.liveStreamId,
+        )
 
         // Clear persisted session since we properly reported stop
         appPreferences?.clearActivePlaybackSession()
@@ -521,7 +535,7 @@ class PlayerViewModel(
                     // Get stream URL with proper session tracking (uses PlaybackInfo API)
                     val maxBitrate = maxStreamingBitrateMbps.takeIf { it > 0 }
                     val isTranscoding = maxBitrate != null
-                    val (streamUrl, playSessionId) = jellyfinClient.getStreamUrlWithSession(
+                    val streamResult = jellyfinClient.getStreamUrlWithSession(
                         itemId = newItemId,
                         mediaSourceId = mediaSource?.id,
                         audioStreamIndex = selectedAudioIndex,
@@ -529,7 +543,11 @@ class PlayerViewModel(
                         maxBitrateMbps = maxBitrate,
                     ).getOrElse {
                         android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
-                        Pair(jellyfinClient.getStreamUrl(newItemId, selectedAudioIndex, selectedSubtitleIndex), null)
+                        JellyfinClient.StreamUrlResult(
+                            streamUrl = jellyfinClient.getStreamUrl(newItemId, selectedAudioIndex, selectedSubtitleIndex),
+                            playSessionId = null,
+                            liveStreamId = null,
+                        )
                     }
                     val playMethod = if (isTranscoding) "Transcode" else "DirectPlay"
                     val transcodeReasons = if (isTranscoding) listOf("ContainerBitrateExceedsLimit") else null
@@ -541,7 +559,7 @@ class PlayerViewModel(
                     _uiState.update {
                         it.copy(
                             item = loadedItem,
-                            streamUrl = streamUrl,
+                            streamUrl = streamResult.streamUrl,
                             startPositionMs = startPositionMs,
                             isLoading = false,
                             mediaSourceId = mediaSource?.id,
@@ -549,9 +567,10 @@ class PlayerViewModel(
                             subtitleStreams = subtitleStreams,
                             selectedAudioStreamIndex = selectedAudioIndex,
                             selectedSubtitleStreamIndex = selectedSubtitleIndex,
-                            playSessionId = playSessionId,
+                            playSessionId = streamResult.playSessionId,
+                            liveStreamId = streamResult.liveStreamId,
                             playMethod = playMethod,
-                            maxStreamingBitrate = maxBitrate?.let { it.toLong() * 1_000_000L },
+                            maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
                             transcodeReasons = transcodeReasons,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),

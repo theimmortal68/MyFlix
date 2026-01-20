@@ -119,6 +119,7 @@ data class MediaSource(
     @SerialName("SupportsDirectStream") val supportsDirectStream: Boolean = true,
     @SerialName("SupportsTranscoding") val supportsTranscoding: Boolean = true,
     @SerialName("TranscodingUrl") val transcodingUrl: String? = null,
+    @SerialName("LiveStreamId") val liveStreamId: String? = null,
     @SerialName("ETag") val eTag: String? = null,
 )
 

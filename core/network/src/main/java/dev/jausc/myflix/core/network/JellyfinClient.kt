@@ -1657,10 +1657,19 @@ class JellyfinClient(
     }
 
     /**
+     * Result from getStreamUrlWithSession containing URL and session tracking info.
+     */
+    data class StreamUrlResult(
+        val streamUrl: String,
+        val playSessionId: String?,
+        val liveStreamId: String?,
+    )
+
+    /**
      * Get the stream URL for playback.
      * Uses PlaybackInfo API when transcoding is needed for proper session tracking.
      *
-     * @return Pair of (streamUrl, playSessionId)
+     * @return StreamUrlResult with streamUrl, playSessionId, and liveStreamId
      */
     suspend fun getStreamUrlWithSession(
         itemId: String,
@@ -1668,7 +1677,7 @@ class JellyfinClient(
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
         maxBitrateMbps: Int? = null,
-    ): Result<Pair<String, String?>> = runCatching {
+    ): Result<StreamUrlResult> = runCatching {
         val isTranscoding = maxBitrateMbps != null && maxBitrateMbps > 0
 
         val playbackInfo = getPlaybackInfo(
@@ -1728,8 +1737,8 @@ class JellyfinClient(
             "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
         }
 
-        android.util.Log.d("JellyfinClient", "getStreamUrlWithSession: $streamUrl")
-        Pair(streamUrl, playbackInfo.playSessionId)
+        android.util.Log.d("JellyfinClient", "getStreamUrlWithSession: $streamUrl liveStreamId=${source.liveStreamId}")
+        StreamUrlResult(streamUrl, playbackInfo.playSessionId, source.liveStreamId)
     }
 
     // ==================== URL Helpers ====================
@@ -1850,6 +1859,7 @@ class JellyfinClient(
         mediaSourceId: String? = null,
         positionTicks: Long = 0,
         playSessionId: String? = null,
+        liveStreamId: String? = null,
         playMethod: String = "DirectPlay",
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
@@ -1864,6 +1874,7 @@ class JellyfinClient(
             positionTicks = positionTicks,
             playMethod = playMethod,
             playSessionId = sessionId,
+            liveStreamId = liveStreamId,
             canSeek = true,
             isPaused = false,
             isMuted = false,
@@ -1891,6 +1902,7 @@ class JellyfinClient(
         positionTicks: Long,
         isPaused: Boolean = false,
         mediaSourceId: String? = null,
+        liveStreamId: String? = null,
         playMethod: String = "DirectPlay",
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
@@ -1905,6 +1917,7 @@ class JellyfinClient(
             isMuted = false,
             playMethod = playMethod,
             playSessionId = currentPlaySessionId,
+            liveStreamId = liveStreamId,
             canSeek = true,
             audioStreamIndex = audioStreamIndex,
             subtitleStreamIndex = subtitleStreamIndex,
@@ -1929,12 +1942,14 @@ class JellyfinClient(
         itemId: String,
         positionTicks: Long,
         mediaSourceId: String? = null,
+        liveStreamId: String? = null,
     ): Result<Unit> = runCatching {
         val body = PlaybackStopInfo(
             itemId = itemId,
             mediaSourceId = mediaSourceId ?: itemId,
             positionTicks = positionTicks,
             playSessionId = currentPlaySessionId,
+            liveStreamId = liveStreamId,
         )
         android.util.Log.d(
             "JellyfinClient",
@@ -1978,6 +1993,7 @@ private data class PlaybackStartInfo(
     @SerialName("PositionTicks") val positionTicks: Long,
     @SerialName("PlayMethod") val playMethod: String,
     @SerialName("PlaySessionId") val playSessionId: String,
+    @SerialName("LiveStreamId") val liveStreamId: String? = null,
     @SerialName("CanSeek") val canSeek: Boolean,
     @SerialName("IsPaused") val isPaused: Boolean,
     @SerialName("IsMuted") val isMuted: Boolean,
@@ -1996,6 +2012,7 @@ private data class PlaybackProgressInfo(
     @SerialName("IsMuted") val isMuted: Boolean,
     @SerialName("PlayMethod") val playMethod: String,
     @SerialName("PlaySessionId") val playSessionId: String?,
+    @SerialName("LiveStreamId") val liveStreamId: String? = null,
     @SerialName("CanSeek") val canSeek: Boolean,
     @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
     @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
@@ -2009,6 +2026,7 @@ private data class PlaybackStopInfo(
     @SerialName("MediaSourceId") val mediaSourceId: String,
     @SerialName("PositionTicks") val positionTicks: Long,
     @SerialName("PlaySessionId") val playSessionId: String?,
+    @SerialName("LiveStreamId") val liveStreamId: String? = null,
 )
 
 // ==================== Supporting Types ====================
