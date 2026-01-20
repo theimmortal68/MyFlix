@@ -2,8 +2,11 @@ package dev.jausc.myflix.core.network
 
 import android.content.Context
 import dev.jausc.myflix.core.common.model.AuthResponse
+import dev.jausc.myflix.core.common.model.CodecProfile
 import dev.jausc.myflix.core.common.model.DeviceProfile
+import dev.jausc.myflix.core.common.util.MediaCodecCapabilities
 import dev.jausc.myflix.core.common.model.DirectPlayProfile
+import dev.jausc.myflix.core.common.model.ProfileCondition
 import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -143,6 +146,11 @@ class JellyfinClient(
 
     val isAuthenticated: Boolean get() = serverUrl != null && accessToken != null && userId != null
 
+    /** Media codec capabilities for building dynamic DeviceProfile */
+    private val mediaCodecCapabilities: MediaCodecCapabilities? by lazy {
+        context?.let { MediaCodecCapabilities(it) }
+    }
+
     // ==================== Caching ====================
 
     private data class CacheEntry<T>(val data: T, val timestamp: Long)
@@ -251,7 +259,7 @@ class JellyfinClient(
                 "ToggleStats",
             ),
             supportsMediaControl = true,
-            supportsPersistentIdentifier = false, // Match Jellyfin Web behavior
+            supportsPersistentIdentifier = true, // Device has persistent deviceId
         )
         android.util.Log.d("JellyfinClient", "registerSessionCapabilities: sending ${body.supportedCommands.size} commands")
         val response = httpClient.post("$baseUrl/Sessions/Capabilities/Full") {
@@ -1544,6 +1552,168 @@ class JellyfinClient(
         invalidateCache(CacheKeys.item(itemId), CacheKeys.Patterns.RESUME)
     }
 
+    // ==================== Device Profile Builder ====================
+
+    /**
+     * Build a DeviceProfile dynamically based on device codec capabilities.
+     * This tells the server what the device can play directly vs what needs transcoding.
+     */
+    private fun buildDeviceProfile(maxStreamingBitrate: Int?): DeviceProfile {
+        val caps = mediaCodecCapabilities
+
+        // Log capabilities on first use
+        caps?.let {
+            android.util.Log.d(
+                "JellyfinClient",
+                "Device capabilities: HEVC=${it.supportsHevc()} HEVC10=${it.supportsHevcMain10()} " +
+                    "AV1=${it.supportsAv1()} AV110=${it.supportsAv1Main10()}",
+            )
+        }
+
+        // Build list of supported video codecs for direct play
+        val videoCodecs = buildList {
+            add("h264") // H.264 is universally supported
+            if (caps?.supportsHevc() == true) add("hevc")
+            if (caps?.supportsVp8() == true) add("vp8")
+            if (caps?.supportsVp9() == true) add("vp9")
+            if (caps?.supportsAv1() == true) add("av1")
+        }.ifEmpty { listOf("h264", "hevc", "vp8", "vp9", "av1") } // Fallback if no caps
+
+        // Build codec profiles to restrict to supported profiles
+        val codecProfiles = buildList {
+            // HEVC profile restrictions
+            if (caps?.supportsHevc() == true) {
+                val supportedHevcProfiles = caps.getSupportedHevcProfiles()
+                if (supportedHevcProfiles.isNotEmpty() && !caps.supportsHevcMain10()) {
+                    // Device supports HEVC but NOT Main 10 - restrict to "main" only
+                    add(
+                        CodecProfile(
+                            type = "Video",
+                            codec = "hevc",
+                            conditions = listOf(
+                                ProfileCondition(
+                                    condition = "EqualsAny",
+                                    property = "VideoProfile",
+                                    value = supportedHevcProfiles.joinToString("|"),
+                                    isRequired = true,
+                                ),
+                            ),
+                        ),
+                    )
+
+                    // Also add level restriction if we have it
+                    val hevcLevel = caps.getHevcMainLevel()
+                    if (hevcLevel > 0) {
+                        add(
+                            CodecProfile(
+                                type = "Video",
+                                codec = "hevc",
+                                conditions = listOf(
+                                    ProfileCondition(
+                                        condition = "LessThanEqual",
+                                        property = "VideoLevel",
+                                        value = hevcLevel.toString(),
+                                        isRequired = false,
+                                    ),
+                                ),
+                            ),
+                        )
+                    }
+                }
+            }
+
+            // AV1 profile restrictions
+            if (caps?.supportsAv1() == true && !caps.supportsAv1Main10()) {
+                // Device supports AV1 but NOT Main 10 - restrict to "Main" only
+                add(
+                    CodecProfile(
+                        type = "Video",
+                        codec = "av1",
+                        conditions = listOf(
+                            ProfileCondition(
+                                condition = "EqualsAny",
+                                property = "VideoProfile",
+                                value = "Main",
+                                isRequired = true,
+                            ),
+                        ),
+                    ),
+                )
+            }
+
+            // H.264 level restrictions
+            caps?.let {
+                val avcLevel = it.getAvcMainLevel()
+                if (avcLevel > 0) {
+                    add(
+                        CodecProfile(
+                            type = "Video",
+                            codec = "h264",
+                            conditions = listOf(
+                                ProfileCondition(
+                                    condition = "LessThanEqual",
+                                    property = "VideoLevel",
+                                    value = avcLevel.toString(),
+                                    isRequired = false,
+                                ),
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
+
+        // Build transcoding profile - prefer HEVC if supported, otherwise H.264
+        val transcodingVideoCodec = when {
+            caps?.supportsHevc() == true -> "hevc,h264" // Prefer HEVC, fallback to H.264
+            else -> "h264"
+        }
+
+        return DeviceProfile(
+            name = "MyFlix-Android",
+            maxStreamingBitrate = maxStreamingBitrate,
+            directPlayProfiles = listOf(
+                DirectPlayProfile(
+                    type = "Video",
+                    container = "mp4,mkv,webm,m4v,mov,ts",
+                    videoCodec = videoCodecs.joinToString(","),
+                    audioCodec = "aac,mp3,ac3,eac3,flac,opus,vorbis,pcm",
+                ),
+                DirectPlayProfile(
+                    type = "Audio",
+                    container = "mp3,aac,flac,m4a,ogg,opus,wav",
+                ),
+            ),
+            transcodingProfiles = listOf(
+                TranscodingProfile(
+                    type = "Video",
+                    container = "ts",
+                    videoCodec = transcodingVideoCodec,
+                    audioCodec = "aac,mp3,ac3",
+                    protocol = "hls",
+                    context = "Streaming",
+                    copyTimestamps = false,
+                    enableSubtitlesInManifest = true,
+                ),
+                TranscodingProfile(
+                    type = "Audio",
+                    container = "ts",
+                    videoCodec = "",
+                    audioCodec = "aac",
+                    protocol = "hls",
+                    context = "Streaming",
+                ),
+            ),
+            subtitleProfiles = listOf(
+                SubtitleProfile(format = "vtt", method = "Embed"),
+                SubtitleProfile(format = "srt", method = "External"),
+                SubtitleProfile(format = "ass", method = "External"),
+                SubtitleProfile(format = "ssa", method = "External"),
+            ),
+            codecProfiles = codecProfiles,
+        )
+    }
+
     // ==================== Playback Info API ====================
 
     /**
@@ -1567,53 +1737,8 @@ class JellyfinClient(
         val isDirectPlay = maxBitrateMbps == null || maxBitrateMbps == 0
         val bitrateBps = if (isDirectPlay) null else maxBitrateMbps * 1_000_000
 
-        // Build device profile to tell server what codecs we can accept
-        // DirectPlayProfiles = what we CAN play (transcoded output)
-        // TranscodingProfiles = what format to transcode TO
-        // Request flags control whether we want direct play or transcoding
-        val deviceProfile = DeviceProfile(
-            name = "MyFlix-Android",
-            maxStreamingBitrate = bitrateBps,
-            directPlayProfiles = listOf(
-                DirectPlayProfile(
-                    type = "Video",
-                    container = "mp4,mkv,webm,m4v,mov,ts",
-                    // Include all codecs we can play (h264 is what we'll get from transcoding)
-                    videoCodec = "h264,hevc,vp8,vp9,av1",
-                    audioCodec = "aac,mp3,ac3,eac3,flac,opus,vorbis,pcm",
-                ),
-                DirectPlayProfile(
-                    type = "Audio",
-                    container = "mp3,aac,flac,m4a,ogg,opus,wav",
-                ),
-            ),
-            transcodingProfiles = listOf(
-                TranscodingProfile(
-                    type = "Video",
-                    container = "ts",
-                    videoCodec = "h264",
-                    audioCodec = "aac,mp3,ac3",
-                    protocol = "hls",
-                    context = "Streaming",
-                    copyTimestamps = false,
-                    enableSubtitlesInManifest = true,
-                ),
-                TranscodingProfile(
-                    type = "Audio",
-                    container = "ts",
-                    videoCodec = "",
-                    audioCodec = "aac",
-                    protocol = "hls",
-                    context = "Streaming",
-                ),
-            ),
-            subtitleProfiles = listOf(
-                SubtitleProfile(format = "vtt", method = "Embed"),
-                SubtitleProfile(format = "srt", method = "External"),
-                SubtitleProfile(format = "ass", method = "External"),
-                SubtitleProfile(format = "ssa", method = "External"),
-            ),
-        )
+        // Build device profile dynamically based on device codec capabilities
+        val deviceProfile = buildDeviceProfile(bitrateBps)
 
         val request = PlaybackInfoRequest(
             mediaSourceId = mediaSourceId,
@@ -1622,10 +1747,14 @@ class JellyfinClient(
             subtitleStreamIndex = subtitleStreamIndex,
             enableDirectPlay = isDirectPlay,
             enableDirectStream = isDirectPlay,
-            enableTranscoding = !isDirectPlay,
-            allowVideoStreamCopy = isDirectPlay,
+            // Always enable transcoding as fallback - even with direct play,
+            // server may need to transcode if codec conditions aren't met (e.g., 10-bit HEVC)
+            enableTranscoding = true,
+            // Disable stream copy to force server to evaluate codec profiles
+            // and transcode if conditions aren't met (e.g., 10-bit HEVC)
+            allowVideoStreamCopy = false,
             allowAudioStreamCopy = isDirectPlay,
-            enableAutoStreamCopy = isDirectPlay, // Disable stream copy to force re-encode
+            enableAutoStreamCopy = false,
             autoOpenLiveStream = true,
             deviceProfile = deviceProfile,
         )
@@ -1771,11 +1900,28 @@ class JellyfinClient(
             streamUrl = "$baseUrl/Videos/$itemId/stream?${params.joinToString("&")}"
         } else {
             // Fallback to transcode if nothing else is supported
+            // Use device capabilities to choose transcoding codec
+            // Default bitrate of 20 Mbps for quality transcoding
             playMethod = "Transcode"
             val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
+            val defaultBitrate = 20_000_000 // 20 Mbps default for quality transcoding
+
+            // Choose transcoding codec based on device capabilities
+            // Prefer HEVC if device supports it (better quality at same bitrate)
+            val transcodingVideoCodec = if (mediaCodecCapabilities?.supportsHevc() == true) {
+                "hevc"
+            } else {
+                "h264"
+            }
+
             val params = buildList {
                 add("MediaSourceId=$actualMediaSourceId")
                 add("api_key=$accessToken")
+                add("MaxStreamingBitrate=$defaultBitrate")
+                add("VideoBitrate=$defaultBitrate")
+                add("VideoCodec=$transcodingVideoCodec")
+                add("AudioCodec=aac")
+                add("EnableAutoStreamCopy=false")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }

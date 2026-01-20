@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dev.jausc.myflix.core.common.preferences.PreferenceKeys
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.websocket.JellyfinWebSocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +25,11 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
 
     // Coroutine scope for fire-and-forget operations
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // WebSocket for remote control support
+    val webSocket: JellyfinWebSocket by lazy {
+        JellyfinWebSocket(scope)
+    }
 
     // Server manager for multi-server support
     val serverManager: ServerManager by lazy {
@@ -79,6 +85,8 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
             jellyfinClient.setServerContext(active.serverId)
             // Register session capabilities for remote control support
             jellyfinClient.registerSessionCapabilities()
+            // Connect WebSocket for real-time remote control
+            webSocket.connect(active.serverUrl, active.accessToken, deviceId)
         }
     }
 
@@ -185,6 +193,9 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         // Register session capabilities for remote control support
         jellyfinClient.registerSessionCapabilities()
 
+        // Connect WebSocket for real-time remote control
+        webSocket.connect(serverUrl, accessToken, jellyfinClient.deviceId)
+
         // Save Seerr credentials
         this.username = username
         this.password = password
@@ -201,12 +212,18 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         val server = serverManager.setActiveServer(serverId)
             ?: return Result.failure(IllegalArgumentException("Server not found: $serverId"))
 
+        // Disconnect WebSocket from old server
+        webSocket.disconnect()
+
         // Configure JellyfinClient with new server
         jellyfinClient.configure(server.serverUrl, server.accessToken, server.userId, jellyfinClient.deviceId)
         jellyfinClient.setServerContext(server.serverId)
 
         // Register session capabilities for remote control support (fire and forget)
         scope.launch { jellyfinClient.registerSessionCapabilities() }
+
+        // Connect WebSocket to new server
+        webSocket.connect(server.serverUrl, server.accessToken, jellyfinClient.deviceId)
 
         Log.d(TAG, "Switched to server: ${server.serverName}")
         return Result.success(server)
@@ -224,7 +241,8 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
         val removed = serverManager.removeServer(serverId)
 
         if (removed && isActive) {
-            // Disconnected - clear JellyfinClient
+            // Disconnected - clear JellyfinClient and WebSocket
+            webSocket.disconnect()
             jellyfinClient.logout()
         }
 
@@ -235,6 +253,7 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
      * Disconnect from the current server without removing it.
      */
     suspend fun logout() {
+        webSocket.disconnect()
         jellyfinClient.logout()
         serverManager.clearActiveServer()
         username = null
@@ -246,6 +265,7 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
      * Disconnect from current server AND remove it from saved servers.
      */
     suspend fun logoutAndRemove() {
+        webSocket.disconnect()
         val activeId = serverManager.getActiveServer()?.serverId
         if (activeId != null) {
             serverManager.removeServer(activeId)

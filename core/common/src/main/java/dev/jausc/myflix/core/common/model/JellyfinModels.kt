@@ -525,6 +525,7 @@ data class DeviceProfile(
     @SerialName("DirectPlayProfiles") val directPlayProfiles: List<DirectPlayProfile> = emptyList(),
     @SerialName("TranscodingProfiles") val transcodingProfiles: List<TranscodingProfile> = emptyList(),
     @SerialName("SubtitleProfiles") val subtitleProfiles: List<SubtitleProfile> = emptyList(),
+    @SerialName("CodecProfiles") val codecProfiles: List<CodecProfile> = emptyList(),
 )
 
 /**
@@ -561,4 +562,26 @@ data class TranscodingProfile(
 data class SubtitleProfile(
     @SerialName("Format") val format: String,
     @SerialName("Method") val method: String,
+)
+
+/**
+ * Defines codec-specific conditions for direct play.
+ * Used to limit what codecs can be played based on properties like bit depth, resolution, etc.
+ */
+@Serializable
+data class CodecProfile(
+    @SerialName("Type") val type: String = "Video",
+    @SerialName("Codec") val codec: String? = null,
+    @SerialName("Conditions") val conditions: List<ProfileCondition> = emptyList(),
+)
+
+/**
+ * A condition that must be met for a codec to be considered playable.
+ */
+@Serializable
+data class ProfileCondition(
+    @SerialName("Condition") val condition: String,
+    @SerialName("Property") val property: String,
+    @SerialName("Value") val value: String,
+    @SerialName("IsRequired") val isRequired: Boolean = true,
 )

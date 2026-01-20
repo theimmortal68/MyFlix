@@ -37,6 +37,8 @@ import dev.jausc.myflix.core.common.util.NavigationHelper
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.websocket.GeneralCommandType
+import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.mobile.ui.screens.DetailScreen
 import dev.jausc.myflix.mobile.ui.screens.HomeScreen
@@ -306,6 +308,62 @@ fun MyFlixMobileContent(
     }
 
     val navController = rememberNavController()
+
+    // Handle WebSocket remote control events
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            appState.webSocket.events.collect { event ->
+                when (event) {
+                    is WebSocketEvent.GeneralCommand -> {
+                        when (event.name) {
+                            GeneralCommandType.DisplayMessage -> {
+                                val text = event.arguments["Text"]
+                                val header = event.arguments["Header"]
+                                val message = if (header != null) "$header: $text" else text
+                                if (message != null) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        message,
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                            GeneralCommandType.DisplayContent -> {
+                                val itemId = event.arguments["ItemId"]
+                                if (itemId != null) {
+                                    navController.navigate("detail/$itemId")
+                                }
+                            }
+                            GeneralCommandType.GoHome -> {
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            }
+                            GeneralCommandType.GoToSearch -> {
+                                navController.navigate("search")
+                            }
+                            GeneralCommandType.GoToSettings -> {
+                                navController.navigate("settings")
+                            }
+                            else -> {
+                                android.util.Log.d("WebSocket", "Unhandled command: ${event.name}")
+                            }
+                        }
+                    }
+                    is WebSocketEvent.PlaystateCommand,
+                    is WebSocketEvent.PlayCommand -> {
+                        // These are handled by PlayerViewModel when player is active
+                        android.util.Log.d("WebSocket", "Playback event: $event")
+                    }
+                    is WebSocketEvent.LibraryChanged -> {
+                        // Invalidate cache to refresh content
+                        jellyfinClient.invalidateCache()
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
 
     // Navigate when BOTH splash animation completes AND initialization is done
     LaunchedEffect(splashFinished, isInitialized) {
