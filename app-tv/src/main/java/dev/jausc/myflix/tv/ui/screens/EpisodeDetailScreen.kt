@@ -259,7 +259,7 @@ fun EpisodeDetailScreen(
 
             // Scrollable content rows (below fixed hero)
             LazyColumn(
-                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
+                contentPadding = PaddingValues(start = 0.dp, end = 48.dp, top = 0.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {

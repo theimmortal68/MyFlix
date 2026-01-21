@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -46,6 +49,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Horizontal row of chapter thumbnails with timestamps for TV.
  * Supports D-pad navigation with focus management.
  * Clicking a chapter seeks to that position in the video.
+ * Matches home screen row styling with accent bar.
  */
 @Composable
 fun ChaptersRow(
@@ -54,6 +58,7 @@ fun ChaptersRow(
     getChapterImageUrl: (Int) -> String,
     onChapterClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    accentColor: Color = Color(0xFFE5A00D),
 ) {
     if (chapters.isEmpty()) return
 
@@ -65,15 +70,29 @@ fun ChaptersRow(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        Text(
-            text = "Chapters",
-            style = MaterialTheme.typography.titleLarge,
-            color = TvColors.TextPrimary,
-        )
+        // Row header with accent bar - matches home screen style
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(start = 10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(24.dp)
+                    .background(accentColor, shape = MaterialTheme.shapes.small),
+            )
+            Text(
+                text = "Chapters",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TvColors.TextPrimary,
+            )
+        }
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRestorer(firstFocus),

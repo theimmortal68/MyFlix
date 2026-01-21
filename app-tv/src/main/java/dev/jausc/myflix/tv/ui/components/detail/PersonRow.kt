@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -63,6 +64,7 @@ fun CastCrewSection(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(start = 10.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -80,7 +82,7 @@ fun CastCrewSection(
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRestorer(firstFocus),
