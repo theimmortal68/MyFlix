@@ -157,6 +157,19 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
                             ),
                             blendMode = BlendMode.DstIn,
                         )
+                        // Dark overlay on left side for text readability against light backgrounds
+                        // Fades with the image transparency so it blends into dynamic background
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent, // Fully transparent at edge (matches image)
+                                    0.4f to Color.Black.copy(alpha = 0.15f), // Light tint where image is half visible
+                                    0.5f to Color.Black.copy(alpha = 0.25f), // Stronger where image is opaque
+                                    0.6f to Color.Transparent, // Fade out before fully visible area
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                        )
                     },
             )
         }
