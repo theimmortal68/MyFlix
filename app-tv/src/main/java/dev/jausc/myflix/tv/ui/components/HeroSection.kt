@@ -245,6 +245,7 @@ fun HeroSection(
             // but still focusable so up navigation works
             HeroContentOverlay(
                 item = item,
+                itemId = item.id,
                 onPlayClick = { onPlayClick(item.id) },
                 onDetailsClick = { onItemClick(item.id) },
                 playButtonFocusRequester = playButtonFocusRequester,
@@ -291,6 +292,7 @@ private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient)
 @Composable
 private fun HeroContentOverlay(
     item: JellyfinItem,
+    itemId: String,
     onPlayClick: () -> Unit,
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
@@ -325,6 +327,7 @@ private fun HeroContentOverlay(
 
         // Action buttons (20dp height) - hidden in preview mode but still focusable
         HeroActionButtons(
+            itemId = itemId,
             onPlayClick = onPlayClick,
             onDetailsClick = onDetailsClick,
             playButtonFocusRequester = playButtonFocusRequester,
@@ -481,6 +484,7 @@ private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) 
  */
 @Composable
 private fun HeroActionButtons(
+    itemId: String,
     onPlayClick: () -> Unit,
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
@@ -494,8 +498,9 @@ private fun HeroActionButtons(
     // Alpha is 0 in preview mode (invisible but focusable)
     val buttonsAlpha = if (isPreviewMode) 0f else 1f
 
-    // Restore focus immediately when button is composed (if needed)
-    LaunchedEffect(shouldRestoreFocus) {
+    // Restore focus when button is composed and item changes (key on itemId ensures
+    // this triggers on each rotation, not just when shouldRestoreFocus changes)
+    LaunchedEffect(shouldRestoreFocus, itemId) {
         if (shouldRestoreFocus) {
             try {
                 playButtonFocusRequester.requestFocus()
