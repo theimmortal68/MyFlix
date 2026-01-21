@@ -259,7 +259,7 @@ fun SeerrRequestsScreen(
         ) {
             Button(
                 onClick = onBack,
-                modifier = Modifier.height(20.dp),
+                modifier = Modifier.height(24.dp),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
                 colors = ButtonDefaults.colors(
@@ -289,7 +289,7 @@ fun SeerrRequestsScreen(
                 Box {
                     Button(
                         onClick = { showScopeDropdown = true },
-                        modifier = Modifier.height(20.dp),
+                        modifier = Modifier.height(24.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         scale = ButtonDefaults.scale(focusedScale = 1f),
                         colors = ButtonDefaults.colors(
@@ -336,7 +336,7 @@ fun SeerrRequestsScreen(
             Box {
                 Button(
                     onClick = { showFilterDropdown = true },
-                    modifier = Modifier.height(20.dp),
+                    modifier = Modifier.height(24.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     scale = ButtonDefaults.scale(focusedScale = 1f),
                     colors = ButtonDefaults.colors(
@@ -387,7 +387,7 @@ fun SeerrRequestsScreen(
             Box {
                 Button(
                     onClick = { showSortDropdown = true },
-                    modifier = Modifier.height(20.dp),
+                    modifier = Modifier.height(24.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     scale = ButtonDefaults.scale(focusedScale = 1f),
                     colors = ButtonDefaults.colors(
@@ -651,7 +651,7 @@ private fun CompactRequestRow(
             Button(
                 onClick = onApprove,
                 enabled = !isUpdating,
-                modifier = Modifier.height(40.dp),
+                modifier = Modifier.height(24.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 scale = ButtonDefaults.scale(focusedScale = 1.05f),
                 colors = ButtonDefaults.colors(
@@ -668,7 +668,7 @@ private fun CompactRequestRow(
             Button(
                 onClick = onDecline,
                 enabled = !isUpdating,
-                modifier = Modifier.height(40.dp),
+                modifier = Modifier.height(24.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 scale = ButtonDefaults.scale(focusedScale = 1.05f),
                 colors = ButtonDefaults.colors(
@@ -685,7 +685,7 @@ private fun CompactRequestRow(
             Button(
                 onClick = onCancel,
                 enabled = !isUpdating,
-                modifier = Modifier.height(40.dp),
+                modifier = Modifier.height(24.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 scale = ButtonDefaults.scale(focusedScale = 1.05f),
                 colors = ButtonDefaults.colors(

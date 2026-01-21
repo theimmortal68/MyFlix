@@ -224,7 +224,7 @@ private fun PersonHeader(
             Button(
                 onClick = onBack,
                 modifier = Modifier
-                    .height(20.dp)
+                    .height(24.dp)
                     .focusRequester(backButtonFocusRequester),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 scale = ButtonDefaults.scale(focusedScale = 1f),

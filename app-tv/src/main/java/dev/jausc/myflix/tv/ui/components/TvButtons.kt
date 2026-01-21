@@ -20,8 +20,9 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Standard button height for all TV buttons.
+ * Matches nav bar icon size for visual consistency.
  */
-private val StandardButtonHeight = 20.dp
+private val StandardButtonHeight = 24.dp
 
 /**
  * Standard icon size inside buttons.

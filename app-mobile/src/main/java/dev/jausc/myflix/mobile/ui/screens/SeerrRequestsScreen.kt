@@ -610,7 +610,7 @@ private fun CompactRequestCard(
                         OutlinedButton(
                             onClick = onApprove,
                             enabled = !isUpdating,
-                            modifier = Modifier.height(32.dp),
+                            modifier = Modifier.height(24.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp),
                         ) {
                             Text("Approve", style = MaterialTheme.typography.labelSmall)
@@ -620,7 +620,7 @@ private fun CompactRequestCard(
                         OutlinedButton(
                             onClick = onDecline,
                             enabled = !isUpdating,
-                            modifier = Modifier.height(32.dp),
+                            modifier = Modifier.height(24.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp),
                         ) {
                             Text("Decline", style = MaterialTheme.typography.labelSmall)
@@ -630,7 +630,7 @@ private fun CompactRequestCard(
                         OutlinedButton(
                             onClick = onCancel,
                             enabled = !isUpdating,
-                            modifier = Modifier.height(32.dp),
+                            modifier = Modifier.height(24.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp),
                         ) {
                             Text("Cancel", style = MaterialTheme.typography.labelSmall)

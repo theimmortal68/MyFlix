@@ -465,7 +465,7 @@ fun SeerrSetupScreen(
                                         val isSelected = authMode == mode
                                         Button(
                                             onClick = { authMode = mode },
-                                            modifier = Modifier.height(20.dp),
+                                            modifier = Modifier.height(24.dp),
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                             colors = if (isSelected) {
                                                 ButtonDefaults.colors(

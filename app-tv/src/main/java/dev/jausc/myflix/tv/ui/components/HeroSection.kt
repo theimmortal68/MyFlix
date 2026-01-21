@@ -682,7 +682,7 @@ private fun ExpandableHeroButton(
 
     Button(
         onClick = onClick,
-        modifier = modifier.height(20.dp),
+        modifier = modifier.height(24.dp),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
         interactionSource = interactionSource,
         scale = ButtonDefaults.scale(focusedScale = 1f),

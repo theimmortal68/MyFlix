@@ -101,7 +101,7 @@ fun SeerrCollectionDetailScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(
                 onClick = onBack,
-                modifier = Modifier.height(20.dp),
+                modifier = Modifier.height(24.dp),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                 scale = ButtonDefaults.scale(focusedScale = 1f),
                 colors = ButtonDefaults.colors(

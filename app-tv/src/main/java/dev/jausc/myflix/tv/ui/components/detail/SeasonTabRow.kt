@@ -119,7 +119,7 @@ private fun SeasonTab(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .height(20.dp)
+            .height(24.dp)
             .focusProperties {
                 if (downFocusRequester != null) {
                     down = downFocusRequester

@@ -525,7 +525,7 @@ private fun CollectionActionButtons(
         Button(
             onClick = onShuffleClick,
             modifier = Modifier
-                .height(20.dp)
+                .height(24.dp)
                 .focusRequester(shuffleFocusRequester),
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
             scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
@@ -548,7 +548,7 @@ private fun CollectionActionButtons(
         // Favorite button
         Button(
             onClick = onFavoriteClick,
-            modifier = Modifier.height(20.dp),
+            modifier = Modifier.height(24.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
             scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
             colors = ButtonDefaults.colors(

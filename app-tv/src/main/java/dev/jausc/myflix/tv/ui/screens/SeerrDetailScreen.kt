@@ -575,7 +575,7 @@ fun SeerrDetailScreen(
                                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                             Button(
                                                 onClick = { request4k = !request4k },
-                                                modifier = Modifier.height(20.dp),
+                                                modifier = Modifier.height(24.dp),
                                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                                 colors = if (request4k) {
                                                     ButtonDefaults.colors(
@@ -608,7 +608,7 @@ fun SeerrDetailScreen(
                                                 item {
                                                     Button(
                                                         onClick = { selectedSeasons = emptySet() },
-                                                        modifier = Modifier.height(20.dp),
+                                                        modifier = Modifier.height(24.dp),
                                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                                         colors = if (selectedSeasons.isEmpty()) {
                                                             ButtonDefaults.colors(
@@ -641,7 +641,7 @@ fun SeerrDetailScreen(
                                                                 selectedSeasons + seasonNumber
                                                             }
                                                         },
-                                                        modifier = Modifier.height(20.dp),
+                                                        modifier = Modifier.height(24.dp),
                                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                                         colors = if (selected) {
                                                             ButtonDefaults.colors(

@@ -127,7 +127,7 @@ fun ExitConfirmationDialog(
                                 left = FocusRequester.Cancel
                                 right = exitFocusRequester
                             }
-                            .height(40.dp),
+                            .height(24.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.SurfaceElevated,
                             contentColor = TvColors.TextPrimary,
@@ -152,7 +152,7 @@ fun ExitConfirmationDialog(
                                 left = cancelFocusRequester
                                 right = FocusRequester.Cancel
                             }
-                            .height(40.dp),
+                            .height(24.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = TvColors.Error.copy(alpha = 0.8f),
                             contentColor = Color.White,
