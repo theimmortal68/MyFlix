@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.jausc.myflix.core.common.LibraryFinder
+import dev.jausc.myflix.mobile.ui.components.MobileCardSizes
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -567,7 +568,10 @@ private fun MobileSeerrRequestCard(
 
     Surface(
         onClick = onClick,
-        modifier = modifier.size(width = 110.dp, height = 165.dp),
+        modifier = modifier.size(
+            width = MobileCardSizes.CompactPosterWidth,
+            height = MobileCardSizes.CompactPosterWidth * 1.5f,
+        ),
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surface,
     ) {

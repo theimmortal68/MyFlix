@@ -36,7 +36,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Width of the navigation rail.
  * Use this constant to offset content to the right of the rail.
  */
-const val NAV_RAIL_WIDTH_DP = 48
+const val NAV_RAIL_WIDTH_DP = 32
 
 /**
  * Navigation items for the rail
@@ -190,7 +190,7 @@ private fun NavRailItem(
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(32.dp)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
             }
@@ -219,10 +219,10 @@ private fun NavRailItem(
         // Halo effect (blurred circle behind the icon)
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(28.dp)
                 .scale(haloScale)
                 .alpha(haloAlpha * 0.4f)
-                .blur(8.dp)
+                .blur(6.dp)
                 .clip(CircleShape)
                 .background(item.color),
         )
@@ -230,10 +230,10 @@ private fun NavRailItem(
         // Secondary inner glow
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(22.dp)
                 .scale(haloScale)
                 .alpha(haloAlpha * 0.3f)
-                .blur(4.dp)
+                .blur(3.dp)
                 .clip(CircleShape)
                 .background(item.color),
         )
@@ -242,7 +242,7 @@ private fun NavRailItem(
         if (isSelected && !isFocused) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
                     .background(item.color.copy(alpha = 0.2f)),
             )
@@ -253,7 +253,7 @@ private fun NavRailItem(
             imageVector = item.icon,
             contentDescription = item.label,
             modifier = Modifier
-                .size(24.dp)
+                .size(16.dp)
                 .scale(iconScale),
             tint = when {
                 isFocused -> item.color
