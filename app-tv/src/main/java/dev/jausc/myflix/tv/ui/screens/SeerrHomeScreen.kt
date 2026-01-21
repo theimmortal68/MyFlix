@@ -395,7 +395,7 @@ fun SeerrHomeScreen(
                             // Quick action buttons row
                             item(key = "quick_actions") {
                                 Row(
-                                    modifier = Modifier.padding(start = 48.dp),
+                                    modifier = Modifier.padding(start = 24.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     TvIconTextButton(
@@ -675,7 +675,7 @@ private fun SeerrHeroSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 48.dp, top = 36.dp, bottom = 8.dp),
+                .padding(start = 24.dp, top = 36.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.Top,
         ) {
             // Half-width modifier for non-title text
@@ -847,7 +847,7 @@ private fun SeerrContentRow(
         // Row header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -866,7 +866,7 @@ private fun SeerrContentRow(
 
         // Cards
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             items(items, key = { "${it.mediaType}_${it.id}" }) { media ->
@@ -1021,7 +1021,7 @@ private fun SeerrGenreBrowseRow(
         // Row header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -1040,7 +1040,7 @@ private fun SeerrGenreBrowseRow(
 
         // Genre cards
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             items(genres, key = { it.id }) { genre ->
@@ -1159,7 +1159,7 @@ private fun SeerrStudioBrowseRow(
         // Row header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -1178,7 +1178,7 @@ private fun SeerrStudioBrowseRow(
 
         // Studio cards
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             items(studios, key = { it.id }) { studio ->
@@ -1277,7 +1277,7 @@ private fun SeerrNetworkBrowseRow(
         // Row header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -1296,7 +1296,7 @@ private fun SeerrNetworkBrowseRow(
 
         // Network cards
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             items(networks, key = { it.id }) { network ->

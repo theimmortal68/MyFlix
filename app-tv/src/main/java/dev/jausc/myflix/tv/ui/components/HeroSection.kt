@@ -305,7 +305,7 @@ private fun HeroContentOverlay(
         modifier = Modifier
             .fillMaxHeight()
             .fillMaxWidth(0.5f)
-            .padding(start = 48.dp, top = 16.dp, bottom = 0.dp),
+            .padding(start = 10.dp, top = 16.dp, bottom = 0.dp),
         verticalArrangement = Arrangement.Top,
     ) {
         // Title and subtitle
@@ -734,7 +734,7 @@ fun HeroSectionShimmer(modifier: Modifier = Modifier,) {
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(0.5f)
-                .padding(start = 48.dp, top = 32.dp, bottom = 16.dp),
+                .padding(start = 10.dp, top = 32.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.Top,
         ) {
             // Title placeholder
