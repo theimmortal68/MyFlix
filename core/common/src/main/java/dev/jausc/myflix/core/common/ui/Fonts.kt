@@ -59,6 +59,17 @@ object MyFlixFonts {
     )
 
     /**
+     * Open Sans - clean, humanist sans-serif with excellent readability
+     * Designed for legibility across print, web, and mobile interfaces
+     */
+    val OpenSans = FontFamily(
+        Font(R.font.open_sans_regular, FontWeight.Normal),
+        Font(R.font.open_sans_medium, FontWeight.Medium),
+        Font(R.font.open_sans_semibold, FontWeight.SemiBold),
+        Font(R.font.open_sans_bold, FontWeight.Bold),
+    )
+
+    /**
      * Logo font alias
      */
     val Logo = BebasNeue
@@ -71,5 +82,5 @@ object MyFlixFonts {
     /**
      * Body/UI font alias
      */
-    val Body = Montserrat
+    val Body = OpenSans
 }
