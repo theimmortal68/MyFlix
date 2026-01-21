@@ -46,7 +46,6 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.tv.material3.Icon
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -752,7 +751,7 @@ private fun RatingBadge(text: String) {
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodySmall.copy(
+            style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
             ),
             color = Color.White,
@@ -829,7 +828,7 @@ private fun StatusBadge(status: String) {
     ) {
         Text(
             text = displayText,
-            style = MaterialTheme.typography.bodySmall.copy(
+            style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
             ),
             color = Color.White,
@@ -1003,18 +1002,14 @@ private fun NetworkLogo(
     // Track if logo failed to load
     var logoFailed by remember(tvLogoUrl) { mutableStateOf(false) }
 
-    // Use font size to determine consistent height (bodySmall ~14sp)
-    val logoHeight = with(LocalDensity.current) {
-        MaterialTheme.typography.bodySmall.fontSize.toDp()
-    }
-
     when {
         tvLogoUrl != null && !logoFailed -> {
             // Show logo from tv-logo repository with error handling
+            // Height of 14.dp matches the visual line height of bodySmall text
             AsyncImage(
                 model = tvLogoUrl,
                 contentDescription = networkName ?: "Network",
-                modifier = Modifier.height(logoHeight),
+                modifier = Modifier.height(14.dp),
                 contentScale = ContentScale.Fit,
                 onError = { logoFailed = true },
             )
@@ -1030,7 +1025,7 @@ private fun NetworkLogo(
             ) {
                 Text(
                     text = networkName,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                 )
             }
