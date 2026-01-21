@@ -179,7 +179,7 @@ fun MyFlixMobileContent(
 ) {
     val context = LocalContext.current
 
-    val jellyfinClient = remember { JellyfinClient() }
+    val jellyfinClient = remember { JellyfinClient(context) }
     val appState = remember { AppState(context, jellyfinClient) }
     val mobilePreferences = remember { MobilePreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
@@ -571,6 +571,7 @@ fun MyFlixMobileContent(
                 jellyfinClient = jellyfinClient,
                 appPreferences = mobilePreferences,
                 useMpvPlayer = useMpvPlayer,
+                webSocketEvents = appState.webSocket.events,
                 onBack = { navController.popBackStack() },
                 onPlayerActiveChange = onPlayerActiveChange,
             )
