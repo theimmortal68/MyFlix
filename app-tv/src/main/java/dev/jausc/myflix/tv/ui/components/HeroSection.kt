@@ -76,6 +76,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
 import dev.jausc.myflix.core.common.model.formattedPremiereDate
 import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.isUpcomingEpisode
@@ -350,7 +351,9 @@ private fun HeroTitleSection(item: JellyfinItem) {
 }
 
 /**
- * Row displaying rating information: Official rating, stars, critic rating, year, runtime.
+ * Row displaying rating information.
+ * Episodes: S# E#, air date, duration, parental rating, community rating
+ * Other: Parental rating, year, community rating, critic rating, runtime
  */
 @Composable
 private fun HeroRatingRow(item: JellyfinItem) {
@@ -358,42 +361,88 @@ private fun HeroRatingRow(item: JellyfinItem) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Official rating badge (PG-13, TV-MA, etc.)
-        item.officialRating?.let { rating ->
-            RatingBadge(rating)
-        }
+        if (item.isEpisode) {
+            // Episode-specific order: S# E#, air date, duration, rating, stars
 
-        // Production year
-        item.productionYear?.let { year ->
-            Text(
-                text = year.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary.copy(alpha = 0.9f), // Bright white
-            )
-        }
-
-        // Community rating (star rating)
-        item.communityRating?.let { rating ->
-            StarRating(rating)
-        }
-
-        // Critic rating (Rotten Tomatoes style)
-        item.criticRating?.let { rating ->
-            CriticRatingBadge(rating)
-        }
-
-        // Runtime
-        item.runTimeTicks?.let { ticks ->
-            val minutes = (ticks / 600_000_000).toInt()
-            if (minutes > 0) {
-                RuntimeDisplay(minutes)
+            // Season and Episode number
+            val season = item.parentIndexNumber
+            val episode = item.indexNumber
+            if (season != null && episode != null) {
+                Text(
+                    text = "S$season E$episode",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                )
             }
-        }
 
-        // Premiere date (only for upcoming episodes)
-        if (item.isUpcomingEpisode) {
-            item.formattedPremiereDate?.let { date ->
-                PremiereDateBadge(date)
+            // Full air date
+            item.formattedFullPremiereDate?.let { date ->
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                )
+            }
+
+            // Runtime
+            item.runTimeTicks?.let { ticks ->
+                val minutes = (ticks / 600_000_000).toInt()
+                if (minutes > 0) {
+                    RuntimeDisplay(minutes)
+                }
+            }
+
+            // Official rating badge (PG-13, TV-MA, etc.)
+            item.officialRating?.let { rating ->
+                RatingBadge(rating)
+            }
+
+            // Community rating (star rating)
+            item.communityRating?.let { rating ->
+                StarRating(rating)
+            }
+        } else {
+            // Non-episode order: rating, year, stars, critic, runtime
+
+            // Official rating badge (PG-13, TV-MA, etc.)
+            item.officialRating?.let { rating ->
+                RatingBadge(rating)
+            }
+
+            // Production year
+            item.productionYear?.let { year ->
+                Text(
+                    text = year.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                )
+            }
+
+            // Community rating (star rating)
+            item.communityRating?.let { rating ->
+                StarRating(rating)
+            }
+
+            // Critic rating (Rotten Tomatoes style)
+            item.criticRating?.let { rating ->
+                CriticRatingBadge(rating)
+            }
+
+            // Runtime
+            item.runTimeTicks?.let { ticks ->
+                val minutes = (ticks / 600_000_000).toInt()
+                if (minutes > 0) {
+                    RuntimeDisplay(minutes)
+                }
+            }
+
+            // Premiere date (only for upcoming episodes)
+            if (item.isUpcomingEpisode) {
+                item.formattedPremiereDate?.let { date ->
+                    PremiereDateBadge(date)
+                }
             }
         }
     }

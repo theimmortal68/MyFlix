@@ -213,6 +213,22 @@ val JellyfinItem.formattedPremiereDate: String?
         }
     }
 
+/**
+ * Format premiere date as "Month DD, YYYY" (e.g., "January 15, 2024")
+ */
+val JellyfinItem.formattedFullPremiereDate: String?
+    get() {
+        val dateStr = premiereDate ?: return null
+        return try {
+            val instant = java.time.Instant.parse(dateStr)
+            val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy")
+            localDate.format(formatter)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
 val JellyfinItem.runtimeMinutes: Int?
     get() = runTimeTicks?.let { (it / 600_000_000).toInt() }
 
