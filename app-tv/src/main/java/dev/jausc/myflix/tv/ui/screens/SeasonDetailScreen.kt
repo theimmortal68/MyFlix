@@ -226,14 +226,14 @@ fun SeasonDetailScreen(
                     upFocusRequester = navBarFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 30.dp, start = 48.dp, end = 48.dp),
+                        .padding(top = 16.dp, start = 10.dp, end = 48.dp),
                 )
 
                 // Hero content (left 50%) - season info only (no episode info)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 64.dp),
+                        .padding(start = 10.dp, top = 60.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     // Key on selected season ID to force recomposition when season changes

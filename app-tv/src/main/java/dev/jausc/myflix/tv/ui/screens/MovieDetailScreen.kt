@@ -170,7 +170,7 @@ fun MovieDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)
-                            .padding(start = 48.dp, top = 24.dp, bottom = 4.dp),
+                            .padding(start = 10.dp, top = 16.dp, bottom = 4.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     MovieDetailsHeader(

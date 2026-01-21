@@ -112,7 +112,7 @@ fun PersonDetailScreen(
 
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(vertical = 16.dp, horizontal = 32.dp),
+                        contentPadding = PaddingValues(start = 10.dp, top = 16.dp, end = 32.dp, bottom = 16.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                     item(key = "header") {

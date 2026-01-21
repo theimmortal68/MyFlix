@@ -182,7 +182,7 @@ fun EpisodeDetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 48.dp, top = 36.dp, end = 48.dp)
+                    .padding(start = 10.dp, top = 16.dp, end = 48.dp)
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
                 // Episode info column (left side) - fills height to align buttons with thumbnail bottom

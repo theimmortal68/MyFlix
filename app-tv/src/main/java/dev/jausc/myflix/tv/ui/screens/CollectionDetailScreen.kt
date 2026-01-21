@@ -254,7 +254,7 @@ fun CollectionDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 48.dp)
+                        .padding(start = 10.dp, top = 16.dp)
                         .alpha(if (focusedItem == null) 1f else 0f),
                     verticalArrangement = Arrangement.Top,
                 ) {
@@ -270,7 +270,7 @@ fun CollectionDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)
-                            .padding(start = 48.dp, top = 48.dp),
+                            .padding(start = 10.dp, top = 16.dp),
                         verticalArrangement = Arrangement.Top,
                     ) {
                         ItemHeroContent(item = focusedItem!!)

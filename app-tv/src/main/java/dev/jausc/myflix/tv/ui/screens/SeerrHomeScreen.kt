@@ -675,47 +675,52 @@ private fun SeerrHeroSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, top = 36.dp, bottom = 8.dp),
+                .padding(start = 10.dp, top = 16.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.Top,
         ) {
             // Half-width modifier for non-title text
             val halfWidthModifier = Modifier.fillMaxWidth(0.5f)
 
-            // Status badge
-            val statusColor = when (currentMedia.availabilityStatus) {
-                SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
-                SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
-                SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
-                else -> Color(0xFF8B5CF6)
-            }
-            val statusIcon = when (currentMedia.availabilityStatus) {
-                SeerrMediaStatus.AVAILABLE -> Icons.Outlined.Check
-                SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Icons.Outlined.Schedule
-                else -> Icons.Outlined.Add
-            }
-            val statusText = SeerrMediaStatus.toDisplayString(currentMedia.availabilityStatus)
+            // Status badge - only show for known statuses (not null and in range 1-5)
+            val showStatusBadge = currentMedia.availabilityStatus != null &&
+                currentMedia.availabilityStatus in 1..5
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(statusColor.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = statusColor,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = statusColor,
-                )
-            }
+            if (showStatusBadge) {
+                val statusColor = when (currentMedia.availabilityStatus) {
+                    SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
+                    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
+                    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
+                    else -> Color(0xFF8B5CF6)
+                }
+                val statusIcon = when (currentMedia.availabilityStatus) {
+                    SeerrMediaStatus.AVAILABLE -> Icons.Outlined.Check
+                    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Icons.Outlined.Schedule
+                    else -> Icons.Outlined.Add
+                }
+                val statusText = SeerrMediaStatus.toDisplayString(currentMedia.availabilityStatus)
 
-            Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .background(statusColor.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = statusColor,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+            }
 
             // Title
             Text(

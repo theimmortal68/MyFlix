@@ -212,7 +212,7 @@ fun SeriesDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 24.dp, top = 36.dp, bottom = 4.dp),
+                        .padding(start = 10.dp, top = 16.dp, bottom = 4.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     val displayDescription = focusedSeason?.overview?.takeIf { it.isNotBlank() } ?: series.overview
