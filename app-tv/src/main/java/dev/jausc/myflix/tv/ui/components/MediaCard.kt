@@ -44,12 +44,12 @@ private val HdrBlue = Color(0xFF4169E1)
  * These should be used consistently unless specifically overridden.
  *
  * Sizing is calculated to fit exact number of cards on screen:
- * - Portrait cards (140dp): 7 cards fit across with 8dp padding
+ * - Portrait cards (110dp): 7 cards fit across with spacing
  * - Landscape cards (210dp): 4 cards fit across with 16dp spacing
  */
 object CardSizes {
     /** Portrait card width (2:3 aspect ratio) - sized for 7 cards across screen */
-    val MediaCardWidth = 120.dp
+    val MediaCardWidth = 110.dp
 
     /** Landscape card width (16:9 aspect ratio) - for episode thumbnails */
     val WideMediaCardWidth = 210.dp
