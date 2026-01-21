@@ -864,7 +864,8 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 
 /**
  * Network logo row displaying the studio/network image.
- * Falls back to network name text if image fails to load.
+ * Tries Thumb image first (commonly used for studios), then Primary.
+ * Falls back to a styled badge with network name if images fail to load.
  */
 @Composable
 private fun NetworkLogoRow(
@@ -872,9 +873,14 @@ private fun NetworkLogoRow(
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
-    var imageLoadFailed by remember { mutableStateOf(false) }
+    var thumbFailed by remember { mutableStateOf(false) }
+    var primaryFailed by remember { mutableStateOf(false) }
 
-    val logoUrl = remember(networkId) {
+    // Try Thumb first (commonly used for studio images), then Primary
+    val thumbUrl = remember(networkId) {
+        jellyfinClient.getThumbUrl(networkId, null, maxWidth = 200)
+    }
+    val primaryUrl = remember(networkId) {
         jellyfinClient.getPrimaryImageUrl(networkId, null, maxWidth = 200)
     }
 
@@ -882,23 +888,42 @@ private fun NetworkLogoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (!imageLoadFailed) {
-            AsyncImage(
-                model = logoUrl,
-                contentDescription = networkName ?: "Network",
-                modifier = Modifier.height(24.dp),
-                contentScale = ContentScale.Fit,
-                onError = { imageLoadFailed = true },
-            )
-        }
-
-        // Show network name as text (either as fallback or alongside logo)
-        if (imageLoadFailed && !networkName.isNullOrBlank()) {
-            Text(
-                text = networkName,
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary.copy(alpha = 0.8f),
-            )
+        when {
+            // Try thumb image first
+            !thumbFailed -> {
+                AsyncImage(
+                    model = thumbUrl,
+                    contentDescription = networkName ?: "Network",
+                    modifier = Modifier.height(28.dp),
+                    contentScale = ContentScale.Fit,
+                    onError = { thumbFailed = true },
+                )
+            }
+            // Fall back to primary image
+            !primaryFailed -> {
+                AsyncImage(
+                    model = primaryUrl,
+                    contentDescription = networkName ?: "Network",
+                    modifier = Modifier.height(28.dp),
+                    contentScale = ContentScale.Fit,
+                    onError = { primaryFailed = true },
+                )
+            }
+            // Fall back to styled badge with network name
+            !networkName.isNullOrBlank() -> {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFF424242))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = networkName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+            }
         }
     }
 }
