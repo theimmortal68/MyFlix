@@ -228,6 +228,19 @@ fun HeroSection(
         }
     }
 
+    // Restore focus to play button after hero rotation (outside AnimatedContent)
+    // Wait for transition to complete before requesting focus
+    LaunchedEffect(displayItem.id) {
+        if (playButtonShouldHaveFocus && !isPreviewMode && !navBarVisible) {
+            delay(700L) // Wait for fadeIn(500ms + 200ms delay) to complete
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {
+                // Ignore if focus request fails
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth(),
@@ -245,7 +258,6 @@ fun HeroSection(
             // but still focusable so up navigation works
             HeroContentOverlay(
                 item = item,
-                itemId = item.id,
                 onPlayClick = { onPlayClick(item.id) },
                 onDetailsClick = { onItemClick(item.id) },
                 playButtonFocusRequester = playButtonFocusRequester,
@@ -292,7 +304,6 @@ private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient)
 @Composable
 private fun HeroContentOverlay(
     item: JellyfinItem,
-    itemId: String,
     onPlayClick: () -> Unit,
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
@@ -327,7 +338,6 @@ private fun HeroContentOverlay(
 
         // Action buttons (20dp height) - hidden in preview mode but still focusable
         HeroActionButtons(
-            itemId = itemId,
             onPlayClick = onPlayClick,
             onDetailsClick = onDetailsClick,
             playButtonFocusRequester = playButtonFocusRequester,
@@ -484,7 +494,6 @@ private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) 
  */
 @Composable
 private fun HeroActionButtons(
-    itemId: String,
     onPlayClick: () -> Unit,
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
@@ -497,18 +506,6 @@ private fun HeroActionButtons(
 ) {
     // Alpha is 0 in preview mode (invisible but focusable)
     val buttonsAlpha = if (isPreviewMode) 0f else 1f
-
-    // Restore focus when item changes - delay to wait for AnimatedContent transition
-    // The transition is fadeIn(500ms, 200ms delay) + fadeOut(300ms), so wait 600ms
-    LaunchedEffect(shouldRestoreFocus, itemId) {
-        if (shouldRestoreFocus) {
-            delay(600L)
-            try {
-                playButtonFocusRequester.requestFocus()
-            } catch (_: Exception) {
-            }
-        }
-    }
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
