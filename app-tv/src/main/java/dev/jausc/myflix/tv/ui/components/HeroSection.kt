@@ -498,10 +498,11 @@ private fun HeroActionButtons(
     // Alpha is 0 in preview mode (invisible but focusable)
     val buttonsAlpha = if (isPreviewMode) 0f else 1f
 
-    // Restore focus when button is composed and item changes (key on itemId ensures
-    // this triggers on each rotation, not just when shouldRestoreFocus changes)
+    // Restore focus when item changes - delay to wait for AnimatedContent transition
+    // The transition is fadeIn(500ms, 200ms delay) + fadeOut(300ms), so wait 600ms
     LaunchedEffect(shouldRestoreFocus, itemId) {
         if (shouldRestoreFocus) {
+            delay(600L)
             try {
                 playButtonFocusRequester.requestFocus()
             } catch (_: Exception) {
