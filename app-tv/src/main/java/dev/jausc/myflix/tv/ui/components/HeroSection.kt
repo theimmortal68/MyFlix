@@ -609,7 +609,7 @@ private fun getRatingColor(rating: String): Color {
             Color(0xFF1565C0) // Blue 800
 
         // Orange - Teen/Caution
-        normalizedRating in listOf("PG-13", "TV-14") ->
+        normalizedRating in listOf("PG-13", "TV-14", "16") ->
             Color(0xFFE65100) // Orange 900
 
         // Red - Restricted/Mature
