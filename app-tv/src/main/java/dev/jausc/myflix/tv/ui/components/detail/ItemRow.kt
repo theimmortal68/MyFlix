@@ -2,11 +2,19 @@
 
 package dev.jausc.myflix.tv.ui.components.detail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -31,6 +39,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 /**
  * Generic horizontal row of items with title.
  * Supports focus restoration for D-pad navigation.
+ * Matches home screen row styling with accent bar.
  *
  * @param T The type of items in the row
  * @param title Row title displayed above the items
@@ -39,6 +48,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * @param onItemLongClick Callback when an item is long-clicked
  * @param cardContent Composable for rendering each card
  * @param modifier Modifier for the row
+ * @param accentColor Color for the vertical accent bar (defaults to yellow/gold)
  * @param horizontalPadding Horizontal padding between cards
  */
 @Composable
@@ -55,6 +65,7 @@ fun <T> ItemRow(
         onLongClick: () -> Unit,
     ) -> Unit,
     modifier: Modifier = Modifier,
+    accentColor: Color = Color(0xFFE5A00D),
     horizontalPadding: Dp = 12.dp,
     cardOnFocus: ((isFocused: Boolean, index: Int) -> Unit)? = null,
 ) {
@@ -68,11 +79,24 @@ fun <T> ItemRow(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = TvColors.TextPrimary,
-        )
+        // Row header with accent bar - matches home screen style
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(24.dp)
+                    .background(accentColor, shape = MaterialTheme.shapes.small),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TvColors.TextPrimary,
+            )
+        }
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
