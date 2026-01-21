@@ -305,7 +305,7 @@ private fun HeroContentOverlay(
         modifier = Modifier
             .fillMaxHeight()
             .fillMaxWidth(0.5f)
-            .padding(start = 48.dp, top = 4.dp, bottom = 0.dp),
+            .padding(start = 48.dp, top = 8.dp, bottom = 0.dp),
         verticalArrangement = Arrangement.Top,
     ) {
         // Title and subtitle
