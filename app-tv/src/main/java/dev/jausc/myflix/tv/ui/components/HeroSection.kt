@@ -129,25 +129,26 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
                     .alpha(0.9f)
                     .drawWithContent {
                         drawContent()
-                        // Left edge fade - subtle fade for text readability
+                        // Right edge fade - opaque until 40%, then fade to transparent
                         drawRect(
                             brush = Brush.horizontalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Transparent,
-                                    0.08f to Color.Black.copy(alpha = 0.5f),
-                                    0.2f to Color.Black.copy(alpha = 0.85f),
-                                    0.35f to Color.Black,
-                                ),
-                            ),
-                            blendMode = BlendMode.DstIn,
-                        )
-                        // Bottom edge fade - starts at 40%, fully transparent by 50%
-                        drawRect(
-                            brush = Brush.verticalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Black,
                                     0.4f to Color.Black,
                                     0.5f to Color.Transparent,
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                        // Bottom edge fade - for content row blending
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Black,
+                                    0.5f to Color.Black.copy(alpha = 0.85f),
+                                    0.7f to Color.Black.copy(alpha = 0.4f),
+                                    0.85f to Color.Black.copy(alpha = 0.15f),
                                     1.0f to Color.Transparent,
                                 ),
                             ),
