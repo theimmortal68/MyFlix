@@ -594,7 +594,7 @@ private fun SeasonOnlyHeroContent(
                     maxLines = 4,
                     onClick = onOverviewClick,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(0.8f)
                         .focusRequester(descriptionFocusRequester)
                         .focusProperties {
                             down = downFocusRequester

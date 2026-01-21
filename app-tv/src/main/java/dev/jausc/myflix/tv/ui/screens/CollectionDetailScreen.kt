@@ -451,6 +451,7 @@ private fun ItemHeroContent(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
+                modifier = Modifier.fillMaxWidth(0.8f),
             )
         }
     }
@@ -498,6 +499,7 @@ private fun CollectionHeroContent(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
+                modifier = Modifier.fillMaxWidth(0.8f),
             )
         }
     }

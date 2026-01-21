@@ -633,14 +633,14 @@ private fun SeriesDetailsHeader(
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
 
-        // Description - allows 4 lines of text, uses full column width (50% of screen)
+        // Description - allows 4 lines of text, uses 80% of column width (40% of screen)
         overview?.let { text ->
             OverviewText(
                 overview = text,
                 maxLines = 4,
                 onClick = onOverviewClick,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.8f)
                     .focusRequester(focusRequester)
                     .focusProperties {
                         down = downFocusRequester
