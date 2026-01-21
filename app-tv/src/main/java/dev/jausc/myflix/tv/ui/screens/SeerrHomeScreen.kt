@@ -821,14 +821,14 @@ private fun SeerrHeroSection(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Overview (constrained to half width)
+            // Overview (80% of half width = 40% of screen, matching home page)
             currentMedia.overview?.let { overview ->
                 Text(
                     text = overview,
                     style = MaterialTheme.typography.bodySmall,
                     color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     maxLines = 5,
-                    modifier = halfWidthModifier,
+                    modifier = Modifier.fillMaxWidth(0.4f),
                 )
             }
         }
