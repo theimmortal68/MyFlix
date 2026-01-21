@@ -355,7 +355,7 @@ private fun HeroTitleSection(item: JellyfinItem) {
  * Row displaying rating information.
  * Episodes: S# E#, air date, duration, parental rating, community rating
  * Series: Year, parental rating, community rating
- * Other (Movies): Parental rating, year, community rating, critic rating, runtime
+ * Movies: Year, duration, parental rating, community rating, critic rating
  */
 @Composable
 private fun HeroRatingRow(item: JellyfinItem) {
@@ -432,12 +432,7 @@ private fun HeroRatingRow(item: JellyfinItem) {
             }
 
             else -> {
-                // Movies and other: rating, year, stars, critic, runtime
-
-                // Official rating badge (PG-13, TV-MA, etc.)
-                item.officialRating?.let { rating ->
-                    RatingBadge(rating)
-                }
+                // Movies: year, duration, parental rating, community rating, critic rating
 
                 // Production year
                 item.productionYear?.let { year ->
@@ -448,16 +443,6 @@ private fun HeroRatingRow(item: JellyfinItem) {
                     )
                 }
 
-                // Community rating (star rating)
-                item.communityRating?.let { rating ->
-                    StarRating(rating)
-                }
-
-                // Critic rating (Rotten Tomatoes style)
-                item.criticRating?.let { rating ->
-                    CriticRatingBadge(rating)
-                }
-
                 // Runtime
                 item.runTimeTicks?.let { ticks ->
                     val minutes = (ticks / 600_000_000).toInt()
@@ -466,11 +451,19 @@ private fun HeroRatingRow(item: JellyfinItem) {
                     }
                 }
 
-                // Premiere date (only for upcoming episodes)
-                if (item.isUpcomingEpisode) {
-                    item.formattedPremiereDate?.let { date ->
-                        PremiereDateBadge(date)
-                    }
+                // Official rating badge (PG-13, TV-MA, etc.)
+                item.officialRating?.let { rating ->
+                    RatingBadge(rating)
+                }
+
+                // Community rating (star rating)
+                item.communityRating?.let { rating ->
+                    StarRating(rating)
+                }
+
+                // Critic rating (Rotten Tomatoes style with icon and percentage)
+                item.criticRating?.let { rating ->
+                    CriticRatingBadge(rating)
                 }
             }
         }
