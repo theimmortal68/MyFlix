@@ -47,8 +47,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.tv.material3.Icon
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.util.buildFeatureSections
@@ -871,123 +874,118 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 }
 
 /**
- * Map of Jellyfin studio names to tv-logo URLs.
- * Uses github.com/tv-logo/tv-logos repository.
+ * Map of Jellyfin studio names to embedded drawable resources.
+ * Logos sourced from github.com/tv-logo/tv-logos repository.
  */
-private val networkLogoUrls = mapOf(
+private val networkLogoResources = mapOf(
     // Broadcast Networks
-    "ABC" to "abc-us.png",
-    "NBC" to "nbc-us.png",
-    "CBS" to "cbs-logo-white-us.png",
-    "Fox" to "fox-us.png",
-    "FOX" to "fox-us.png",
-    "The CW" to "the-cw-us.png",
-    "CW" to "the-cw-us.png",
-    "PBS" to "pbs-us.png",
+    "ABC" to R.drawable.network_abc,
+    "NBC" to R.drawable.network_nbc,
+    "CBS" to R.drawable.network_cbs,
+    "Fox" to R.drawable.network_fox,
+    "FOX" to R.drawable.network_fox,
+    "The CW" to R.drawable.network_the_cw,
+    "CW" to R.drawable.network_the_cw,
+    "PBS" to R.drawable.network_pbs,
 
     // Premium Cable
-    "HBO" to "hbo-us.png",
-    "HBO Max" to "hbo-max-us.png",
-    "Max" to "hbo-max-us.png",
-    "Showtime" to "showtime-us.png",
-    "Starz" to "starz-us.png",
-    "STARZ" to "starz-us.png",
-    "Cinemax" to "cinemax-us.png",
-    "EPIX" to "epix-us.png",
-    "MGM+" to "mgm-plus-us.png",
+    "HBO" to R.drawable.network_hbo,
+    "HBO Max" to R.drawable.network_hbo_max,
+    "Max" to R.drawable.network_hbo_max,
+    "Showtime" to R.drawable.network_showtime,
+    "Starz" to R.drawable.network_starz,
+    "STARZ" to R.drawable.network_starz,
+    "Cinemax" to R.drawable.network_cinemax,
+    "EPIX" to R.drawable.network_epix,
+    "MGM+" to R.drawable.network_mgm_plus,
 
     // Cable Networks
-    "AMC" to "amc-us.png",
-    "FX" to "fx-us.png",
-    "FXX" to "fxx-us.png",
-    "USA Network" to "usa-us.png",
-    "USA" to "usa-us.png",
-    "TNT" to "tnt-us.png",
-    "TBS" to "tbs-us.png",
-    "Syfy" to "syfy-us.png",
-    "SyFy" to "syfy-us.png",
-    "SYFY" to "syfy-us.png",
-    "Bravo" to "bravo-us.png",
-    "E!" to "e-entertainment-us.png",
-    "E! Entertainment" to "e-entertainment-us.png",
-    "Oxygen" to "oxygen-us.png",
-    "Lifetime" to "lifetime-us.png",
-    "Hallmark Channel" to "hallmark-channel-us.png",
-    "Hallmark" to "hallmark-channel-us.png",
-    "Freeform" to "freeform-us.png",
-    "TV Land" to "tv-land-us.png",
-    "Paramount Network" to "paramount-network-us.png",
-    "BBC America" to "bbc-america-us.png",
+    "AMC" to R.drawable.network_amc,
+    "FX" to R.drawable.network_fx,
+    "FXX" to R.drawable.network_fxx,
+    "USA Network" to R.drawable.network_usa,
+    "USA" to R.drawable.network_usa,
+    "TNT" to R.drawable.network_tnt,
+    "TBS" to R.drawable.network_tbs,
+    "Syfy" to R.drawable.network_syfy,
+    "SyFy" to R.drawable.network_syfy,
+    "SYFY" to R.drawable.network_syfy,
+    "Bravo" to R.drawable.network_bravo,
+    "E!" to R.drawable.network_e_entertainment,
+    "E! Entertainment" to R.drawable.network_e_entertainment,
+    "Oxygen" to R.drawable.network_oxygen,
+    "Lifetime" to R.drawable.network_lifetime,
+    "Hallmark Channel" to R.drawable.network_hallmark,
+    "Hallmark" to R.drawable.network_hallmark,
+    "Freeform" to R.drawable.network_freeform,
+    "TV Land" to R.drawable.network_tv_land,
+    "Paramount Network" to R.drawable.network_paramount_network,
+    "BBC America" to R.drawable.network_bbc_america,
 
     // Kids/Animation
-    "Adult Swim" to "adult-swim-us.png",
-    "Cartoon Network" to "cartoon-network-us.png",
-    "Nickelodeon" to "nickelodeon-us.png",
-    "Nick" to "nickelodeon-us.png",
-    "Disney Channel" to "disney-channel-us.png",
-    "Disney XD" to "disney-xd-us.png",
-    "Disney Junior" to "disney-junior-us.png",
+    "Adult Swim" to R.drawable.network_adult_swim,
+    "Cartoon Network" to R.drawable.network_cartoon_network,
+    "Nickelodeon" to R.drawable.network_nickelodeon,
+    "Nick" to R.drawable.network_nickelodeon,
+    "Disney Channel" to R.drawable.network_disney_channel,
+    "Disney XD" to R.drawable.network_disney_xd,
 
     // Music/Entertainment
-    "MTV" to "mtv-us.png",
-    "VH1" to "vh1-us.png",
-    "BET" to "bet-us.png",
-    "Comedy Central" to "comedy-central-us.png",
+    "MTV" to R.drawable.network_mtv,
+    "VH1" to R.drawable.network_vh1,
+    "BET" to R.drawable.network_bet,
+    "Comedy Central" to R.drawable.network_comedy_central,
 
     // Sports
-    "ESPN" to "espn-us.png",
-    "ESPN2" to "espn-2-us.png",
-    "ESPN 2" to "espn-2-us.png",
-    "Fox Sports" to "fox-sports-us.png",
-    "NFL Network" to "nfl-network-us.png",
-    "NBA TV" to "nba-tv-us.png",
-    "MLB Network" to "mlb-network-us.png",
+    "ESPN" to R.drawable.network_espn,
+    "ESPN2" to R.drawable.network_espn2,
+    "ESPN 2" to R.drawable.network_espn2,
+    "Fox Sports" to R.drawable.network_fox_sports,
+    "NFL Network" to R.drawable.network_nfl_network,
+    "NBA TV" to R.drawable.network_nba_tv,
+    "MLB Network" to R.drawable.network_mlb_network,
 
     // Documentary/Educational
-    "National Geographic" to "national-geographic-us.png",
-    "Nat Geo" to "national-geographic-us.png",
-    "History" to "history-channel-us.png",
-    "History Channel" to "history-channel-us.png",
-    "Discovery" to "discovery-channel-us.png",
-    "Discovery Channel" to "discovery-channel-us.png",
-    "Animal Planet" to "animal-planet-us.png",
-    "TLC" to "tlc-us.png",
-    "Science Channel" to "science-channel-us.png",
+    "National Geographic" to R.drawable.network_national_geographic,
+    "Nat Geo" to R.drawable.network_national_geographic,
+    "History" to R.drawable.network_history,
+    "History Channel" to R.drawable.network_history,
+    "Discovery" to R.drawable.network_discovery,
+    "Discovery Channel" to R.drawable.network_discovery,
+    "Animal Planet" to R.drawable.network_animal_planet,
+    "TLC" to R.drawable.network_tlc,
 
     // Lifestyle
-    "Food Network" to "food-network-us.png",
-    "HGTV" to "hgtv-us.png",
-    "Travel Channel" to "travel-channel-us.png",
+    "Food Network" to R.drawable.network_food_network,
+    "HGTV" to R.drawable.network_hgtv,
+    "Travel Channel" to R.drawable.network_travel_channel,
 
-    // Streaming Services (international folder or misc)
-    "Netflix" to "../misc/media/netflix.png",
-    "Disney+" to "disney-plus-us.png",
-    "Disney Plus" to "disney-plus-us.png",
-    "Paramount+" to "paramount-plus-us.png",
-    "Paramount Plus" to "paramount-plus-us.png",
-    "Apple TV+" to "../misc/media/apple-tv-plus.png",
-    "Apple TV" to "../misc/media/apple-tv-plus.png",
-    "Amazon" to "../misc/media/amazon-prime-video.png",
-    "Prime Video" to "../misc/media/amazon-prime-video.png",
-    "Amazon Prime Video" to "../misc/media/amazon-prime-video.png",
-    "Hulu" to "../misc/media/hulu.png",
-    "Peacock" to "../misc/media/peacock.png",
+    // Streaming Services
+    "Netflix" to R.drawable.network_netflix,
+    "Disney+" to R.drawable.network_disney_plus,
+    "Disney Plus" to R.drawable.network_disney_plus,
+    "Paramount+" to R.drawable.network_paramount_plus,
+    "Paramount Plus" to R.drawable.network_paramount_plus,
+    "Apple TV+" to R.drawable.network_apple_tv_plus,
+    "Apple TV" to R.drawable.network_apple_tv_plus,
+    "Amazon" to R.drawable.network_amazon_prime,
+    "Prime Video" to R.drawable.network_amazon_prime,
+    "Amazon Prime Video" to R.drawable.network_amazon_prime,
+    "Hulu" to R.drawable.network_hulu,
+    "Peacock" to R.drawable.network_peacock,
 )
 
-private const val TV_LOGO_BASE_URL = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
-
 /**
- * Get tv-logo URL for a network name.
+ * Get embedded drawable resource ID for a network name.
  * Returns null if no mapping exists.
  */
-private fun getNetworkLogoUrl(name: String): String? {
-    val filename = networkLogoUrls[name] ?: networkLogoUrls[name.trim()]
-    return filename?.let { TV_LOGO_BASE_URL + it }
+private fun getNetworkLogoResource(name: String): Int? {
+    return networkLogoResources[name] ?: networkLogoResources[name.trim()]
 }
 
 /**
  * Inline network logo for use in rating row.
- * Uses hardcoded mapping to tv-logo repository for instant display.
+ * Uses embedded drawable resources for instant display.
  * Falls back to styled badge if no mapping exists.
  */
 @Suppress("UnusedParameter")
@@ -996,15 +994,15 @@ private fun NetworkLogo(
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
-    // Get mapped tv-logo URL (instant, no network request needed to determine if exists)
-    val tvLogoUrl = remember(networkName) {
-        networkName?.let { getNetworkLogoUrl(it) }
+    // Get embedded drawable resource (instant, no network request)
+    val logoResource = remember(networkName) {
+        networkName?.let { getNetworkLogoResource(it) }
     }
 
-    if (tvLogoUrl != null) {
-        // Show logo from tv-logo repository
-        AsyncImage(
-            model = tvLogoUrl,
+    if (logoResource != null) {
+        // Show embedded logo
+        Image(
+            painter = painterResource(id = logoResource),
             contentDescription = networkName ?: "Network",
             modifier = Modifier.height(20.dp),
             contentScale = ContentScale.Fit,
