@@ -228,51 +228,54 @@ fun HeroSection(
         }
     }
 
-    // Restore focus to play button after hero rotation (outside AnimatedContent)
-    // Wait for transition to complete before requesting focus
-    LaunchedEffect(displayItem.id) {
-        if (playButtonShouldHaveFocus && !isPreviewMode && !navBarVisible) {
-            delay(700L) // Wait for fadeIn(500ms + 200ms delay) to complete
-            try {
-                playButtonFocusRequester.requestFocus()
-            } catch (_: Exception) {
-                // Ignore if focus request fails
-            }
-        }
-    }
-
-    Box(
+    // Content overlay with buttons OUTSIDE AnimatedContent to preserve focus
+    Column(
         modifier = modifier
-            .fillMaxWidth(),
+            .fillMaxWidth(0.5f)
+            .padding(start = 10.dp, top = 16.dp, bottom = 0.dp),
+        verticalArrangement = Arrangement.Top,
     ) {
-        // Content overlay (left side) - backdrop is in HeroBackdropLayer
+        // Animated text content (title, rating, description)
         AnimatedContent(
             targetState = displayItem,
             transitionSpec = {
                 fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
                     fadeOut(animationSpec = tween(300))
             },
-            label = "hero_content",
+            label = "hero_text_content",
         ) { item ->
-            // Always render content overlay with buttons - buttons are invisible in preview mode
-            // but still focusable so up navigation works
-            HeroContentOverlay(
-                item = item,
-                onPlayClick = { onPlayClick(item.id) },
-                onDetailsClick = { onItemClick(item.id) },
-                playButtonFocusRequester = playButtonFocusRequester,
-                downFocusRequester = downFocusRequester,
-                upFocusRequester = upFocusRequester,
-                isPreviewMode = isPreviewMode,
-                onButtonFocused = {
-                    // Track that hero buttons have focus (for restoration after rotation)
-                    playButtonShouldHaveFocus = true
-                    onPreviewClear?.invoke()
-                },
-                shouldRestoreFocus = playButtonShouldHaveFocus && !isPreviewMode && !navBarVisible,
-                onUpPressed = onUpPressed,
-            )
+            Column {
+                // Title and subtitle
+                HeroTitleSection(item)
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Rating information row
+                HeroRatingRow(item)
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Description
+                HeroDescription(item, isPreviewMode)
+            }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Action buttons OUTSIDE AnimatedContent - never recreated during transitions
+        HeroActionButtons(
+            onPlayClick = { onPlayClick(displayItem.id) },
+            onDetailsClick = { onItemClick(displayItem.id) },
+            playButtonFocusRequester = playButtonFocusRequester,
+            downFocusRequester = downFocusRequester,
+            upFocusRequester = upFocusRequester,
+            isPreviewMode = isPreviewMode,
+            onButtonFocused = {
+                playButtonShouldHaveFocus = true
+                onPreviewClear?.invoke()
+            },
+            onUpPressed = onUpPressed,
+        )
     }
 }
 
@@ -296,59 +299,6 @@ private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient)
     }
 
     return jellyfinClient.getBackdropUrl(backdropId, tag, maxWidth = 1920)
-}
-
-/**
- * Content overlay displaying media information on the left side.
- */
-@Composable
-private fun HeroContentOverlay(
-    item: JellyfinItem,
-    onPlayClick: () -> Unit,
-    onDetailsClick: () -> Unit,
-    playButtonFocusRequester: FocusRequester,
-    downFocusRequester: FocusRequester? = null,
-    upFocusRequester: FocusRequester? = null,
-    isPreviewMode: Boolean = false,
-    onButtonFocused: (() -> Unit)? = null,
-    shouldRestoreFocus: Boolean = false,
-    onUpPressed: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth(0.5f)
-            .padding(start = 10.dp, top = 16.dp, bottom = 0.dp),
-        verticalArrangement = Arrangement.Top,
-    ) {
-        // Title and subtitle
-        HeroTitleSection(item)
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Rating information row
-        HeroRatingRow(item)
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Description (3 lines normal, 4 lines in preview mode)
-        HeroDescription(item, isPreviewMode)
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Action buttons (20dp height) - hidden in preview mode but still focusable
-        HeroActionButtons(
-            onPlayClick = onPlayClick,
-            onDetailsClick = onDetailsClick,
-            playButtonFocusRequester = playButtonFocusRequester,
-            downFocusRequester = downFocusRequester,
-            upFocusRequester = upFocusRequester,
-            isPreviewMode = isPreviewMode,
-            onButtonFocused = onButtonFocused,
-            shouldRestoreFocus = shouldRestoreFocus,
-            onUpPressed = onUpPressed,
-        )
-    }
 }
 
 /**
@@ -501,7 +451,6 @@ private fun HeroActionButtons(
     upFocusRequester: FocusRequester? = null,
     isPreviewMode: Boolean = false,
     onButtonFocused: (() -> Unit)? = null,
-    shouldRestoreFocus: Boolean = false,
     onUpPressed: (() -> Unit)? = null,
 ) {
     // Alpha is 0 in preview mode (invisible but focusable)
