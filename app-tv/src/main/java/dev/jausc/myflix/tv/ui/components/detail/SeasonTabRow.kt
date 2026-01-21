@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -119,7 +120,7 @@ private fun SeasonTab(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .height(18.dp)
+            .height(16.dp)
             .focusProperties {
                 if (downFocusRequester != null) {
                     down = downFocusRequester
@@ -150,7 +151,7 @@ private fun SeasonTab(
         ) {
             Text(
                 text = tabText,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             )
         }
