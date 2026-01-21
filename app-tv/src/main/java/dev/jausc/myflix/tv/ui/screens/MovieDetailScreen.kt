@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,7 @@ import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // Row indices for focus management
@@ -126,6 +128,16 @@ fun MovieDetailScreen(
     val gradientColors = rememberGradientColors(backdropUrl)
 
     val playFocusRequester = remember { FocusRequester() }
+
+    // Focus play button on load
+    LaunchedEffect(Unit) {
+        delay(100)
+        try {
+            playFocusRequester.requestFocus()
+        } catch (_: Exception) {
+            // Ignore focus errors
+        }
+    }
 
     // Layered UI: DynamicBackground → NavigationRail + Content (DetailBackdropLayer → Content)
     Box(modifier = modifier.fillMaxSize()) {
@@ -215,6 +227,7 @@ fun MovieDetailScreen(
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
                                 down = focusRequesters[CHAPTERS_ROW]
+                                up = descriptionFocusRequester
                             }
                             .focusRestorer(playFocusRequester)
                             .focusGroup(),
