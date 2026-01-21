@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,9 +28,11 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.viewmodel.PersonDetailViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
+import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -51,16 +54,32 @@ fun PersonDetailScreen(
     )
     val state by viewModel.uiState.collectAsState()
 
-    Row(modifier = modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = NavItem.HOME,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
+    // Get person image URL for dynamic background
+    val personImageUrl = remember(state.person?.id, state.person?.imageTags?.primary) {
+        state.person?.let { person ->
+            jellyfinClient.getPersonImageUrl(person.id, person.imageTags?.primary, maxWidth = 400)
+        }
+    }
+    val gradientColors = rememberGradientColors(personImageUrl)
+
+    // Layered UI: DynamicBackground → NavigationRail + Content
+    Box(modifier = modifier.fillMaxSize()) {
+        // Layer 1: Dynamic gradient background (covers full screen including nav rail)
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Right: Content area
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left: Navigation Rail
+            NavigationRail(
+                selectedItem = NavItem.HOME,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+            )
+
+            // Right: Content area
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when {
                 state.isLoading -> {
                     Box(
@@ -163,6 +182,7 @@ fun PersonDetailScreen(
                 }
             }
         }
-        } // End content Box
-    } // End Row
+            } // End content Box
+        } // End Row
+    } // End outer Box
 }

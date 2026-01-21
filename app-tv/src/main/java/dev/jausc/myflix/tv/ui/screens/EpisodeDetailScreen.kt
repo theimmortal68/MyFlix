@@ -152,23 +152,25 @@ fun EpisodeDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    // Layered UI: Row with NavigationRail + Content
-    Row(modifier = modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = NavItem.SHOWS,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = playFocusRequester,
+    // Layered UI: DynamicBackground → NavigationRail + Content
+    Box(modifier = modifier.fillMaxSize()) {
+        // Layer 1: Dynamic gradient background (covers full screen including nav rail)
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Right: Content area
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            // Layer 1: Dynamic gradient background (based on series backdrop)
-            DynamicBackground(
-                gradientColors = gradientColors,
-                modifier = Modifier.fillMaxSize(),
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left: Navigation Rail
+            NavigationRail(
+                selectedItem = NavItem.SHOWS,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+                contentFocusRequester = playFocusRequester,
             )
+
+            // Right: Content area
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
 
             // Layer 2: Content
             Column(modifier = Modifier.fillMaxSize()) {
@@ -378,8 +380,9 @@ fun EpisodeDetailScreen(
                 }
             }
         }
-        } // End content Box
-    } // End Row
+            } // End content Box
+        } // End Row
+    } // End outer Box
 
     // Context menu dialog
     dialogParams?.let { params ->

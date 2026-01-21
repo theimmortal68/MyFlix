@@ -126,23 +126,25 @@ fun MovieDetailScreen(
 
     val playFocusRequester = remember { FocusRequester() }
 
-    // Layered UI: NavigationRail + Content (DynamicBackground → DetailBackdropLayer → Content)
-    Row(modifier = modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = NavItem.MOVIES,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = focusRequesters[HEADER_ROW],
+    // Layered UI: DynamicBackground → NavigationRail + Content (DetailBackdropLayer → Content)
+    Box(modifier = modifier.fillMaxSize()) {
+        // Layer 1: Dynamic gradient background (covers full screen including nav rail)
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Right: Content area
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            // Layer 1: Dynamic gradient background
-            DynamicBackground(
-                gradientColors = gradientColors,
-                modifier = Modifier.fillMaxSize(),
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left: Navigation Rail
+            NavigationRail(
+                selectedItem = NavItem.MOVIES,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+                contentFocusRequester = focusRequesters[HEADER_ROW],
             )
+
+            // Right: Content area
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
 
             // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
             DetailBackdropLayer(
@@ -398,8 +400,9 @@ fun MovieDetailScreen(
             }
             }
         } // End Column
-        } // End Content Box
-    } // End Row
+            } // End Content Box
+        } // End Row
+    } // End outer Box
 
     // Context menu dialog
     dialogParams?.let { params ->

@@ -204,23 +204,25 @@ fun CollectionDetailScreen(
     val collectionItem = collection!!
     val favorite = collectionItem.userData?.isFavorite == true
 
-    // Layered UI: Row with NavigationRail + Content
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = selectedNavItem,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = shuffleFocusRequester,
+    // Layered UI: DynamicBackground → NavigationRail + Content
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Layer 1: Dynamic gradient background (covers full screen including nav rail)
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Right: Content area
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            // Layer 1: Dynamic gradient background
-            DynamicBackground(
-                gradientColors = gradientColors,
-                modifier = Modifier.fillMaxSize(),
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left: Navigation Rail
+            NavigationRail(
+                selectedItem = selectedNavItem,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+                contentFocusRequester = shuffleFocusRequester,
             )
+
+            // Right: Content area
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
 
             // Layer 2: Backdrop image (right side, behind content)
             // Only show backdrop if available (no poster fallback for cleaner look on universe collections)
@@ -360,8 +362,9 @@ fun CollectionDetailScreen(
                 }
             }
         }
-        } // End content Box
-    } // End Row
+            } // End content Box
+        } // End Row
+    } // End outer Box
 }
 
 /**

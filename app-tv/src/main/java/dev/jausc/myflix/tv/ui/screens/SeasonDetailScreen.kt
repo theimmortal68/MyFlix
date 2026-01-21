@@ -173,23 +173,25 @@ fun SeasonDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    // Layered UI: Row with NavigationRail + Content
-    Row(modifier = modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = NavItem.SHOWS,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = seasonTabFocusRequester,
+    // Layered UI: DynamicBackground → NavigationRail + Content
+    Box(modifier = modifier.fillMaxSize()) {
+        // Layer 1: Dynamic gradient background (covers full screen including nav rail)
+        DynamicBackground(
+            gradientColors = gradientColors,
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // Right: Content area
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            // Layer 1: Dynamic gradient background
-            DynamicBackground(
-                gradientColors = gradientColors,
-                modifier = Modifier.fillMaxSize(),
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left: Navigation Rail
+            NavigationRail(
+                selectedItem = NavItem.SHOWS,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+                contentFocusRequester = seasonTabFocusRequester,
             )
+
+            // Right: Content area
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
 
             // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
             DetailBackdropLayer(
@@ -491,9 +493,10 @@ fun SeasonDetailScreen(
             }
 
             }
-        }
-        } // End content Box
-    } // End Row
+            }
+            } // End content Box
+        } // End Row
+    } // End outer Box
 
     // Context menu dialog
     dialogParams?.let { params ->
