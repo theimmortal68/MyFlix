@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -31,15 +32,24 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
@@ -61,16 +71,17 @@ import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
+import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
-import dev.jausc.myflix.tv.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -508,8 +519,11 @@ private fun MovieDetailsHeader(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Quick details: year, runtime, "ends at", rating
-        MovieQuickDetails(item = movie)
+        // Quick details: year, runtime, rating, studio - matches hero section style
+        MovieHeroRatingRow(
+            movie = movie,
+            studioName = movie.studios?.firstOrNull()?.name,
+        )
 
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -549,6 +563,309 @@ private fun MovieDetailsHeader(
                         upFocusRequester?.let { up = it }
                     },
                 paddingValues = PaddingValues(0.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Hero-style rating row for movies matching home page hero style.
+ * Shows: Year · Runtime · Rating Badge · Star Rating · Critic Rating · Studio Logo
+ */
+@Composable
+private fun MovieHeroRatingRow(
+    movie: JellyfinItem,
+    studioName: String?,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        var needsDot = false
+
+        // Production year
+        movie.productionYear?.let { year ->
+            Text(
+                text = year.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+            )
+            needsDot = true
+        }
+
+        // Runtime
+        movie.runTimeTicks?.let { ticks ->
+            val minutes = (ticks / 600_000_000).toInt()
+            if (minutes > 0) {
+                if (needsDot) DotSeparator()
+                RuntimeDisplay(minutes)
+                needsDot = true
+            }
+        }
+
+        // Official rating badge (PG-13, R, etc.)
+        movie.officialRating?.let { rating ->
+            if (needsDot) DotSeparator()
+            RatingBadge(rating)
+            needsDot = true
+        }
+
+        // Community rating (star rating)
+        movie.communityRating?.let { rating ->
+            if (needsDot) DotSeparator()
+            StarRating(rating)
+            needsDot = true
+        }
+
+        // Critic rating (Rotten Tomatoes style)
+        movie.criticRating?.let { rating ->
+            if (needsDot) DotSeparator()
+            CriticRatingBadge(rating)
+            needsDot = true
+        }
+
+        // Studio logo
+        if (!studioName.isNullOrBlank()) {
+            if (needsDot) DotSeparator()
+            StudioLogo(studioName = studioName)
+        }
+    }
+}
+
+/**
+ * Small dot separator for metadata rows.
+ */
+@Composable
+private fun DotSeparator() {
+    Text(
+        text = "•",
+        style = MaterialTheme.typography.bodySmall,
+        color = TvColors.TextPrimary.copy(alpha = 0.6f),
+    )
+}
+
+/**
+ * Rating badge with colored background based on content rating.
+ */
+@Composable
+private fun RatingBadge(text: String) {
+    val backgroundColor = getRatingColor(text)
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+            ),
+            color = Color.White,
+        )
+    }
+}
+
+/**
+ * Get the background color for a content rating.
+ */
+private fun getRatingColor(rating: String): Color {
+    val normalizedRating = rating.uppercase().trim()
+    return when {
+        // Green - Family friendly
+        normalizedRating in listOf("G", "TV-G", "TV-Y", "TV-Y7", "TV-Y7-FV") ->
+            Color(0xFF2E7D32) // Green 800
+
+        // Blue - General/Parental guidance
+        normalizedRating in listOf("PG", "TV-PG") ->
+            Color(0xFF1565C0) // Blue 800
+
+        // Orange - Teen/Caution
+        normalizedRating in listOf("PG-13", "TV-14", "16") ->
+            Color(0xFFF57C00) // Orange 700
+
+        // Red - Restricted/Mature
+        normalizedRating in listOf("R", "TV-MA", "NC-17", "NR", "UNRATED") ->
+            Color(0xFFC62828) // Red 800
+
+        // Gray - Default/Unknown
+        else -> Color(0xFF616161) // Gray 700
+    }
+}
+
+/**
+ * Star rating display with gold star icon.
+ */
+@Composable
+private fun StarRating(rating: Float) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Star,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = Color(0xFFFFD700), // Gold color
+        )
+        Text(
+            text = String.format(java.util.Locale.US, "%.1f", rating),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium,
+            ),
+            color = TvColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * Critic rating with Rotten Tomatoes style indicator.
+ */
+@Composable
+private fun CriticRatingBadge(rating: Float) {
+    val percentage = rating.roundToInt()
+    val isFresh = percentage >= 60
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            painter = painterResource(
+                id = if (isFresh) R.drawable.ic_rotten_tomatoes_fresh else R.drawable.ic_rotten_tomatoes_rotten,
+            ),
+            contentDescription = if (isFresh) "Fresh" else "Rotten",
+            modifier = Modifier.size(16.dp),
+            tint = Color.Unspecified,
+        )
+        Text(
+            text = "$percentage%",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium,
+            ),
+            color = TvColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * Runtime display in hours and minutes format.
+ */
+@Composable
+private fun RuntimeDisplay(minutes: Int) {
+    val hours = minutes / 60
+    val mins = minutes % 60
+    val text = when {
+        hours > 0 && mins > 0 -> "${hours}h ${mins}m"
+        hours > 0 -> "${hours}h"
+        else -> "${mins}m"
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = TvColors.TextPrimary.copy(alpha = 0.9f),
+    )
+}
+
+/**
+ * Map of movie studio names to embedded drawable resources.
+ * Logos sourced from Wikimedia Commons.
+ * Studios without logos will display a text badge fallback.
+ */
+private val studioLogoResources = mapOf(
+    // Major Studios with logos
+    "Warner Bros." to R.drawable.studio_warner_bros,
+    "Warner Bros" to R.drawable.studio_warner_bros,
+    "Warner Bros. Pictures" to R.drawable.studio_warner_bros,
+    "Paramount Pictures" to R.drawable.studio_paramount,
+    "Paramount" to R.drawable.studio_paramount,
+    "Walt Disney Pictures" to R.drawable.studio_disney,
+    "Disney" to R.drawable.studio_disney,
+    "Sony Pictures" to R.drawable.studio_sony,
+    "Sony" to R.drawable.studio_sony,
+    "Marvel Studios" to R.drawable.studio_marvel,
+    "Marvel" to R.drawable.studio_marvel,
+
+    // Streaming Studios (reuse network logos)
+    "Netflix" to R.drawable.network_netflix,
+    "Amazon Studios" to R.drawable.network_amazon_prime,
+    "Apple Studios" to R.drawable.network_apple_tv_plus,
+    "Apple Original Films" to R.drawable.network_apple_tv_plus,
+    "HBO Films" to R.drawable.network_hbo,
+    "Max Original" to R.drawable.network_hbo_max,
+)
+
+/**
+ * Priority list for partial matching studio names.
+ * Order matters - first match wins.
+ */
+private val studioMatchPriority = listOf(
+    "Warner Bros" to R.drawable.studio_warner_bros,
+    "Paramount" to R.drawable.studio_paramount,
+    "Disney" to R.drawable.studio_disney,
+    "Sony" to R.drawable.studio_sony,
+    "Marvel" to R.drawable.studio_marvel,
+    "Netflix" to R.drawable.network_netflix,
+    "Amazon" to R.drawable.network_amazon_prime,
+    "Apple" to R.drawable.network_apple_tv_plus,
+)
+
+/**
+ * Get embedded drawable resource ID for a studio name.
+ */
+private fun getStudioLogoResource(name: String): Int? {
+    // Try exact match first
+    studioLogoResources[name]?.let { return it }
+    studioLogoResources[name.trim()]?.let { return it }
+
+    // Try partial match for combined studio names
+    val trimmedName = name.trim()
+    for ((keyword, resource) in studioMatchPriority) {
+        if (trimmedName.contains(keyword, ignoreCase = true)) {
+            return resource
+        }
+    }
+
+    return null
+}
+
+/**
+ * Inline studio logo for use in rating row.
+ * Uses embedded drawable resources for instant display.
+ * Falls back to styled badge if no mapping exists.
+ */
+@Composable
+private fun StudioLogo(studioName: String) {
+    val logoResource = remember(studioName) {
+        getStudioLogoResource(studioName)
+    }
+
+    if (logoResource != null) {
+        Image(
+            painter = painterResource(id = logoResource),
+            contentDescription = studioName,
+            modifier = Modifier.height(14.dp),
+            contentScale = ContentScale.Fit,
+        )
+    } else {
+        // Show styled badge with studio name for unmapped studios
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF424242))
+                .padding(horizontal = 6.dp),
+        ) {
+            Text(
+                text = studioName,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 10.sp,
+                ),
+                color = Color.White,
             )
         }
     }
