@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -37,8 +38,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.tv.material3.Icon
+import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
@@ -224,6 +233,7 @@ fun SeriesDetailScreen(
 
                     SeriesDetailsHeader(
                         series = series,
+                        jellyfinClient = jellyfinClient,
                         title = displayTitle,
                         overview = displayDescription,
                         status = series.status,
@@ -594,6 +604,7 @@ fun SeriesDetailScreen(
 @Composable
 private fun SeriesDetailsHeader(
     series: JellyfinItem,
+    jellyfinClient: JellyfinClient,
     title: String,
     overview: String?,
     status: String?,
@@ -621,14 +632,24 @@ private fun SeriesDetailsHeader(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Rating row - matches home hero HeroRatingRow
-        SeriesQuickDetails(
-            item = series,
+        // Rating row - matches home hero HeroRatingRow style with dot separators
+        SeriesHeroRatingRow(
+            series = series,
             status = status,
-            studios = studioNames,
         )
 
         Spacer(modifier = Modifier.height(6.dp))
+
+        // Network logo row
+        val networkId = series.studios?.firstOrNull()?.id
+        if (networkId != null) {
+            NetworkLogoRow(
+                networkId = networkId,
+                networkName = studioNames.firstOrNull(),
+                jellyfinClient = jellyfinClient,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
 
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
@@ -649,5 +670,212 @@ private fun SeriesDetailsHeader(
                 paddingValues = PaddingValues(0.dp)
             )
         }
+    }
+}
+
+/**
+ * Hero-style rating row for series matching home page style.
+ * Shows: Year · Rating Badge · Star Rating · Status Badge
+ */
+@Composable
+private fun SeriesHeroRatingRow(
+    series: JellyfinItem,
+    status: String?,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        var needsDot = false
+
+        // Production year
+        series.productionYear?.let { year ->
+            Text(
+                text = year.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+            )
+            needsDot = true
+        }
+
+        // Official rating badge (PG-13, TV-MA, etc.) with colored background
+        series.officialRating?.let { rating ->
+            if (needsDot) DotSeparator()
+            RatingBadge(rating)
+            needsDot = true
+        }
+
+        // Community rating (star rating)
+        series.communityRating?.let { rating ->
+            if (needsDot) DotSeparator()
+            StarRating(rating)
+            needsDot = true
+        }
+
+        // Status badge with colored background
+        status?.let { statusText ->
+            if (needsDot) DotSeparator()
+            StatusBadge(statusText)
+        }
+    }
+}
+
+/**
+ * Small dot separator for metadata rows.
+ */
+@Composable
+private fun DotSeparator() {
+    Text(
+        text = "•",
+        style = MaterialTheme.typography.bodySmall,
+        color = TvColors.TextPrimary.copy(alpha = 0.6f),
+    )
+}
+
+/**
+ * Rating badge with colored background based on content rating.
+ */
+@Composable
+private fun RatingBadge(text: String) {
+    val backgroundColor = getRatingColor(text)
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/**
+ * Get the background color for a content rating.
+ */
+private fun getRatingColor(rating: String): Color {
+    val normalizedRating = rating.uppercase().trim()
+    return when {
+        // Green - Family friendly
+        normalizedRating in listOf("G", "TV-G", "TV-Y", "TV-Y7", "TV-Y7-FV") ->
+            Color(0xFF2E7D32) // Green 800
+
+        // Blue - General/Parental guidance
+        normalizedRating in listOf("PG", "TV-PG") ->
+            Color(0xFF1565C0) // Blue 800
+
+        // Orange - Teen/Caution
+        normalizedRating in listOf("PG-13", "TV-14", "16") ->
+            Color(0xFFF57C00) // Orange 700
+
+        // Red - Restricted/Mature
+        normalizedRating in listOf("R", "TV-MA", "NC-17", "NR", "UNRATED") ->
+            Color(0xFFC62828) // Red 800
+
+        // Gray - Default/Unknown
+        else -> Color(0xFF616161) // Gray 700
+    }
+}
+
+/**
+ * Star rating display with gold star icon.
+ */
+@Composable
+private fun StarRating(rating: Float) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Star,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = Color(0xFFFFD700), // Gold color
+        )
+        Text(
+            text = String.format(java.util.Locale.US, "%.1f", rating),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium,
+            ),
+            color = TvColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * Series status badge with colored background.
+ */
+@Composable
+private fun StatusBadge(status: String) {
+    val (displayText, backgroundColor) = getStatusInfo(status)
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor),
+    ) {
+        Text(
+            text = displayText,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/**
+ * Get display text and color for series status.
+ */
+private fun getStatusInfo(status: String): Pair<String, Color> {
+    val normalized = status.trim().lowercase()
+    return when {
+        // Green - Currently airing
+        normalized.contains("continuing") -> "Airing" to Color(0xFF2E7D32)
+
+        // Blue - Returning for new season
+        normalized.contains("returning") -> "Returning" to Color(0xFF1565C0)
+
+        // Gray - Ended normally
+        normalized.contains("ended") -> "Ended" to Color(0xFF616161)
+
+        // Red - Canceled
+        normalized.contains("canceled") || normalized.contains("cancelled") ->
+            "Canceled" to Color(0xFFC62828)
+
+        // Default - show as-is with gray
+        else -> status.trim() to Color(0xFF616161)
+    }
+}
+
+/**
+ * Network logo row displaying the studio/network image.
+ */
+@Composable
+private fun NetworkLogoRow(
+    networkId: String,
+    networkName: String?,
+    jellyfinClient: JellyfinClient,
+) {
+    val logoUrl = remember(networkId) {
+        jellyfinClient.getPrimaryImageUrl(networkId, null, maxWidth = 200)
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AsyncImage(
+            model = logoUrl,
+            contentDescription = networkName ?: "Network",
+            modifier = Modifier.height(24.dp),
+            contentScale = ContentScale.Fit,
+        )
     }
 }

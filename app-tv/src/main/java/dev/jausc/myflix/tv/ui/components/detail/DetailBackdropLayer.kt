@@ -64,19 +64,20 @@ fun DetailBackdropLayer(
                     .alpha(0.9f)
                     .drawWithContent {
                         drawContent()
-                        // Left edge fade - matches home page HeroBackdropLayer style
+                        // Left edge fade - opaque 50-100%, half at 40%, transparent at 0%
+                        // Matches home page HeroBackdropLayer style exactly
                         drawRect(
                             brush = Brush.horizontalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Transparent,
-                                    0.08f to Color.Black.copy(alpha = 0.5f),
-                                    0.2f to Color.Black.copy(alpha = 0.85f),
-                                    0.35f to Color.Black,
+                                    0.4f to Color.Black.copy(alpha = 0.5f),
+                                    0.5f to Color.Black,
+                                    1.0f to Color.Black,
                                 ),
                             ),
                             blendMode = BlendMode.DstIn,
                         )
-                        // Bottom edge fade - matches home page style
+                        // Bottom edge fade - for content row blending
                         drawRect(
                             brush = Brush.verticalGradient(
                                 colorStops = arrayOf(
@@ -88,6 +89,19 @@ fun DetailBackdropLayer(
                                 ),
                             ),
                             blendMode = BlendMode.DstIn,
+                        )
+                        // Dark overlay on left side for text readability against light backgrounds
+                        // Fades with the image transparency so it blends into dynamic background
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent,
+                                    0.4f to Color.Black.copy(alpha = 0.15f),
+                                    0.5f to Color.Black.copy(alpha = 0.25f),
+                                    0.6f to Color.Transparent,
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
                         )
                     },
             )
