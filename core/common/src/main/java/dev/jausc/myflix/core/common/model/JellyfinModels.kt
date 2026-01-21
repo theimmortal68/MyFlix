@@ -492,6 +492,30 @@ data class MediaSegmentsResponse(
     @SerialName("Items") val items: List<MediaSegment>,
 )
 
+// ==================== Theme Media API Models ====================
+
+/**
+ * Response from GET /Items/{itemId}/ThemeMedia.
+ * Contains theme songs, theme videos, and soundtrack songs.
+ */
+@Serializable
+data class AllThemeMediaResult(
+    @SerialName("ThemeSongsResult") val themeSongsResult: ThemeMediaResult? = null,
+    @SerialName("ThemeVideosResult") val themeVideosResult: ThemeMediaResult? = null,
+    @SerialName("SoundtrackSongsResult") val soundtrackSongsResult: ThemeMediaResult? = null,
+)
+
+/**
+ * Theme media result containing items and metadata.
+ */
+@Serializable
+data class ThemeMediaResult(
+    @SerialName("Items") val items: List<JellyfinItem> = emptyList(),
+    @SerialName("TotalRecordCount") val totalRecordCount: Int = 0,
+    @SerialName("StartIndex") val startIndex: Int = 0,
+    @SerialName("OwnerId") val ownerId: String? = null,
+)
+
 // ==================== Playback Info API Models ====================
 
 /**

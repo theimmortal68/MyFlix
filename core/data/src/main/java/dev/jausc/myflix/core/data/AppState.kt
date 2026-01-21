@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.jausc.myflix.core.common.preferences.PreferenceKeys
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.websocket.JellyfinWebSocket
+import dev.jausc.myflix.core.player.ThemeMusicPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,6 +30,11 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
     // WebSocket for remote control support
     val webSocket: JellyfinWebSocket by lazy {
         JellyfinWebSocket(scope)
+    }
+
+    // Theme music player for detail screens
+    val themeMusicPlayer: ThemeMusicPlayer by lazy {
+        ThemeMusicPlayer(CoroutineScope(SupervisorJob() + Dispatchers.Main))
     }
 
     // Server manager for multi-server support

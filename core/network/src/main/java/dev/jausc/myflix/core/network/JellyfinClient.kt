@@ -1,6 +1,7 @@
 package dev.jausc.myflix.core.network
 
 import android.content.Context
+import dev.jausc.myflix.core.common.model.AllThemeMediaResult
 import dev.jausc.myflix.core.common.model.AuthResponse
 import dev.jausc.myflix.core.common.model.CodecProfile
 import dev.jausc.myflix.core.common.model.DeviceProfile
@@ -1356,6 +1357,45 @@ class JellyfinClient(
             }.body()
             r.take(limit).also { putCache(key, it) }
         }
+    }
+
+    /**
+     * Get theme media (songs and videos) for an item.
+     * Used for background music on detail screens.
+     *
+     * @param itemId The item ID to get theme media for
+     * @param inheritFromParent Whether to search parent items (important for episodes to get series themes)
+     */
+    suspend fun getThemeMedia(itemId: String, inheritFromParent: Boolean = true): Result<AllThemeMediaResult> {
+        val key = CacheKeys.themeMedia(itemId, inheritFromParent)
+        getCached<AllThemeMediaResult>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
+        return runCatching {
+            val r: AllThemeMediaResult = httpClient.get("$baseUrl/Items/$itemId/ThemeMedia") {
+                header("Authorization", authHeader())
+                parameter("userId", userId)
+                parameter("inheritFromParent", inheritFromParent)
+            }.body()
+            r.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Build a URL for streaming an audio item (theme song).
+     * Uses static streaming for direct playback without transcoding.
+     *
+     * @param itemId The audio item ID
+     * @param audioCodec Audio codec to use (default: mp3)
+     * @param audioBitrate Bitrate in bits per second (default: 128kbps)
+     */
+    fun getAudioStreamUrl(
+        itemId: String,
+        audioCodec: String = "mp3",
+        audioBitrate: Int = 128_000,
+    ): String {
+        return "$baseUrl/Audio/$itemId/stream?static=true" +
+            "&audioCodec=$audioCodec" +
+            "&audioBitrate=$audioBitrate" +
+            "&api_key=$accessToken"
     }
 
     /**

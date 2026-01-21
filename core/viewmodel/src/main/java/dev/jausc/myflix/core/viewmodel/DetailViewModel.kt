@@ -33,6 +33,8 @@ data class DetailUiState(
     val collections: List<JellyfinItem> = emptyList(),
     val collectionItems: Map<String, List<JellyfinItem>> = emptyMap(),
     val isLoadingCollections: Boolean = false,
+    /** URL for theme song audio stream, null if no theme available */
+    val themeSongUrl: String? = null,
 ) {
     val hasSeasons: Boolean get() = seasons.isNotEmpty()
     val hasEpisodes: Boolean get() = episodes.isNotEmpty()
@@ -91,11 +93,12 @@ class DetailViewModel(
                         _uiState.update { it.copy(isLoading = false) }
                     }
 
-                    // Load similar items in parallel
+                    // Load additional data in parallel
                     loadSimilarItems()
                     loadRecommendations()
                     loadSpecialFeatures()
                     loadCollections()
+                    loadThemeMedia()
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -386,6 +389,27 @@ class DetailViewModel(
                     isLoadingCollections = false,
                 )
             }
+        }
+    }
+
+    /**
+     * Load theme media (songs) for the item.
+     * Uses inheritFromParent=true so episodes can use their series' theme.
+     */
+    private fun loadThemeMedia() {
+        val currentItem = _uiState.value.item ?: return
+
+        viewModelScope.launch {
+            jellyfinClient.getThemeMedia(currentItem.id, inheritFromParent = true)
+                .onSuccess { themeMedia ->
+                    val themeSongs = themeMedia.themeSongsResult?.items.orEmpty()
+                    if (themeSongs.isNotEmpty()) {
+                        // Pick a random theme song if there are multiple
+                        val themeSong = themeSongs.random()
+                        val audioUrl = jellyfinClient.getAudioStreamUrl(themeSong.id)
+                        _uiState.update { it.copy(themeSongUrl = audioUrl) }
+                    }
+                }
         }
     }
 }

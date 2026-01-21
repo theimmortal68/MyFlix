@@ -112,6 +112,10 @@ object CacheKeys {
     fun specialFeatures(itemId: String, limit: Int): String =
         "specialFeatures:$itemId:$limit"
 
+    /** Theme media (songs and videos) for an item */
+    fun themeMedia(itemId: String, inheritFromParent: Boolean): String =
+        "themeMedia:$itemId:$inheritFromParent"
+
     /** Ancestors for an item */
     fun ancestors(itemId: String): String = "ancestors:$itemId"
 

@@ -21,6 +21,7 @@ kotlin {
 dependencies {
     // Exposed to consumers
     api(project(":core:network"))
+    api(project(":core:player"))
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.2")
