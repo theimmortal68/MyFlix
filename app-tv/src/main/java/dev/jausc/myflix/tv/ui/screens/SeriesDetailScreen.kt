@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.tv.material3.Icon
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -736,23 +737,25 @@ private fun DotSeparator() {
 
 /**
  * Rating badge with colored background based on content rating.
+ * Height matches bodySmall text for consistent row alignment.
  */
 @Composable
 private fun RatingBadge(text: String) {
     val backgroundColor = getRatingColor(text)
 
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor),
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp),
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
+            style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = FontWeight.SemiBold,
             ),
             color = Color.White,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
@@ -811,23 +814,25 @@ private fun StarRating(rating: Float) {
 
 /**
  * Series status badge with colored background.
+ * Height matches bodySmall text for consistent row alignment.
  */
 @Composable
 private fun StatusBadge(status: String) {
     val (displayText, backgroundColor) = getStatusInfo(status)
 
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor),
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp),
     ) {
         Text(
             text = displayText,
-            style = MaterialTheme.typography.labelSmall.copy(
+            style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = FontWeight.SemiBold,
             ),
             color = Color.White,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
@@ -998,13 +1003,18 @@ private fun NetworkLogo(
     // Track if logo failed to load
     var logoFailed by remember(tvLogoUrl) { mutableStateOf(false) }
 
+    // Use font size to determine consistent height (bodySmall ~14sp)
+    val logoHeight = with(LocalDensity.current) {
+        MaterialTheme.typography.bodySmall.fontSize.toDp()
+    }
+
     when {
         tvLogoUrl != null && !logoFailed -> {
             // Show logo from tv-logo repository with error handling
             AsyncImage(
                 model = tvLogoUrl,
                 contentDescription = networkName ?: "Network",
-                modifier = Modifier.height(20.dp),
+                modifier = Modifier.height(logoHeight),
                 contentScale = ContentScale.Fit,
                 onError = { logoFailed = true },
             )
@@ -1012,14 +1022,15 @@ private fun NetworkLogo(
         !networkName.isNullOrBlank() -> {
             // Show styled badge with network name for unmapped networks or failed loads
             Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
                     .background(Color(0xFF424242))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                    .padding(horizontal = 6.dp),
             ) {
                 Text(
                     text = networkName,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White,
                 )
             }
