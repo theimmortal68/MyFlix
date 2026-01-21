@@ -840,22 +840,22 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
         // Green - Currently airing (handles "Continuing", "Returning Series")
         normalized.contains("continuing") ||
             normalized == "returning series" ||
-            normalized.contains("airing") -> "Airing" to Color(0xFF2E7D32)
+            normalized.contains("airing") -> "Continuing" to Color(0xFF2E7D32)
 
-        // Blue - Returning for new season
+        // Blue - Returning for new season or upcoming
         normalized.contains("returning") && !normalized.contains("series") ->
             "Returning" to Color(0xFF1565C0)
 
-        // Gray - Ended normally
-        normalized.contains("ended") -> "Ended" to Color(0xFF616161)
+        // Blue - In production or planned
+        normalized.contains("production") || normalized.contains("pilot") ||
+            normalized.contains("planned") -> "Upcoming" to Color(0xFF1565C0)
+
+        // Red - Ended
+        normalized.contains("ended") -> "Ended" to Color(0xFFC62828)
 
         // Red - Canceled
         normalized.contains("canceled") || normalized.contains("cancelled") ->
             "Canceled" to Color(0xFFC62828)
-
-        // Orange - In production or planned
-        normalized.contains("production") || normalized.contains("pilot") ||
-            normalized.contains("planned") -> "Upcoming" to Color(0xFFF57C00)
 
         // Default - show as-is with gray
         else -> status.trim() to Color(0xFF616161)
