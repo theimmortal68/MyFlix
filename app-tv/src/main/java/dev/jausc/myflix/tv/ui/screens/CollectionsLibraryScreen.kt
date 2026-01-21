@@ -223,7 +223,6 @@ fun CollectionsLibraryScreen(
                                 gridState = gridState,
                                 jellyfinClient = jellyfinClient,
                                 firstItemFocusRequester = firstItemFocusRequester,
-                                alphabetFocusRequester = alphabetFocusRequester,
                                 onCollectionClick = onCollectionClick,
                                 onItemFocused = { _, imageUrl ->
                                     focusedImageUrl = imageUrl
@@ -260,7 +259,6 @@ private fun CollectionsGridContent(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     jellyfinClient: JellyfinClient,
     firstItemFocusRequester: FocusRequester,
-    alphabetFocusRequester: FocusRequester,
     onCollectionClick: (String) -> Unit,
     onItemFocused: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -297,9 +295,7 @@ private fun CollectionsGridContent(
                     .aspectRatio(2f / 3f)
                     .then(
                         if (isFirstItem) {
-                            Modifier
-                                .focusRequester(firstItemFocusRequester)
-                                .focusProperties { right = alphabetFocusRequester }
+                            Modifier.focusRequester(firstItemFocusRequester)
                         } else {
                             Modifier
                         },
