@@ -31,7 +31,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -41,6 +43,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -1118,13 +1121,17 @@ private fun TvActionButton(label: String, onClick: () -> Unit) {
 @Composable
 private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color = Color.White) {
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .background(backgroundColor, MaterialTheme.shapes.small)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .background(backgroundColor, RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp),
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+            ),
             color = textColor,
         )
     }

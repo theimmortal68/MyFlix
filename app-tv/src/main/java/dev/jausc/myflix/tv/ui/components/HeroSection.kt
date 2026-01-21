@@ -554,17 +554,19 @@ private fun DotSeparator() {
 @Composable
 private fun PremiereDateBadge(date: String) {
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f)),
+            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f))
+            .padding(horizontal = 6.dp),
     ) {
         Text(
             text = date,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
             ),
             color = TvColors.TextPrimary,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
@@ -727,17 +729,19 @@ private fun RatingBadge(text: String) {
     val backgroundColor = getRatingColor(text)
 
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor),
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
             ),
             color = Color.White,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
