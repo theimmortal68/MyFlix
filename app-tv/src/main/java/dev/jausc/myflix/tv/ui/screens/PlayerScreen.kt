@@ -65,8 +65,11 @@ import dev.jausc.myflix.core.common.model.audioLabel
 import dev.jausc.myflix.core.common.model.subtitleLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.websocket.PlaystateCommandType
+import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
+import kotlinx.coroutines.flow.SharedFlow
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
@@ -94,6 +97,7 @@ fun PlayerScreen(
     jellyfinClient: JellyfinClient,
     appPreferences: AppPreferences,
     useMpvPlayer: Boolean = false,
+    webSocketEvents: SharedFlow<WebSocketEvent>? = null,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -285,6 +289,42 @@ fun PlayerScreen(
     LaunchedEffect(subtitleStyle, playerController.isInitialized) {
         if (playerController.isInitialized) {
             playerController.setSubtitleStyle(subtitleStyle)
+        }
+    }
+
+    // Handle WebSocket remote control commands
+    LaunchedEffect(webSocketEvents) {
+        webSocketEvents?.collect { event ->
+            when (event) {
+                is WebSocketEvent.PlaystateCommand -> {
+                    android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
+                    when (event.command) {
+                        PlaystateCommandType.PlayPause -> playerController.togglePause()
+                        PlaystateCommandType.Pause -> playerController.pause()
+                        PlaystateCommandType.Unpause -> playerController.resume()
+                        PlaystateCommandType.Stop -> {
+                            viewModel.stopPlayback(playerController.state.value.position)
+                            onBack()
+                        }
+                        PlaystateCommandType.Seek -> {
+                            event.seekPositionTicks?.let { ticks ->
+                                val positionMs = PlayerUtils.ticksToMs(ticks)
+                                playerController.seekTo(positionMs)
+                            }
+                        }
+                        PlaystateCommandType.Rewind -> playerController.seekRelative(-skipBackwardMs)
+                        PlaystateCommandType.FastForward -> playerController.seekRelative(skipForwardMs)
+                        PlaystateCommandType.NextTrack -> viewModel.playNextNow()
+                        PlaystateCommandType.PreviousTrack -> {
+                            // Seek to beginning or previous if at start
+                            if (playerController.state.value.position > 5000) {
+                                playerController.seekTo(0)
+                            }
+                        }
+                    }
+                }
+                else -> Unit // Other events handled by MainActivity
+            }
         }
     }
 

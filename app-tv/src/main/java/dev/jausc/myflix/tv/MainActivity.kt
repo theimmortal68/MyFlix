@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
 fun MyFlixTvApp() {
     val context = LocalContext.current
 
-    val jellyfinClient = remember { JellyfinClient() }
+    val jellyfinClient = remember { JellyfinClient(context) }
     val appState = remember { AppState(context, jellyfinClient) }
     val tvPreferences = remember { TvPreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
@@ -962,6 +962,7 @@ fun MyFlixTvApp() {
                     jellyfinClient = jellyfinClient,
                     appPreferences = tvPreferences,
                     useMpvPlayer = useMpvPlayer,
+                    webSocketEvents = appState.webSocket.events,
                     onBack = { navController.popBackStack() },
                 )
             }

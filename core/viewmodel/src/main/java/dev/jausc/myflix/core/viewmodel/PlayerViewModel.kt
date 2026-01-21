@@ -219,8 +219,7 @@ class PlayerViewModel(
                             liveStreamId = streamResult.liveStreamId,
                             playMethod = playMethod,
                             maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
-                            // Server determines transcode reasons itself based on active job
-                            transcodeReasons = null,
+                            transcodeReasons = streamResult.transcodeReasons,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
@@ -572,8 +571,7 @@ class PlayerViewModel(
                             liveStreamId = streamResult.liveStreamId,
                             playMethod = playMethod,
                             maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
-                            // Server determines transcode reasons itself based on active job
-                            transcodeReasons = null,
+                            transcodeReasons = streamResult.transcodeReasons,
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,

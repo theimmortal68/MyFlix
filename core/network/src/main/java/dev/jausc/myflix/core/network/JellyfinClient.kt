@@ -12,6 +12,7 @@ import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSegment
 import dev.jausc.myflix.core.common.model.MediaSegmentsResponse
+import dev.jausc.myflix.core.common.model.MediaSource
 import dev.jausc.myflix.core.common.model.PlaybackInfoRequest
 import dev.jausc.myflix.core.common.model.PlaybackInfoResponse
 import dev.jausc.myflix.core.common.model.ServerInfo
@@ -1750,11 +1751,11 @@ class JellyfinClient(
             // Always enable transcoding as fallback - even with direct play,
             // server may need to transcode if codec conditions aren't met (e.g., 10-bit HEVC)
             enableTranscoding = true,
-            // Disable stream copy to force server to evaluate codec profiles
-            // and transcode if conditions aren't met (e.g., 10-bit HEVC)
-            allowVideoStreamCopy = false,
-            allowAudioStreamCopy = isDirectPlay,
-            enableAutoStreamCopy = false,
+            // Allow stream copy so server can build proper transcoding profile
+            // CodecProfiles will still enforce codec restrictions (e.g., 10-bit rejection)
+            allowVideoStreamCopy = true,
+            allowAudioStreamCopy = true,
+            enableAutoStreamCopy = true,
             autoOpenLiveStream = true,
             deviceProfile = deviceProfile,
         )
@@ -1807,7 +1808,84 @@ class JellyfinClient(
         val playSessionId: String?,
         val liveStreamId: String?,
         val playMethod: String,
+        val transcodeReasons: List<String>? = null,
     )
+
+    /**
+     * Determine why transcoding is needed based on content and device capabilities.
+     * Returns a list of transcode reason strings that can be included in the stream URL.
+     */
+    private fun determineTranscodeReasons(source: MediaSource): List<String> {
+        val reasons = mutableListOf<String>()
+        val videoStream = source.mediaStreams?.find { it.type == "Video" }
+        val audioStream = source.mediaStreams?.find { it.type == "Audio" }
+
+        if (videoStream != null) {
+            val codec = videoStream.codec?.lowercase()
+            val profile = videoStream.profile?.lowercase()
+            val bitDepth = videoStream.bitDepth
+
+            when (codec) {
+                "hevc", "h265" -> {
+                    if (mediaCodecCapabilities?.supportsHevc() != true) {
+                        reasons.add("VideoCodecNotSupported")
+                    } else if (profile?.contains("main 10") == true || bitDepth == 10) {
+                        // Device supports HEVC but check if it supports 10-bit
+                        if (mediaCodecCapabilities?.supportsHevcMain10() != true) {
+                            reasons.add("VideoProfileNotSupported")
+                        }
+                    }
+                }
+                "av1" -> {
+                    if (mediaCodecCapabilities?.supportsAv1() != true) {
+                        reasons.add("VideoCodecNotSupported")
+                    } else if (profile?.contains("main 10") == true || bitDepth == 10) {
+                        if (mediaCodecCapabilities?.supportsAv1Main10() != true) {
+                            reasons.add("VideoProfileNotSupported")
+                        }
+                    }
+                }
+                "vp9" -> {
+                    if (mediaCodecCapabilities?.supportsVp9() != true) {
+                        reasons.add("VideoCodecNotSupported")
+                    } else if (bitDepth == 10) {
+                        if (mediaCodecCapabilities?.supportsVp9Profile2() != true) {
+                            reasons.add("VideoProfileNotSupported")
+                        }
+                    }
+                }
+                "h264", "avc" -> {
+                    // H.264 is universally supported, but check level
+                    val level = videoStream.level
+                    if (level != null && level > 51) {
+                        reasons.add("VideoLevelNotSupported")
+                    }
+                }
+                else -> {
+                    // Unknown codec - assume not supported
+                    if (codec != null) {
+                        reasons.add("VideoCodecNotSupported")
+                    }
+                }
+            }
+
+            // Check for HDR/Dolby Vision which may require transcoding
+            val rangeType = videoStream.videoRangeType?.lowercase()
+            if (rangeType?.contains("dovi") == true || rangeType?.contains("dolby") == true) {
+                // Dolby Vision often requires transcoding
+                if (!reasons.contains("VideoProfileNotSupported")) {
+                    reasons.add("VideoRangeTypeNotSupported")
+                }
+            }
+        }
+
+        // If no specific reason found but direct play is not supported, add generic reason
+        if (reasons.isEmpty() && !source.supportsDirectPlay) {
+            reasons.add("DirectPlayError")
+        }
+
+        return reasons
+    }
 
     /**
      * Get the stream URL for playback.
@@ -1861,19 +1939,26 @@ class JellyfinClient(
             playMethod = "Transcode"
             val bitrateBps = maxBitrateMbps * 1_000_000
             val actualMediaSourceId = mediaSourceId ?: source.id ?: itemId
+            // Determine why transcoding is needed
+            val reasons = determineTranscodeReasons(source)
             val params = buildList {
+                add("DeviceId=$deviceId")
                 add("MediaSourceId=$actualMediaSourceId")
                 add("api_key=$accessToken")
                 add("MaxStreamingBitrate=$bitrateBps")
                 add("VideoBitrate=$bitrateBps")
                 add("VideoCodec=h264")
                 add("AudioCodec=aac")
+                add("SegmentContainer=ts")
                 add("EnableAutoStreamCopy=false")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
+                if (reasons.isNotEmpty()) {
+                    add("TranscodeReasons=${reasons.joinToString(",")}")
+                }
             }
-            streamUrl = "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
+            streamUrl = "$baseUrl/Videos/$itemId/master.m3u8?${params.joinToString("&")}"
         } else if (source.supportsDirectPlay) {
             // Direct play - file can be played as-is
             playMethod = "DirectPlay"
@@ -1914,27 +1999,60 @@ class JellyfinClient(
                 "h264"
             }
 
+            // Determine why transcoding is needed
+            val reasons = determineTranscodeReasons(source)
+
+            // Get video stream info for codec-specific parameters
+            val videoStream = source.mediaStreams?.find { it.type == "Video" }
+            val videoCodec = videoStream?.codec?.lowercase()
+            val videoBitDepth = videoStream?.bitDepth
+            val videoProfile = videoStream?.profile?.lowercase()?.replace(" ", "")
+
             val params = buildList {
+                add("DeviceId=$deviceId")
                 add("MediaSourceId=$actualMediaSourceId")
                 add("api_key=$accessToken")
                 add("MaxStreamingBitrate=$defaultBitrate")
                 add("VideoBitrate=$defaultBitrate")
                 add("VideoCodec=$transcodingVideoCodec")
                 add("AudioCodec=aac")
+                add("SegmentContainer=ts")
                 add("EnableAutoStreamCopy=false")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
                 subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
+                // Add codec-specific parameters to help server identify transcoding reason
+                if (videoCodec == "hevc" || videoCodec == "h265") {
+                    videoBitDepth?.let { add("hevc-videobitdepth=$it") }
+                    videoProfile?.let { add("hevc-profile=$it") }
+                }
+                if (reasons.isNotEmpty()) {
+                    add("TranscodeReasons=${reasons.joinToString(",")}")
+                }
             }
-            streamUrl = "$baseUrl/Videos/$itemId/main.m3u8?${params.joinToString("&")}"
+            streamUrl = "$baseUrl/Videos/$itemId/master.m3u8?${params.joinToString("&")}"
+        }
+
+        // Determine final transcode reasons - use server-provided if available, otherwise determine locally
+        val finalTranscodeReasons = if (playMethod == "Transcode") {
+            source.transcodeReasons?.takeIf { it.isNotEmpty() } ?: determineTranscodeReasons(source)
+        } else {
+            null
         }
 
         android.util.Log.d(
             "JellyfinClient",
             "getStreamUrlWithSession: playMethod=$playMethod supportsDirectPlay=${source.supportsDirectPlay} " +
-                "supportsDirectStream=${source.supportsDirectStream} transcodingUrl=${transcodingUrl != null}",
+                "supportsDirectStream=${source.supportsDirectStream} transcodingUrl=${transcodingUrl != null} " +
+                "transcodeReasons=$finalTranscodeReasons",
         )
-        StreamUrlResult(streamUrl, playbackInfo.playSessionId, source.liveStreamId, playMethod)
+        StreamUrlResult(
+            streamUrl = streamUrl,
+            playSessionId = playbackInfo.playSessionId,
+            liveStreamId = source.liveStreamId,
+            playMethod = playMethod,
+            transcodeReasons = finalTranscodeReasons,
+        )
     }
 
     // ==================== URL Helpers ====================
