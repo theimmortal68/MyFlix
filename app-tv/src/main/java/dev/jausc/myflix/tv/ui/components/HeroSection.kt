@@ -229,12 +229,13 @@ fun HeroSection(
     }
 
     // Content overlay with buttons OUTSIDE AnimatedContent to preserve focus
-    Column(
-        modifier = modifier
-            .fillMaxWidth(0.5f)
-            .padding(start = 10.dp, top = 16.dp, bottom = 0.dp),
-        verticalArrangement = Arrangement.Top,
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .padding(start = 10.dp, top = 16.dp, bottom = 0.dp),
+            verticalArrangement = Arrangement.Top,
+        ) {
         // Animated text content (title, rating, description)
         AnimatedContent(
             targetState = displayItem,
@@ -276,6 +277,7 @@ fun HeroSection(
             },
             onUpPressed = onUpPressed,
         )
+        }
     }
 }
 
