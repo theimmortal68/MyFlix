@@ -832,15 +832,19 @@ private fun StatusBadge(status: String) {
 
 /**
  * Get display text and color for series status.
+ * Handles various Jellyfin/TVDB status values.
  */
 private fun getStatusInfo(status: String): Pair<String, Color> {
     val normalized = status.trim().lowercase()
     return when {
-        // Green - Currently airing
-        normalized.contains("continuing") -> "Airing" to Color(0xFF2E7D32)
+        // Green - Currently airing (handles "Continuing", "Returning Series")
+        normalized.contains("continuing") ||
+            normalized == "returning series" ||
+            normalized.contains("airing") -> "Airing" to Color(0xFF2E7D32)
 
         // Blue - Returning for new season
-        normalized.contains("returning") -> "Returning" to Color(0xFF1565C0)
+        normalized.contains("returning") && !normalized.contains("series") ->
+            "Returning" to Color(0xFF1565C0)
 
         // Gray - Ended normally
         normalized.contains("ended") -> "Ended" to Color(0xFF616161)
@@ -849,6 +853,10 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
         normalized.contains("canceled") || normalized.contains("cancelled") ->
             "Canceled" to Color(0xFFC62828)
 
+        // Orange - In production or planned
+        normalized.contains("production") || normalized.contains("pilot") ||
+            normalized.contains("planned") -> "Upcoming" to Color(0xFFF57C00)
+
         // Default - show as-is with gray
         else -> status.trim() to Color(0xFF616161)
     }
@@ -856,6 +864,7 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 
 /**
  * Network logo row displaying the studio/network image.
+ * Falls back to network name text if image fails to load.
  */
 @Composable
 private fun NetworkLogoRow(
@@ -863,6 +872,8 @@ private fun NetworkLogoRow(
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
+    var imageLoadFailed by remember { mutableStateOf(false) }
+
     val logoUrl = remember(networkId) {
         jellyfinClient.getPrimaryImageUrl(networkId, null, maxWidth = 200)
     }
@@ -871,11 +882,23 @@ private fun NetworkLogoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        AsyncImage(
-            model = logoUrl,
-            contentDescription = networkName ?: "Network",
-            modifier = Modifier.height(24.dp),
-            contentScale = ContentScale.Fit,
-        )
+        if (!imageLoadFailed) {
+            AsyncImage(
+                model = logoUrl,
+                contentDescription = networkName ?: "Network",
+                modifier = Modifier.height(24.dp),
+                contentScale = ContentScale.Fit,
+                onError = { imageLoadFailed = true },
+            )
+        }
+
+        // Show network name as text (either as fallback or alongside logo)
+        if (imageLoadFailed && !networkName.isNullOrBlank()) {
+            Text(
+                text = networkName,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary.copy(alpha = 0.8f),
+            )
+        }
     }
 }
