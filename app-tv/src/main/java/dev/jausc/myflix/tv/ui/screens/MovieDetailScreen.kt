@@ -238,7 +238,7 @@ fun MovieDetailScreen(
 
             // Scrollable content rows (below fixed hero)
             LazyColumn(
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 0.dp, bottom = 48.dp),
+                contentPadding = PaddingValues(start = 10.dp, end = 48.dp, top = 0.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(1f),
             ) {
