@@ -553,7 +553,7 @@ private fun SeasonChipRow(
             Surface(
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.height(24.dp),
+                modifier = Modifier.height(18.dp),
                 onClick = { onSeasonClick(season) },
             ) {
                 Text(
