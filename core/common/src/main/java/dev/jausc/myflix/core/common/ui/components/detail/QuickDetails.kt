@@ -287,10 +287,11 @@ fun ColoredMediaBadge(
     val backgroundColor = MediaBadgeColors.getColor(type)
 
     Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
             .background(backgroundColor)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+            .padding(horizontal = 6.dp),
     ) {
         BasicText(
             text = text,

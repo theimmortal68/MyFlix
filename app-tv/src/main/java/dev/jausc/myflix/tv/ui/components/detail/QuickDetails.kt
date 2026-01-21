@@ -176,6 +176,9 @@ fun MediaBadgesRow(
     SharedMediaBadgesRow(
         item = item,
         modifier = modifier,
-        textStyle = MaterialTheme.typography.labelSmall,
+        textStyle = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+        ),
     )
 }

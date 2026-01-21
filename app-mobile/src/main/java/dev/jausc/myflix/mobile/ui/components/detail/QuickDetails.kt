@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.components.detail.Dot as SharedDot
 import dev.jausc.myflix.core.common.ui.components.detail.DotSeparatedRow as SharedDotSeparatedRow
@@ -35,7 +37,7 @@ private fun MobileStarIcon() {
         imageVector = Icons.Default.Star,
         contentDescription = null,
         tint = Color(0xFFFFD700), // Gold color
-        modifier = Modifier.size(16.dp),
+        modifier = Modifier.size(14.dp),
     )
 }
 
@@ -167,6 +169,9 @@ fun MediaBadgesRow(
     SharedMediaBadgesRow(
         item = item,
         modifier = modifier,
-        textStyle = MaterialTheme.typography.labelSmall,
+        textStyle = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+        ),
     )
 }
