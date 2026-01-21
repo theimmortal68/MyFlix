@@ -79,6 +79,7 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
 import dev.jausc.myflix.core.common.model.formattedPremiereDate
 import dev.jausc.myflix.core.common.model.isEpisode
+import dev.jausc.myflix.core.common.model.isMovie
 import dev.jausc.myflix.core.common.model.isSeries
 import dev.jausc.myflix.core.common.model.isUpcomingEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -431,7 +432,7 @@ private fun HeroRatingRow(item: JellyfinItem) {
                 }
             }
 
-            else -> {
+            item.isMovie -> {
                 // Movies: year, duration, parental rating, community rating, critic rating
 
                 // Production year
@@ -461,9 +462,32 @@ private fun HeroRatingRow(item: JellyfinItem) {
                     StarRating(rating)
                 }
 
-                // Critic rating (Rotten Tomatoes style with icon and percentage)
+                // Critic rating (Rotten Tomatoes style with icon and percentage) - movies only
                 item.criticRating?.let { rating ->
                     CriticRatingBadge(rating)
+                }
+            }
+
+            else -> {
+                // Other items: year, parental rating, community rating
+
+                // Production year
+                item.productionYear?.let { year ->
+                    Text(
+                        text = year.toString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                    )
+                }
+
+                // Official rating badge (PG-13, TV-MA, etc.)
+                item.officialRating?.let { rating ->
+                    RatingBadge(rating)
+                }
+
+                // Community rating (star rating)
+                item.communityRating?.let { rating ->
+                    StarRating(rating)
                 }
             }
         }
