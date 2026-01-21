@@ -786,7 +786,12 @@ private val studioLogoResources = mapOf(
     "Paramount" to R.drawable.studio_paramount,
     "Walt Disney Pictures" to R.drawable.studio_disney,
     "Disney" to R.drawable.studio_disney,
+    "Walt Disney Productions" to R.drawable.studio_disney,
+    "Walt Disney Studios" to R.drawable.studio_disney,
     "Walt Disney Animation Studios" to R.drawable.studio_disney_animation,
+    "Walt Disney Feature Animation" to R.drawable.studio_disney_animation,
+    "Disney Television Animation" to R.drawable.studio_disney_animation,
+    "DisneyToon Studios" to R.drawable.studio_disney_animation,
     "Sony Pictures" to R.drawable.studio_sony,
     "Sony" to R.drawable.studio_sony,
     "Sony Pictures Animation" to R.drawable.studio_sony_animation,
@@ -794,6 +799,7 @@ private val studioLogoResources = mapOf(
     "Columbia" to R.drawable.studio_columbia,
     "Marvel Studios" to R.drawable.studio_marvel,
     "Marvel" to R.drawable.studio_marvel,
+    "Marvel Entertainment" to R.drawable.studio_marvel,
     "Pixar" to R.drawable.studio_pixar,
     "Pixar Animation Studios" to R.drawable.studio_pixar,
     "DreamWorks" to R.drawable.studio_dreamworks,
@@ -805,16 +811,26 @@ private val studioLogoResources = mapOf(
     "Legendary" to R.drawable.studio_legendary,
     "20th Century Studios" to R.drawable.studio_20th_century,
     "20th Century Fox" to R.drawable.studio_20th_century,
+    "20th Century Fox Animation" to R.drawable.studio_20th_century,
     "Searchlight Pictures" to R.drawable.studio_searchlight,
     "Fox Searchlight Pictures" to R.drawable.studio_searchlight,
     "Touchstone Pictures" to R.drawable.studio_touchstone,
     "Touchstone" to R.drawable.studio_touchstone,
+    "Summit Entertainment" to R.drawable.studio_summit,
+    "Amblin Entertainment" to R.drawable.studio_amblin,
+    "STXfilms" to R.drawable.studio_stx,
+    "Silver Pictures" to R.drawable.studio_silver_pictures,
+    "Fox 2000 Pictures" to R.drawable.studio_fox_2000,
+    "Walden Media" to R.drawable.studio_walden_media,
+    "Atomic Monster" to R.drawable.studio_atomic_monster,
+    "NBCUniversal" to R.drawable.studio_nbcuniversal,
 
     // DC and Comic Book Studios
     "DC Studios" to R.drawable.studio_dc,
     "DC Films" to R.drawable.studio_dc_films,
     "DC Comics" to R.drawable.studio_dc_comics,
     "DC Entertainment" to R.drawable.studio_dc_entertainment,
+    "DC" to R.drawable.studio_dc,
 
     // Boutique/Independent Studios
     "A24" to R.drawable.studio_a24,
@@ -828,6 +844,7 @@ private val studioLogoResources = mapOf(
     "Plan B" to R.drawable.studio_plan_b,
     "Focus Features" to R.drawable.studio_focus_features,
     "Regency Enterprises" to R.drawable.studio_regency,
+    "New Regency Pictures" to R.drawable.studio_regency,
     "Village Roadshow Pictures" to R.drawable.studio_village_roadshow,
 
     // European Studios
@@ -876,16 +893,6 @@ private val studioLogoResources = mapOf(
     "Cartoon Saloon" to R.drawable.studio_cartoon_saloon,
     "Aardman Animations" to R.drawable.studio_aardman,
     "Aardman" to R.drawable.studio_aardman,
-
-    // Streaming Studios (reuse network logos)
-    "Netflix" to R.drawable.network_netflix,
-    "Amazon Studios" to R.drawable.network_amazon,
-    "Amazon MGM Studios" to R.drawable.network_amazon_mgm,
-    "Apple Studios" to R.drawable.network_apple,
-    "Apple Original Films" to R.drawable.network_apple,
-    "HBO Films" to R.drawable.network_hbo_films,
-    "Max Original" to R.drawable.network_hbo_max,
-    "HBO Max" to R.drawable.network_hbo_max,
 )
 
 /**
@@ -905,15 +912,19 @@ private val studioMatchPriority = listOf(
     "Legendary" to R.drawable.studio_legendary,
     "20th Century" to R.drawable.studio_20th_century,
     "Searchlight" to R.drawable.studio_searchlight,
+    "Fox 2000" to R.drawable.studio_fox_2000,
+    "Summit" to R.drawable.studio_summit,
+    "Amblin" to R.drawable.studio_amblin,
     "DC" to R.drawable.studio_dc,
     "A24" to R.drawable.studio_a24,
     "Blumhouse" to R.drawable.studio_blumhouse,
     "Bad Robot" to R.drawable.studio_bad_robot,
+    "Skydance" to R.drawable.studio_skydance,
+    "Regency" to R.drawable.studio_regency,
+    "Village Roadshow" to R.drawable.studio_village_roadshow,
     "Ghibli" to R.drawable.studio_ghibli,
     "Toho" to R.drawable.studio_toho,
-    "Netflix" to R.drawable.network_netflix,
-    "Amazon" to R.drawable.network_amazon,
-    "Apple" to R.drawable.network_apple,
+    "Toei" to R.drawable.studio_toei,
 )
 
 /**
