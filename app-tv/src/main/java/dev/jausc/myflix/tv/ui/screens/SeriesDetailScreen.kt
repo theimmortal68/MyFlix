@@ -897,7 +897,10 @@ private val networkLogoResources = mapOf(
     "STARZ" to R.drawable.network_starz,
     "Cinemax" to R.drawable.network_cinemax,
     "EPIX" to R.drawable.network_epix,
+    "Epix" to R.drawable.network_epix,
+    "epix" to R.drawable.network_epix,
     "MGM+" to R.drawable.network_mgm_plus,
+    "MGM Plus" to R.drawable.network_mgm_plus,
 
     // Cable Networks
     "AMC" to R.drawable.network_amc,
@@ -966,6 +969,7 @@ private val networkLogoResources = mapOf(
     "Disney Plus" to R.drawable.network_disney_plus,
     "Paramount+" to R.drawable.network_paramount_plus,
     "Paramount Plus" to R.drawable.network_paramount_plus,
+    "Paramount+ with Showtime" to R.drawable.network_paramount_plus,
     "Apple TV+" to R.drawable.network_apple_tv_plus,
     "Apple TV" to R.drawable.network_apple_tv_plus,
     "Amazon" to R.drawable.network_amazon_prime,
@@ -976,11 +980,41 @@ private val networkLogoResources = mapOf(
 )
 
 /**
+ * Priority list for partial matching multi-network names.
+ * Order matters - first match wins.
+ */
+private val networkMatchPriority = listOf(
+    "Paramount+" to R.drawable.network_paramount_plus,
+    "Showtime" to R.drawable.network_showtime,
+    "HBO Max" to R.drawable.network_hbo_max,
+    "HBO" to R.drawable.network_hbo,
+    "Netflix" to R.drawable.network_netflix,
+    "Disney+" to R.drawable.network_disney_plus,
+    "Apple TV+" to R.drawable.network_apple_tv_plus,
+    "Amazon" to R.drawable.network_amazon_prime,
+    "Hulu" to R.drawable.network_hulu,
+    "Peacock" to R.drawable.network_peacock,
+    "Starz" to R.drawable.network_starz,
+)
+
+/**
  * Get embedded drawable resource ID for a network name.
- * Returns null if no mapping exists.
+ * Handles exact matches first, then tries partial matching for combined networks.
  */
 private fun getNetworkLogoResource(name: String): Int? {
-    return networkLogoResources[name] ?: networkLogoResources[name.trim()]
+    // Try exact match first
+    networkLogoResources[name]?.let { return it }
+    networkLogoResources[name.trim()]?.let { return it }
+
+    // Try partial match for combined network names (e.g., "Paramount+ with Showtime")
+    val trimmedName = name.trim()
+    for ((keyword, resource) in networkMatchPriority) {
+        if (trimmedName.contains(keyword, ignoreCase = true)) {
+            return resource
+        }
+    }
+
+    return null
 }
 
 /**
@@ -1000,11 +1034,11 @@ private fun NetworkLogo(
     }
 
     if (logoResource != null) {
-        // Show embedded logo
+        // Show embedded logo - height matches text row (14dp ~ labelSmall)
         Image(
             painter = painterResource(id = logoResource),
             contentDescription = networkName ?: "Network",
-            modifier = Modifier.height(20.dp),
+            modifier = Modifier.height(14.dp),
             contentScale = ContentScale.Fit,
         )
     } else if (!networkName.isNullOrBlank()) {
