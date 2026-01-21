@@ -36,7 +36,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Width of the navigation rail.
  * Use this constant to offset content to the right of the rail.
  */
-const val NAV_RAIL_WIDTH_DP = 56
+const val NAV_RAIL_WIDTH_DP = 48
 
 /**
  * Navigation items for the rail
