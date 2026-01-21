@@ -1004,21 +1004,20 @@ private fun NetworkLogo(
         AsyncImage(
             model = tvLogoUrl,
             contentDescription = networkName ?: "Network",
-            modifier = Modifier.height(18.dp),
+            modifier = Modifier.height(20.dp),
             contentScale = ContentScale.Fit,
         )
     } else if (!networkName.isNullOrBlank()) {
         // Show styled badge with network name for unmapped networks
         Box(
-            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .clip(RoundedCornerShape(4.dp))
                 .background(Color(0xFF424242))
-                .padding(horizontal = 6.dp),
+                .padding(horizontal = 6.dp, vertical = 2.dp),
         ) {
             Text(
                 text = networkName,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
             )
         }
