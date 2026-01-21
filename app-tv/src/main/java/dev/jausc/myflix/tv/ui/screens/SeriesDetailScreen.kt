@@ -863,9 +863,23 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 }
 
 /**
+ * Convert network name to tv-logo filename format.
+ * Format: lowercase, spaces to dashes, ampersands to "and", with country suffix.
+ */
+private fun networkNameToTvLogoUrl(name: String): String {
+    val filename = name
+        .lowercase()
+        .replace("&", "and")
+        .replace(" ", "-")
+        .replace("'", "")
+        .replace(".", "")
+        .replace(",", "")
+    return "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/$filename-us.png"
+}
+
+/**
  * Network logo row displaying the studio/network image.
- * Tries Thumb image first (commonly used for studios), then Primary.
- * Falls back to a styled badge with network name if images fail to load.
+ * Tries tv-logo repository first, then Jellyfin images, then styled badge.
  */
 @Composable
 private fun NetworkLogoRow(
@@ -873,14 +887,16 @@ private fun NetworkLogoRow(
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
-    var thumbFailed by remember { mutableStateOf(false) }
-    var primaryFailed by remember { mutableStateOf(false) }
+    var tvLogoFailed by remember { mutableStateOf(false) }
+    var jellyfinFailed by remember { mutableStateOf(false) }
 
-    // Try Thumb first (commonly used for studio images), then Primary
-    val thumbUrl = remember(networkId) {
-        jellyfinClient.getThumbUrl(networkId, null, maxWidth = 200)
+    // Try tv-logo repository first (has most network logos)
+    val tvLogoUrl = remember(networkName) {
+        networkName?.let { networkNameToTvLogoUrl(it) }
     }
-    val primaryUrl = remember(networkId) {
+
+    // Fall back to Jellyfin studio image
+    val jellyfinUrl = remember(networkId) {
         jellyfinClient.getPrimaryImageUrl(networkId, null, maxWidth = 200)
     }
 
@@ -889,24 +905,24 @@ private fun NetworkLogoRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when {
-            // Try thumb image first
-            !thumbFailed -> {
+            // Try tv-logo repository first
+            tvLogoUrl != null && !tvLogoFailed -> {
                 AsyncImage(
-                    model = thumbUrl,
+                    model = tvLogoUrl,
                     contentDescription = networkName ?: "Network",
                     modifier = Modifier.height(28.dp),
                     contentScale = ContentScale.Fit,
-                    onError = { thumbFailed = true },
+                    onError = { tvLogoFailed = true },
                 )
             }
-            // Fall back to primary image
-            !primaryFailed -> {
+            // Fall back to Jellyfin studio image
+            !jellyfinFailed -> {
                 AsyncImage(
-                    model = primaryUrl,
+                    model = jellyfinUrl,
                     contentDescription = networkName ?: "Network",
                     modifier = Modifier.height(28.dp),
                     contentScale = ContentScale.Fit,
-                    onError = { primaryFailed = true },
+                    onError = { jellyfinFailed = true },
                 )
             }
             // Fall back to styled badge with network name
