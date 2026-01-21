@@ -572,23 +572,52 @@ private fun ExpandableHeroButton(
 // === Rating Components ===
 
 /**
- * Badge for official ratings (PG-13, TV-MA, etc.)
+ * Badge for official ratings (PG-13, TV-MA, etc.) with color-coded backgrounds.
  */
 @Composable
 private fun RatingBadge(text: String) {
+    val backgroundColor = getRatingColor(text)
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(TvColors.SurfaceElevated.copy(alpha = 0.8f)),
+            .background(backgroundColor),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
             ),
-            color = TvColors.TextPrimary,
+            color = Color.White,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
+    }
+}
+
+/**
+ * Get the background color for a content rating.
+ */
+private fun getRatingColor(rating: String): Color {
+    val normalizedRating = rating.uppercase().trim()
+    return when {
+        // Green - Family friendly
+        normalizedRating in listOf("G", "TV-G", "TV-Y", "TV-Y7", "TV-Y7-FV") ->
+            Color(0xFF2E7D32) // Green 800
+
+        // Blue - General/Parental guidance
+        normalizedRating in listOf("PG", "TV-PG") ->
+            Color(0xFF1565C0) // Blue 800
+
+        // Orange - Teen/Caution
+        normalizedRating in listOf("PG-13", "TV-14") ->
+            Color(0xFFE65100) // Orange 900
+
+        // Red - Restricted/Mature
+        normalizedRating in listOf("R", "TV-MA", "NC-17", "NR", "UNRATED") ->
+            Color(0xFFC62828) // Red 800
+
+        // Default gray for unknown ratings
+        else -> Color(0xFF616161) // Gray 700
     }
 }
 
