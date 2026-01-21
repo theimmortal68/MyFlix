@@ -368,14 +368,13 @@ fun SeasonDetailScreen(
                             onFavoriteToggle = { newFavorite ->
                                 onEpisodeFavoriteToggle(episode.id, newFavorite)
                             },
+                            upFocusRequester = if (index == 0) playFocusRequester else null,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
                                 .then(
                                     if (index == 0) {
-                                        Modifier
-                                            .focusRequester(focusRequesters[EPISODES_ROW])
-                                            .focusProperties { up = playFocusRequester }
+                                        Modifier.focusRequester(focusRequesters[EPISODES_ROW])
                                     } else {
                                         Modifier
                                     },

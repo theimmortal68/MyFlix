@@ -206,6 +206,7 @@ fun EpisodeListRow(
     onFavoriteToggle: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
     playButtonFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
 ) {
     val playFocus = playButtonFocusRequester ?: remember { FocusRequester() }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -293,7 +294,15 @@ fun EpisodeListRow(
                     icon = Icons.Outlined.PlayArrow,
                     iconColor = IconColors.Play,
                     onClick = onPlayClick,
-                    modifier = Modifier.focusRequester(playFocus),
+                    modifier = Modifier
+                        .focusRequester(playFocus)
+                        .then(
+                            if (upFocusRequester != null) {
+                                Modifier.focusProperties { up = upFocusRequester }
+                            } else {
+                                Modifier
+                            },
+                        ),
                 )
 
                 // Mark as Watched button
