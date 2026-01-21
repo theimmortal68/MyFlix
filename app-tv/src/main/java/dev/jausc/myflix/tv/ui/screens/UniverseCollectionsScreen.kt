@@ -58,6 +58,7 @@ fun UniverseCollectionsScreen(
     onCollectionClick: (String) -> Unit,
     onNavigate: (NavItem) -> Unit,
     showUniversesInNav: Boolean = true,
+    showDiscoverInNav: Boolean = false,
 ) {
     // State
     var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
@@ -107,6 +108,7 @@ fun UniverseCollectionsScreen(
             selectedItem = NavItem.UNIVERSES,
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
+            showDiscover = showDiscoverInNav,
             contentFocusRequester = firstItemFocusRequester,
         )
 

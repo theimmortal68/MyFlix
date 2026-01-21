@@ -402,6 +402,7 @@ fun MyFlixTvApp() {
                     onNavigateShows = { handleNavigation(NavItem.SHOWS) },
                     onNavigateSettings = { handleNavigation(NavItem.SETTINGS) },
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -429,6 +430,7 @@ fun MyFlixTvApp() {
                         }
                     },
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -837,6 +839,7 @@ fun MyFlixTvApp() {
                     },
                     onNavigate = handleNavigation,
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -850,6 +853,7 @@ fun MyFlixTvApp() {
                     onNavigate = handleNavigation,
                     excludeUniverseCollections = universesEnabled,
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -870,6 +874,7 @@ fun MyFlixTvApp() {
                     onBack = { navController.popBackStack() },
                     onNavigate = handleNavigation,
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -882,6 +887,7 @@ fun MyFlixTvApp() {
                     },
                     onNavigate = handleNavigation,
                     showUniversesInNav = true,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -903,6 +909,7 @@ fun MyFlixTvApp() {
                     onBack = { navController.popBackStack() },
                     onNavigate = handleNavigation,
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                     selectedNavItem = NavItem.UNIVERSES,
                 )
             }
@@ -948,6 +955,7 @@ fun MyFlixTvApp() {
                     },
                     onNavigate = handleNavigation,
                     showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 
@@ -963,6 +971,8 @@ fun MyFlixTvApp() {
                         navController.navigate("detail/$itemId")
                     },
                     onBack = { navController.popBackStack() },
+                    showUniversesInNav = universesEnabled,
+                    showDiscoverInNav = isSeerrAuthenticated,
                 )
             }
 

@@ -45,6 +45,7 @@ fun PersonDetailScreen(
     onBack: () -> Unit,
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -76,6 +77,7 @@ fun PersonDetailScreen(
                 selectedItem = NavItem.HOME,
                 onItemSelected = onNavigate,
                 showUniverses = showUniversesInNav,
+                showDiscover = showDiscoverInNav,
             )
 
             // Right: Content area

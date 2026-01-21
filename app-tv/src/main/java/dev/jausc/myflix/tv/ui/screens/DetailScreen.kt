@@ -35,6 +35,7 @@ fun DetailScreen(
     onNavigateToPerson: (String) -> Unit = {},
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -82,6 +83,7 @@ fun DetailScreen(
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
                     onNavigate = onNavigate,
                     showUniversesInNav = showUniversesInNav,
+                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -120,6 +122,7 @@ fun DetailScreen(
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
                     onNavigate = onNavigate,
                     showUniversesInNav = showUniversesInNav,
+                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -162,6 +165,7 @@ fun DetailScreen(
                     onRefreshEpisodes = { viewModel.refreshEpisodes() },
                     onNavigate = onNavigate,
                     showUniversesInNav = showUniversesInNav,
+                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -182,6 +186,7 @@ fun DetailScreen(
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
                     onNavigate = onNavigate,
                     showUniversesInNav = showUniversesInNav,
+                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

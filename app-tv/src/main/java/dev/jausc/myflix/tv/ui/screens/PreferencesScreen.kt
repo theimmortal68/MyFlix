@@ -103,6 +103,7 @@ fun PreferencesScreen(
         { _, _, _ -> },
     onAddServer: () -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
 ) {
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
 
@@ -204,6 +205,7 @@ fun PreferencesScreen(
             selectedItem = selectedNavItem,
             onItemSelected = handleNavSelection,
             showUniverses = showUniversesInNav,
+            showDiscover = showDiscoverInNav,
             contentFocusRequester = contentFocusRequester,
         )
 

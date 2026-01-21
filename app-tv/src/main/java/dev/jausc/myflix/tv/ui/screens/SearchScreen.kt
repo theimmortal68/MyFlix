@@ -80,6 +80,7 @@ fun SearchScreen(
     onNavigateShows: () -> Unit,
     onNavigateSettings: () -> Unit,
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: SearchViewModel = viewModel(
@@ -143,6 +144,7 @@ fun SearchScreen(
                 }
             },
             showUniverses = showUniversesInNav,
+            showDiscover = showDiscoverInNav,
             contentFocusRequester = searchFieldFocusRequester,
         )
 

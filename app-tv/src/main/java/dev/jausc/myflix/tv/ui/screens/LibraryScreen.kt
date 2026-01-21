@@ -69,6 +69,7 @@ fun LibraryScreen(
     onPlayClick: (String) -> Unit,
     onNavigate: (NavItem) -> Unit,
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
@@ -174,6 +175,7 @@ fun LibraryScreen(
                 selectedItem = selectedNavItem,
                 onItemSelected = onNavigate,
                 showUniverses = showUniversesInNav,
+                showDiscover = showDiscoverInNav,
                 contentFocusRequester = filterBarFirstButtonFocusRequester,
             )
 

@@ -101,6 +101,7 @@ fun SeriesDetailScreen(
     onFavoriteClick: () -> Unit,
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val series = state.item ?: return
@@ -182,6 +183,7 @@ fun SeriesDetailScreen(
                 selectedItem = NavItem.SHOWS,
                 onItemSelected = onNavigate,
                 showUniverses = showUniversesInNav,
+                showDiscover = showDiscoverInNav,
                 contentFocusRequester = playFocusRequester,
             )
 

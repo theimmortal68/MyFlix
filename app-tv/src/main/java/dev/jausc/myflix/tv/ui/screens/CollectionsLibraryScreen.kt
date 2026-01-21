@@ -65,6 +65,7 @@ fun CollectionsLibraryScreen(
     onNavigate: (NavItem) -> Unit,
     excludeUniverseCollections: Boolean = false,
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: CollectionsViewModel = viewModel(
@@ -130,6 +131,7 @@ fun CollectionsLibraryScreen(
             selectedItem = NavItem.COLLECTIONS,
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
+            showDiscover = showDiscoverInNav,
             contentFocusRequester = firstItemFocusRequester,
         )
 

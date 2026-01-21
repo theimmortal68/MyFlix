@@ -91,6 +91,7 @@ fun CollectionDetailScreen(
     onBack: () -> Unit,
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
     selectedNavItem: NavItem = NavItem.COLLECTIONS,
 ) {
     val scope = rememberCoroutineScope()
@@ -218,6 +219,7 @@ fun CollectionDetailScreen(
                 selectedItem = selectedNavItem,
                 onItemSelected = onNavigate,
                 showUniverses = showUniversesInNav,
+                showDiscover = showDiscoverInNav,
                 contentFocusRequester = shuffleFocusRequester,
             )
 

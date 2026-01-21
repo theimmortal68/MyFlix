@@ -94,6 +94,7 @@ fun MovieDetailScreen(
     onFavoriteClick: () -> Unit,
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val movie = state.item ?: return
@@ -140,6 +141,7 @@ fun MovieDetailScreen(
                 selectedItem = NavItem.MOVIES,
                 onItemSelected = onNavigate,
                 showUniverses = showUniversesInNav,
+                showDiscover = showDiscoverInNav,
                 contentFocusRequester = focusRequesters[HEADER_ROW],
             )
 
