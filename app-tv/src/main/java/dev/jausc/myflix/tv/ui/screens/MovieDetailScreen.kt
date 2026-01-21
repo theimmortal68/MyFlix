@@ -893,6 +893,13 @@ private val studioLogoResources = mapOf(
     "Cartoon Saloon" to R.drawable.studio_cartoon_saloon,
     "Aardman Animations" to R.drawable.studio_aardman,
     "Aardman" to R.drawable.studio_aardman,
+
+    // Streaming Studios (using network logos)
+    "Netflix" to R.drawable.network_netflix,
+    "HBO Films" to R.drawable.network_hbo_films,
+    "HBO Max" to R.drawable.network_hbo_max,
+    "Max Original" to R.drawable.network_hbo_max,
+    "HBO" to R.drawable.network_hbo,
 )
 
 /**
@@ -925,6 +932,8 @@ private val studioMatchPriority = listOf(
     "Ghibli" to R.drawable.studio_ghibli,
     "Toho" to R.drawable.studio_toho,
     "Toei" to R.drawable.studio_toei,
+    "Netflix" to R.drawable.network_netflix,
+    "HBO" to R.drawable.network_hbo,
 )
 
 /**

@@ -875,16 +875,159 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 
 /**
  * Map of Jellyfin network names to embedded drawable resources.
- * Currently empty - TMDB logos were incorrect (mismatched folder names).
- * Network names will display as styled text badges until correct logos are sourced.
+ * Logos sourced from tv-logos collection (prioritized) with TMDB fallback.
  */
-private val networkLogoResources = emptyMap<String, Int>()
+private val networkLogoResources = mapOf(
+    // US Broadcast Networks
+    "ABC" to R.drawable.network_abc,
+    "ABC (US)" to R.drawable.network_abc,
+    "NBC" to R.drawable.network_nbc,
+    "CBS" to R.drawable.network_cbs,
+    "Fox" to R.drawable.network_fox,
+    "FOX" to R.drawable.network_fox,
+    "FOX (US)" to R.drawable.network_fox,
+    "The CW" to R.drawable.network_cw,
+    "CW" to R.drawable.network_cw,
+    "PBS" to R.drawable.network_pbs,
+
+    // Premium Cable
+    "HBO" to R.drawable.network_hbo,
+    "HBO Max" to R.drawable.network_hbo_max,
+    "Max" to R.drawable.network_hbo_max,
+    "HBO Films" to R.drawable.network_hbo_films,
+    "Showtime" to R.drawable.network_showtime,
+    "SHOWTIME" to R.drawable.network_showtime,
+    "Starz" to R.drawable.network_starz,
+    "STARZ" to R.drawable.network_starz,
+
+    // Cable Networks
+    "AMC" to R.drawable.network_amc,
+    "AMC+" to R.drawable.network_amc,
+    "FX" to R.drawable.network_fx,
+    "FX Networks" to R.drawable.network_fx,
+    "FXX" to R.drawable.network_fxx,
+    "USA Network" to R.drawable.network_usa,
+    "USA" to R.drawable.network_usa,
+    "TNT" to R.drawable.network_tnt,
+    "TNT (US)" to R.drawable.network_tnt,
+    "TBS" to R.drawable.network_tbs,
+    "Syfy" to R.drawable.network_syfy,
+    "SyFy" to R.drawable.network_syfy,
+    "SYFY" to R.drawable.network_syfy,
+    "Bravo" to R.drawable.network_bravo,
+    "E!" to R.drawable.network_e,
+    "E! Entertainment" to R.drawable.network_e,
+    "Oxygen" to R.drawable.network_oxygen,
+    "Lifetime" to R.drawable.network_lifetime,
+    "Hallmark Channel" to R.drawable.network_hallmark,
+    "Hallmark" to R.drawable.network_hallmark,
+    "Freeform" to R.drawable.network_freeform,
+    "Paramount Network" to R.drawable.network_paramount_network,
+    "A&E" to R.drawable.network_ae,
+    "TV Land" to R.drawable.network_tv_land,
+    "Pop" to R.drawable.network_pop,
+    "Pop TV" to R.drawable.network_pop,
+    "Reelz" to R.drawable.network_reelz,
+    "WE tv" to R.drawable.network_we_tv,
+    "TCM" to R.drawable.network_tcm,
+    "Turner Classic Movies" to R.drawable.network_tcm,
+    "truTV" to R.drawable.network_tru_tv,
+    "TruTV" to R.drawable.network_tru_tv,
+    "IFC" to R.drawable.network_ifc,
+    "Sundance TV" to R.drawable.network_sundance,
+    "SundanceTV" to R.drawable.network_sundance,
+
+    // Kids/Animation
+    "Adult Swim" to R.drawable.network_adult_swim,
+    "Cartoon Network" to R.drawable.network_cartoon_network,
+    "Nickelodeon" to R.drawable.network_nickelodeon,
+    "Nick" to R.drawable.network_nick,
+    "Disney Channel" to R.drawable.network_disney_channel,
+
+    // Music/Entertainment
+    "MTV" to R.drawable.network_mtv,
+    "VH1" to R.drawable.network_vh1,
+    "BET" to R.drawable.network_bet,
+    "Comedy Central" to R.drawable.network_comedy_central,
+
+    // Sports
+    "ESPN" to R.drawable.network_espn,
+    "ESPN2" to R.drawable.network_espn2,
+    "ESPN 2" to R.drawable.network_espn2,
+    "Fox Sports" to R.drawable.network_fox_sports,
+    "Fox Sports 1" to R.drawable.network_fox_sports,
+    "FS1" to R.drawable.network_fox_sports,
+
+    // Documentary/Educational
+    "National Geographic" to R.drawable.network_national_geographic,
+    "Nat Geo" to R.drawable.network_national_geographic,
+    "NatGeo" to R.drawable.network_national_geographic,
+    "Nat Geo Wild" to R.drawable.network_nat_geo_wild,
+    "History" to R.drawable.network_history,
+    "History Channel" to R.drawable.network_history,
+    "HISTORY" to R.drawable.network_history,
+    "Discovery" to R.drawable.network_discovery,
+    "Discovery Channel" to R.drawable.network_discovery,
+    "Animal Planet" to R.drawable.network_animal_planet,
+    "TLC" to R.drawable.network_tlc,
+
+    // Lifestyle
+    "Food Network" to R.drawable.network_food_network,
+    "HGTV" to R.drawable.network_hgtv,
+    "Travel Channel" to R.drawable.network_travel_channel,
+
+    // Streaming Services
+    "Netflix" to R.drawable.network_netflix,
+    "Disney+" to R.drawable.network_disney_plus,
+    "Disney Plus" to R.drawable.network_disney_plus,
+    "Paramount+" to R.drawable.network_paramount_plus,
+    "Paramount Plus" to R.drawable.network_paramount_plus,
+    "Paramount+ with Showtime" to R.drawable.network_paramount_plus,
+    "Peacock" to R.drawable.network_peacock,
+
+    // UK Networks
+    "BBC One" to R.drawable.network_bbc_one,
+    "BBC 1" to R.drawable.network_bbc_one,
+    "BBC Two" to R.drawable.network_bbc_two,
+    "BBC 2" to R.drawable.network_bbc_two,
+    "ITV" to R.drawable.network_itv,
+    "ITV1" to R.drawable.network_itv1,
+    "ITV 1" to R.drawable.network_itv1,
+    "Sky Atlantic" to R.drawable.network_sky_atlantic,
+    "Sky Atlantic (UK)" to R.drawable.network_sky_atlantic,
+    "Channel 4" to R.drawable.network_channel_4,
+    "Channel 5" to R.drawable.network_channel_5,
+)
 
 /**
  * Priority list for partial matching multi-network names.
- * Currently empty - using text fallback for all networks.
+ * Order matters - first match wins.
  */
-private val networkMatchPriority = emptyList<Pair<String, Int>>()
+private val networkMatchPriority = listOf(
+    "Paramount+" to R.drawable.network_paramount_plus,
+    "Showtime" to R.drawable.network_showtime,
+    "HBO Max" to R.drawable.network_hbo_max,
+    "Max" to R.drawable.network_hbo_max,
+    "HBO" to R.drawable.network_hbo,
+    "Netflix" to R.drawable.network_netflix,
+    "Disney+" to R.drawable.network_disney_plus,
+    "Disney" to R.drawable.network_disney_plus,
+    "Peacock" to R.drawable.network_peacock,
+    "Starz" to R.drawable.network_starz,
+    "Syfy" to R.drawable.network_syfy,
+    "AMC" to R.drawable.network_amc,
+    "FX" to R.drawable.network_fx,
+    "BBC" to R.drawable.network_bbc_one,
+    "Sky" to R.drawable.network_sky_atlantic,
+    "ITV" to R.drawable.network_itv,
+    "National Geographic" to R.drawable.network_national_geographic,
+    "Nat Geo" to R.drawable.network_national_geographic,
+    "Discovery" to R.drawable.network_discovery,
+    "History" to R.drawable.network_history,
+    "Cartoon Network" to R.drawable.network_cartoon_network,
+    "Nickelodeon" to R.drawable.network_nickelodeon,
+    "ESPN" to R.drawable.network_espn,
+)
 
 /**
  * Get embedded drawable resource ID for a network name.
