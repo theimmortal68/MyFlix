@@ -504,6 +504,7 @@ fun MyFlixMobileContent(
             DetailScreen(
                 itemId = itemId,
                 jellyfinClient = jellyfinClient,
+                themeMusicPlayer = appState.themeMusicPlayer,
                 onPlayClick = { id, startPositionMs ->
                     navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))
                 },
@@ -565,6 +566,12 @@ fun MyFlixMobileContent(
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: return@composable
             val startPositionMs = backStackEntry.arguments?.getLong("startPositionMs")
+
+            // Stop theme music when entering player
+            LaunchedEffect(Unit) {
+                appState.themeMusicPlayer.stop()
+            }
+
             PlayerScreen(
                 itemId = itemId,
                 startPositionMs = startPositionMs?.takeIf { it >= 0 },

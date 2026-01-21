@@ -130,8 +130,9 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 - [x] Chapter selection in player
 - [x] Configurable skip forward/back duration
 - [x] Auto-play next episode with countdown
+- [x] Theme music on detail screens (with fade effects)
+- [x] Trailers row on detail screens (categorized extras)
 - [ ] Trick play thumbnails during seek
-- [ ] Theme music during browsing
 - [ ] Configurable auto-play delay
 
 ### Home Screen
@@ -176,8 +177,6 @@ adb install app-mobile/build/outputs/apk/debug/app-mobile-debug.apk
 - Cache management UI
 
 ### Mid-term (Enhanced Experience)
-- Theme song playback on detail screens
-- Trailers row on detail screens
 - Audio passthrough option
 - Night mode (audio compression)
 - Configurable auto-play delay

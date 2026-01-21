@@ -27,8 +27,11 @@ import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.common.model.writers
-import dev.jausc.myflix.core.viewmodel.DetailUiState
+import dev.jausc.myflix.core.common.util.buildFeatureSections
+import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
+import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
@@ -59,6 +62,7 @@ fun MovieDetailScreen(
     jellyfinClient: JellyfinClient,
     onPlayClick: (Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
+    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
@@ -66,6 +70,36 @@ fun MovieDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val movie = state.item ?: return
+
+    // Detect trailer for the trailer button
+    val trailerItem = remember(state.specialFeatures) {
+        findNewestTrailer(state.specialFeatures)
+    }
+
+    // Check for YouTube remote trailer if no local trailer
+    val remoteTrailer = remember(movie.remoteTrailers) {
+        movie.remoteTrailers?.firstOrNull()
+    }
+
+    // Build action for trailer button - prefer local, fallback to remote
+    val trailerAction: (() -> Unit)? = remember(trailerItem, remoteTrailer) {
+        when {
+            trailerItem != null -> {
+                { onPlayItemClick(trailerItem.id, null) }
+            }
+            remoteTrailer != null -> {
+                extractYouTubeVideoKey(remoteTrailer.url)?.let { key ->
+                    { onTrailerClick(key, remoteTrailer.name) }
+                }
+            }
+            else -> null
+        }
+    }
+
+    // Build categorized feature sections (excluding the trailer already shown)
+    val featureSections = remember(state.specialFeatures, trailerItem?.id) {
+        buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
+    }
 
     // Dialog state
     var showOverviewDialog by remember { mutableStateOf(false) }
@@ -269,12 +303,12 @@ fun MovieDetailScreen(
             }
         }
 
-        // Extras
-        if (state.specialFeatures.isNotEmpty()) {
-            item(key = "extras") {
+        // Categorized feature sections (Trailers, Featurettes, Behind the Scenes, etc.)
+        featureSections.forEach { section ->
+            item(key = "feature_${section.title}") {
                 ItemRow(
-                    title = "Extras",
-                    items = state.specialFeatures,
+                    title = section.title,
+                    items = section.items,
                     onItemClick = { _, item -> onPlayItemClick(item.id, null) },
                     onItemLongClick = { _, _ ->
                         // TODO: Show item context menu

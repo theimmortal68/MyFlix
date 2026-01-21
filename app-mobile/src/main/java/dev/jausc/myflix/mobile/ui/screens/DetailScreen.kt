@@ -7,13 +7,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.jausc.myflix.core.viewmodel.DetailViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.ThemeMusicPlayer
+import dev.jausc.myflix.core.viewmodel.DetailViewModel
 
 /**
  * Detail screen router that shows MovieDetailScreen or SeriesDetailScreen
@@ -23,6 +26,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 fun DetailScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
+    themeMusicPlayer: ThemeMusicPlayer?,
     onPlayClick: (String, Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
     onEpisodeClick: (String) -> Unit,
@@ -40,6 +44,21 @@ fun DetailScreen(
 
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
+
+    // Play theme music when available
+    LaunchedEffect(state.themeSongUrl) {
+        val themeUrl = state.themeSongUrl
+        if (themeUrl != null && themeMusicPlayer != null) {
+            themeMusicPlayer.play(themeUrl)
+        }
+    }
+
+    // Stop theme music when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose {
+            themeMusicPlayer?.stop()
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -64,6 +83,7 @@ fun DetailScreen(
                         onPlayClick(itemId, startPositionMs)
                     },
                     onPlayItemClick = onPlayItemClick,
+                    onTrailerClick = onTrailerClick,
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {
