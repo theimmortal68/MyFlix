@@ -863,23 +863,124 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 }
 
 /**
- * Convert network name to tv-logo filename format.
- * Format: lowercase, spaces to dashes, ampersands to "and", with country suffix.
+ * Map of Jellyfin studio names to tv-logo URLs.
+ * Uses github.com/tv-logo/tv-logos repository.
  */
-private fun networkNameToTvLogoUrl(name: String): String {
-    val filename = name
-        .lowercase()
-        .replace("&", "and")
-        .replace(" ", "-")
-        .replace("'", "")
-        .replace(".", "")
-        .replace(",", "")
-    return "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/$filename-us.png"
+private val networkLogoUrls = mapOf(
+    // Broadcast Networks
+    "ABC" to "abc-us.png",
+    "NBC" to "nbc-us.png",
+    "CBS" to "cbs-logo-white-us.png",
+    "Fox" to "fox-us.png",
+    "FOX" to "fox-us.png",
+    "The CW" to "the-cw-us.png",
+    "CW" to "the-cw-us.png",
+    "PBS" to "pbs-us.png",
+
+    // Premium Cable
+    "HBO" to "hbo-us.png",
+    "HBO Max" to "hbo-max-us.png",
+    "Max" to "hbo-max-us.png",
+    "Showtime" to "showtime-us.png",
+    "Starz" to "starz-us.png",
+    "STARZ" to "starz-us.png",
+    "Cinemax" to "cinemax-us.png",
+    "EPIX" to "epix-us.png",
+    "MGM+" to "mgm-plus-us.png",
+
+    // Cable Networks
+    "AMC" to "amc-us.png",
+    "FX" to "fx-us.png",
+    "FXX" to "fxx-us.png",
+    "USA Network" to "usa-us.png",
+    "USA" to "usa-us.png",
+    "TNT" to "tnt-us.png",
+    "TBS" to "tbs-us.png",
+    "Syfy" to "syfy-us.png",
+    "SyFy" to "syfy-us.png",
+    "SYFY" to "syfy-us.png",
+    "Bravo" to "bravo-us.png",
+    "E!" to "e-entertainment-us.png",
+    "E! Entertainment" to "e-entertainment-us.png",
+    "Oxygen" to "oxygen-us.png",
+    "Lifetime" to "lifetime-us.png",
+    "Hallmark Channel" to "hallmark-channel-us.png",
+    "Hallmark" to "hallmark-channel-us.png",
+    "Freeform" to "freeform-us.png",
+    "TV Land" to "tv-land-us.png",
+    "Paramount Network" to "paramount-network-us.png",
+    "BBC America" to "bbc-america-us.png",
+
+    // Kids/Animation
+    "Adult Swim" to "adult-swim-us.png",
+    "Cartoon Network" to "cartoon-network-us.png",
+    "Nickelodeon" to "nickelodeon-us.png",
+    "Nick" to "nickelodeon-us.png",
+    "Disney Channel" to "disney-channel-us.png",
+    "Disney XD" to "disney-xd-us.png",
+    "Disney Junior" to "disney-junior-us.png",
+
+    // Music/Entertainment
+    "MTV" to "mtv-us.png",
+    "VH1" to "vh1-us.png",
+    "BET" to "bet-us.png",
+    "Comedy Central" to "comedy-central-us.png",
+
+    // Sports
+    "ESPN" to "espn-us.png",
+    "ESPN2" to "espn-2-us.png",
+    "ESPN 2" to "espn-2-us.png",
+    "Fox Sports" to "fox-sports-us.png",
+    "NFL Network" to "nfl-network-us.png",
+    "NBA TV" to "nba-tv-us.png",
+    "MLB Network" to "mlb-network-us.png",
+
+    // Documentary/Educational
+    "National Geographic" to "national-geographic-us.png",
+    "Nat Geo" to "national-geographic-us.png",
+    "History" to "history-channel-us.png",
+    "History Channel" to "history-channel-us.png",
+    "Discovery" to "discovery-channel-us.png",
+    "Discovery Channel" to "discovery-channel-us.png",
+    "Animal Planet" to "animal-planet-us.png",
+    "TLC" to "tlc-us.png",
+    "Science Channel" to "science-channel-us.png",
+
+    // Lifestyle
+    "Food Network" to "food-network-us.png",
+    "HGTV" to "hgtv-us.png",
+    "Travel Channel" to "travel-channel-us.png",
+
+    // Streaming Services (international folder or misc)
+    "Netflix" to "../misc/media/netflix.png",
+    "Disney+" to "disney-plus-us.png",
+    "Disney Plus" to "disney-plus-us.png",
+    "Paramount+" to "paramount-plus-us.png",
+    "Paramount Plus" to "paramount-plus-us.png",
+    "Apple TV+" to "../misc/media/apple-tv-plus.png",
+    "Apple TV" to "../misc/media/apple-tv-plus.png",
+    "Amazon" to "../misc/media/amazon-prime-video.png",
+    "Prime Video" to "../misc/media/amazon-prime-video.png",
+    "Amazon Prime Video" to "../misc/media/amazon-prime-video.png",
+    "Hulu" to "../misc/media/hulu.png",
+    "Peacock" to "../misc/media/peacock.png",
+)
+
+private const val TV_LOGO_BASE_URL = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
+
+/**
+ * Get tv-logo URL for a network name.
+ * Returns null if no mapping exists.
+ */
+private fun getNetworkLogoUrl(name: String): String? {
+    val filename = networkLogoUrls[name] ?: networkLogoUrls[name.trim()]
+    return filename?.let { TV_LOGO_BASE_URL + it }
 }
 
 /**
  * Network logo row displaying the studio/network image.
- * Tries tv-logo repository first, then Jellyfin images, then styled badge.
+ * Uses hardcoded mapping to tv-logo repository for instant display.
+ * Falls back to styled badge if no mapping exists.
  */
 @Composable
 private fun NetworkLogoRow(
@@ -887,58 +988,36 @@ private fun NetworkLogoRow(
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
-    var tvLogoFailed by remember { mutableStateOf(false) }
-    var jellyfinFailed by remember { mutableStateOf(false) }
-
-    // Try tv-logo repository first (has most network logos)
+    // Get mapped tv-logo URL (instant, no network request needed to determine if exists)
     val tvLogoUrl = remember(networkName) {
-        networkName?.let { networkNameToTvLogoUrl(it) }
-    }
-
-    // Fall back to Jellyfin studio image
-    val jellyfinUrl = remember(networkId) {
-        jellyfinClient.getPrimaryImageUrl(networkId, null, maxWidth = 200)
+        networkName?.let { getNetworkLogoUrl(it) }
     }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        when {
-            // Try tv-logo repository first
-            tvLogoUrl != null && !tvLogoFailed -> {
-                AsyncImage(
-                    model = tvLogoUrl,
-                    contentDescription = networkName ?: "Network",
-                    modifier = Modifier.height(28.dp),
-                    contentScale = ContentScale.Fit,
-                    onError = { tvLogoFailed = true },
+        if (tvLogoUrl != null) {
+            // Show logo from tv-logo repository
+            AsyncImage(
+                model = tvLogoUrl,
+                contentDescription = networkName ?: "Network",
+                modifier = Modifier.height(28.dp),
+                contentScale = ContentScale.Fit,
+            )
+        } else if (!networkName.isNullOrBlank()) {
+            // Show styled badge with network name for unmapped networks
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF424242))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = networkName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
                 )
-            }
-            // Fall back to Jellyfin studio image
-            !jellyfinFailed -> {
-                AsyncImage(
-                    model = jellyfinUrl,
-                    contentDescription = networkName ?: "Network",
-                    modifier = Modifier.height(28.dp),
-                    contentScale = ContentScale.Fit,
-                    onError = { jellyfinFailed = true },
-                )
-            }
-            // Fall back to styled badge with network name
-            !networkName.isNullOrBlank() -> {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFF424242))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                ) {
-                    Text(
-                        text = networkName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                    )
-                }
             }
         }
     }
