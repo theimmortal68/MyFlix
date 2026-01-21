@@ -875,7 +875,7 @@ private fun getStatusInfo(status: String): Pair<String, Color> {
 
 /**
  * Map of Jellyfin studio names to embedded drawable resources.
- * Logos sourced from github.com/tv-logo/tv-logos repository.
+ * Logos sourced from TMDB and Emby.
  */
 private val networkLogoResources = mapOf(
     // Broadcast Networks
@@ -892,6 +892,7 @@ private val networkLogoResources = mapOf(
     "HBO" to R.drawable.network_hbo,
     "HBO Max" to R.drawable.network_hbo_max,
     "Max" to R.drawable.network_hbo_max,
+    "HBO Films" to R.drawable.network_hbo_films,
     "Showtime" to R.drawable.network_showtime,
     "Starz" to R.drawable.network_starz,
     "STARZ" to R.drawable.network_starz,
@@ -904,7 +905,9 @@ private val networkLogoResources = mapOf(
 
     // Cable Networks
     "AMC" to R.drawable.network_amc,
+    "AMC Studios" to R.drawable.network_amc_studios,
     "FX" to R.drawable.network_fx,
+    "FX Networks" to R.drawable.network_fx,
     "FXX" to R.drawable.network_fxx,
     "USA Network" to R.drawable.network_usa,
     "USA" to R.drawable.network_usa,
@@ -923,14 +926,26 @@ private val networkLogoResources = mapOf(
     "Freeform" to R.drawable.network_freeform,
     "TV Land" to R.drawable.network_tv_land,
     "Paramount Network" to R.drawable.network_paramount_network,
+
+    // UK Networks
+    "BBC" to R.drawable.network_bbc,
+    "BBC One" to R.drawable.network_bbc_one,
+    "BBC Studios" to R.drawable.network_bbc_studios,
     "BBC America" to R.drawable.network_bbc_america,
+    "ITV" to R.drawable.network_itv,
+    "Sky Atlantic" to R.drawable.network_sky,
+    "Sky" to R.drawable.network_sky,
 
     // Kids/Animation
     "Adult Swim" to R.drawable.network_adult_swim,
     "Cartoon Network" to R.drawable.network_cartoon_network,
+    "Cartoon Network Studios" to R.drawable.network_cartoon_network_studios,
+    "Williams Street" to R.drawable.network_williams_street,
     "Nickelodeon" to R.drawable.network_nickelodeon,
     "Nick" to R.drawable.network_nickelodeon,
+    "Nickelodeon Animation Studio" to R.drawable.network_nickelodeon_animation,
     "Disney Channel" to R.drawable.network_disney_channel,
+    "Disney Television Animation" to R.drawable.network_disney_tv_animation,
     "Disney XD" to R.drawable.network_disney_xd,
 
     // Music/Entertainment
@@ -977,6 +992,24 @@ private val networkLogoResources = mapOf(
     "Amazon Prime Video" to R.drawable.network_amazon_prime,
     "Hulu" to R.drawable.network_hulu,
     "Peacock" to R.drawable.network_peacock,
+    "Crunchyroll" to R.drawable.network_crunchyroll,
+
+    // TV Production Studios
+    "Warner Bros. Television" to R.drawable.network_warner_bros_tv,
+    "20th Television" to R.drawable.network_20th_television,
+    "20th Century Fox Television" to R.drawable.network_20th_century_fox_tv,
+    "Universal Television" to R.drawable.network_universal_tv,
+    "Sony Pictures Television" to R.drawable.network_sony_tv,
+    "Paramount Television" to R.drawable.network_paramount_tv,
+    "MGM Television" to R.drawable.network_mgm_tv,
+    "Lionsgate Television" to R.drawable.network_lionsgate_tv,
+    "ABC Studios" to R.drawable.network_abc_studios,
+    "CBS Studios" to R.drawable.network_cbs_studios,
+    "NBC Studios" to R.drawable.network_nbc_studios,
+    "Imagine Television" to R.drawable.network_imagine_tv,
+    "Amblin Television" to R.drawable.network_amblin_tv,
+    "Bad Robot" to R.drawable.network_bad_robot,
+    "Bad Robot Productions" to R.drawable.network_bad_robot,
 )
 
 /**
