@@ -96,8 +96,6 @@ fun NavigationRail(
             isFirst = true,
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         // Main nav items
         NavRailItem(
             item = NavItem.HOME,
