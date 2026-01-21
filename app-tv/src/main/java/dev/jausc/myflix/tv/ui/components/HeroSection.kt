@@ -353,20 +353,21 @@ private fun HeroTitleSection(item: JellyfinItem) {
 }
 
 /**
- * Row displaying rating information.
- * Episodes: S# E#, air date, duration, parental rating, community rating
- * Series: Year, parental rating, community rating
- * Movies: Year, duration, parental rating, community rating, critic rating
+ * Row displaying rating information with dot separators.
+ * Episodes: S# E# · air date · duration · parental rating · community rating
+ * Series: Year · parental rating · community rating
+ * Movies: Year · duration · parental rating · community rating · critic rating
  */
 @Composable
 private fun HeroRatingRow(item: JellyfinItem) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
             item.isEpisode -> {
-                // Episode-specific order: S# E#, air date, duration, rating, stars
+                // Episode-specific order: S# E# · air date · duration · rating · stars
+                var needsDot = false
 
                 // Season and Episode number
                 val season = item.parentIndexNumber
@@ -379,38 +380,47 @@ private fun HeroRatingRow(item: JellyfinItem) {
                         ),
                         color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     )
+                    needsDot = true
                 }
 
                 // Full air date
                 item.formattedFullPremiereDate?.let { date ->
+                    if (needsDot) DotSeparator()
                     Text(
                         text = date,
                         style = MaterialTheme.typography.bodySmall,
                         color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     )
+                    needsDot = true
                 }
 
                 // Runtime
                 item.runTimeTicks?.let { ticks ->
                     val minutes = (ticks / 600_000_000).toInt()
                     if (minutes > 0) {
+                        if (needsDot) DotSeparator()
                         RuntimeDisplay(minutes)
+                        needsDot = true
                     }
                 }
 
                 // Official rating badge (PG-13, TV-MA, etc.)
                 item.officialRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     RatingBadge(rating)
+                    needsDot = true
                 }
 
                 // Community rating (star rating)
                 item.communityRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     StarRating(rating)
                 }
             }
 
             item.isSeries -> {
-                // Series order: year, parental rating, community rating
+                // Series order: year · parental rating · community rating
+                var needsDot = false
 
                 // Production year
                 item.productionYear?.let { year ->
@@ -419,21 +429,26 @@ private fun HeroRatingRow(item: JellyfinItem) {
                         style = MaterialTheme.typography.bodySmall,
                         color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     )
+                    needsDot = true
                 }
 
                 // Official rating badge (PG-13, TV-MA, etc.)
                 item.officialRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     RatingBadge(rating)
+                    needsDot = true
                 }
 
                 // Community rating (star rating)
                 item.communityRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     StarRating(rating)
                 }
             }
 
             item.isMovie -> {
-                // Movies: year, duration, parental rating, community rating, critic rating
+                // Movies: year · duration · parental rating · community rating · critic rating
+                var needsDot = false
 
                 // Production year
                 item.productionYear?.let { year ->
@@ -442,34 +457,43 @@ private fun HeroRatingRow(item: JellyfinItem) {
                         style = MaterialTheme.typography.bodySmall,
                         color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     )
+                    needsDot = true
                 }
 
                 // Runtime
                 item.runTimeTicks?.let { ticks ->
                     val minutes = (ticks / 600_000_000).toInt()
                     if (minutes > 0) {
+                        if (needsDot) DotSeparator()
                         RuntimeDisplay(minutes)
+                        needsDot = true
                     }
                 }
 
                 // Official rating badge (PG-13, TV-MA, etc.)
                 item.officialRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     RatingBadge(rating)
+                    needsDot = true
                 }
 
                 // Community rating (star rating)
                 item.communityRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     StarRating(rating)
+                    needsDot = true
                 }
 
                 // Critic rating (Rotten Tomatoes style with icon and percentage) - movies only
                 item.criticRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     CriticRatingBadge(rating)
                 }
             }
 
             else -> {
-                // Other items: year, parental rating, community rating
+                // Other items: year · parental rating · community rating
+                var needsDot = false
 
                 // Production year
                 item.productionYear?.let { year ->
@@ -478,20 +502,36 @@ private fun HeroRatingRow(item: JellyfinItem) {
                         style = MaterialTheme.typography.bodySmall,
                         color = TvColors.TextPrimary.copy(alpha = 0.9f),
                     )
+                    needsDot = true
                 }
 
                 // Official rating badge (PG-13, TV-MA, etc.)
                 item.officialRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     RatingBadge(rating)
+                    needsDot = true
                 }
 
                 // Community rating (star rating)
                 item.communityRating?.let { rating ->
+                    if (needsDot) DotSeparator()
                     StarRating(rating)
                 }
             }
         }
     }
+}
+
+/**
+ * Small dot separator for metadata rows.
+ */
+@Composable
+private fun DotSeparator() {
+    Text(
+        text = "•",
+        style = MaterialTheme.typography.bodySmall,
+        color = TvColors.TextPrimary.copy(alpha = 0.6f),
+    )
 }
 
 /**
