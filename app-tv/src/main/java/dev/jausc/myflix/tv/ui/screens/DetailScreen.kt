@@ -74,6 +74,7 @@ fun DetailScreen(
                         onPlayClick(itemId, startPositionMs)
                     },
                     onPlayItemClick = onPlayItemClick,
+                    onTrailerClick = onTrailerClick,
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {

@@ -44,6 +44,9 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.model.directorNames
+import dev.jausc.myflix.core.common.util.buildFeatureSections
+import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
+import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DialogItem
@@ -90,6 +93,7 @@ fun MovieDetailScreen(
     jellyfinClient: JellyfinClient,
     onPlayClick: (Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
+    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
@@ -120,6 +124,32 @@ fun MovieDetailScreen(
     // Cast & crew (using extension properties from JellyfinItem)
     val cast = movie.actors
     val crew = movie.crew
+
+    // Trailer detection - local trailer from special features or remote YouTube trailer
+    val trailerItem = remember(state.specialFeatures) {
+        findNewestTrailer(state.specialFeatures)
+    }
+    val trailerVideo = remember(movie.remoteTrailers) {
+        movie.remoteTrailers
+            ?.lastOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
+    }
+    val trailerAction: (() -> Unit)? = when {
+        trailerItem != null -> {
+            { onPlayItemClick(trailerItem.id, null) }
+        }
+        trailerVideo?.url != null -> {
+            val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
+            if (key.isBlank()) null else {
+                { onTrailerClick(key, trailerVideo.name) }
+            }
+        }
+        else -> null
+    }
+
+    // Build categorized feature sections (excludes the trailer shown on play button)
+    val featureSections = remember(state.specialFeatures, trailerItem?.id) {
+        buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
+    }
 
     // Backdrop URL and dynamic gradient colors
     val backdropUrl = remember(movie.id) {
@@ -202,6 +232,7 @@ fun MovieDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
+                        onTrailerClick = trailerAction,
                         onMoreClick = {
                             dialogParams = DialogParams(
                                 title = movie.name,
@@ -305,12 +336,12 @@ fun MovieDetailScreen(
                 }
             }
 
-            // Extras
-            if (state.specialFeatures.isNotEmpty()) {
-                item(key = "extras") {
+            // Categorized special features (Trailers, Featurettes, Behind the Scenes, etc.)
+            featureSections.forEach { section ->
+                item(key = "feature_${section.title}") {
                     ItemRow(
-                        title = "Extras",
-                        items = state.specialFeatures,
+                        title = section.title,
+                        items = section.items,
                         onItemClick = { _, item ->
                             position = EXTRAS_ROW
                             onPlayItemClick(item.id, null)
