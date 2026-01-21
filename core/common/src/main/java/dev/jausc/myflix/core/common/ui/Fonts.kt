@@ -18,55 +18,14 @@ object MyFlixFonts {
     )
 
     /**
-     * Anton - used for headers, section titles, branding moments
-     * Bold, impactful display font
+     * Inter - clean, modern sans-serif optimized for screen readability
+     * Designed specifically for computer screens with excellent legibility
      */
-    val Anton = FontFamily(
-        Font(R.font.anton_regular, FontWeight.Normal),
-    )
-
-    /**
-     * Plus Jakarta Sans - modern, clean sans-serif for body text
-     * Popular choice for streaming apps
-     */
-    val PlusJakartaSans = FontFamily(
-        Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
-        Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
-        Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
-        Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
-    )
-
-    /**
-     * Outfit - modern geometric sans-serif with distinctive character
-     * Clean, contemporary look perfect for media apps
-     */
-    val Outfit = FontFamily(
-        Font(R.font.outfit_regular, FontWeight.Normal),
-        Font(R.font.outfit_medium, FontWeight.Medium),
-        Font(R.font.outfit_semibold, FontWeight.SemiBold),
-        Font(R.font.outfit_bold, FontWeight.Bold),
-    )
-
-    /**
-     * Montserrat - geometric, elegant, Netflix-like feel
-     * Popular for streaming and media applications
-     */
-    val Montserrat = FontFamily(
-        Font(R.font.montserrat_regular, FontWeight.Normal),
-        Font(R.font.montserrat_medium, FontWeight.Medium),
-        Font(R.font.montserrat_semibold, FontWeight.SemiBold),
-        Font(R.font.montserrat_bold, FontWeight.Bold),
-    )
-
-    /**
-     * Open Sans - clean, humanist sans-serif with excellent readability
-     * Designed for legibility across print, web, and mobile interfaces
-     */
-    val OpenSans = FontFamily(
-        Font(R.font.open_sans_regular, FontWeight.Normal),
-        Font(R.font.open_sans_medium, FontWeight.Medium),
-        Font(R.font.open_sans_semibold, FontWeight.SemiBold),
-        Font(R.font.open_sans_bold, FontWeight.Bold),
+    val Inter = FontFamily(
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_medium, FontWeight.Medium),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
     )
 
     /**
@@ -75,12 +34,7 @@ object MyFlixFonts {
     val Logo = BebasNeue
 
     /**
-     * Header font alias
-     */
-    val Header = Anton
-
-    /**
      * Body/UI font alias
      */
-    val Body = OpenSans
+    val Body = Inter
 }
