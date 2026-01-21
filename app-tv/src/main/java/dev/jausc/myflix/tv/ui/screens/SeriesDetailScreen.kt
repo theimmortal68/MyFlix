@@ -636,20 +636,12 @@ private fun SeriesDetailsHeader(
         SeriesHeroRatingRow(
             series = series,
             status = status,
+            networkId = series.studios?.firstOrNull()?.id,
+            networkName = studioNames.firstOrNull(),
+            jellyfinClient = jellyfinClient,
         )
 
         Spacer(modifier = Modifier.height(6.dp))
-
-        // Network logo row
-        val networkId = series.studios?.firstOrNull()?.id
-        if (networkId != null) {
-            NetworkLogoRow(
-                networkId = networkId,
-                networkName = studioNames.firstOrNull(),
-                jellyfinClient = jellyfinClient,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-        }
 
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
@@ -681,6 +673,9 @@ private fun SeriesDetailsHeader(
 private fun SeriesHeroRatingRow(
     series: JellyfinItem,
     status: String?,
+    networkId: String?,
+    networkName: String?,
+    jellyfinClient: JellyfinClient,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -709,6 +704,13 @@ private fun SeriesHeroRatingRow(
         series.communityRating?.let { rating ->
             if (needsDot) DotSeparator()
             StarRating(rating)
+            needsDot = true
+        }
+
+        // Network logo (between rating and status)
+        if (networkId != null) {
+            if (needsDot) DotSeparator()
+            NetworkLogo(networkName = networkName, jellyfinClient = jellyfinClient)
             needsDot = true
         }
 
@@ -978,13 +980,13 @@ private fun getNetworkLogoUrl(name: String): String? {
 }
 
 /**
- * Network logo row displaying the studio/network image.
+ * Inline network logo for use in rating row.
  * Uses hardcoded mapping to tv-logo repository for instant display.
  * Falls back to styled badge if no mapping exists.
  */
+@Suppress("UnusedParameter")
 @Composable
-private fun NetworkLogoRow(
-    networkId: String,
+private fun NetworkLogo(
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
@@ -993,32 +995,27 @@ private fun NetworkLogoRow(
         networkName?.let { getNetworkLogoUrl(it) }
     }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (tvLogoUrl != null) {
-            // Show logo from tv-logo repository
-            AsyncImage(
-                model = tvLogoUrl,
-                contentDescription = networkName ?: "Network",
-                modifier = Modifier.height(28.dp),
-                contentScale = ContentScale.Fit,
+    if (tvLogoUrl != null) {
+        // Show logo from tv-logo repository
+        AsyncImage(
+            model = tvLogoUrl,
+            contentDescription = networkName ?: "Network",
+            modifier = Modifier.height(20.dp),
+            contentScale = ContentScale.Fit,
+        )
+    } else if (!networkName.isNullOrBlank()) {
+        // Show styled badge with network name for unmapped networks
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF424242))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            Text(
+                text = networkName,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
             )
-        } else if (!networkName.isNullOrBlank()) {
-            // Show styled badge with network name for unmapped networks
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF424242))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = networkName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                )
-            }
         }
     }
 }
