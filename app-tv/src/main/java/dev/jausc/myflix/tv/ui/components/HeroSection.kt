@@ -129,11 +129,13 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
                     .alpha(0.9f)
                     .drawWithContent {
                         drawContent()
-                        // Left edge fade - transparent on left, opaque from 50% to right
+                        // Left edge fade - dramatic fade in first 20%, gradual fade to 50%
                         drawRect(
                             brush = Brush.horizontalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Transparent,
+                                    0.2f to Color.Black.copy(alpha = 0.15f),
+                                    0.35f to Color.Black.copy(alpha = 0.5f),
                                     0.5f to Color.Black,
                                     1.0f to Color.Black,
                                 ),
