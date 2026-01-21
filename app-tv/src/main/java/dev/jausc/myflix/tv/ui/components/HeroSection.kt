@@ -141,12 +141,12 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
                             ),
                             blendMode = BlendMode.DstIn,
                         )
-                        // Bottom edge fade - starts at 50% of screen height
+                        // Bottom edge fade - starts at 40% of screen height
                         drawRect(
                             brush = Brush.verticalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Black,
-                                    0.5f to Color.Black,
+                                    0.4f to Color.Black,
                                     0.7f to Color.Black.copy(alpha = 0.4f),
                                     0.85f to Color.Black.copy(alpha = 0.15f),
                                     1.0f to Color.Transparent,
