@@ -61,7 +61,7 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
@@ -152,16 +152,26 @@ fun EpisodeDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    // Layered UI: DynamicBackground → Content (no backdrop image for cleaner look)
-    Box(modifier = modifier.fillMaxSize()) {
-        // Layer 1: Dynamic gradient background (based on series backdrop)
-        DynamicBackground(
-            gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize(),
+    // Layered UI: Row with NavigationRail + Content
+    Row(modifier = modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.SHOWS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = playFocusRequester,
         )
 
-        // Layer 2: Content
-        Column(modifier = Modifier.fillMaxSize()) {
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Layer 1: Dynamic gradient background (based on series backdrop)
+            DynamicBackground(
+                gradientColors = gradientColors,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            // Layer 2: Content
+            Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
             // Hero content - text on left with buttons at bottom, thumbnail on right (50% width)
             Row(
@@ -368,17 +378,8 @@ fun EpisodeDetailScreen(
                 }
             }
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.SHOWS,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = focusRequesters[HEADER_ROW],
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
+        } // End content Box
+    } // End Row
 
     // Context menu dialog
     dialogParams?.let { params ->

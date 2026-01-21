@@ -63,7 +63,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -203,29 +203,39 @@ fun CollectionDetailScreen(
     val collectionItem = collection!!
     val favorite = collectionItem.userData?.isFavorite == true
 
-    // Layered UI: DynamicBackground → DetailBackdropLayer → Content
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Layer 1: Dynamic gradient background
-        DynamicBackground(
-            gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize(),
+    // Layered UI: Row with NavigationRail + Content
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.COLLECTIONS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = shuffleFocusRequester,
         )
 
-        // Layer 2: Backdrop image (right side, behind content)
-        // Only show backdrop if available (no poster fallback for cleaner look on universe collections)
-        if (displayItem != null && hasBackdrop) {
-            DetailBackdropLayer(
-                item = displayItem,
-                jellyfinClient = jellyfinClient,
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.9f)
-                    .align(Alignment.TopEnd),
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Layer 1: Dynamic gradient background
+            DynamicBackground(
+                gradientColors = gradientColors,
+                modifier = Modifier.fillMaxSize(),
             )
-        }
 
-        // Layer 3: Content
-        Column(modifier = Modifier.fillMaxSize()) {
+            // Layer 2: Backdrop image (right side, behind content)
+            // Only show backdrop if available (no poster fallback for cleaner look on universe collections)
+            if (displayItem != null && hasBackdrop) {
+                DetailBackdropLayer(
+                    item = displayItem,
+                    jellyfinClient = jellyfinClient,
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .fillMaxHeight(0.9f)
+                        .align(Alignment.TopEnd),
+                )
+            }
+
+            // Layer 3: Content
+            Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section (50% height)
             Box(
                 modifier = Modifier
@@ -349,17 +359,8 @@ fun CollectionDetailScreen(
                 }
             }
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.COLLECTIONS,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = shuffleFocusRequester,
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
+        } // End content Box
+    } // End Row
 }
 
 /**

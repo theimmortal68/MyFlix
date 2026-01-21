@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,7 +53,7 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -168,25 +169,35 @@ fun SeriesDetailScreen(
 
     // Layered UI: DynamicBackground → DetailBackdropLayer → Content
     // Uses same structure as HomeScreen: fixed hero (37%) + scrollable content
-    Box(modifier = modifier.fillMaxSize()) {
-        // Layer 1: Dynamic gradient background
-        DynamicBackground(
-            gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize(),
+    Row(modifier = modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.SHOWS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = playFocusRequester,
         )
 
-        // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
-        DetailBackdropLayer(
-            item = series,
-            jellyfinClient = jellyfinClient,
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd),
-        )
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Layer 1: Dynamic gradient background
+            DynamicBackground(
+                gradientColors = gradientColors,
+                modifier = Modifier.fillMaxSize(),
+            )
 
-        // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
-        Column(modifier = Modifier.fillMaxSize()) {
+            // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
+            DetailBackdropLayer(
+                item = series,
+                jellyfinClient = jellyfinClient,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.9f)
+                    .align(Alignment.TopEnd),
+            )
+
+            // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
+            Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
             Box(
                 modifier = Modifier
@@ -197,7 +208,7 @@ fun SeriesDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 36.dp, bottom = 4.dp),
+                        .padding(start = 24.dp, top = 36.dp, bottom = 4.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     val displayDescription = focusedSeason?.overview?.takeIf { it.isNotBlank() } ?: series.overview
@@ -276,7 +287,7 @@ fun SeriesDetailScreen(
 
             // Scrollable content rows (below fixed hero)
             LazyColumn(
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 0.dp, bottom = 48.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 48.dp, top = 0.dp, bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(1f),
             ) {
@@ -536,17 +547,8 @@ fun SeriesDetailScreen(
                 }
             }
             }
+            }
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.SHOWS,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = focusRequesters[HEADER_ROW],
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
     }
 
     // Context menu dialog

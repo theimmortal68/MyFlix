@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,7 +47,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
@@ -89,7 +90,6 @@ fun LibraryScreen(
     val filterBarFocusRequester = remember { FocusRequester() }
     val filterBarFirstButtonFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
-    val navBarFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
@@ -168,139 +168,140 @@ fun LibraryScreen(
         // Dynamic background that changes based on focused poster
         DynamicBackground(gradientColors = gradientColors)
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Space for nav bar (content starts below where nav bar would be)
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Filter bar - shows nav bar when navigating up
-            LibraryFilterBar(
-                libraryName = libraryName,
-                totalItems = state.totalRecordCount,
-                loadedItems = state.items.size,
-                filterState = state.filterState,
-                availableGenres = state.availableGenres,
-                availableParentalRatings = state.availableParentalRatings,
-                collectionType = collectionType,
-                onViewModeChange = { viewModel.setViewMode(it) },
-                onSortChange = { sortBy, sortOrder ->
-                    viewModel.updateSort(sortBy, sortOrder)
-                },
-                onFilterChange = { watchedFilter, ratingFilter, yearRange, seriesStatus ->
-                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange, seriesStatus)
-                },
-                onGenreToggle = { viewModel.toggleGenre(it) },
-                onClearGenres = { viewModel.clearGenres() },
-                onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
-                onClearParentalRatings = { viewModel.clearParentalRatings() },
-                onShuffleClick = {
-                    viewModel.getShuffleItemId()?.let { itemId ->
-                        onItemClick(itemId)
-                    }
-                },
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .focusRequester(filterBarFocusRequester),
-                onUpNavigation = { navBarFocusRequester.requestFocus() },
-                firstButtonFocusRequester = filterBarFirstButtonFocusRequester,
-                gridFocusRequester = firstItemFocusRequester,
-                alphabetFocusRequester = alphabetFocusRequester,
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left: Navigation Rail
+            NavigationRail(
+                selectedItem = selectedNavItem,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+                contentFocusRequester = filterBarFirstButtonFocusRequester,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Right: Content area
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Top padding for content
+                    Spacer(modifier = Modifier.height(16.dp))
 
-            // Content with alphabet scroll bar
-            when {
-                state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        TvLoadingIndicator()
-                    }
-                }
-                state.error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = state.error ?: "Error loading library",
-                                color = TvColors.Error,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            TvTextButton(
-                                text = "Retry",
-                                onClick = { viewModel.refresh() },
-                            )
+                    // Filter bar
+                    LibraryFilterBar(
+                        libraryName = libraryName,
+                        totalItems = state.totalRecordCount,
+                        loadedItems = state.items.size,
+                        filterState = state.filterState,
+                        availableGenres = state.availableGenres,
+                        availableParentalRatings = state.availableParentalRatings,
+                        collectionType = collectionType,
+                        onViewModeChange = { viewModel.setViewMode(it) },
+                        onSortChange = { sortBy, sortOrder ->
+                            viewModel.updateSort(sortBy, sortOrder)
+                        },
+                        onFilterChange = { watchedFilter, ratingFilter, yearRange, seriesStatus ->
+                            viewModel.applyFilters(watchedFilter, ratingFilter, yearRange, seriesStatus)
+                        },
+                        onGenreToggle = { viewModel.toggleGenre(it) },
+                        onClearGenres = { viewModel.clearGenres() },
+                        onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
+                        onClearParentalRatings = { viewModel.clearParentalRatings() },
+                        onShuffleClick = {
+                            viewModel.getShuffleItemId()?.let { itemId ->
+                                onItemClick(itemId)
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .focusRequester(filterBarFocusRequester),
+                        firstButtonFocusRequester = filterBarFirstButtonFocusRequester,
+                        gridFocusRequester = firstItemFocusRequester,
+                        alphabetFocusRequester = alphabetFocusRequester,
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Content with alphabet scroll bar
+                    when {
+                        state.isLoading -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                TvLoadingIndicator()
+                            }
                         }
-                    }
-                }
-                state.isEmpty -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = if (state.filterState.hasActiveFilters) {
-                                "No items match your filters"
-                            } else {
-                                "This library is empty"
-                            },
-                            color = TvColors.TextSecondary,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-                else -> {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // Main grid content
-                        LibraryGridContent(
-                            state = state,
-                            gridState = gridState,
-                            columns = columns,
-                            aspectRatio = aspectRatio,
-                            jellyfinClient = jellyfinClient,
-                            firstItemFocusRequester = firstItemFocusRequester,
-                            filterBarFocusRequester = filterBarFirstButtonFocusRequester,
-                            alphabetFocusRequester = alphabetFocusRequester,
-                            onItemClick = onItemClick,
-                            onItemFocused = { _, imageUrl ->
-                                focusedImageUrl = imageUrl
-                            },
-                            modifier = Modifier.weight(1f),
-                        )
+                        state.error != null -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = state.error ?: "Error loading library",
+                                        color = TvColors.Error,
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    TvTextButton(
+                                        text = "Retry",
+                                        onClick = { viewModel.refresh() },
+                                    )
+                                }
+                            }
+                        }
+                        state.isEmpty -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = if (state.filterState.hasActiveFilters) {
+                                        "No items match your filters"
+                                    } else {
+                                        "This library is empty"
+                                    },
+                                    color = TvColors.TextSecondary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        }
+                        else -> {
+                            Row(modifier = Modifier.fillMaxSize()) {
+                                // Main grid content
+                                LibraryGridContent(
+                                    state = state,
+                                    gridState = gridState,
+                                    columns = columns,
+                                    aspectRatio = aspectRatio,
+                                    jellyfinClient = jellyfinClient,
+                                    firstItemFocusRequester = firstItemFocusRequester,
+                                    filterBarFocusRequester = filterBarFirstButtonFocusRequester,
+                                    alphabetFocusRequester = alphabetFocusRequester,
+                                    onItemClick = onItemClick,
+                                    onItemFocused = { _, imageUrl ->
+                                        focusedImageUrl = imageUrl
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
 
-                        // Alphabet scroll bar on right edge
-                        AlphabetScrollBar(
-                            availableLetters = availableLetters,
-                            currentLetter = state.currentLetter,
-                            onLetterClick = { letter ->
-                                // Use server-side nameStartsWith filter
-                                viewModel.jumpToLetter(letter)
-                            },
-                            onClearFilter = {
-                                viewModel.clearLetterFilter()
-                            },
-                            focusRequester = alphabetFocusRequester,
-                            gridFocusRequester = firstItemFocusRequester,
-                            modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
-                        )
+                                // Alphabet scroll bar on right edge
+                                AlphabetScrollBar(
+                                    availableLetters = availableLetters,
+                                    currentLetter = state.currentLetter,
+                                    onLetterClick = { letter ->
+                                        // Use server-side nameStartsWith filter
+                                        viewModel.jumpToLetter(letter)
+                                    },
+                                    onClearFilter = {
+                                        viewModel.clearLetterFilter()
+                                    },
+                                    focusRequester = alphabetFocusRequester,
+                                    gridFocusRequester = firstItemFocusRequester,
+                                    modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = selectedNavItem,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = filterBarFirstButtonFocusRequester,
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-
     }
 }
 

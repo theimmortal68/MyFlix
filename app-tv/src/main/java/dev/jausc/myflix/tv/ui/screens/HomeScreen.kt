@@ -97,7 +97,7 @@ import dev.jausc.myflix.tv.ui.components.HeroSection
 import dev.jausc.myflix.tv.ui.components.HomeDialogActions
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -349,10 +349,11 @@ fun HomeScreen(
                     homeButtonFocusRequester = homeButtonFocusRequester,
                     onBackdropUrlChanged = { url -> currentBackdropUrl = url },
                     onItemFocused = { },
-                    // Top navigation config
+                    // Navigation rail config
                     selectedNavItem = selectedNavItem,
                     onNavItemSelected = handleNavSelection,
                     showUniversesInNav = showUniversesInNav,
+                    showDiscoverInNav = seerrClient != null,
                 )
             }
         }
@@ -433,10 +434,11 @@ private fun HomeContent(
     homeButtonFocusRequester: FocusRequester = remember { FocusRequester() },
     onBackdropUrlChanged: (String?) -> Unit = {},
     onItemFocused: (JellyfinItem?) -> Unit = {},
-    // Top navigation
+    // Navigation rail
     selectedNavItem: NavItem = NavItem.HOME,
     onNavItemSelected: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    showDiscoverInNav: Boolean = false,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -626,20 +628,31 @@ private fun HomeContent(
     // Track the current hero display item for the backdrop layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
-    // Layered UI architecture:
+    // Layout: Navigation Rail on left, content on right
+    // Content layers:
     // Layer 1 (back): Hero backdrop - 90% of screen with edge fading
-    // Layer 2 (middle): Hero info (37%) + Content rows (63%)
-    // Layer 3 (front): Top navigation bar with gradient
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Layer 1: Hero backdrop image (90% of screen, fades at edges)
-        HeroBackdropLayer(
-            item = previewItem ?: heroDisplayItem,
-            jellyfinClient = jellyfinClient,
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd),
+    // Layer 2 (front): Hero info (37%) + Content rows (63%)
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = selectedNavItem,
+            onItemSelected = onNavItemSelected,
+            showUniverses = showUniversesInNav,
+            showDiscover = showDiscoverInNav,
+            contentFocusRequester = heroPlayFocusRequester,
         )
+
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Layer 1: Hero backdrop image (90% of screen, fades at edges)
+            HeroBackdropLayer(
+                item = previewItem ?: heroDisplayItem,
+                jellyfinClient = jellyfinClient,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.9f)
+                    .align(Alignment.TopEnd),
+            )
 
         // Layer 2: Hero info + Content rows
         Column(modifier = Modifier.fillMaxSize()) {
@@ -739,16 +752,8 @@ private fun HomeContent(
                 }
             }
         } // End Column
-
-        // Layer 3: Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = selectedNavItem,
-            onItemSelected = onNavItemSelected,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = heroPlayFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
+        } // End Content Box
+    } // End Row
 }
 
 /**

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,7 +29,7 @@ import dev.jausc.myflix.core.viewmodel.PersonDetailViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -50,42 +51,49 @@ fun PersonDetailScreen(
     )
     val state by viewModel.uiState.collectAsState()
 
-    Box(
-        modifier = modifier.fillMaxSize(),
-    ) {
-        when {
-            state.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Loading...",
-                        color = TvColors.TextPrimary,
-                    )
+    Row(modifier = modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.HOME,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+        )
+
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            when {
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Loading...",
+                            color = TvColors.TextPrimary,
+                        )
+                    }
                 }
-            }
 
-            state.person == null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = state.error ?: "Person not found",
-                        color = TvColors.TextPrimary,
-                    )
+                state.person == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = state.error ?: "Person not found",
+                            color = TvColors.TextPrimary,
+                        )
+                    }
                 }
-            }
 
-            else -> {
-                val person = state.person!!
+                else -> {
+                    val person = state.person!!
 
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp, horizontal = 32.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(vertical = 16.dp, horizontal = 32.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
                     item(key = "header") {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -155,13 +163,6 @@ fun PersonDetailScreen(
                 }
             }
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.HOME, // Persons are typically accessed from search or detail screens
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
+        } // End content Box
+    } // End Row
 }

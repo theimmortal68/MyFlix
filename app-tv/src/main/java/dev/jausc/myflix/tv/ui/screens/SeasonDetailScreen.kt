@@ -59,7 +59,7 @@ import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -173,27 +173,36 @@ fun SeasonDetailScreen(
     }
     val gradientColors = rememberGradientColors(backdropUrl)
 
-    // Layered UI: DynamicBackground → DetailBackdropLayer → Content
-    // Uses same structure as HomeScreen: fixed hero (37%) + scrollable content
-    Box(modifier = modifier.fillMaxSize()) {
-        // Layer 1: Dynamic gradient background
-        DynamicBackground(
-            gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize(),
+    // Layered UI: Row with NavigationRail + Content
+    Row(modifier = modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.SHOWS,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = seasonTabFocusRequester,
         )
 
-        // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
-        DetailBackdropLayer(
-            item = series,
-            jellyfinClient = jellyfinClient,
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd),
-        )
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Layer 1: Dynamic gradient background
+            DynamicBackground(
+                gradientColors = gradientColors,
+                modifier = Modifier.fillMaxSize(),
+            )
 
-        // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
-        Column(modifier = Modifier.fillMaxSize()) {
+            // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
+            DetailBackdropLayer(
+                item = series,
+                jellyfinClient = jellyfinClient,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.9f)
+                    .align(Alignment.TopEnd),
+            )
+
+            // Layer 3: Content - Column with fixed hero + scrollable content (like HomeScreen)
+            Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
             Box(
                 modifier = Modifier
@@ -483,17 +492,8 @@ fun SeasonDetailScreen(
 
             }
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.SHOWS,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = seasonTabFocusRequester,
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
+        } // End content Box
+    } // End Row
 
     // Context menu dialog
     dialogParams?.let { params ->

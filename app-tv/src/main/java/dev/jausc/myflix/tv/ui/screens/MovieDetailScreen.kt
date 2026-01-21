@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,7 +51,7 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -102,7 +103,6 @@ fun MovieDetailScreen(
     var position by remember { mutableIntStateOf(0) }
     val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    val navBarFocusRequester = remember { FocusRequester() }
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -126,38 +126,47 @@ fun MovieDetailScreen(
 
     val playFocusRequester = remember { FocusRequester() }
 
-    // Layered UI: DynamicBackground → DetailBackdropLayer → Content
-    // Uses same structure as SeriesDetailScreen: fixed hero (50%) + scrollable content
-    Box(modifier = modifier.fillMaxSize()) {
-        // Layer 1: Dynamic gradient background
-        DynamicBackground(
-            gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize(),
+    // Layered UI: NavigationRail + Content (DynamicBackground → DetailBackdropLayer → Content)
+    Row(modifier = modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.MOVIES,
+            onItemSelected = onNavigate,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = focusRequesters[HEADER_ROW],
         )
 
-        // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
-        DetailBackdropLayer(
-            item = movie,
-            jellyfinClient = jellyfinClient,
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.9f)
-                .align(Alignment.TopEnd),
-        )
+        // Right: Content area
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Layer 1: Dynamic gradient background
+            DynamicBackground(
+                gradientColors = gradientColors,
+                modifier = Modifier.fillMaxSize(),
+            )
 
-        // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Hero section - doesn't scroll
-            Box(
+            // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
+            DetailBackdropLayer(
+                item = movie,
+                jellyfinClient = jellyfinClient,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .bringIntoViewRequester(bringIntoViewRequester),
-            ) {
-                // Hero content (left 50%) - title, rating, genres, description, buttons
-                Column(
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.9f)
+                    .align(Alignment.TopEnd),
+            )
+
+            // Layer 3: Content - Column with fixed hero + scrollable content (like SeriesDetailScreen)
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Hero section - doesn't scroll
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.5f)
-                        .padding(start = 48.dp, top = 36.dp, bottom = 4.dp),
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(bringIntoViewRequester),
+                ) {
+                    // Hero content (left 50%) - title, rating, genres, description, buttons
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .padding(start = 48.dp, top = 24.dp, bottom = 4.dp),
                     verticalArrangement = Arrangement.Top,
                 ) {
                     MovieDetailsHeader(
@@ -165,7 +174,6 @@ fun MovieDetailScreen(
                         onOverviewClick = { showOverview = true },
                         descriptionFocusRequester = descriptionFocusRequester,
                         downFocusRequester = playFocusRequester,
-                        upFocusRequester = navBarFocusRequester,
                     )
 
                     // Action buttons
@@ -389,18 +397,9 @@ fun MovieDetailScreen(
                 }
             }
             }
-        }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.MOVIES,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = focusRequesters[HEADER_ROW],
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    }
+        } // End Column
+        } // End Content Box
+    } // End Row
 
     // Context menu dialog
     dialogParams?.let { params ->
@@ -439,7 +438,7 @@ private fun MovieDetailsHeader(
     onOverviewClick: () -> Unit,
     descriptionFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
-    upFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -497,7 +496,7 @@ private fun MovieDetailsHeader(
                     .focusRequester(descriptionFocusRequester)
                     .focusProperties {
                         down = downFocusRequester
-                        up = upFocusRequester
+                        upFocusRequester?.let { up = it }
                     },
                 paddingValues = PaddingValues(0.dp),
             )

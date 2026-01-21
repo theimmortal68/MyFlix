@@ -61,7 +61,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -112,7 +111,7 @@ import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -123,7 +122,7 @@ import java.util.Locale
 
 /**
  * Seerr home/discover screen for TV.
- * Uses unified TopNavigationBar for consistent navigation across all screens.
+ * Uses NavigationRail for consistent navigation across all screens.
  *
  * Features:
  * - Trending movies and TV shows
@@ -158,9 +157,8 @@ fun SeerrHomeScreen(
     // Coroutine scope for async operations
     val coroutineScope = rememberCoroutineScope()
 
-    // Focus requesters for navigation
+    // Focus requester for content
     val contentFocusRequester = remember { FocusRequester() }
-    val navBarFocusRequester = remember { FocusRequester() }
 
     // Content state
     var isLoading by remember { mutableStateOf(true) }
@@ -174,9 +172,6 @@ fun SeerrHomeScreen(
 
     // Preview item - shows focused card's media in hero section
     var previewItem by remember { mutableStateOf<SeerrMedia?>(null) }
-
-    // Track if quick_actions row has focus (for nav bar trigger)
-    var quickActionsHasFocus by remember { mutableStateOf(false) }
 
     // The item to display in hero - preview takes precedence
     val heroDisplayItem = previewItem ?: featuredItem
@@ -303,276 +298,272 @@ fun SeerrHomeScreen(
         }
     }
 
-    // Use Box to layer TopNavigationBar on top of content
-    Box(
+    // Use Row for NavigationRail + content layout
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        // Main content
-        when {
-            isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    TvLoadingIndicator(modifier = Modifier.size(48.dp))
-                }
-            }
-
-            errorMessage != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Outlined.Explore,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = TvColors.TextSecondary,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = errorMessage ?: "Failed to load content",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TvColors.TextSecondary,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Check Seerr settings in Settings",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TvColors.TextSecondary.copy(alpha = 0.7f),
-                        )
-                    }
-                }
-            }
-
-            else -> {
-                val lazyListState = rememberLazyListState()
-
-                // Layer 1: Backdrop image (90% of screen, fades at edges)
-                SeerrBackdropLayer(
-                    media = heroDisplayItem,
-                    seerrClient = seerrClient,
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .fillMaxHeight(0.9f)
-                        .align(Alignment.TopEnd),
-                )
-
-                // Layer 2: Hero info (fixed) + Content rows (scrolling)
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Hero Section (fixed height for 5 lines of description, half screen width)
-                    heroDisplayItem?.let { media ->
-                        SeerrHeroSection(
-                            media = media,
-                            rtRating = heroRtRating,
-                            imdbRating = heroImdbRating,
-                            modifier = Modifier.height(224.dp),
-                        )
-                    }
-
-                    // Scrolling content rows
-                    LazyColumn(
-                        state = lazyListState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .focusRequester(contentFocusRequester),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 300.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        // Quick action buttons row
-                        item(key = "quick_actions") {
-                            Row(
-                                modifier = Modifier.padding(start = 48.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                TvIconTextButton(
-                                    icon = Icons.Outlined.Search,
-                                    text = "Search",
-                                    onClick = onNavigateSeerrSearch,
-                                    modifier = Modifier
-                                        .onFocusChanged {
-                                            quickActionsHasFocus = it.hasFocus
-                                        }
-                                        .focusProperties { up = navBarFocusRequester },
-                                )
-                                TvIconTextButton(
-                                    icon = Icons.AutoMirrored.Outlined.FormatListBulleted,
-                                    text = "Requests",
-                                    onClick = onNavigateSeerrRequests,
-                                    modifier = Modifier
-                                        .onFocusChanged {
-                                            quickActionsHasFocus = it.hasFocus
-                                        }
-                                        .focusProperties { up = navBarFocusRequester },
-                                )
-                            }
-                        }
-
-                        // Ordered rows:
-                        // 1. Trending
-                        // 2. Popular Movies
-                        // 3. Movie Genres
-                        // 4. Upcoming Movies
-                        // 5. Studios
-                        // 6. Popular TV
-                        // 7. TV Genres
-                        // 8. Upcoming TV
-                        // 9. Networks
-
-                        // Find rows by type for ordered rendering
-                        val trendingRow = rows.find { it.rowType == SeerrRowType.TRENDING }
-                        val popularMoviesRow = rows.find { it.rowType == SeerrRowType.POPULAR_MOVIES }
-                        val movieGenresRow = genreRows.find { it.mediaType == "movie" }
-                        val upcomingMoviesRow = rows.find { it.rowType == SeerrRowType.UPCOMING_MOVIES }
-                        val popularTvRow = rows.find { it.rowType == SeerrRowType.POPULAR_TV }
-                        val tvGenresRow = genreRows.find { it.mediaType == "tv" }
-                        val upcomingTvRow = rows.find { it.rowType == SeerrRowType.UPCOMING_TV }
-
-                        // Other rows not in the ordered list
-                        val otherRows = rows.filter { row ->
-                            row.rowType == SeerrRowType.OTHER
-                        }
-
-                        // Helper to render a content row
-                        @Composable
-                        fun RenderContentRow(row: SeerrDiscoverRow) {
-                            val onViewAll: (() -> Unit)? = when (row.rowType) {
-                                SeerrRowType.TRENDING -> onNavigateDiscoverTrending
-                                SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
-                                SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
-                                SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
-                                else -> null
-                            }
-                            SeerrContentRow(
-                                title = row.title,
-                                items = row.items,
-                                seerrClient = seerrClient,
-                                accentColor = Color(row.accentColorValue),
-                                onItemClick = { media ->
-                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                },
-                                onItemLongClick = { media ->
-                                    dialogMedia = media
-                                    dialogParams = DialogParams(
-                                        title = media.displayTitle,
-                                        items = buildSeerrDialogItems(media, seerrActions),
-                                        fromLongClick = true,
-                                    )
-                                },
-                                onItemFocused = { media -> previewItem = media },
-                                onViewAll = onViewAll,
-                            )
-                        }
-
-                        // 1. Trending
-                        trendingRow?.let { row ->
-                            item(key = row.key) { RenderContentRow(row) }
-                        }
-
-                        // 2. Popular Movies
-                        popularMoviesRow?.let { row ->
-                            item(key = row.key) { RenderContentRow(row) }
-                        }
-
-                        // 3. Movie Genres
-                        movieGenresRow?.let { genreRow ->
-                            item(key = genreRow.key) {
-                                SeerrGenreBrowseRow(
-                                    title = genreRow.title,
-                                    genres = genreRow.genres,
-                                    onGenreClick = { genre ->
-                                        onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
-                                    },
-                                )
-                            }
-                        }
-
-                        // 4. Upcoming Movies
-                        upcomingMoviesRow?.let { row ->
-                            item(key = row.key) { RenderContentRow(row) }
-                        }
-
-                        // 5. Studios
-                        studiosRow?.let { studioRow ->
-                            item(key = studioRow.key) {
-                                SeerrStudioBrowseRow(
-                                    title = studioRow.title,
-                                    studios = studioRow.studios,
-                                    onStudioClick = { studio ->
-                                        onNavigateStudio(studio.id, studio.name)
-                                    },
-                                )
-                            }
-                        }
-
-                        // 6. Popular TV
-                        popularTvRow?.let { row ->
-                            item(key = row.key) { RenderContentRow(row) }
-                        }
-
-                        // 7. TV Genres
-                        tvGenresRow?.let { genreRow ->
-                            item(key = genreRow.key) {
-                                SeerrGenreBrowseRow(
-                                    title = genreRow.title,
-                                    genres = genreRow.genres,
-                                    onGenreClick = { genre ->
-                                        onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
-                                    },
-                                )
-                            }
-                        }
-
-                        // 8. Upcoming TV
-                        upcomingTvRow?.let { row ->
-                            item(key = row.key) { RenderContentRow(row) }
-                        }
-
-                        // 9. Networks
-                        networksRow?.let { networkRow ->
-                            item(key = networkRow.key) {
-                                SeerrNetworkBrowseRow(
-                                    title = networkRow.title,
-                                    networks = networkRow.networks,
-                                    onNetworkClick = { network ->
-                                        onNavigateNetwork(network.id, network.name)
-                                    },
-                                )
-                            }
-                        }
-
-                        // Other/custom rows at the end
-                        otherRows.forEach { row ->
-                            item(key = row.key) { RenderContentRow(row) }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
+        // Navigation Rail
+        NavigationRail(
             selectedItem = NavItem.DISCOVER,
             onItemSelected = handleNavSelection,
             showUniverses = showUniversesInNav,
+            showDiscover = true,
             contentFocusRequester = contentFocusRequester,
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
         )
 
-        // Long-press context menu dialog
-        dialogParams?.let { params ->
-            DialogPopup(
-                params = params,
-                onDismissRequest = {
-                    dialogParams = null
-                    dialogMedia = null
-                },
-            )
+        // Main content area
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+        ) {
+            // Main content
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        TvLoadingIndicator(modifier = Modifier.size(48.dp))
+                    }
+                }
+
+                errorMessage != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Outlined.Explore,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = TvColors.TextSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = errorMessage ?: "Failed to load content",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = TvColors.TextSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Check Seerr settings in Settings",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TvColors.TextSecondary.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    val lazyListState = rememberLazyListState()
+
+                    // Layer 1: Backdrop image (90% of screen, fades at edges)
+                    SeerrBackdropLayer(
+                        media = heroDisplayItem,
+                        seerrClient = seerrClient,
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .fillMaxHeight(0.9f)
+                            .align(Alignment.TopEnd),
+                    )
+
+                    // Layer 2: Hero info (fixed) + Content rows (scrolling)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Hero Section (fixed height for 5 lines of description, half screen width)
+                        heroDisplayItem?.let { media ->
+                            SeerrHeroSection(
+                                media = media,
+                                rtRating = heroRtRating,
+                                imdbRating = heroImdbRating,
+                                modifier = Modifier.height(224.dp),
+                            )
+                        }
+
+                        // Scrolling content rows
+                        LazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .focusRequester(contentFocusRequester),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 300.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            // Quick action buttons row
+                            item(key = "quick_actions") {
+                                Row(
+                                    modifier = Modifier.padding(start = 48.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    TvIconTextButton(
+                                        icon = Icons.Outlined.Search,
+                                        text = "Search",
+                                        onClick = onNavigateSeerrSearch,
+                                    )
+                                    TvIconTextButton(
+                                        icon = Icons.AutoMirrored.Outlined.FormatListBulleted,
+                                        text = "Requests",
+                                        onClick = onNavigateSeerrRequests,
+                                    )
+                                }
+                            }
+
+                            // Ordered rows:
+                            // 1. Trending
+                            // 2. Popular Movies
+                            // 3. Movie Genres
+                            // 4. Upcoming Movies
+                            // 5. Studios
+                            // 6. Popular TV
+                            // 7. TV Genres
+                            // 8. Upcoming TV
+                            // 9. Networks
+
+                            // Find rows by type for ordered rendering
+                            val trendingRow = rows.find { it.rowType == SeerrRowType.TRENDING }
+                            val popularMoviesRow = rows.find { it.rowType == SeerrRowType.POPULAR_MOVIES }
+                            val movieGenresRow = genreRows.find { it.mediaType == "movie" }
+                            val upcomingMoviesRow = rows.find { it.rowType == SeerrRowType.UPCOMING_MOVIES }
+                            val popularTvRow = rows.find { it.rowType == SeerrRowType.POPULAR_TV }
+                            val tvGenresRow = genreRows.find { it.mediaType == "tv" }
+                            val upcomingTvRow = rows.find { it.rowType == SeerrRowType.UPCOMING_TV }
+
+                            // Other rows not in the ordered list
+                            val otherRows = rows.filter { row ->
+                                row.rowType == SeerrRowType.OTHER
+                            }
+
+                            // Helper to render a content row
+                            @Composable
+                            fun RenderContentRow(row: SeerrDiscoverRow) {
+                                val onViewAll: (() -> Unit)? = when (row.rowType) {
+                                    SeerrRowType.TRENDING -> onNavigateDiscoverTrending
+                                    SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
+                                    SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
+                                    SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
+                                    SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
+                                    else -> null
+                                }
+                                SeerrContentRow(
+                                    title = row.title,
+                                    items = row.items,
+                                    seerrClient = seerrClient,
+                                    accentColor = Color(row.accentColorValue),
+                                    onItemClick = { media ->
+                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                    },
+                                    onItemLongClick = { media ->
+                                        dialogMedia = media
+                                        dialogParams = DialogParams(
+                                            title = media.displayTitle,
+                                            items = buildSeerrDialogItems(media, seerrActions),
+                                            fromLongClick = true,
+                                        )
+                                    },
+                                    onItemFocused = { media -> previewItem = media },
+                                    onViewAll = onViewAll,
+                                )
+                            }
+
+                            // 1. Trending
+                            trendingRow?.let { row ->
+                                item(key = row.key) { RenderContentRow(row) }
+                            }
+
+                            // 2. Popular Movies
+                            popularMoviesRow?.let { row ->
+                                item(key = row.key) { RenderContentRow(row) }
+                            }
+
+                            // 3. Movie Genres
+                            movieGenresRow?.let { genreRow ->
+                                item(key = genreRow.key) {
+                                    SeerrGenreBrowseRow(
+                                        title = genreRow.title,
+                                        genres = genreRow.genres,
+                                        onGenreClick = { genre ->
+                                            onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
+                                        },
+                                    )
+                                }
+                            }
+
+                            // 4. Upcoming Movies
+                            upcomingMoviesRow?.let { row ->
+                                item(key = row.key) { RenderContentRow(row) }
+                            }
+
+                            // 5. Studios
+                            studiosRow?.let { studioRow ->
+                                item(key = studioRow.key) {
+                                    SeerrStudioBrowseRow(
+                                        title = studioRow.title,
+                                        studios = studioRow.studios,
+                                        onStudioClick = { studio ->
+                                            onNavigateStudio(studio.id, studio.name)
+                                        },
+                                    )
+                                }
+                            }
+
+                            // 6. Popular TV
+                            popularTvRow?.let { row ->
+                                item(key = row.key) { RenderContentRow(row) }
+                            }
+
+                            // 7. TV Genres
+                            tvGenresRow?.let { genreRow ->
+                                item(key = genreRow.key) {
+                                    SeerrGenreBrowseRow(
+                                        title = genreRow.title,
+                                        genres = genreRow.genres,
+                                        onGenreClick = { genre ->
+                                            onNavigateGenre(genreRow.mediaType, genre.id, genre.name)
+                                        },
+                                    )
+                                }
+                            }
+
+                            // 8. Upcoming TV
+                            upcomingTvRow?.let { row ->
+                                item(key = row.key) { RenderContentRow(row) }
+                            }
+
+                            // 9. Networks
+                            networksRow?.let { networkRow ->
+                                item(key = networkRow.key) {
+                                    SeerrNetworkBrowseRow(
+                                        title = networkRow.title,
+                                        networks = networkRow.networks,
+                                        onNetworkClick = { network ->
+                                            onNavigateNetwork(network.id, network.name)
+                                        },
+                                    )
+                                }
+                            }
+
+                            // Other/custom rows at the end
+                            otherRows.forEach { row ->
+                                item(key = row.key) { RenderContentRow(row) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Long-press context menu dialog
+            dialogParams?.let { params ->
+                DialogPopup(
+                    params = params,
+                    onDismissRequest = {
+                        dialogParams = null
+                        dialogMedia = null
+                    },
+                )
+            }
         }
     }
 }

@@ -79,13 +79,13 @@ import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.tv.BuildConfig
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Preferences/Settings screen with toggle options.
- * Uses unified TopNavigationBar for consistent navigation across all screens.
+ * Uses NavigationRail for consistent navigation across all screens.
  */
 @Composable
 fun PreferencesScreen(
@@ -193,17 +193,25 @@ fun PreferencesScreen(
         }
     }
 
-    // Use Box to layer TopNavigationBar on top of content
-    Box(
+    // Use Row with NavigationRail on the left
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        // Main Content Area (with top padding for nav bar)
+        // Navigation Rail (left side)
+        NavigationRail(
+            selectedItem = selectedNavItem,
+            onItemSelected = handleNavSelection,
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = contentFocusRequester,
+        )
+
+        // Main Content Area
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 48.dp) // Space for TopNavigationBar
+                .weight(1f)
+                .fillMaxHeight()
                 .padding(horizontal = 48.dp, vertical = 24.dp),
         ) {
             PreferencesContent(
@@ -255,15 +263,6 @@ fun PreferencesScreen(
                 contentFocusRequester = contentFocusRequester,
             )
         }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = selectedNavItem,
-            onItemSelected = handleNavSelection,
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = contentFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
     }
 
     // Genre Selection Dialog

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,7 +64,7 @@ import dev.jausc.myflix.core.viewmodel.SearchViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.VoiceSpeechHelper
@@ -127,14 +128,31 @@ fun SearchScreen(
         searchFieldFocusRequester.requestFocus()
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-    ) {
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Left: Navigation Rail
+        NavigationRail(
+            selectedItem = NavItem.SEARCH,
+            onItemSelected = { navItem ->
+                when (navItem) {
+                    NavItem.HOME -> onNavigateHome()
+                    NavItem.MOVIES -> onNavigateMovies()
+                    NavItem.SHOWS -> onNavigateShows()
+                    NavItem.SEARCH -> { /* Already here */ }
+                    NavItem.SETTINGS -> onNavigateSettings()
+                    NavItem.COLLECTIONS, NavItem.UNIVERSES, NavItem.DISCOVER -> onNavigateHome()
+                }
+            },
+            showUniverses = showUniversesInNav,
+            contentFocusRequester = searchFieldFocusRequester,
+        )
+
+        // Right: Content
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
+                .fillMaxHeight()
                 .padding(horizontal = 48.dp)
-                .padding(top = 80.dp), // Space for nav bar
+                .padding(top = 24.dp),
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -305,26 +323,7 @@ fun SearchScreen(
             }
         }
         } // End Column
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
-            selectedItem = NavItem.SEARCH,
-            onItemSelected = { navItem ->
-                when (navItem) {
-                    NavItem.HOME -> onNavigateHome()
-                    NavItem.MOVIES -> onNavigateMovies()
-                    NavItem.SHOWS -> onNavigateShows()
-                    NavItem.SEARCH -> { /* Already here */ }
-                    NavItem.SETTINGS -> onNavigateSettings()
-                    NavItem.COLLECTIONS, NavItem.UNIVERSES, NavItem.DISCOVER -> onNavigateHome()
-                }
-            },
-            showUniverses = showUniversesInNav,
-            contentFocusRequester = searchFieldFocusRequester,
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-    } // End Box
+    } // End Row
 }
 
 /**

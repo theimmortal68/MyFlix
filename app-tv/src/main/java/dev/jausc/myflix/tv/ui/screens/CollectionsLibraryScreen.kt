@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,12 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.TopNavigationBarPopup
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
@@ -78,7 +78,6 @@ fun CollectionsLibraryScreen(
     // Focus management
     val firstItemFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
-    val navBarFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
     var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
@@ -125,127 +124,128 @@ fun CollectionsLibraryScreen(
             }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Dynamic background that changes based on focused poster
-        DynamicBackground(gradientColors = gradientColors)
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Space for nav bar
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Header with title and count
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Collections",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TvColors.TextPrimary,
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                if (!state.isLoading) {
-                    val countText = if (state.currentLetter != null) {
-                        "${state.items.size} of ${state.totalRecordCount}"
-                    } else {
-                        "${state.totalRecordCount} collections"
-                    }
-                    Text(
-                        text = countText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TvColors.TextSecondary,
-                    )
-                }
-            }
-
-            // Content
-            when {
-                state.isLoading && state.items.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        TvLoadingIndicator()
-                    }
-                }
-                state.error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = state.error ?: "Error loading collections",
-                                color = TvColors.Error,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            TvTextButton(
-                                text = "Retry",
-                                onClick = { viewModel.refresh() },
-                            )
-                        }
-                    }
-                }
-                state.isEmpty -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "No collections available",
-                            color = TvColors.TextSecondary,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-                else -> {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // Main grid content
-                        CollectionsGridContent(
-                            state = state,
-                            gridState = gridState,
-                            jellyfinClient = jellyfinClient,
-                            firstItemFocusRequester = firstItemFocusRequester,
-                            alphabetFocusRequester = alphabetFocusRequester,
-                            navBarFocusRequester = navBarFocusRequester,
-                            onCollectionClick = onCollectionClick,
-                            onItemFocused = { _, imageUrl ->
-                                focusedImageUrl = imageUrl
-                            },
-                            modifier = Modifier.weight(1f),
-                        )
-
-                        // Alphabet scroll bar on right edge
-                        AlphabetScrollBar(
-                            availableLetters = availableLetters,
-                            currentLetter = state.currentLetter,
-                            onLetterClick = { letter ->
-                                viewModel.jumpToLetter(letter)
-                            },
-                            onClearFilter = {
-                                viewModel.clearLetterFilter()
-                            },
-                            focusRequester = alphabetFocusRequester,
-                            gridFocusRequester = firstItemFocusRequester,
-                            modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        // Top Navigation Bar (always visible)
-        TopNavigationBarPopup(
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Navigation Rail on the left
+        NavigationRail(
             selectedItem = NavItem.COLLECTIONS,
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = firstItemFocusRequester,
-            focusRequester = navBarFocusRequester,
-            modifier = Modifier.align(Alignment.TopCenter),
         )
+
+        // Main content area
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+        ) {
+            // Dynamic background that changes based on focused poster
+            DynamicBackground(gradientColors = gradientColors)
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header with title and count
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Collections",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TvColors.TextPrimary,
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    if (!state.isLoading) {
+                        val countText = if (state.currentLetter != null) {
+                            "${state.items.size} of ${state.totalRecordCount}"
+                        } else {
+                            "${state.totalRecordCount} collections"
+                        }
+                        Text(
+                            text = countText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TvColors.TextSecondary,
+                        )
+                    }
+                }
+
+                // Content
+                when {
+                    state.isLoading && state.items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TvLoadingIndicator()
+                        }
+                    }
+                    state.error != null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = state.error ?: "Error loading collections",
+                                    color = TvColors.Error,
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                TvTextButton(
+                                    text = "Retry",
+                                    onClick = { viewModel.refresh() },
+                                )
+                            }
+                        }
+                    }
+                    state.isEmpty -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "No collections available",
+                                color = TvColors.TextSecondary,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+                    else -> {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            // Main grid content
+                            CollectionsGridContent(
+                                state = state,
+                                gridState = gridState,
+                                jellyfinClient = jellyfinClient,
+                                firstItemFocusRequester = firstItemFocusRequester,
+                                alphabetFocusRequester = alphabetFocusRequester,
+                                onCollectionClick = onCollectionClick,
+                                onItemFocused = { _, imageUrl ->
+                                    focusedImageUrl = imageUrl
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+
+                            // Alphabet scroll bar on right edge
+                            AlphabetScrollBar(
+                                availableLetters = availableLetters,
+                                currentLetter = state.currentLetter,
+                                onLetterClick = { letter ->
+                                    viewModel.jumpToLetter(letter)
+                                },
+                                onClearFilter = {
+                                    viewModel.clearLetterFilter()
+                                },
+                                focusRequester = alphabetFocusRequester,
+                                gridFocusRequester = firstItemFocusRequester,
+                                modifier = Modifier.padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -256,7 +256,6 @@ private fun CollectionsGridContent(
     jellyfinClient: JellyfinClient,
     firstItemFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
-    navBarFocusRequester: FocusRequester,
     onCollectionClick: (String) -> Unit,
     onItemFocused: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -271,7 +270,6 @@ private fun CollectionsGridContent(
     ) {
         itemsIndexed(state.items, key = { _, item -> item.id }) { index, collection ->
             val isFirstItem = index == 0
-            val isFirstRow = index < COLUMNS
             val imageUrl = jellyfinClient.getPrimaryImageUrl(
                 collection.id,
                 collection.imageTags?.primary,
@@ -297,13 +295,6 @@ private fun CollectionsGridContent(
                             Modifier
                                 .focusRequester(firstItemFocusRequester)
                                 .focusProperties { right = alphabetFocusRequester }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .then(
-                        if (isFirstRow) {
-                            Modifier.focusProperties { up = navBarFocusRequester }
                         } else {
                             Modifier
                         },
