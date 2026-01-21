@@ -878,10 +878,32 @@ fun MyFlixTvApp() {
                 UniverseCollectionsScreen(
                     jellyfinClient = jellyfinClient,
                     onCollectionClick = { collectionId ->
-                        navController.navigate("collection/$collectionId")
+                        navController.navigate("universeCollection/$collectionId")
                     },
                     onNavigate = handleNavigation,
                     showUniversesInNav = true,
+                )
+            }
+
+            // Universe collection detail (keeps Universes nav item selected)
+            composable(
+                route = "universeCollection/{collectionId}",
+                arguments = listOf(navArgument("collectionId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val collectionId = backStackEntry.arguments?.getString("collectionId") ?: return@composable
+                CollectionDetailScreen(
+                    collectionId = collectionId,
+                    jellyfinClient = jellyfinClient,
+                    onItemClick = { itemId ->
+                        navController.navigate("detail/$itemId")
+                    },
+                    onPlayClick = { itemId, startPositionMs ->
+                        navController.navigate(NavigationHelper.buildPlayerRoute(itemId, startPositionMs))
+                    },
+                    onBack = { navController.popBackStack() },
+                    onNavigate = handleNavigation,
+                    showUniversesInNav = universesEnabled,
+                    selectedNavItem = NavItem.UNIVERSES,
                 )
             }
 

@@ -91,6 +91,7 @@ fun CollectionDetailScreen(
     onBack: () -> Unit,
     onNavigate: (NavItem) -> Unit = {},
     showUniversesInNav: Boolean = false,
+    selectedNavItem: NavItem = NavItem.COLLECTIONS,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -207,7 +208,7 @@ fun CollectionDetailScreen(
     Row(modifier = Modifier.fillMaxSize()) {
         // Left: Navigation Rail
         NavigationRail(
-            selectedItem = NavItem.COLLECTIONS,
+            selectedItem = selectedNavItem,
             onItemSelected = onNavigate,
             showUniverses = showUniversesInNav,
             contentFocusRequester = shuffleFocusRequester,
