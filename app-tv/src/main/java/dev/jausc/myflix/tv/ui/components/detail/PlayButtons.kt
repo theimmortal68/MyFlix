@@ -83,8 +83,9 @@ fun ExpandablePlayButtons(
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     onTrailerClick: (() -> Unit)? = null,
+    playButtonFocusRequester: FocusRequester? = null,
 ) {
-    val firstFocus = remember { FocusRequester() }
+    val firstFocus = playButtonFocusRequester ?: remember { FocusRequester() }
     val hasProgress = resumePositionTicks > 0L
 
     LazyRow(

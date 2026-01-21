@@ -233,6 +233,7 @@ fun EpisodeDetailScreen(
                                 }
                             }
                         },
+                        playButtonFocusRequester = playFocusRequester,
                         modifier = Modifier
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {

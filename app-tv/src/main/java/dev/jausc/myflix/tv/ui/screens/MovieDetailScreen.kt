@@ -223,6 +223,7 @@ fun MovieDetailScreen(
                                 }
                             }
                         },
+                        playButtonFocusRequester = playFocusRequester,
                         modifier = Modifier
                             .focusRequester(focusRequesters[HEADER_ROW])
                             .focusProperties {
