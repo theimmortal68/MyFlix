@@ -636,7 +636,6 @@ private fun SeriesDetailsHeader(
         SeriesHeroRatingRow(
             series = series,
             status = status,
-            networkId = series.studios?.firstOrNull()?.id,
             networkName = studioNames.firstOrNull(),
             jellyfinClient = jellyfinClient,
         )
@@ -673,7 +672,6 @@ private fun SeriesDetailsHeader(
 private fun SeriesHeroRatingRow(
     series: JellyfinItem,
     status: String?,
-    networkId: String?,
     networkName: String?,
     jellyfinClient: JellyfinClient,
 ) {
@@ -708,7 +706,7 @@ private fun SeriesHeroRatingRow(
         }
 
         // Network logo (between rating and status)
-        if (networkId != null) {
+        if (!networkName.isNullOrBlank()) {
             if (needsDot) DotSeparator()
             NetworkLogo(networkName = networkName, jellyfinClient = jellyfinClient)
             needsDot = true
