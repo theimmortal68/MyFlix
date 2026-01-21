@@ -302,7 +302,7 @@ fun SeasonDetailScreen(
             // Scrollable content rows (below fixed hero)
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 0.dp),
+                contentPadding = PaddingValues(start = 10.dp, end = 48.dp, top = 0.dp, bottom = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {

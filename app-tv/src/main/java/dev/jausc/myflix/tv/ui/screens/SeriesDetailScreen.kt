@@ -995,27 +995,34 @@ private fun NetworkLogo(
         networkName?.let { getNetworkLogoUrl(it) }
     }
 
-    if (tvLogoUrl != null) {
-        // Show logo from tv-logo repository
-        AsyncImage(
-            model = tvLogoUrl,
-            contentDescription = networkName ?: "Network",
-            modifier = Modifier.height(20.dp),
-            contentScale = ContentScale.Fit,
-        )
-    } else if (!networkName.isNullOrBlank()) {
-        // Show styled badge with network name for unmapped networks
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFF424242))
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-        ) {
-            Text(
-                text = networkName,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+    // Track if logo failed to load
+    var logoFailed by remember(tvLogoUrl) { mutableStateOf(false) }
+
+    when {
+        tvLogoUrl != null && !logoFailed -> {
+            // Show logo from tv-logo repository with error handling
+            AsyncImage(
+                model = tvLogoUrl,
+                contentDescription = networkName ?: "Network",
+                modifier = Modifier.height(20.dp),
+                contentScale = ContentScale.Fit,
+                onError = { logoFailed = true },
             )
+        }
+        !networkName.isNullOrBlank() -> {
+            // Show styled badge with network name for unmapped networks or failed loads
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF424242))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = networkName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
         }
     }
 }
