@@ -214,7 +214,7 @@ fun PreferencesScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(horizontal = 48.dp, vertical = 24.dp),
+                .padding(start = 10.dp, top = 16.dp, end = 48.dp, bottom = 24.dp),
         ) {
             PreferencesContent(
                 // Server settings

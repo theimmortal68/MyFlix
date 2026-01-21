@@ -102,24 +102,26 @@ fun UniverseCollectionsScreen(
         }
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Navigation Rail on the left
-        NavigationRail(
-            selectedItem = NavItem.UNIVERSES,
-            onItemSelected = onNavigate,
-            showUniverses = showUniversesInNav,
-            showDiscover = showDiscoverInNav,
-            contentFocusRequester = firstItemFocusRequester,
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Dynamic background that changes based on focused poster
+        DynamicBackground(gradientColors = gradientColors)
 
-        // Main content area
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-        ) {
-            // Dynamic background that changes based on focused poster
-            DynamicBackground(gradientColors = gradientColors)
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Navigation Rail on the left
+            NavigationRail(
+                selectedItem = NavItem.UNIVERSES,
+                onItemSelected = onNavigate,
+                showUniverses = showUniversesInNav,
+                showDiscover = showDiscoverInNav,
+                contentFocusRequester = firstItemFocusRequester,
+            )
+
+            // Main content area
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            ) {
 
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header with title and count
@@ -239,6 +241,7 @@ fun UniverseCollectionsScreen(
                     }
                 }
             }
+        }
         }
     }
 }
