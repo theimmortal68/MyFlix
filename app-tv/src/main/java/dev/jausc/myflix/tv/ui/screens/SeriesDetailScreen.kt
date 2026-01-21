@@ -1001,35 +1001,28 @@ private fun NetworkLogo(
         networkName?.let { getNetworkLogoUrl(it) }
     }
 
-    // Track if logo failed to load
-    var logoFailed by remember(tvLogoUrl) { mutableStateOf(false) }
-
-    when {
-        tvLogoUrl != null && !logoFailed -> {
-            // Show logo from tv-logo repository with error handling
-            AsyncImage(
-                model = tvLogoUrl,
-                contentDescription = networkName ?: "Network",
-                modifier = Modifier.height(18.dp),
-                contentScale = ContentScale.Fit,
-                onError = { logoFailed = true },
+    if (tvLogoUrl != null) {
+        // Show logo from tv-logo repository
+        AsyncImage(
+            model = tvLogoUrl,
+            contentDescription = networkName ?: "Network",
+            modifier = Modifier.height(18.dp),
+            contentScale = ContentScale.Fit,
+        )
+    } else if (!networkName.isNullOrBlank()) {
+        // Show styled badge with network name for unmapped networks
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF424242))
+                .padding(horizontal = 6.dp),
+        ) {
+            Text(
+                text = networkName,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = Color.White,
             )
-        }
-        !networkName.isNullOrBlank() -> {
-            // Show styled badge with network name for unmapped networks or failed loads
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF424242))
-                    .padding(horizontal = 6.dp),
-            ) {
-                Text(
-                    text = networkName,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = Color.White,
-                )
-            }
         }
     }
 }
