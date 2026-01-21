@@ -753,6 +753,7 @@ private fun RatingBadge(text: String) {
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
             ),
             color = Color.White,
         )
@@ -830,6 +831,7 @@ private fun StatusBadge(status: String) {
             text = displayText,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
             ),
             color = Color.White,
         )
@@ -1005,11 +1007,10 @@ private fun NetworkLogo(
     when {
         tvLogoUrl != null && !logoFailed -> {
             // Show logo from tv-logo repository with error handling
-            // Height of 14.dp matches the visual line height of bodySmall text
             AsyncImage(
                 model = tvLogoUrl,
                 contentDescription = networkName ?: "Network",
-                modifier = Modifier.height(14.dp),
+                modifier = Modifier.height(18.dp),
                 contentScale = ContentScale.Fit,
                 onError = { logoFailed = true },
             )
@@ -1025,7 +1026,7 @@ private fun NetworkLogo(
             ) {
                 Text(
                     text = networkName,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                     color = Color.White,
                 )
             }
