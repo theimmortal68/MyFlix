@@ -289,20 +289,20 @@ class JellyfinClient(
     private object Fields {
         // Minimal fields for card display (home screen rows)
         // ChildCount/RecursiveItemCount needed to filter shows without episodes
-        const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CriticRating,ChildCount,RecursiveItemCount,DisplayOrder"
+        const val CARD = "Overview,ImageTags,BackdropImageTags,UserData,OfficialRating,CommunityRating,CriticRating,ChildCount,RecursiveItemCount,DisplayOrder"
 
         // Fields for episode cards (need series info)
-        const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CriticRating,DisplayOrder"
+        const val EPISODE_CARD = "Overview,ImageTags,BackdropImageTags,UserData,SeriesName,SeasonName,SeasonId,ParentId,OfficialRating,CommunityRating,CriticRating,DisplayOrder"
 
         // Full fields for detail screens
         const val DETAIL =
             "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People," +
-                "ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CriticRating,Taglines,CollectionIds," +
+                "ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CommunityRating,CriticRating,Taglines,CollectionIds," +
                 "CollectionName,RemoteTrailers,LocalTrailerCount,ProductionLocations,Status,DisplayOrder"
 
         // Fields for episode listing
         const val EPISODE_LIST =
-            "Overview,ImageTags,UserData,MediaSources,People,RunTimeTicks,OfficialRating,CommunityRating,PremiereDate"
+            "Overview,ImageTags,UserData,MediaSources,People,RunTimeTicks,OfficialRating,CommunityRating,CriticRating,PremiereDate"
     }
 
     // Image types for enableImageTypes parameter
