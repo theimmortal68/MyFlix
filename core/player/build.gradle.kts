@@ -36,6 +36,9 @@ kotlin {
 }
 
 dependencies {
+    // Core common module for shared models
+    implementation(project(":core:common"))
+
     // AndroidX annotations for @RequiresApi
     implementation("androidx.annotation:annotation:1.9.1")
 

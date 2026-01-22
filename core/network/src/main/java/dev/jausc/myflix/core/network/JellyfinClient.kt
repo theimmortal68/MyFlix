@@ -298,7 +298,7 @@ class JellyfinClient(
         const val DETAIL =
             "Overview,ImageTags,BackdropImageTags,UserData,MediaSources,MediaStreams,Genres,Studios,People," +
                 "ExternalUrls,ProviderIds,Tags,Chapters,OfficialRating,CommunityRating,CriticRating,Taglines,CollectionIds," +
-                "CollectionName,RemoteTrailers,LocalTrailerCount,ProductionLocations,Status,DisplayOrder"
+                "CollectionName,RemoteTrailers,LocalTrailerCount,ProductionLocations,Status,DisplayOrder,Trickplay"
 
         // Fields for episode listing
         const val EPISODE_LIST =
@@ -2269,6 +2269,29 @@ class JellyfinClient(
             append("&format=Webp")
         }
         return "$baseUrl/Items/$itemId/Images/Chapter/$chapterIndex?$params"
+    }
+
+    /**
+     * Get trickplay tile image URL for seek preview thumbnails.
+     * Trickplay images are tile grids containing multiple thumbnails.
+     *
+     * @param itemId The item ID
+     * @param width The thumbnail width from TrickplayInfo
+     * @param tileIndex The tile grid image index (0-based)
+     * @param mediaSourceId Optional media source ID (uses first media source if null)
+     */
+    fun getTrickplayTileUrl(
+        itemId: String,
+        width: Int,
+        tileIndex: Int,
+        mediaSourceId: String? = null,
+    ): String {
+        val params = buildString {
+            if (mediaSourceId != null) {
+                append("?mediaSourceId=$mediaSourceId")
+            }
+        }
+        return "$baseUrl/Videos/$itemId/Trickplay/$width/$tileIndex.jpg$params"
     }
 
     // ==================== Playback Reporting ====================

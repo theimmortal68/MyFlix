@@ -86,6 +86,9 @@ data class JellyfinItem(
     @SerialName("ChildCount") val childCount: Int? = null,
     // Recursive item count (total episodes for a series)
     @SerialName("RecursiveItemCount") val recursiveItemCount: Int? = null,
+    // Trickplay data for seek preview thumbnails
+    // Map<mediaSourceId, Map<width, TrickplayInfo>>
+    @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfo>>? = null,
 )
 
 @Serializable
@@ -626,3 +629,22 @@ data class ProfileCondition(
     @SerialName("Value") val value: String,
     @SerialName("IsRequired") val isRequired: Boolean = true,
 )
+
+// ==================== Trickplay (Seek Preview) ====================
+
+/**
+ * Trickplay info for seek preview thumbnails.
+ * Jellyfin generates trickplay images as tile grids (e.g., 10x10 = 100 thumbnails per image).
+ */
+@Serializable
+data class TrickplayInfo(
+    @SerialName("Width") val width: Int,
+    @SerialName("Height") val height: Int,
+    @SerialName("TileWidth") val tileWidth: Int,
+    @SerialName("TileHeight") val tileHeight: Int,
+    @SerialName("ThumbnailCount") val thumbnailCount: Int,
+    @SerialName("Interval") val interval: Int,
+) {
+    /** Number of thumbnails per tile grid image */
+    val thumbnailsPerTile: Int get() = tileWidth * tileHeight
+}

@@ -11,6 +11,7 @@ import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
+import dev.jausc.myflix.core.player.TrickplayProvider
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +70,8 @@ data class PlayerUiState(
     // Media segments (intro, outro, etc.)
     val mediaSegments: List<MediaSegment> = emptyList(),
     val activeSegment: MediaSegment? = null,
+    // Trickplay (seek preview thumbnails)
+    val trickplayProvider: TrickplayProvider? = null,
 ) {
     /**
      * MediaInfo for content-aware player selection.
@@ -204,6 +207,12 @@ class PlayerViewModel(
                     val startPositionMs = startPositionOverrideMs ?: defaultStartPositionMs
                     startPositionOverrideMs = null
 
+                    // Create TrickplayProvider if trickplay data is available
+                    val trickplayProvider = TrickplayProvider.create(
+                        loadedItem.trickplay,
+                        mediaSource?.id,
+                    )
+
                     _uiState.update {
                         it.copy(
                             item = loadedItem,
@@ -223,6 +232,8 @@ class PlayerViewModel(
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
+                            // Trickplay provider
+                            trickplayProvider = trickplayProvider,
                         )
                     }
 
@@ -556,6 +567,12 @@ class PlayerViewModel(
                         it / TICKS_PER_MS
                     } ?: 0L
 
+                    // Create TrickplayProvider if trickplay data is available
+                    val trickplayProvider = TrickplayProvider.create(
+                        loadedItem.trickplay,
+                        mediaSource?.id,
+                    )
+
                     _uiState.update {
                         it.copy(
                             item = loadedItem,
@@ -575,6 +592,8 @@ class PlayerViewModel(
                             // Clear segments from previous item
                             mediaSegments = emptyList(),
                             activeSegment = null,
+                            // Trickplay provider
+                            trickplayProvider = trickplayProvider,
                         )
                     }
 
@@ -698,6 +717,38 @@ class PlayerViewModel(
             MediaSegmentType.Preview -> "Skip Preview"
             else -> "Skip"
         }
+    }
+
+    // ==================== Trickplay (Seek Preview) ====================
+
+    /**
+     * Check if trickplay is available for the current item.
+     */
+    fun hasTrickplay(): Boolean = _uiState.value.trickplayProvider != null
+
+    /**
+     * Get the tile image index for a given position.
+     * @param positionMs Position in milliseconds
+     * @return Tile image index (0-based), or null if trickplay unavailable
+     */
+    fun getTrickplayTileIndex(positionMs: Long): Int? =
+        _uiState.value.trickplayProvider?.getTileImageIndex(positionMs)
+
+    /**
+     * Get the pixel offset within the tile for cropping.
+     * @param positionMs Position in milliseconds
+     * @return Pair of (x, y) offsets, or null if trickplay unavailable
+     */
+    fun getTrickplayOffset(positionMs: Long): Pair<Int, Int>? =
+        _uiState.value.trickplayProvider?.getTileOffset(positionMs)
+
+    /**
+     * Get the thumbnail dimensions for trickplay.
+     * @return Pair of (width, height), or null if trickplay unavailable
+     */
+    fun getTrickplayThumbnailSize(): Pair<Int, Int>? {
+        val provider = _uiState.value.trickplayProvider ?: return null
+        return provider.thumbnailWidth to provider.thumbnailHeight
     }
 
     override fun onCleared() {

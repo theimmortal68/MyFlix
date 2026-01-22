@@ -17,6 +17,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,12 +29,21 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.transformations
+import dev.jausc.myflix.core.player.TrickplayProvider
+import dev.jausc.myflix.tv.ui.util.SubsetTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -483,6 +493,9 @@ fun PlayerScreen(
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     playPauseFocusRequester = playPauseFocusRequester,
+                    trickplayProvider = state.trickplayProvider,
+                    jellyfinClient = jellyfinClient,
+                    itemId = state.item?.id,
                 )
             }
 
@@ -709,6 +722,9 @@ private fun TvPlayerControlsOverlay(
     onBitrateChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
     playPauseFocusRequester: FocusRequester,
+    trickplayProvider: TrickplayProvider? = null,
+    jellyfinClient: JellyfinClient? = null,
+    itemId: String? = null,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val playerType = playbackState.playerType
@@ -716,6 +732,19 @@ private fun TvPlayerControlsOverlay(
     val isHDR = videoQuality.contains("HDR")
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var showMediaInfo by remember { mutableStateOf(false) }
+
+    // Seeking state for interactive progress bar
+    var isSeeking by remember { mutableStateOf(false) }
+    var seekPosition by remember { mutableLongStateOf(0L) }
+    val seekBarFocusRequester = remember { FocusRequester() }
+    val context = LocalContext.current
+
+    // Reset seek position when current position changes significantly (not during seek)
+    LaunchedEffect(playbackState.position) {
+        if (!isSeeking) {
+            seekPosition = playbackState.position
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -817,28 +846,45 @@ private fun TvPlayerControlsOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(24.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .background(Color.White.copy(alpha = 0.3f), MaterialTheme.shapes.small),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(playbackState.progress)
-                        .background(TvColors.BluePrimary, MaterialTheme.shapes.small),
-                )
-            }
+            // Interactive seek bar with trickplay preview
+            InteractiveSeekBar(
+                currentPosition = playbackState.position,
+                duration = playbackState.duration,
+                isSeeking = isSeeking,
+                seekPosition = seekPosition,
+                trickplayProvider = trickplayProvider,
+                jellyfinClient = jellyfinClient,
+                itemId = itemId,
+                focusRequester = seekBarFocusRequester,
+                onSeekStart = {
+                    isSeeking = true
+                    seekPosition = playbackState.position
+                    onUserInteraction()
+                },
+                onSeekChange = { newPosition ->
+                    seekPosition = newPosition.coerceIn(0L, playbackState.duration)
+                    onUserInteraction()
+                },
+                onSeekConfirm = {
+                    isSeeking = false
+                    onSeekTo(seekPosition)
+                    onUserInteraction()
+                },
+                onSeekCancel = {
+                    isSeeking = false
+                    seekPosition = playbackState.position
+                    onUserInteraction()
+                },
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = PlayerUtils.formatTime(playbackState.position),
+                    text = if (isSeeking) PlayerUtils.formatTime(seekPosition) else PlayerUtils.formatTime(playbackState.position),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = if (isSeeking) TvColors.BluePrimary else Color.White,
                 )
                 Text(
                     text = "x${"%.2f".format(playbackState.speed)}",
@@ -1183,6 +1229,278 @@ private fun SkipSegmentButton(
             Text(
                 text = "▶▶",
                 style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
+        }
+    }
+}
+
+/**
+ * Interactive seek bar with trickplay preview support.
+ * Handles D-pad navigation for seeking with optional thumbnail preview.
+ */
+@Composable
+private fun InteractiveSeekBar(
+    currentPosition: Long,
+    duration: Long,
+    isSeeking: Boolean,
+    seekPosition: Long,
+    trickplayProvider: TrickplayProvider?,
+    jellyfinClient: JellyfinClient?,
+    itemId: String?,
+    focusRequester: FocusRequester,
+    onSeekStart: () -> Unit,
+    onSeekChange: (Long) -> Unit,
+    onSeekConfirm: () -> Unit,
+    onSeekCancel: () -> Unit,
+) {
+    val seekStepMs = 10_000L // 10 second steps for D-pad
+    var isFocused by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (isSeeking && trickplayProvider != null) 150.dp else 8.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        // Seek preview thumbnail (shown when seeking and trickplay available)
+        if (isSeeking && trickplayProvider != null && jellyfinClient != null && itemId != null) {
+            val tileIndex = trickplayProvider.getTileImageIndex(seekPosition)
+            val (offsetX, offsetY) = trickplayProvider.getTileOffset(seekPosition)
+            val thumbnailWidth = trickplayProvider.thumbnailWidth
+            val thumbnailHeight = trickplayProvider.thumbnailHeight
+
+            // Calculate position for the preview (centered above seek position)
+            val progress = if (duration > 0) seekPosition.toFloat() / duration.toFloat() else 0f
+
+            SeekPreview(
+                tileUrl = jellyfinClient.getTrickplayTileUrl(
+                    itemId = itemId,
+                    width = thumbnailWidth,
+                    tileIndex = tileIndex,
+                    mediaSourceId = trickplayProvider.getMediaSourceId(),
+                ),
+                offsetX = offsetX,
+                offsetY = offsetY,
+                thumbnailWidth = thumbnailWidth,
+                thumbnailHeight = thumbnailHeight,
+                timeLabel = PlayerUtils.formatTime(seekPosition),
+                progress = progress,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp),
+            )
+        } else if (isSeeking) {
+            // Time-only preview when trickplay not available
+            TimeOnlyPreview(
+                timeLabel = PlayerUtils.formatTime(seekPosition),
+                progress = if (duration > 0) seekPosition.toFloat() / duration.toFloat() else 0f,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp),
+            )
+        }
+
+        // Progress bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isFocused || isSeeking) 12.dp else 8.dp)
+                .align(Alignment.BottomCenter)
+                .clip(MaterialTheme.shapes.small)
+                .background(Color.White.copy(alpha = 0.3f))
+                .focusRequester(focusRequester)
+                .onFocusChanged { focusState ->
+                    val wasFocused = isFocused
+                    isFocused = focusState.isFocused
+                    if (focusState.isFocused && !wasFocused) {
+                        onSeekStart()
+                    }
+                }
+                .focusable()
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && isFocused) {
+                        when (event.key) {
+                            Key.DirectionLeft -> {
+                                onSeekChange(seekPosition - seekStepMs)
+                                true
+                            }
+                            Key.DirectionRight -> {
+                                onSeekChange(seekPosition + seekStepMs)
+                                true
+                            }
+                            Key.DirectionCenter, Key.Enter -> {
+                                onSeekConfirm()
+                                true
+                            }
+                            Key.Back -> {
+                                onSeekCancel()
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
+                },
+        ) {
+            // Current position fill
+            val displayProgress = if (isSeeking) {
+                if (duration > 0) seekPosition.toFloat() / duration.toFloat() else 0f
+            } else {
+                if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(displayProgress.coerceIn(0f, 1f))
+                    .background(
+                        if (isSeeking) TvColors.BluePrimary.copy(alpha = 0.8f) else TvColors.BluePrimary,
+                        MaterialTheme.shapes.small,
+                    ),
+            )
+
+            // Seek indicator when seeking
+            if (isSeeking && duration > 0) {
+                val seekProgress = (seekPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(seekProgress)
+                        .padding(end = 2.dp),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 4.dp, height = 16.dp)
+                            .background(Color.White, RoundedCornerShape(2.dp)),
+                    )
+                }
+            }
+
+            // Focus indicator
+            if (isFocused) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .border(2.dp, Color.White, MaterialTheme.shapes.small),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Seek preview thumbnail with time label.
+ */
+@Composable
+private fun SeekPreview(
+    tileUrl: String,
+    offsetX: Int,
+    offsetY: Int,
+    thumbnailWidth: Int,
+    thumbnailHeight: Int,
+    timeLabel: String,
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+
+    // Calculate horizontal offset to position preview at seek location
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val containerWidth = constraints.maxWidth.toFloat()
+        val previewWidthDp = 160.dp
+        val previewWidthPx = with(LocalDensity.current) { previewWidthDp.toPx() }
+
+        // Calculate offset: center preview at progress position, but clamp to screen edges
+        val targetX = containerWidth * progress - previewWidthPx / 2
+        val clampedX = targetX.coerceIn(0f, containerWidth - previewWidthPx)
+        val offsetDp = with(LocalDensity.current) { clampedX.toDp() }
+
+        Column(
+            modifier = Modifier
+                .offset(x = offsetDp)
+                .width(previewWidthDp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Thumbnail
+            Box(
+                modifier = Modifier
+                    .width(previewWidthDp)
+                    .height(90.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(2.dp, Color.White, RoundedCornerShape(8.dp))
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center,
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(tileUrl)
+                        .transformations(
+                            SubsetTransformation(
+                                x = offsetX,
+                                y = offsetY,
+                                cropWidth = thumbnailWidth,
+                                cropHeight = thumbnailHeight,
+                            ),
+                        )
+                        .build(),
+                    contentDescription = "Seek preview",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Time label
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.8f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = timeLabel,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Time-only preview when trickplay is not available.
+ */
+@Composable
+private fun TimeOnlyPreview(
+    timeLabel: String,
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val containerWidth = constraints.maxWidth.toFloat()
+        val previewWidthDp = 80.dp
+        val previewWidthPx = with(LocalDensity.current) { previewWidthDp.toPx() }
+
+        val targetX = containerWidth * progress - previewWidthPx / 2
+        val clampedX = targetX.coerceIn(0f, containerWidth - previewWidthPx)
+        val offsetDp = with(LocalDensity.current) { clampedX.toDp() }
+
+        Box(
+            modifier = Modifier
+                .offset(x = offsetDp)
+                .width(previewWidthDp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Black.copy(alpha = 0.9f))
+                .border(2.dp, TvColors.BluePrimary, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = timeLabel,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
             )
         }
