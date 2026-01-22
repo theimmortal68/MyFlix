@@ -886,6 +886,7 @@ private val networkLogoResources = mapOf(
     "Fox" to R.drawable.network_fox,
     "FOX" to R.drawable.network_fox,
     "FOX (US)" to R.drawable.network_fox,
+    "Fox Action Movies" to R.drawable.network_fox,
     "The CW" to R.drawable.network_cw,
     "CW" to R.drawable.network_cw,
     "PBS" to R.drawable.network_pbs,
@@ -984,6 +985,9 @@ private val networkLogoResources = mapOf(
     "Paramount Plus" to R.drawable.network_paramount_plus,
     "Paramount+ with Showtime" to R.drawable.network_paramount_plus,
     "Peacock" to R.drawable.network_peacock,
+    "Apple TV+" to R.drawable.network_apple_tv_plus,
+    "Apple TV" to R.drawable.network_apple_tv_plus,
+    "Apple TV Plus" to R.drawable.network_apple_tv_plus,
 
     // UK Networks
     "BBC One" to R.drawable.network_bbc_one,
@@ -1013,6 +1017,7 @@ private val networkMatchPriority = listOf(
     "Disney+" to R.drawable.network_disney_plus,
     "Disney" to R.drawable.network_disney_plus,
     "Peacock" to R.drawable.network_peacock,
+    "Apple TV" to R.drawable.network_apple_tv_plus,
     "Starz" to R.drawable.network_starz,
     "Syfy" to R.drawable.network_syfy,
     "AMC" to R.drawable.network_amc,
