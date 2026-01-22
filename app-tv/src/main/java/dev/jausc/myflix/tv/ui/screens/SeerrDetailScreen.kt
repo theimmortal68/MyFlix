@@ -340,7 +340,7 @@ fun SeerrDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(380.dp),
+                                .height(320.dp),
                         ) {
                             // Backdrop
                             AsyncImage(
@@ -1190,7 +1190,7 @@ private fun RelatedMediaCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(140.dp).aspectRatio(2f / 3f),
+        modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
             shape = RoundedCornerShape(8.dp),
         ),

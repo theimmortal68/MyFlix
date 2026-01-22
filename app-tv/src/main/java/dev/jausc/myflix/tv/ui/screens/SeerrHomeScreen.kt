@@ -932,7 +932,7 @@ private fun SeerrMediaCard(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
-            .width(140.dp)
+            .width(120.dp)
             .aspectRatio(2f / 3f)
             .onFocusChanged { focusState ->
                 if (focusState.isFocused) {
@@ -993,7 +993,7 @@ private fun TvViewAllCard(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .width(140.dp)
+            .width(120.dp)
             .aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,

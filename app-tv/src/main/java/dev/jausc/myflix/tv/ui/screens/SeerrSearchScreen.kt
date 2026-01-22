@@ -319,7 +319,7 @@ private fun SeerrSearchPosterCard(
 
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(140.dp).aspectRatio(2f / 3f),
+        modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,
