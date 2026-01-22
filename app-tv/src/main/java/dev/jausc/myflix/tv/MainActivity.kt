@@ -430,8 +430,12 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = false }
                         }
                     },
+                    onNavigateSeerrSetup = {
+                        navController.navigate("seerr/setup")
+                    },
                     showUniversesInNav = universesEnabled,
                     showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
+                    isSeerrAuthenticated = isSeerrAuthenticated,
                 )
             }
 

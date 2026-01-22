@@ -103,8 +103,10 @@ fun PreferencesScreen(
     onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
         { _, _, _ -> },
     onAddServer: () -> Unit = {},
+    onNavigateSeerrSetup: () -> Unit = {},
     showUniversesInNav: Boolean = false,
     showDiscoverInNav: Boolean = false,
+    isSeerrAuthenticated: Boolean = false,
 ) {
     var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
 
@@ -267,6 +269,8 @@ fun PreferencesScreen(
                 showSeerrRecentRequests = showSeerrRecentRequests,
                 onShowSeerrRecentRequestsChanged = { preferences.setShowSeerrRecentRequests(it) },
                 contentFocusRequester = contentFocusRequester,
+                isSeerrAuthenticated = isSeerrAuthenticated,
+                onNavigateSeerrSetup = onNavigateSeerrSetup,
             )
         }
     }
@@ -469,6 +473,8 @@ private fun PreferencesContent(
     showSeerrRecentRequests: Boolean,
     onShowSeerrRecentRequestsChanged: (Boolean) -> Unit,
     contentFocusRequester: FocusRequester,
+    isSeerrAuthenticated: Boolean = false,
+    onNavigateSeerrSetup: () -> Unit = {},
 ) {
     val lazyListState = rememberLazyListState()
 
@@ -607,6 +613,23 @@ private fun PreferencesContent(
                         onCheckedChange = onShowSeerrRecentRequestsChanged,
                     )
                 }
+            }
+        }
+
+        // Integrations Section (Seerr)
+        item {
+            PreferencesSection(title = "Integrations") {
+                ActionPreferenceItem(
+                    title = "Seerr / Jellyseerr",
+                    description = if (isSeerrAuthenticated) {
+                        "Connected - tap to reconfigure"
+                    } else {
+                        "Not configured - tap to set up"
+                    },
+                    icon = Icons.Outlined.Explore,
+                    iconTint = if (isSeerrAuthenticated) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                    onClick = onNavigateSeerrSetup,
+                )
             }
         }
 
