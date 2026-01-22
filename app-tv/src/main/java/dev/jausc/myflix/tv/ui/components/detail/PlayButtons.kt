@@ -74,7 +74,8 @@ object IconColors {
 
 /**
  * Standard row of expandable play buttons for movies.
- * Includes Play (or Resume & Restart), Trailer, Watched, Favorite, Media Info, Playlist.
+ * Includes Play (or Resume & Restart), Trailer, Watched, Favorite, More.
+ * More popup contains: Media Info, Add to Playlist.
  */
 @Composable
 fun ExpandablePlayButtons(
@@ -84,8 +85,7 @@ fun ExpandablePlayButtons(
     onPlayClick: (resumePosition: Long) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onMediaInfoClick: () -> Unit,
-    onPlaylistClick: () -> Unit,
+    onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     onTrailerClick: (() -> Unit)? = null,
@@ -175,24 +175,13 @@ fun ExpandablePlayButtons(
             )
         }
 
-        // Media Info button
-        item("media_info") {
+        // More button (Media Info, Add to Playlist)
+        item("more") {
             ExpandablePlayButton(
-                title = "Media Info",
-                icon = Icons.Outlined.Info,
-                iconColor = IconColors.MediaInfo,
-                onClick = onMediaInfoClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        // Add to Playlist button
-        item("playlist") {
-            ExpandablePlayButton(
-                title = "Add to Playlist",
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                iconColor = IconColors.Playlist,
-                onClick = onPlaylistClick,
+                title = "More",
+                icon = Icons.Outlined.MoreVert,
+                iconColor = IconColors.More,
+                onClick = onMoreClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }
@@ -201,17 +190,16 @@ fun ExpandablePlayButtons(
 
 /**
  * Standard row of action buttons for series.
- * Includes Play (next), Shuffle, Trailer, Watched, Favorite, Playlist.
+ * Includes Play (next), Shuffle, Trailer, Watched, More.
+ * More popup contains: Add to Favorites, Add to Playlist.
  */
 @Composable
 fun SeriesActionButtons(
     watched: Boolean,
-    favorite: Boolean,
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onPlaylistClick: () -> Unit,
+    onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(8.dp),
@@ -275,24 +263,13 @@ fun SeriesActionButtons(
             )
         }
 
-        // Favorite button
-        item("favorite") {
+        // More button (Add to Favorites, Add to Playlist)
+        item("more") {
             ExpandablePlayButton(
-                title = if (favorite) "Remove Favorite" else "Add to Favorites",
-                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
-                onClick = onFavoriteClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        // Add to Playlist button
-        item("playlist") {
-            ExpandablePlayButton(
-                title = "Add to Playlist",
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                iconColor = IconColors.Playlist,
-                onClick = onPlaylistClick,
+                title = "More",
+                icon = Icons.Outlined.MoreVert,
+                iconColor = IconColors.More,
+                onClick = onMoreClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }
@@ -301,7 +278,8 @@ fun SeriesActionButtons(
 
 /**
  * Action buttons for season details.
- * Includes Play, Shuffle, Watched, Favorite, Go to Series, Playlist.
+ * Includes Play, Shuffle, Watched, Favorite, More.
+ * More popup contains: Go to Series, Add to Playlist.
  */
 @Composable
 fun SeasonActionButtons(
@@ -311,8 +289,7 @@ fun SeasonActionButtons(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onGoToSeriesClick: () -> Unit,
-    onPlaylistClick: () -> Unit,
+    onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(8.dp),
@@ -373,24 +350,13 @@ fun SeasonActionButtons(
             )
         }
 
-        // Go to Series button
-        item("go_to_series") {
+        // More button (Go to Series, Add to Playlist)
+        item("more") {
             ExpandablePlayButton(
-                title = "Go to Series",
-                icon = Icons.Outlined.TvOff,
-                iconColor = IconColors.GoToSeries,
-                onClick = onGoToSeriesClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        // Add to Playlist button
-        item("playlist") {
-            ExpandablePlayButton(
-                title = "Add to Playlist",
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                iconColor = IconColors.Playlist,
-                onClick = onPlaylistClick,
+                title = "More",
+                icon = Icons.Outlined.MoreVert,
+                iconColor = IconColors.More,
+                onClick = onMoreClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }
@@ -399,7 +365,8 @@ fun SeasonActionButtons(
 
 /**
  * Action buttons for episode details.
- * Includes Play (or Resume & Restart), Watched, Favorite, Media Info, Playlist.
+ * Includes Play (or Resume & Restart), Watched, Favorite, More.
+ * More popup contains: Media Info, Add to Playlist.
  */
 @Composable
 fun EpisodeActionButtons(
@@ -409,8 +376,7 @@ fun EpisodeActionButtons(
     onPlayClick: (resumePosition: Long) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onMediaInfoClick: () -> Unit,
-    onPlaylistClick: () -> Unit,
+    onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(8.dp),
@@ -487,24 +453,13 @@ fun EpisodeActionButtons(
             )
         }
 
-        // Media Info button
-        item("media_info") {
+        // More button (Media Info, Add to Playlist)
+        item("more") {
             ExpandablePlayButton(
-                title = "Media Info",
-                icon = Icons.Outlined.Info,
-                iconColor = IconColors.MediaInfo,
-                onClick = onMediaInfoClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        // Add to Playlist button
-        item("playlist") {
-            ExpandablePlayButton(
-                title = "Add to Playlist",
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                iconColor = IconColors.Playlist,
-                onClick = onPlaylistClick,
+                title = "More",
+                icon = Icons.Outlined.MoreVert,
+                iconColor = IconColors.More,
+                onClick = onMoreClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }

@@ -44,6 +44,9 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Tv
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -51,15 +54,19 @@ import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
+import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeListRow
+import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
@@ -117,6 +124,7 @@ fun SeasonDetailScreen(
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     val descriptionFocusRequester = remember { FocusRequester() }
 
     val watched = series.userData?.played == true
@@ -258,8 +266,33 @@ fun SeasonDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onGoToSeriesClick = { onNavigateToDetail(series.seriesId ?: series.id) },
-                        onPlaylistClick = { showPlaylistDialog = true },
+                        onMoreClick = {
+                            val season = state.selectedSeason
+                            dialogParams = DialogParams(
+                                title = listOfNotNull(
+                                    series.seriesName ?: series.name,
+                                    season?.name,
+                                ).joinToString(" - "),
+                                items = listOf(
+                                    DialogItem(
+                                        text = "Go to Series",
+                                        icon = Icons.Outlined.Tv,
+                                        iconTint = IconColors.GoToSeries,
+                                    ) {
+                                        dialogParams = null
+                                        onNavigateToDetail(series.seriesId ?: series.id)
+                                    },
+                                    DialogItem(
+                                        text = "Add to Playlist",
+                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                        iconTint = IconColors.Playlist,
+                                    ) {
+                                        dialogParams = null
+                                        showPlaylistDialog = true
+                                    },
+                                ),
+                            )
+                        },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 scope.launch {
@@ -518,6 +551,14 @@ fun SeasonDetailScreen(
             jellyfinClient = jellyfinClient,
             onDismiss = { showPlaylistDialog = false },
             onSuccess = { showPlaylistDialog = false },
+        )
+    }
+
+    // More popup dialog
+    dialogParams?.let { params ->
+        DialogPopup(
+            params = params,
+            onDismissRequest = { dialogParams = null },
         )
     }
 }

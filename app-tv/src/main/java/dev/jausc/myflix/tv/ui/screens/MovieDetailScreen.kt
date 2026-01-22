@@ -36,6 +36,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.draw.clip
@@ -247,8 +248,29 @@ fun MovieDetailScreen(
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
                         onTrailerClick = trailerAction,
-                        onMediaInfoClick = { mediaInfoItem = movie },
-                        onPlaylistClick = { showPlaylistDialog = true },
+                        onMoreClick = {
+                            dialogParams = DialogParams(
+                                title = movie.name,
+                                items = listOf(
+                                    DialogItem(
+                                        text = "Media Info",
+                                        icon = Icons.Outlined.Info,
+                                        iconTint = IconColors.MediaInfo,
+                                    ) {
+                                        dialogParams = null
+                                        mediaInfoItem = movie
+                                    },
+                                    DialogItem(
+                                        text = "Add to Playlist",
+                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                        iconTint = IconColors.Playlist,
+                                    ) {
+                                        dialogParams = null
+                                        showPlaylistDialog = true
+                                    },
+                                ),
+                            )
+                        },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 position = HEADER_ROW

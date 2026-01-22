@@ -41,6 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Info
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -55,10 +58,14 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeActionButtons
+import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
@@ -112,6 +119,7 @@ fun EpisodeDetailScreen(
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
 
     // Focus play button on load
     LaunchedEffect(Unit) {
@@ -201,8 +209,34 @@ fun EpisodeDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onMediaInfoClick = { mediaInfoItem = episode },
-                        onPlaylistClick = { showPlaylistDialog = true },
+                        onMoreClick = {
+                            val seasonLabel = buildSeasonEpisodeLabel(episode)
+                            dialogParams = DialogParams(
+                                title = listOfNotNull(
+                                    episode.seriesName,
+                                    seasonLabel,
+                                    episode.name,
+                                ).joinToString(" - "),
+                                items = listOf(
+                                    DialogItem(
+                                        text = "Media Info",
+                                        icon = Icons.Outlined.Info,
+                                        iconTint = IconColors.MediaInfo,
+                                    ) {
+                                        dialogParams = null
+                                        mediaInfoItem = episode
+                                    },
+                                    DialogItem(
+                                        text = "Add to Playlist",
+                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                        iconTint = IconColors.Playlist,
+                                    ) {
+                                        dialogParams = null
+                                        showPlaylistDialog = true
+                                    },
+                                ),
+                            )
+                        },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 position = HEADER_ROW
@@ -403,6 +437,14 @@ fun EpisodeDetailScreen(
             jellyfinClient = jellyfinClient,
             onDismiss = { showPlaylistDialog = false },
             onSuccess = { showPlaylistDialog = false },
+        )
+    }
+
+    // More popup dialog
+    dialogParams?.let { params ->
+        DialogPopup(
+            params = params,
+            onDismissRequest = { dialogParams = null },
         )
     }
 }

@@ -41,6 +41,9 @@ import androidx.tv.material3.Text
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -58,15 +61,19 @@ import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
-import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
-import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
+import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.getStudioLogoResource
@@ -129,6 +136,7 @@ fun SeriesDetailScreen(
     var showOverview by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var focusedSeason by remember { mutableStateOf<JellyfinItem?>(null) }
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
 
     // Focus play button on load
     LaunchedEffect(Unit) {
@@ -249,7 +257,6 @@ fun SeriesDetailScreen(
                     // Action buttons directly below description
                     SeriesActionButtons(
                         watched = watched,
-                        favorite = favorite,
                         onPlayClick = {
                             position = HEADER_ROW
                             onPlayClick()
@@ -259,8 +266,29 @@ fun SeriesDetailScreen(
                             onShuffleClick()
                         },
                         onWatchedClick = onWatchedClick,
-                        onFavoriteClick = onFavoriteClick,
-                        onPlaylistClick = { showPlaylistDialog = true },
+                        onMoreClick = {
+                            dialogParams = DialogParams(
+                                title = series.name,
+                                items = listOf(
+                                    DialogItem(
+                                        text = if (favorite) "Remove Favorite" else "Add to Favorites",
+                                        icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                                        iconTint = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                                    ) {
+                                        dialogParams = null
+                                        onFavoriteClick()
+                                    },
+                                    DialogItem(
+                                        text = "Add to Playlist",
+                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                        iconTint = IconColors.Playlist,
+                                    ) {
+                                        dialogParams = null
+                                        showPlaylistDialog = true
+                                    },
+                                ),
+                            )
+                        },
                         onTrailerClick = trailerAction,
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
@@ -583,6 +611,14 @@ fun SeriesDetailScreen(
             jellyfinClient = jellyfinClient,
             onDismiss = { showPlaylistDialog = false },
             onSuccess = { showPlaylistDialog = false },
+        )
+    }
+
+    // More popup dialog
+    dialogParams?.let { params ->
+        DialogPopup(
+            params = params,
+            onDismissRequest = { dialogParams = null },
         )
     }
 }
