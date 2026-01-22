@@ -889,6 +889,8 @@ private val networkLogoResources = mapOf(
     "Fox Action Movies" to R.drawable.network_fox,
     "The CW" to R.drawable.network_cw,
     "CW" to R.drawable.network_cw,
+    "The WB" to R.drawable.network_cw,
+    "UPN" to R.drawable.network_cw,
     "PBS" to R.drawable.network_pbs,
 
     // Premium Cable
@@ -1009,13 +1011,49 @@ private val networkLogoResources = mapOf(
     "BBC 1" to R.drawable.network_bbc_one,
     "BBC Two" to R.drawable.network_bbc_two,
     "BBC 2" to R.drawable.network_bbc_two,
+    "BBC Three" to R.drawable.network_bbc_three,
+    "BBC America" to R.drawable.network_bbc_america,
     "ITV" to R.drawable.network_itv,
     "ITV1" to R.drawable.network_itv1,
     "ITV 1" to R.drawable.network_itv1,
     "Sky Atlantic" to R.drawable.network_sky_atlantic,
     "Sky Atlantic (UK)" to R.drawable.network_sky_atlantic,
+    "Sky One" to R.drawable.network_sky_one,
+    "Sky Max" to R.drawable.network_sky_max,
+    "Sky Showcase" to R.drawable.network_sky_showcase,
     "Channel 4" to R.drawable.network_channel_4,
     "Channel 5" to R.drawable.network_channel_5,
+
+    // Canadian Networks
+    "CBC" to R.drawable.network_cbc,
+    "CBC Television" to R.drawable.network_cbc,
+
+    // Streaming (additional)
+    "YouTube Premium" to R.drawable.network_youtube,
+    "IMDb TV" to R.drawable.network_amazon_prime,
+    "CW seed" to R.drawable.network_cw,
+    "ITVX" to R.drawable.network_itv,
+
+    // US Cable (additional)
+    "WGN America" to R.drawable.network_wgn_america,
+    "Spike" to R.drawable.network_paramount_network,
+    "Investigation Discovery" to R.drawable.network_discovery,
+    "Syndication" to R.drawable.network_syndication,
+    "WeTV" to R.drawable.network_wetv,
+
+    // UK (additional)
+    "ITV Encore" to R.drawable.network_itv_encore,
+
+    // Canadian (additional)
+    "Showcase" to R.drawable.network_showcase,
+    "Space" to R.drawable.network_space,
+    "CTV Sci-Fi Channel" to R.drawable.network_ctv,
+
+    // International
+    "Canal+" to R.drawable.network_canal_plus,
+    "Tencent Video" to R.drawable.network_tencent_video,
+    "DailyWire+" to R.drawable.network_dailywire,
+    "Stargate Command" to R.drawable.network_mgm_plus,
 )
 
 /**
