@@ -47,6 +47,7 @@ import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons
+import dev.jausc.myflix.mobile.ui.components.detail.StudioLogosRow
 import dev.jausc.myflix.mobile.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewText
@@ -456,6 +457,13 @@ private fun MovieDetailsHeader(
             // Media badges: resolution, codec, HDR/DV, audio
             MediaBadgesRow(
                 item = movie,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+
+            // Studio logos
+            StudioLogosRow(
+                item = movie,
+                logoHeight = 16.dp,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
 

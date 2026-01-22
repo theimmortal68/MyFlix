@@ -77,6 +77,7 @@ import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
+import dev.jausc.myflix.tv.ui.components.detail.StudioLogosRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -529,6 +530,11 @@ private fun MovieDetailsHeader(
 
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = movie)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Studio logos
+        StudioLogosRow(item = movie, logoHeight = 16.dp)
 
         Spacer(modifier = Modifier.height(6.dp))
 

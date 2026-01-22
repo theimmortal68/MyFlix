@@ -73,6 +73,7 @@ import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
+import dev.jausc.myflix.tv.ui.components.detail.StudioLogosRow
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -648,6 +649,11 @@ private fun SeriesDetailsHeader(
 
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = series)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Studio logos
+        StudioLogosRow(item = series, logoHeight = 16.dp)
 
         // Description - allows 4 lines of text, uses 80% of column width (40% of screen)
         overview?.let { text ->
