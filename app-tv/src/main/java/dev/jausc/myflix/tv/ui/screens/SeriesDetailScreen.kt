@@ -988,6 +988,10 @@ private val networkLogoResources = mapOf(
     "Apple TV+" to R.drawable.network_apple_tv_plus,
     "Apple TV" to R.drawable.network_apple_tv_plus,
     "Apple TV Plus" to R.drawable.network_apple_tv_plus,
+    "Amazon Prime" to R.drawable.network_amazon_prime,
+    "Amazon Prime Video" to R.drawable.network_amazon_prime,
+    "Prime Video" to R.drawable.network_amazon_prime,
+    "Amazon" to R.drawable.network_amazon_prime,
 
     // UK Networks
     "BBC One" to R.drawable.network_bbc_one,
@@ -1018,6 +1022,8 @@ private val networkMatchPriority = listOf(
     "Disney" to R.drawable.network_disney_plus,
     "Peacock" to R.drawable.network_peacock,
     "Apple TV" to R.drawable.network_apple_tv_plus,
+    "Prime Video" to R.drawable.network_amazon_prime,
+    "Amazon" to R.drawable.network_amazon_prime,
     "Starz" to R.drawable.network_starz,
     "Syfy" to R.drawable.network_syfy,
     "AMC" to R.drawable.network_amc,
