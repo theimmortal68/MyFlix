@@ -967,10 +967,11 @@ private fun StudioLogo(studioName: String) {
     }
 
     if (logoResource != null) {
+        // Height matches badge (~12dp for labelSmall text)
         Image(
             painter = painterResource(id = logoResource),
             contentDescription = studioName,
-            modifier = Modifier.height(14.dp),
+            modifier = Modifier.height(12.dp),
             contentScale = ContentScale.Fit,
         )
     } else {

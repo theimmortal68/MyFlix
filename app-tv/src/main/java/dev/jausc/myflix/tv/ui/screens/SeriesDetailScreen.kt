@@ -1066,11 +1066,11 @@ private fun NetworkLogo(
     }
 
     if (logoResource != null) {
-        // Show embedded logo - height matches text row (14dp ~ labelSmall)
+        // Show embedded logo - height matches badge (~12dp for labelSmall + padding)
         Image(
             painter = painterResource(id = logoResource),
             contentDescription = networkName ?: "Network",
-            modifier = Modifier.height(14.dp),
+            modifier = Modifier.height(12.dp),
             contentScale = ContentScale.Fit,
         )
     } else if (!networkName.isNullOrBlank()) {
