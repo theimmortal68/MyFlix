@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Tv
@@ -210,7 +211,6 @@ fun EpisodeDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onPlaylistClick = { showPlaylistDialog = true },
                         onMoreClick = {
                             val seasonLabel = buildSeasonEpisodeLabel(episode)
                             dialogParams = DialogParams(
@@ -227,6 +227,14 @@ fun EpisodeDetailScreen(
                                     ) {
                                         dialogParams = null
                                         mediaInfoItem = episode
+                                    },
+                                    DialogItem(
+                                        text = "Add to Playlist",
+                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                        iconTint = IconColors.Playlist,
+                                    ) {
+                                        dialogParams = null
+                                        showPlaylistDialog = true
                                     },
                                     episode.seasonId?.let { seasonId ->
                                         DialogItem(
