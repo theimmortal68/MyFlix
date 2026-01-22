@@ -894,7 +894,7 @@ private val networkLogoResources = mapOf(
     // Premium Cable
     "HBO" to R.drawable.network_hbo,
     "HBO Max" to R.drawable.network_hbo_max,
-    "Max" to R.drawable.network_hbo_max,
+    "Max" to R.drawable.network_max,
     "HBO Films" to R.drawable.network_hbo_films,
     "Showtime" to R.drawable.network_showtime,
     "SHOWTIME" to R.drawable.network_showtime,
@@ -944,6 +944,9 @@ private val networkLogoResources = mapOf(
     "Nickelodeon" to R.drawable.network_nickelodeon,
     "Nick" to R.drawable.network_nick,
     "Disney Channel" to R.drawable.network_disney_channel,
+    "Disney XD" to R.drawable.network_disney_xd,
+    "Disney Jr." to R.drawable.network_disney_channel,
+    "Disney Junior" to R.drawable.network_disney_channel,
 
     // Music/Entertainment
     "MTV" to R.drawable.network_mtv,
@@ -992,6 +995,14 @@ private val networkLogoResources = mapOf(
     "Amazon Prime Video" to R.drawable.network_amazon_prime,
     "Prime Video" to R.drawable.network_amazon_prime,
     "Amazon" to R.drawable.network_amazon_prime,
+    "Amazon Freevee" to R.drawable.network_amazon_prime,
+    "Hulu" to R.drawable.network_hulu,
+    "MGM+" to R.drawable.network_mgm_plus,
+    "MGM Plus" to R.drawable.network_mgm_plus,
+    "Epix" to R.drawable.network_epix,
+    "EPIX" to R.drawable.network_epix,
+    "CBS All Access" to R.drawable.network_paramount_plus,
+    "DC Universe" to R.drawable.network_max,
 
     // UK Networks
     "BBC One" to R.drawable.network_bbc_one,
@@ -1015,7 +1026,7 @@ private val networkMatchPriority = listOf(
     "Paramount+" to R.drawable.network_paramount_plus,
     "Showtime" to R.drawable.network_showtime,
     "HBO Max" to R.drawable.network_hbo_max,
-    "Max" to R.drawable.network_hbo_max,
+    "Max" to R.drawable.network_max,
     "HBO" to R.drawable.network_hbo,
     "Netflix" to R.drawable.network_netflix,
     "Disney+" to R.drawable.network_disney_plus,
@@ -1024,6 +1035,9 @@ private val networkMatchPriority = listOf(
     "Apple TV" to R.drawable.network_apple_tv_plus,
     "Prime Video" to R.drawable.network_amazon_prime,
     "Amazon" to R.drawable.network_amazon_prime,
+    "Hulu" to R.drawable.network_hulu,
+    "MGM" to R.drawable.network_mgm_plus,
+    "Epix" to R.drawable.network_epix,
     "Starz" to R.drawable.network_starz,
     "Syfy" to R.drawable.network_syfy,
     "AMC" to R.drawable.network_amc,
