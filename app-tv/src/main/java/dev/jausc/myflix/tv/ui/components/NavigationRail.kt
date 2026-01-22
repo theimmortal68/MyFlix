@@ -9,6 +9,7 @@ package dev.jausc.myflix.tv.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -98,7 +99,8 @@ fun NavigationRail(
         modifier = modifier
             .fillMaxHeight()
             .width(NAV_RAIL_WIDTH_DP.dp)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 12.dp)
+            .focusGroup(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Search at top
@@ -232,7 +234,6 @@ private fun NavRailItem(
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
             }
-            .focusable()
             .focusProperties {
                 if (contentFocusRequester != null) {
                     right = contentFocusRequester
@@ -247,6 +248,7 @@ private fun NavRailItem(
                 // Prevent focus from going off-screen
                 left = FocusRequester.Cancel
             }
+            .focusable()
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown &&
                     (event.key == Key.Enter || event.key == Key.DirectionCenter)
