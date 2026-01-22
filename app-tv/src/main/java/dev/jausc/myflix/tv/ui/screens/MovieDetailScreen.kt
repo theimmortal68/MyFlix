@@ -624,10 +624,10 @@ private fun MovieHeroRatingRow(
             needsDot = true
         }
 
-        // Studio logo
+        // Studio name badge
         if (!studioName.isNullOrBlank()) {
             if (needsDot) DotSeparator()
-            StudioLogo(studioName = studioName)
+            StudioBadge(studioName = studioName)
         }
     }
 }
@@ -772,224 +772,23 @@ private fun RuntimeDisplay(minutes: Int) {
 }
 
 /**
- * Map of movie studio names to embedded drawable resources.
- * Logos sourced from TMDB and Emby.
- * Studios without logos will display a text badge fallback.
- */
-private val studioLogoResources = mapOf(
-    // Major Hollywood Studios
-    "Warner Bros." to R.drawable.studio_warner_bros,
-    "Warner Bros" to R.drawable.studio_warner_bros,
-    "Warner Bros. Pictures" to R.drawable.studio_warner_bros,
-    "Warner Bros. Animation" to R.drawable.studio_warner_bros_animation,
-    "Paramount Pictures" to R.drawable.studio_paramount,
-    "Paramount" to R.drawable.studio_paramount,
-    "Walt Disney Pictures" to R.drawable.studio_disney,
-    "Disney" to R.drawable.studio_disney,
-    "Walt Disney Productions" to R.drawable.studio_disney,
-    "Walt Disney Studios" to R.drawable.studio_disney,
-    "Walt Disney Animation Studios" to R.drawable.studio_disney_animation,
-    "Walt Disney Feature Animation" to R.drawable.studio_disney_animation,
-    "Disney Television Animation" to R.drawable.studio_disney_animation,
-    "DisneyToon Studios" to R.drawable.studio_disney_animation,
-    "Sony Pictures" to R.drawable.studio_sony,
-    "Sony" to R.drawable.studio_sony,
-    "Sony Pictures Animation" to R.drawable.studio_sony_animation,
-    "Columbia Pictures" to R.drawable.studio_columbia,
-    "Columbia" to R.drawable.studio_columbia,
-    "Marvel Studios" to R.drawable.studio_marvel,
-    "Marvel" to R.drawable.studio_marvel,
-    "Marvel Entertainment" to R.drawable.studio_marvel,
-    "Pixar" to R.drawable.studio_pixar,
-    "Pixar Animation Studios" to R.drawable.studio_pixar,
-    "DreamWorks" to R.drawable.studio_dreamworks,
-    "DreamWorks Pictures" to R.drawable.studio_dreamworks,
-    "DreamWorks Animation" to R.drawable.studio_dreamworks_animation,
-    "Lionsgate" to R.drawable.studio_lionsgate,
-    "Lions Gate Films" to R.drawable.studio_lionsgate,
-    "Legendary Pictures" to R.drawable.studio_legendary,
-    "Legendary" to R.drawable.studio_legendary,
-    "20th Century Studios" to R.drawable.studio_20th_century,
-    "20th Century Fox" to R.drawable.studio_20th_century,
-    "20th Century Fox Animation" to R.drawable.studio_20th_century,
-    "Searchlight Pictures" to R.drawable.studio_searchlight,
-    "Fox Searchlight Pictures" to R.drawable.studio_searchlight,
-    "Touchstone Pictures" to R.drawable.studio_touchstone,
-    "Touchstone" to R.drawable.studio_touchstone,
-    "Summit Entertainment" to R.drawable.studio_summit,
-    "Amblin Entertainment" to R.drawable.studio_amblin,
-    "STXfilms" to R.drawable.studio_stx,
-    "Silver Pictures" to R.drawable.studio_silver_pictures,
-    "Fox 2000 Pictures" to R.drawable.studio_fox_2000,
-    "Walden Media" to R.drawable.studio_walden_media,
-    "Atomic Monster" to R.drawable.studio_atomic_monster,
-    "NBCUniversal" to R.drawable.studio_nbcuniversal,
-
-    // DC and Comic Book Studios
-    "DC Studios" to R.drawable.studio_dc,
-    "DC Films" to R.drawable.studio_dc_films,
-    "DC Comics" to R.drawable.studio_dc_comics,
-    "DC Entertainment" to R.drawable.studio_dc_entertainment,
-    "DC" to R.drawable.studio_dc,
-
-    // Boutique/Independent Studios
-    "A24" to R.drawable.studio_a24,
-    "Blumhouse Productions" to R.drawable.studio_blumhouse,
-    "Blumhouse" to R.drawable.studio_blumhouse,
-    "Bad Robot" to R.drawable.studio_bad_robot,
-    "Bad Robot Productions" to R.drawable.studio_bad_robot,
-    "Skydance Media" to R.drawable.studio_skydance,
-    "Skydance" to R.drawable.studio_skydance,
-    "Plan B Entertainment" to R.drawable.studio_plan_b,
-    "Plan B" to R.drawable.studio_plan_b,
-    "Focus Features" to R.drawable.studio_focus_features,
-    "Regency Enterprises" to R.drawable.studio_regency,
-    "New Regency Pictures" to R.drawable.studio_regency,
-    "Village Roadshow Pictures" to R.drawable.studio_village_roadshow,
-
-    // European Studios
-    "StudioCanal" to R.drawable.studio_studiocanal,
-    "Canal+" to R.drawable.studio_canal_plus,
-    "EuropaCorp" to R.drawable.studio_europacorp,
-    "BBC Film" to R.drawable.studio_bbc_film,
-    "Film4 Productions" to R.drawable.studio_film4,
-    "Film4" to R.drawable.studio_film4,
-
-    // Japanese Studios
-    "Studio Ghibli" to R.drawable.studio_ghibli,
-    "Toho" to R.drawable.studio_toho,
-    "Toho Company" to R.drawable.studio_toho,
-    "Toei Animation" to R.drawable.studio_toei_animation,
-    "Toei Company" to R.drawable.studio_toei,
-    "Aniplex" to R.drawable.studio_aniplex,
-    "MAPPA" to R.drawable.studio_mappa,
-    "Madhouse" to R.drawable.studio_madhouse,
-    "Bones" to R.drawable.studio_bones,
-    "Wit Studio" to R.drawable.studio_wit,
-    "WIT STUDIO" to R.drawable.studio_wit,
-    "ufotable" to R.drawable.studio_ufotable,
-    "Ufotable" to R.drawable.studio_ufotable,
-    "Sunrise" to R.drawable.studio_sunrise,
-    "Kyoto Animation" to R.drawable.studio_kyoto_animation,
-    "A-1 Pictures" to R.drawable.studio_a1_pictures,
-    "CloverWorks" to R.drawable.studio_cloverworks,
-    "Production I.G" to R.drawable.studio_production_ig,
-    "TRIGGER" to R.drawable.studio_trigger,
-    "Trigger" to R.drawable.studio_trigger,
-    "Pierrot" to R.drawable.studio_pierrot,
-    "Studio Pierrot" to R.drawable.studio_pierrot,
-    "J.C.Staff" to R.drawable.studio_jc_staff,
-    "Studio Deen" to R.drawable.studio_deen,
-    "Science SARU" to R.drawable.studio_science_saru,
-    "David Production" to R.drawable.studio_david_production,
-    "Kinema Citrus" to R.drawable.studio_kinema_citrus,
-    "White Fox" to R.drawable.studio_white_fox,
-    "P.A. Works" to R.drawable.studio_pa_works,
-    "P.A.Works" to R.drawable.studio_pa_works,
-    "Gainax" to R.drawable.studio_gainax,
-    "Studio Khara" to R.drawable.studio_khara,
-    "khara" to R.drawable.studio_khara,
-    "Studio Chizu" to R.drawable.studio_chizu,
-    "Cartoon Saloon" to R.drawable.studio_cartoon_saloon,
-    "Aardman Animations" to R.drawable.studio_aardman,
-    "Aardman" to R.drawable.studio_aardman,
-
-    // Streaming Studios (using network logos)
-    "Netflix" to R.drawable.network_netflix,
-    "HBO Films" to R.drawable.network_hbo_films,
-    "HBO Max" to R.drawable.network_hbo_max,
-    "Max Original" to R.drawable.network_hbo_max,
-    "HBO" to R.drawable.network_hbo,
-)
-
-/**
- * Priority list for partial matching studio names.
- * Order matters - first match wins.
- */
-private val studioMatchPriority = listOf(
-    "Warner Bros" to R.drawable.studio_warner_bros,
-    "Paramount" to R.drawable.studio_paramount,
-    "Disney" to R.drawable.studio_disney,
-    "Sony" to R.drawable.studio_sony,
-    "Columbia" to R.drawable.studio_columbia,
-    "Marvel" to R.drawable.studio_marvel,
-    "Pixar" to R.drawable.studio_pixar,
-    "DreamWorks" to R.drawable.studio_dreamworks,
-    "Lionsgate" to R.drawable.studio_lionsgate,
-    "Legendary" to R.drawable.studio_legendary,
-    "20th Century" to R.drawable.studio_20th_century,
-    "Searchlight" to R.drawable.studio_searchlight,
-    "Fox 2000" to R.drawable.studio_fox_2000,
-    "Summit" to R.drawable.studio_summit,
-    "Amblin" to R.drawable.studio_amblin,
-    "DC" to R.drawable.studio_dc,
-    "A24" to R.drawable.studio_a24,
-    "Blumhouse" to R.drawable.studio_blumhouse,
-    "Bad Robot" to R.drawable.studio_bad_robot,
-    "Skydance" to R.drawable.studio_skydance,
-    "Regency" to R.drawable.studio_regency,
-    "Village Roadshow" to R.drawable.studio_village_roadshow,
-    "Ghibli" to R.drawable.studio_ghibli,
-    "Toho" to R.drawable.studio_toho,
-    "Toei" to R.drawable.studio_toei,
-    "Netflix" to R.drawable.network_netflix,
-    "HBO" to R.drawable.network_hbo,
-)
-
-/**
- * Get embedded drawable resource ID for a studio name.
- */
-private fun getStudioLogoResource(name: String): Int? {
-    // Try exact match first
-    studioLogoResources[name]?.let { return it }
-    studioLogoResources[name.trim()]?.let { return it }
-
-    // Try partial match for combined studio names
-    val trimmedName = name.trim()
-    for ((keyword, resource) in studioMatchPriority) {
-        if (trimmedName.contains(keyword, ignoreCase = true)) {
-            return resource
-        }
-    }
-
-    return null
-}
-
-/**
- * Inline studio logo for use in rating row.
- * Uses embedded drawable resources for instant display.
- * Falls back to styled badge if no mapping exists.
+ * Studio name badge for rating row.
  */
 @Composable
-private fun StudioLogo(studioName: String) {
-    val logoResource = remember(studioName) {
-        getStudioLogoResource(studioName)
-    }
-
-    if (logoResource != null) {
-        // Height matches badge (~12dp for labelSmall text)
-        Image(
-            painter = painterResource(id = logoResource),
-            contentDescription = studioName,
-            modifier = Modifier.height(12.dp),
-            contentScale = ContentScale.Fit,
+private fun StudioBadge(studioName: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF424242))
+            .padding(horizontal = 6.dp),
+    ) {
+        Text(
+            text = studioName,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+            ),
+            color = Color.White,
         )
-    } else {
-        // Show styled badge with studio name for unmapped studios
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFF424242))
-                .padding(horizontal = 6.dp),
-        ) {
-            Text(
-                text = studioName,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 10.sp,
-                ),
-                color = Color.White,
-            )
-        }
     }
 }
