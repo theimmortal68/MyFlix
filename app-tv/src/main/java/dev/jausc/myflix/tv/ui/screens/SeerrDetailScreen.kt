@@ -340,7 +340,7 @@ fun SeerrDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(450.dp),
+                                .height(380.dp),
                         ) {
                             // Backdrop
                             AsyncImage(
@@ -357,8 +357,8 @@ fun SeerrDetailScreen(
                                     .background(
                                         Brush.verticalGradient(
                                             colors = listOf(
-                                                Color.Transparent,
-                                                TvColors.Background.copy(alpha = 0.8f),
+                                                TvColors.Background.copy(alpha = 0.3f),
+                                                TvColors.Background.copy(alpha = 0.7f),
                                                 TvColors.Background,
                                             ),
                                         ),
@@ -372,14 +372,14 @@ fun SeerrDetailScreen(
                                 onClick = onBack,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
-                                    .padding(24.dp),
+                                    .padding(start = 48.dp, top = 24.dp),
                             )
 
-                            // Content overlay
+                            // Content overlay - positioned near top, under back button
                             Row(
                                 modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(horizontal = 48.dp, vertical = 24.dp),
+                                    .align(Alignment.TopStart)
+                                    .padding(start = 48.dp, end = 48.dp, top = 72.dp),
                             ) {
                                 // Poster
                                 AsyncImage(
@@ -1190,7 +1190,7 @@ private fun RelatedMediaCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
+        modifier = Modifier.width(140.dp).aspectRatio(2f / 3f),
         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
             shape = RoundedCornerShape(8.dp),
         ),

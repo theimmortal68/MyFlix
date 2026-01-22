@@ -149,7 +149,7 @@ private fun TvActorDetailContent(
     val castCredits = state.sortedCastCredits
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 120.dp),
+        columns = GridCells.Adaptive(minSize = 140.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 48.dp,
@@ -313,7 +313,7 @@ private fun PersonMediaCard(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .width(120.dp)
+            .width(140.dp)
             .aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,

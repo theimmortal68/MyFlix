@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
@@ -159,6 +160,7 @@ fun SeerrHomeScreen(
 
     // Focus requester for content
     val contentFocusRequester = remember { FocusRequester() }
+    val firstTrendingItemFocusRequester = remember { FocusRequester() }
 
     // Content state
     var isLoading by remember { mutableStateOf(true) }
@@ -243,6 +245,18 @@ fun SeerrHomeScreen(
         networksRow = SeerrDiscoverHelper.getNetworksRow()
 
         isLoading = false
+    }
+
+    // Request focus on first trending item when content loads
+    LaunchedEffect(rows) {
+        if (rows.isNotEmpty()) {
+            kotlinx.coroutines.delay(100)
+            try {
+                firstTrendingItemFocusRequester.requestFocus()
+            } catch (_: Exception) {
+                // Focus request failed, ignore
+            }
+        }
     }
 
     // Load ratings for hero item when it changes
@@ -438,7 +452,10 @@ fun SeerrHomeScreen(
 
                             // Helper to render a content row
                             @Composable
-                            fun RenderContentRow(row: SeerrDiscoverRow) {
+                            fun RenderContentRow(
+                                row: SeerrDiscoverRow,
+                                firstItemFocusRequester: FocusRequester? = null,
+                            ) {
                                 val onViewAll: (() -> Unit)? = when (row.rowType) {
                                     SeerrRowType.TRENDING -> onNavigateDiscoverTrending
                                     SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
@@ -465,12 +482,15 @@ fun SeerrHomeScreen(
                                     },
                                     onItemFocused = { media -> previewItem = media },
                                     onViewAll = onViewAll,
+                                    firstItemFocusRequester = firstItemFocusRequester,
                                 )
                             }
 
                             // 1. Trending
                             trendingRow?.let { row ->
-                                item(key = row.key) { RenderContentRow(row) }
+                                item(key = row.key) {
+                                    RenderContentRow(row, firstTrendingItemFocusRequester)
+                                }
                             }
 
                             // 2. Popular Movies
@@ -845,6 +865,7 @@ private fun SeerrContentRow(
     onItemLongClick: ((SeerrMedia) -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
     onViewAll: (() -> Unit)? = null,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     Column(
         modifier = Modifier.padding(vertical = 8.dp),
@@ -874,13 +895,18 @@ private fun SeerrContentRow(
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            items(items, key = { "${it.mediaType}_${it.id}" }) { media ->
+            itemsIndexed(items, key = { _, media -> "${media.mediaType}_${media.id}" }) { index, media ->
                 SeerrMediaCard(
                     media = media,
                     seerrClient = seerrClient,
                     onClick = { onItemClick(media) },
                     onLongClick = onItemLongClick?.let { { it(media) } },
                     onItemFocused = onItemFocused,
+                    modifier = if (index == 0 && firstItemFocusRequester != null) {
+                        Modifier.focusRequester(firstItemFocusRequester)
+                    } else {
+                        Modifier
+                    },
                 )
             }
             // View All card at the end of the row
@@ -900,12 +926,13 @@ private fun SeerrMediaCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = Modifier
-            .width(120.dp)
+        modifier = modifier
+            .width(140.dp)
             .aspectRatio(2f / 3f)
             .onFocusChanged { focusState ->
                 if (focusState.isFocused) {
@@ -966,7 +993,7 @@ private fun TvViewAllCard(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .width(120.dp)
+            .width(140.dp)
             .aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
