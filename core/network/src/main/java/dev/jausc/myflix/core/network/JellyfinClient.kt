@@ -1593,6 +1593,73 @@ class JellyfinClient(
         invalidateCache(CacheKeys.item(itemId), CacheKeys.Patterns.RESUME)
     }
 
+    // ==================== Playlist Management ====================
+
+    /**
+     * Get user's playlists.
+     */
+    suspend fun getUserPlaylists(): Result<List<JellyfinItem>> = runCatching {
+        val response = httpClient.get("$baseUrl/Items") {
+            header("Authorization", authHeader())
+            parameter("userId", userId)
+            parameter("includeItemTypes", "Playlist")
+            parameter("recursive", true)
+            parameter("sortBy", "SortName")
+            parameter("sortOrder", "Ascending")
+            parameter("fields", "PrimaryImageAspectRatio")
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to get playlists: ${response.status}")
+        }
+        response.body<ItemsResponse>().items
+    }
+
+    /**
+     * Add item(s) to a playlist.
+     */
+    suspend fun addToPlaylist(playlistId: String, itemIds: List<String>): Result<Unit> = runCatching {
+        val response = httpClient.post("$baseUrl/Playlists/$playlistId/Items") {
+            header("Authorization", authHeader())
+            parameter("userId", userId)
+            parameter("ids", itemIds.joinToString(","))
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to add to playlist: ${response.status}")
+        }
+    }
+
+    /**
+     * Create a new playlist.
+     * @param name Playlist name
+     * @param itemIds Optional initial items to add
+     * @param mediaType Media type (Video, Audio, etc.)
+     * @return The created playlist ID
+     */
+    suspend fun createPlaylist(
+        name: String,
+        itemIds: List<String> = emptyList(),
+        mediaType: String = "Video",
+    ): Result<String> = runCatching {
+        val response = httpClient.post("$baseUrl/Playlists") {
+            header("Authorization", authHeader())
+            contentType(ContentType.Application.Json)
+            setBody(
+                mapOf(
+                    "Name" to name,
+                    "Ids" to itemIds,
+                    "UserId" to userId,
+                    "MediaType" to mediaType,
+                )
+            )
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to create playlist: ${response.status}")
+        }
+        // Response contains { "Id": "..." }
+        val responseBody = response.body<Map<String, String>>()
+        responseBody["Id"] ?: throw Exception("No playlist ID in response")
+    }
+
     // ==================== Device Profile Builder ====================
 
     /**

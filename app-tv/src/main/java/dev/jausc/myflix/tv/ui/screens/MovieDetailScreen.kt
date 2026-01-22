@@ -67,6 +67,7 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
@@ -127,6 +128,7 @@ fun MovieDetailScreen(
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
+    var showPlaylistDialog by remember { mutableStateOf(false) }
     val descriptionFocusRequester = remember { FocusRequester() }
 
     val resumePositionTicks = movie.userData?.playbackPositionTicks ?: 0L
@@ -245,19 +247,8 @@ fun MovieDetailScreen(
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
                         onTrailerClick = trailerAction,
-                        onMoreClick = {
-                            dialogParams = DialogParams(
-                                title = movie.name,
-                                items = listOf(
-                                    DialogItem(
-                                        text = "Media Info",
-                                        icon = Icons.Outlined.Info,
-                                        iconTint = IconColors.MediaInfo,
-                                        onClick = { mediaInfoItem = movie },
-                                    ),
-                                ),
-                            )
-                        },
+                        onMediaInfoClick = { mediaInfoItem = movie },
+                        onPlaylistClick = { showPlaylistDialog = true },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 position = HEADER_ROW
@@ -486,6 +477,19 @@ fun MovieDetailScreen(
             overview = movie.overview.orEmpty(),
             genres = movie.genres.orEmpty(),
             onDismiss = { showOverview = false },
+        )
+    }
+
+    // Playlist dialog
+    if (showPlaylistDialog) {
+        AddToPlaylistDialog(
+            itemId = movie.id,
+            itemName = movie.name,
+            jellyfinClient = jellyfinClient,
+            onDismiss = { showPlaylistDialog = false },
+            onSuccess = { playlistName ->
+                // Could show a toast/snackbar here
+            },
         )
     }
 }

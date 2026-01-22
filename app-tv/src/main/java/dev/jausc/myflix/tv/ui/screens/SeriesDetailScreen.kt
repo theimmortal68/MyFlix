@@ -41,7 +41,6 @@ import androidx.tv.material3.Text
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -59,14 +58,11 @@ import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.tv.ui.components.DialogItem
-import dev.jausc.myflix.tv.ui.components.DialogParams
-import dev.jausc.myflix.tv.ui.components.DialogPopup
-import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
@@ -129,9 +125,9 @@ fun SeriesDetailScreen(
     val descriptionFocusRequester = remember { FocusRequester() }
 
     // Dialog state
-    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
+    var showPlaylistDialog by remember { mutableStateOf(false) }
     var focusedSeason by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Focus play button on load
@@ -264,21 +260,8 @@ fun SeriesDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onMoreClick = {
-                            dialogParams = DialogParams(
-                                title = series.name,
-                                items = listOf(
-                                    DialogItem(
-                                        text = "Media Info",
-                                        icon = Icons.Outlined.Info,
-                                        iconTint = IconColors.MediaInfo,
-                                        onClick = { mediaInfoItem = series },
-                                    ),
-                                ),
-                            )
-                        },
+                        onPlaylistClick = { showPlaylistDialog = true },
                         onTrailerClick = trailerAction,
-                        showMoreButton = true,
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 scope.launch {
@@ -570,14 +553,6 @@ fun SeriesDetailScreen(
         } // End Row
     } // End outer Box
 
-    // Context menu dialog
-    dialogParams?.let { params ->
-        DialogPopup(
-            params = params,
-            onDismissRequest = { dialogParams = null },
-        )
-    }
-
     // Media info dialog
     mediaInfoItem?.let { item ->
         MediaInfoDialog(
@@ -597,6 +572,17 @@ fun SeriesDetailScreen(
             overview = dialogItem.overview.orEmpty(),
             genres = series.genres.orEmpty(),
             onDismiss = { showOverview = false },
+        )
+    }
+
+    // Playlist dialog
+    if (showPlaylistDialog) {
+        AddToPlaylistDialog(
+            itemId = series.id,
+            itemName = series.name,
+            jellyfinClient = jellyfinClient,
+            onDismiss = { showPlaylistDialog = false },
+            onSuccess = { showPlaylistDialog = false },
         )
     }
 }

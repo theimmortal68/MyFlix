@@ -21,9 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,11 +49,7 @@ import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.tv.ui.components.DialogItem
-import dev.jausc.myflix.tv.ui.components.DialogItemDivider
-import dev.jausc.myflix.tv.ui.components.DialogItemEntry
-import dev.jausc.myflix.tv.ui.components.DialogParams
-import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
@@ -65,8 +58,7 @@ import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
-import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
-import dev.jausc.myflix.tv.ui.components.detail.IconColors
+import dev.jausc.myflix.tv.ui.components.detail.EpisodeActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
@@ -117,9 +109,9 @@ fun EpisodeDetailScreen(
     val playFocusRequester = remember { FocusRequester() }
 
     // Dialog state
-    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
+    var showPlaylistDialog by remember { mutableStateOf(false) }
 
     // Focus play button on load
     LaunchedEffect(Unit) {
@@ -200,7 +192,7 @@ fun EpisodeDetailScreen(
                     )
 
                     // Bottom content: action buttons aligned with thumbnail bottom
-                    ExpandablePlayButtons(
+                    EpisodeActionButtons(
                         resumePositionTicks = resumePositionTicks,
                         watched = watched,
                         favorite = favorite,
@@ -209,22 +201,8 @@ fun EpisodeDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onMoreClick = {
-                            dialogParams = buildEpisodeMenu(
-                                episode = episode,
-                                onGoToSeason = {
-                                    episode.parentId?.let { seasonId ->
-                                        onNavigateToDetail(seasonId)
-                                    }
-                                },
-                                onGoToShow = {
-                                    episode.seriesId?.let { seriesId ->
-                                        onNavigateToDetail(seriesId)
-                                    }
-                                },
-                                onMediaInfo = { mediaInfoItem = episode },
-                            )
-                        },
+                        onMediaInfoClick = { mediaInfoItem = episode },
+                        onPlaylistClick = { showPlaylistDialog = true },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 position = HEADER_ROW
@@ -387,14 +365,6 @@ fun EpisodeDetailScreen(
         } // End Row
     } // End outer Box
 
-    // Context menu dialog
-    dialogParams?.let { params ->
-        DialogPopup(
-            params = params,
-            onDismissRequest = { dialogParams = null },
-        )
-    }
-
     // Media info dialog
     mediaInfoItem?.let { item ->
         MediaInfoDialog(
@@ -417,6 +387,22 @@ fun EpisodeDetailScreen(
             overview = episode.overview.orEmpty(),
             genres = emptyList(),
             onDismiss = { showOverview = false },
+        )
+    }
+
+    // Playlist dialog
+    if (showPlaylistDialog) {
+        val seasonLabel = buildSeasonEpisodeLabel(episode)
+        AddToPlaylistDialog(
+            itemId = episode.id,
+            itemName = listOfNotNull(
+                episode.seriesName,
+                seasonLabel,
+                episode.name,
+            ).joinToString(" - "),
+            jellyfinClient = jellyfinClient,
+            onDismiss = { showPlaylistDialog = false },
+            onSuccess = { showPlaylistDialog = false },
         )
     }
 }
@@ -590,57 +576,3 @@ private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
     }
 }
 
-/**
- * Build the episode context menu with navigation and media info options.
- */
-private fun buildEpisodeMenu(
-    episode: JellyfinItem,
-    onGoToSeason: () -> Unit,
-    onGoToShow: () -> Unit,
-    onMediaInfo: () -> Unit,
-): DialogParams {
-    val items = buildList<DialogItemEntry> {
-        // Go to Season - only show if episode has a parent (season)
-        if (episode.parentId != null) {
-            add(
-                DialogItem(
-                    text = "Go to Season",
-                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                    iconTint = IconColors.Navigation,
-                    onClick = onGoToSeason,
-                ),
-            )
-        }
-
-        // Go to Show - only show if episode has a series
-        if (episode.seriesId != null) {
-            add(
-                DialogItem(
-                    text = "Go to Show",
-                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                    iconTint = IconColors.Navigation,
-                    onClick = onGoToShow,
-                ),
-            )
-        }
-
-        // Divider before Media Info
-        if (isNotEmpty()) {
-            add(DialogItemDivider)
-        }
-
-        add(
-            DialogItem(
-                text = "Media Info",
-                icon = Icons.Outlined.Info,
-                iconTint = IconColors.MediaInfo,
-                onClick = onMediaInfo,
-            ),
-        )
-    }
-
-    return DialogParams(
-        title = episode.name,
-        items = items,
-    )
-}

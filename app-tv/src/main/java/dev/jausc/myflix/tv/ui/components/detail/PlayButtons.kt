@@ -22,7 +22,10 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.TvOff
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
@@ -65,11 +68,13 @@ object IconColors {
     val Trailer = Color(0xFFFBBF24) // Yellow
     val MediaInfo = Color(0xFF3B82F6) // Blue - for media information
     val Navigation = Color(0xFF34D399) // Green - for navigation arrows (Go to Season/Show)
+    val Playlist = Color(0xFF8B5CF6) // Violet - for add to playlist
+    val GoToSeries = Color(0xFF34D399) // Green - for Go to Series navigation
 }
 
 /**
  * Standard row of expandable play buttons for movies.
- * Includes Play (or Resume & Restart), Mark played, Favorite, and More.
+ * Includes Play (or Resume & Restart), Trailer, Watched, Favorite, Media Info, Playlist.
  */
 @Composable
 fun ExpandablePlayButtons(
@@ -79,7 +84,8 @@ fun ExpandablePlayButtons(
     onPlayClick: (resumePosition: Long) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onMoreClick: () -> Unit,
+    onMediaInfoClick: () -> Unit,
+    onPlaylistClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     onTrailerClick: (() -> Unit)? = null,
@@ -139,7 +145,7 @@ fun ExpandablePlayButtons(
             item("trailer") {
                 ExpandablePlayButton(
                     title = "Trailer",
-                    icon = Icons.Outlined.PlayArrow, // Could use a film icon
+                    icon = Icons.Outlined.PlayArrow,
                     iconColor = IconColors.Trailer,
                     onClick = onTrailerClick,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
@@ -169,13 +175,24 @@ fun ExpandablePlayButtons(
             )
         }
 
-        // More button
-        item("more") {
+        // Media Info button
+        item("media_info") {
             ExpandablePlayButton(
-                title = "More",
-                icon = Icons.Outlined.MoreVert,
-                iconColor = IconColors.More,
-                onClick = onMoreClick,
+                title = "Media Info",
+                icon = Icons.Outlined.Info,
+                iconColor = IconColors.MediaInfo,
+                onClick = onMediaInfoClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Add to Playlist button
+        item("playlist") {
+            ExpandablePlayButton(
+                title = "Add to Playlist",
+                icon = Icons.Outlined.PlaylistAdd,
+                iconColor = IconColors.Playlist,
+                onClick = onPlaylistClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }
@@ -184,7 +201,7 @@ fun ExpandablePlayButtons(
 
 /**
  * Standard row of action buttons for series.
- * Includes Play (next), Shuffle, Mark watched, Favorite.
+ * Includes Play (next), Shuffle, Trailer, Watched, Favorite, Playlist.
  */
 @Composable
 fun SeriesActionButtons(
@@ -194,13 +211,12 @@ fun SeriesActionButtons(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onMoreClick: () -> Unit,
+    onPlaylistClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(8.dp),
     playButtonFocusRequester: FocusRequester? = null,
     onTrailerClick: (() -> Unit)? = null,
-    showMoreButton: Boolean = true,
 ) {
     val firstFocus = playButtonFocusRequester ?: remember { FocusRequester() }
 
@@ -270,16 +286,227 @@ fun SeriesActionButtons(
             )
         }
 
-        if (showMoreButton) {
-            item("more") {
+        // Add to Playlist button
+        item("playlist") {
+            ExpandablePlayButton(
+                title = "Add to Playlist",
+                icon = Icons.Outlined.PlaylistAdd,
+                iconColor = IconColors.Playlist,
+                onClick = onPlaylistClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+    }
+}
+
+/**
+ * Action buttons for season details.
+ * Includes Play, Shuffle, Watched, Favorite, Go to Series, Playlist.
+ */
+@Composable
+fun SeasonActionButtons(
+    watched: Boolean,
+    favorite: Boolean,
+    onPlayClick: () -> Unit,
+    onShuffleClick: () -> Unit,
+    onWatchedClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onGoToSeriesClick: () -> Unit,
+    onPlaylistClick: () -> Unit,
+    buttonOnFocusChanged: (FocusState) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(8.dp),
+    playButtonFocusRequester: FocusRequester? = null,
+) {
+    val firstFocus = playButtonFocusRequester ?: remember { FocusRequester() }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = contentPadding,
+        modifier = modifier
+            .focusGroup()
+            .focusRestorer(firstFocus),
+    ) {
+        // Play button
+        item("play") {
+            ExpandablePlayButton(
+                title = "Play",
+                icon = Icons.Outlined.PlayArrow,
+                iconColor = IconColors.Play,
+                onClick = onPlayClick,
+                modifier = Modifier
+                    .onFocusChanged(buttonOnFocusChanged)
+                    .focusRequester(firstFocus),
+            )
+        }
+
+        // Shuffle button
+        item("shuffle") {
+            ExpandablePlayButton(
+                title = "Shuffle",
+                icon = Icons.Outlined.Shuffle,
+                iconColor = IconColors.Shuffle,
+                onClick = onShuffleClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Watched button
+        item("watched") {
+            ExpandablePlayButton(
+                title = if (watched) "Mark Unwatched" else "Mark Watched",
+                icon = if (watched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                iconColor = IconColors.Watched,
+                onClick = onWatchedClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Favorite button
+        item("favorite") {
+            ExpandablePlayButton(
+                title = if (favorite) "Remove Favorite" else "Add to Favorites",
+                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                onClick = onFavoriteClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Go to Series button
+        item("go_to_series") {
+            ExpandablePlayButton(
+                title = "Go to Series",
+                icon = Icons.Outlined.TvOff,
+                iconColor = IconColors.GoToSeries,
+                onClick = onGoToSeriesClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Add to Playlist button
+        item("playlist") {
+            ExpandablePlayButton(
+                title = "Add to Playlist",
+                icon = Icons.Outlined.PlaylistAdd,
+                iconColor = IconColors.Playlist,
+                onClick = onPlaylistClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+    }
+}
+
+/**
+ * Action buttons for episode details.
+ * Includes Play (or Resume & Restart), Watched, Favorite, Media Info, Playlist.
+ */
+@Composable
+fun EpisodeActionButtons(
+    resumePositionTicks: Long,
+    watched: Boolean,
+    favorite: Boolean,
+    onPlayClick: (resumePosition: Long) -> Unit,
+    onWatchedClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onMediaInfoClick: () -> Unit,
+    onPlaylistClick: () -> Unit,
+    buttonOnFocusChanged: (FocusState) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(8.dp),
+    playButtonFocusRequester: FocusRequester? = null,
+) {
+    val firstFocus = playButtonFocusRequester ?: remember { FocusRequester() }
+    val hasProgress = resumePositionTicks > 0L
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = contentPadding,
+        modifier = modifier
+            .focusGroup()
+            .focusRestorer(firstFocus),
+    ) {
+        if (hasProgress) {
+            // Resume button
+            item("play") {
                 ExpandablePlayButton(
-                    title = "More",
-                    icon = Icons.Outlined.MoreVert,
-                    iconColor = IconColors.More,
-                    onClick = onMoreClick,
-                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    title = "Resume",
+                    icon = Icons.Outlined.PlayArrow,
+                    iconColor = IconColors.Resume,
+                    onClick = { onPlayClick(resumePositionTicks) },
+                    modifier = Modifier
+                        .onFocusChanged(buttonOnFocusChanged)
+                        .focusRequester(firstFocus),
                 )
             }
+            // Restart button
+            item("restart") {
+                ExpandablePlayButton(
+                    title = "Restart",
+                    icon = Icons.Outlined.Refresh,
+                    iconColor = IconColors.Restart,
+                    onClick = { onPlayClick(0L) },
+                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    mirrorIcon = true,
+                )
+            }
+        } else {
+            // Play button
+            item("play") {
+                ExpandablePlayButton(
+                    title = "Play",
+                    icon = Icons.Outlined.PlayArrow,
+                    iconColor = IconColors.Play,
+                    onClick = { onPlayClick(0L) },
+                    modifier = Modifier
+                        .onFocusChanged(buttonOnFocusChanged)
+                        .focusRequester(firstFocus),
+                )
+            }
+        }
+
+        // Watched button
+        item("watched") {
+            ExpandablePlayButton(
+                title = if (watched) "Mark Unwatched" else "Mark Watched",
+                icon = if (watched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                iconColor = IconColors.Watched,
+                onClick = onWatchedClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Favorite button
+        item("favorite") {
+            ExpandablePlayButton(
+                title = if (favorite) "Remove Favorite" else "Add to Favorites",
+                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                onClick = onFavoriteClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Media Info button
+        item("media_info") {
+            ExpandablePlayButton(
+                title = "Media Info",
+                icon = Icons.Outlined.Info,
+                iconColor = IconColors.MediaInfo,
+                onClick = onMediaInfoClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Add to Playlist button
+        item("playlist") {
+            ExpandablePlayButton(
+                title = "Add to Playlist",
+                icon = Icons.Outlined.PlaylistAdd,
+                iconColor = IconColors.Playlist,
+                onClick = onPlaylistClick,
+                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+            )
         }
     }
 }

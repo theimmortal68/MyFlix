@@ -22,9 +22,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,10 +50,7 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.tv.ui.components.DialogItem
-import dev.jausc.myflix.tv.ui.components.DialogItemDivider
-import dev.jausc.myflix.tv.ui.components.DialogParams
-import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
@@ -66,12 +60,11 @@ import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeListRow
-import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
+import dev.jausc.myflix.tv.ui.components.detail.SeasonActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.SeasonTabRow
-import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
@@ -121,9 +114,9 @@ fun SeasonDetailScreen(
     val navBarFocusRequester = remember { FocusRequester() }
 
     // Dialog state
-    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
+    var showPlaylistDialog by remember { mutableStateOf(false) }
     val descriptionFocusRequester = remember { FocusRequester() }
 
     val watched = series.userData?.played == true
@@ -252,7 +245,7 @@ fun SeasonDetailScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Action buttons directly below description
-                    SeriesActionButtons(
+                    SeasonActionButtons(
                         watched = watched,
                         favorite = favorite,
                         onPlayClick = {
@@ -265,17 +258,8 @@ fun SeasonDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
-                        onMoreClick = {
-                            // Show season menu instead of episode menu
-                            val season = state.selectedSeason ?: return@SeriesActionButtons
-                            dialogParams = buildSeasonMenu(
-                                title = listOfNotNull(series.seriesName ?: series.name, season.name)
-                                    .joinToString(" - "),
-                                onGoToSeries = { onNavigateToDetail(series.seriesId ?: series.id) },
-                                onMediaInfo = { mediaInfoItem = season },
-                            )
-                        },
-                        showMoreButton = true,
+                        onGoToSeriesClick = { onNavigateToDetail(series.seriesId ?: series.id) },
+                        onPlaylistClick = { showPlaylistDialog = true },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
                                 scope.launch {
@@ -499,14 +483,6 @@ fun SeasonDetailScreen(
         } // End Row
     } // End outer Box
 
-    // Context menu dialog
-    dialogParams?.let { params ->
-        DialogPopup(
-            params = params,
-            onDismissRequest = { dialogParams = null },
-        )
-    }
-
     // Media info dialog
     mediaInfoItem?.let { item ->
         MediaInfoDialog(
@@ -528,6 +504,21 @@ fun SeasonDetailScreen(
                 onDismiss = { showOverview = false },
             )
         }
+    }
+
+    // Playlist dialog
+    if (showPlaylistDialog) {
+        val season = state.selectedSeason
+        AddToPlaylistDialog(
+            itemId = season?.id ?: series.id,
+            itemName = listOfNotNull(
+                series.seriesName ?: series.name,
+                season?.name,
+            ).joinToString(" - "),
+            jellyfinClient = jellyfinClient,
+            onDismiss = { showPlaylistDialog = false },
+            onSuccess = { showPlaylistDialog = false },
+        )
     }
 }
 
@@ -628,40 +619,6 @@ private fun buildSeasonRatingLine(
 
     // Official rating
     series.officialRating?.let { add(it) }
-}
-
-/**
- * Build a simple season menu for the More button.
- */
-private fun buildSeasonMenu(
-    title: String,
-    onGoToSeries: () -> Unit,
-    onMediaInfo: () -> Unit,
-): DialogParams {
-    val items = buildList<dev.jausc.myflix.tv.ui.components.DialogItemEntry> {
-        add(
-            DialogItem(
-                text = "Go to series",
-                icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                iconTint = IconColors.Navigation,
-                onClick = onGoToSeries,
-            ),
-        )
-        add(DialogItemDivider)
-        add(
-            DialogItem(
-                text = "Media Information",
-                icon = Icons.Outlined.Info,
-                iconTint = IconColors.MediaInfo,
-                onClick = onMediaInfo,
-            ),
-        )
-    }
-
-    return DialogParams(
-        title = title,
-        items = items,
-    )
 }
 
 /**
