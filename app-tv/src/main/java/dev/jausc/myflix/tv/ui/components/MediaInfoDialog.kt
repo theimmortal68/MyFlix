@@ -3,6 +3,7 @@
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,15 +16,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -96,6 +102,8 @@ fun MediaInfoDialog(
                     subtitleSection?.let { add("Subtitle" to it) }
                 }
 
+                val firstSectionFocusRequester = remember { FocusRequester() }
+
                 Column(
                     modifier = Modifier.padding(24.dp),
                 ) {
@@ -124,16 +132,22 @@ fun MediaInfoDialog(
                             .weight(1f)
                             .fillMaxWidth(),
                     ) {
-                        items(
+                        itemsIndexed(
                             items = allSections,
-                            key = { (label, _) -> label },
-                        ) { (label, rows) ->
+                            key = { _, (label, _) -> label },
+                        ) { index, (label, rows) ->
                             MediaInfoSection(
                                 label = label,
                                 rows = rows,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .focusable(),
+                                    .then(
+                                        if (index == 0) {
+                                            Modifier.focusRequester(firstSectionFocusRequester)
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
                             )
                         }
                     }
@@ -151,13 +165,18 @@ fun MediaInfoDialog(
                     }
                 }
 
-                // Focus the close button after a delay
+                // Focus the first section for easy scrolling
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(100)
                     try {
-                        closeFocusRequester.requestFocus()
+                        firstSectionFocusRequester.requestFocus()
                     } catch (_: Exception) {
-                        // Focus request failed
+                        // Focus request failed, try close button
+                        try {
+                            closeFocusRequester.requestFocus()
+                        } catch (_: Exception) {
+                            // Ignore
+                        }
                     }
                 }
             }
@@ -171,14 +190,31 @@ private fun MediaInfoSection(
     rows: List<Pair<String, String>>,
     modifier: Modifier = Modifier,
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier,
+        modifier = modifier
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .then(
+                if (isFocused) {
+                    Modifier
+                        .border(
+                            width = 2.dp,
+                            color = TvColors.BluePrimary,
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .padding(8.dp)
+                } else {
+                    Modifier.padding(10.dp) // Offset to keep alignment when border appears
+                },
+            ),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = TvColors.TextSecondary,
+            color = if (isFocused) TvColors.BluePrimary else TvColors.TextSecondary,
         )
         rows.forEach { (title, value) ->
             Text(
