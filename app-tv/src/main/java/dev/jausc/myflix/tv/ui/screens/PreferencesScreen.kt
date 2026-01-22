@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.FastRewind
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -129,6 +130,7 @@ fun PreferencesScreen(
     val showCollections by preferences.showCollections.collectAsState()
     val pinnedCollections by preferences.pinnedCollections.collectAsState()
     val universesEnabled by preferences.universesEnabled.collectAsState()
+    val showDiscoverNav by preferences.showDiscoverNav.collectAsState()
     val showSuggestions by preferences.showSuggestions.collectAsState()
     val showSeerrRecentRequests by preferences.showSeerrRecentRequests.collectAsState()
 
@@ -258,6 +260,8 @@ fun PreferencesScreen(
                 onEditCollections = { showCollectionDialog = true },
                 universesEnabled = universesEnabled,
                 onUniversesEnabledChanged = { preferences.setUniversesEnabled(it) },
+                showDiscoverNav = showDiscoverNav,
+                onShowDiscoverNavChanged = { preferences.setShowDiscoverNav(it) },
                 showSuggestions = showSuggestions,
                 onShowSuggestionsChanged = { preferences.setShowSuggestions(it) },
                 showSeerrRecentRequests = showSeerrRecentRequests,
@@ -458,6 +462,8 @@ private fun PreferencesContent(
     onEditCollections: () -> Unit,
     universesEnabled: Boolean,
     onUniversesEnabledChanged: (Boolean) -> Unit,
+    showDiscoverNav: Boolean,
+    onShowDiscoverNavChanged: (Boolean) -> Unit,
     showSuggestions: Boolean,
     onShowSuggestionsChanged: (Boolean) -> Unit,
     showSeerrRecentRequests: Boolean,
@@ -572,6 +578,15 @@ private fun PreferencesContent(
                         iconTint = if (universesEnabled) Color(0xFF8B5CF6) else TvColors.TextSecondary,
                         checked = universesEnabled,
                         onCheckedChange = onUniversesEnabledChanged,
+                    )
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "Discover",
+                        description = "Show Discover (Seerr) in nav bar (requires Seerr)",
+                        icon = Icons.Outlined.Explore,
+                        iconTint = if (showDiscoverNav) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                        checked = showDiscoverNav,
+                        onCheckedChange = onShowDiscoverNavChanged,
                     )
                     PreferenceDivider()
                     TogglePreferenceItem(

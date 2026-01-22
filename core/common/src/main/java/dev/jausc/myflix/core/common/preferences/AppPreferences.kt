@@ -168,6 +168,11 @@ abstract class AppPreferences(context: Context) {
     }
     val universesEnabled: StateFlow<Boolean> by lazy { _universesEnabled.asStateFlow() }
 
+    private val _showDiscoverNav: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SHOW_DISCOVER_NAV, PreferenceKeys.Defaults.SHOW_DISCOVER_NAV))
+    }
+    val showDiscoverNav: StateFlow<Boolean> by lazy { _showDiscoverNav.asStateFlow() }
+
     // Seerr Integration Preferences
     private val _seerrEnabled: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, PreferenceKeys.Defaults.SEERR_ENABLED))
@@ -419,6 +424,15 @@ abstract class AppPreferences(context: Context) {
     fun setUniversesEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.UNIVERSES_ENABLED, enabled).apply()
         _universesEnabled.value = enabled
+    }
+
+    /**
+     * Set whether to show Discover (Seerr) in the navigation bar.
+     * Requires Seerr to be authenticated to actually show.
+     */
+    fun setShowDiscoverNav(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_DISCOVER_NAV, enabled).apply()
+        _showDiscoverNav.value = enabled
     }
 
     // Seerr setters
