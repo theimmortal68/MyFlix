@@ -365,8 +365,9 @@ fun SeasonActionButtons(
 
 /**
  * Action buttons for episode details.
- * Includes Play (or Resume & Restart), Watched, Favorite, More.
- * More popup contains: Media Info, Add to Playlist, Go to Season, Go to Show.
+ * Includes Play (or Resume & Restart), Watched, Favorite, optionally Playlist, More.
+ * When resuming (hasProgress=true), Playlist moves to More popup to save space.
+ * More popup contains: Media Info, optionally Add to Playlist, Go to Season, Go to Show.
  */
 @Composable
 fun EpisodeActionButtons(
@@ -376,6 +377,7 @@ fun EpisodeActionButtons(
     onPlayClick: (resumePosition: Long) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onPlaylistClick: (() -> Unit)? = null,
     onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
@@ -453,7 +455,20 @@ fun EpisodeActionButtons(
             )
         }
 
-        // More button (Media Info, Add to Playlist, Go to Season, Go to Show)
+        // Playlist button (only shown when no resume progress - otherwise in More popup)
+        if (onPlaylistClick != null) {
+            item("playlist") {
+                ExpandablePlayButton(
+                    title = "Add to Playlist",
+                    icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                    iconColor = IconColors.Playlist,
+                    onClick = onPlaylistClick,
+                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                )
+            }
+        }
+
+        // More button (Media Info, optionally Add to Playlist, Go to Season, Go to Show)
         item("more") {
             ExpandablePlayButton(
                 title = "More",

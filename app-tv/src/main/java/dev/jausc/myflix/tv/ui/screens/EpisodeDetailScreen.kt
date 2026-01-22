@@ -202,6 +202,7 @@ fun EpisodeDetailScreen(
                     )
 
                     // Bottom content: action buttons aligned with thumbnail bottom
+                    val hasProgress = resumePositionTicks > 0L
                     EpisodeActionButtons(
                         resumePositionTicks = resumePositionTicks,
                         watched = watched,
@@ -211,6 +212,12 @@ fun EpisodeDetailScreen(
                         },
                         onWatchedClick = onWatchedClick,
                         onFavoriteClick = onFavoriteClick,
+                        // Show playlist button only when no resume (saves space)
+                        onPlaylistClick = if (!hasProgress) {
+                            { showPlaylistDialog = true }
+                        } else {
+                            null
+                        },
                         onMoreClick = {
                             val seasonLabel = buildSeasonEpisodeLabel(episode)
                             dialogParams = DialogParams(
@@ -228,13 +235,18 @@ fun EpisodeDetailScreen(
                                         dialogParams = null
                                         mediaInfoItem = episode
                                     },
-                                    DialogItem(
-                                        text = "Add to Playlist",
-                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                                        iconTint = IconColors.Playlist,
-                                    ) {
-                                        dialogParams = null
-                                        showPlaylistDialog = true
+                                    // Add to Playlist in More popup only when resuming
+                                    if (hasProgress) {
+                                        DialogItem(
+                                            text = "Add to Playlist",
+                                            icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                            iconTint = IconColors.Playlist,
+                                        ) {
+                                            dialogParams = null
+                                            showPlaylistDialog = true
+                                        }
+                                    } else {
+                                        null
                                     },
                                     episode.seasonId?.let { seasonId ->
                                         DialogItem(
