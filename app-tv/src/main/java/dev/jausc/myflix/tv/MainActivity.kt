@@ -505,6 +505,8 @@ fun MyFlixTvApp() {
                             val encodedName = NavigationHelper.encodeNavArg(networkName)
                             navController.navigate("seerr/network/$networkId/$encodedName")
                         },
+                        onNavigateCollections = { handleNavigation(NavItem.COLLECTIONS) },
+                        onNavigateUniverses = { handleNavigation(NavItem.UNIVERSES) },
                         showUniversesInNav = universesEnabled,
                     )
                 }

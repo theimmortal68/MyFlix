@@ -153,6 +153,8 @@ fun SeerrHomeScreen(
     onNavigateGenre: (mediaType: String, genreId: Int, genreName: String) -> Unit = { _, _, _ -> },
     onNavigateStudio: (studioId: Int, studioName: String) -> Unit = { _, _ -> },
     onNavigateNetwork: (networkId: Int, networkName: String) -> Unit = { _, _ -> },
+    onNavigateCollections: () -> Unit = {},
+    onNavigateUniverses: () -> Unit = {},
     showUniversesInNav: Boolean = false,
 ) {
     // Coroutine scope for async operations
@@ -306,9 +308,10 @@ fun SeerrHomeScreen(
                     onNavigateLibrary(it.id, it.name, it.collectionType)
                 } ?: onNavigateShows()
             }
+            NavItem.COLLECTIONS -> { onNavigateCollections() }
+            NavItem.UNIVERSES -> { onNavigateUniverses() }
             NavItem.DISCOVER -> { /* Already here */ }
             NavItem.SETTINGS -> { onNavigateSettings() }
-            else -> {}
         }
     }
 
