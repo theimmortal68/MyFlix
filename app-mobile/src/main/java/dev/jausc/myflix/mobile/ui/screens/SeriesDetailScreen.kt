@@ -39,7 +39,6 @@ import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.SeriesActionButtons
-import dev.jausc.myflix.mobile.ui.components.detail.StudioLogosRow
 import dev.jausc.myflix.mobile.ui.components.detail.SeriesQuickDetails
 
 /**
@@ -381,18 +380,11 @@ private fun SeriesDetailsHeader(
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // Quick details: year, status
+            // Quick details: year, status, studio
             SeriesQuickDetails(
                 item = series,
                 status = status,
                 studios = studioNames,
-            )
-
-            // Studio logos
-            StudioLogosRow(
-                item = series,
-                logoHeight = 16.dp,
-                modifier = Modifier.padding(bottom = 4.dp),
             )
 
             // Genres

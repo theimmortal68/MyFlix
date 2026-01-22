@@ -2,13 +2,17 @@
 
 package dev.jausc.myflix.mobile.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +51,7 @@ import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons
-import dev.jausc.myflix.mobile.ui.components.detail.StudioLogosRow
+import dev.jausc.myflix.mobile.ui.components.detail.getStudioLogoResource
 import dev.jausc.myflix.mobile.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewText
@@ -448,22 +452,28 @@ private fun MovieDetailsHeader(
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // Quick details: year, runtime, "ends at", rating
+            // Quick details: year, runtime, "ends at", rating, studio logo
             MovieQuickDetails(
                 item = movie,
                 modifier = Modifier.padding(bottom = 4.dp),
+                trailingContent = {
+                    // Show first matching studio logo
+                    movie.studios?.firstNotNullOfOrNull { studio ->
+                        studio.name?.let { name -> getStudioLogoResource(name)?.let { name to it } }
+                    }?.let { (name, resId) ->
+                        Image(
+                            painter = painterResource(id = resId),
+                            contentDescription = name,
+                            modifier = Modifier.height(14.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                },
             )
 
             // Media badges: resolution, codec, HDR/DV, audio
             MediaBadgesRow(
                 item = movie,
-                modifier = Modifier.padding(bottom = 4.dp),
-            )
-
-            // Studio logos
-            StudioLogosRow(
-                item = movie,
-                logoHeight = 16.dp,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
 

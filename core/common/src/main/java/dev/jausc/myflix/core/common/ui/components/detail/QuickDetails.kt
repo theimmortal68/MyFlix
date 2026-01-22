@@ -139,7 +139,7 @@ fun SimpleStarRating(
 }
 
 /**
- * Quick details row for movies: year, runtime, "ends at", rating.
+ * Quick details row for movies: year, runtime, "ends at", rating, optional trailing content.
  *
  * @param item The Jellyfin item to display details for
  * @param modifier Modifier for the row
@@ -148,7 +148,9 @@ fun SimpleStarRating(
  * @param dotColor Color for dot separators
  * @param dotAlpha Alpha for dots
  * @param starIcon Composable slot for star icon
+ * @param trailingContent Optional composable slot for trailing content (e.g., studio logo)
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MovieQuickDetails(
     item: JellyfinItem,
@@ -158,6 +160,7 @@ fun MovieQuickDetails(
     dotColor: Color = Color.Unspecified,
     dotAlpha: Float = 1f,
     starIcon: @Composable (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = null,
 ) {
     val now = LocalDateTime.now()
     val details = remember(item, now) {
@@ -168,16 +171,22 @@ fun MovieQuickDetails(
         }
     }
 
-    DotSeparatedRow(
-        texts = details,
-        communityRating = item.communityRating,
-        textStyle = textStyle,
-        textColor = textColor,
-        dotColor = dotColor,
-        dotAlpha = dotAlpha,
-        starIcon = starIcon,
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier,
-    )
+    ) {
+        DotSeparatedRow(
+            texts = details,
+            communityRating = item.communityRating,
+            textStyle = textStyle,
+            textColor = textColor,
+            dotColor = dotColor,
+            dotAlpha = dotAlpha,
+            starIcon = starIcon,
+        )
+        trailingContent?.invoke()
+    }
 }
 
 /**

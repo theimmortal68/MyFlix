@@ -77,7 +77,7 @@ import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
-import dev.jausc.myflix.tv.ui.components.detail.StudioLogosRow
+import dev.jausc.myflix.tv.ui.components.detail.getStudioLogoResource
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -531,11 +531,6 @@ private fun MovieDetailsHeader(
         // Media badges: resolution, codec, HDR/DV, audio
         MediaBadgesRow(item = movie)
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Studio logos
-        StudioLogosRow(item = movie, logoHeight = 16.dp)
-
         Spacer(modifier = Modifier.height(6.dp))
 
         // Genres
@@ -778,23 +773,37 @@ private fun RuntimeDisplay(minutes: Int) {
 }
 
 /**
- * Studio name badge for rating row.
+ * Studio logo or text badge for rating row.
+ * Shows logo image if available, otherwise falls back to text badge.
  */
 @Composable
 private fun StudioBadge(studioName: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0xFF424242))
-            .padding(horizontal = 6.dp),
-    ) {
-        Text(
-            text = studioName,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 10.sp,
-            ),
-            color = Color.White,
+    val logoRes = getStudioLogoResource(studioName)
+
+    if (logoRes != null) {
+        // Show logo image
+        Image(
+            painter = painterResource(id = logoRes),
+            contentDescription = studioName,
+            modifier = Modifier.height(14.dp),
+            contentScale = ContentScale.Fit,
         )
+    } else {
+        // Fall back to text badge
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF424242))
+                .padding(horizontal = 6.dp),
+        ) {
+            Text(
+                text = studioName,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 10.sp,
+                ),
+                color = Color.White,
+            )
+        }
     }
 }

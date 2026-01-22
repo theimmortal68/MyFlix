@@ -106,12 +106,13 @@ fun SimpleStarRating(
 }
 
 /**
- * Quick details row for movies: year, runtime, "ends at", rating.
+ * Quick details row for movies: year, runtime, "ends at", rating, optional trailing content.
  */
 @Composable
 fun MovieQuickDetails(
     item: JellyfinItem,
     modifier: Modifier = Modifier,
+    trailingContent: @Composable (() -> Unit)? = null,
 ) {
     SharedMovieQuickDetails(
         item = item,
@@ -121,6 +122,7 @@ fun MovieQuickDetails(
         dotColor = MaterialTheme.colorScheme.onSurface,
         dotAlpha = 0.6f,
         starIcon = { MobileStarIcon() },
+        trailingContent = trailingContent,
     )
 }
 
