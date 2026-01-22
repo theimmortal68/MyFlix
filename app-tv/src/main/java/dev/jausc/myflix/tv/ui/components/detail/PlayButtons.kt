@@ -365,9 +365,9 @@ fun SeasonActionButtons(
 
 /**
  * Action buttons for episode details.
- * Includes Play (or Resume & Restart), Watched, Favorite, optionally Playlist, More.
- * When resuming (hasProgress=true), Playlist moves to More popup to save space.
- * More popup contains: Media Info, optionally Add to Playlist, Go to Season, Go to Show.
+ * Includes Play (or Resume & Restart), Watched, optionally Favorite, More.
+ * When resuming (hasProgress=true), Favorite moves to More popup to save space.
+ * More popup contains: Media Info, Add to Playlist, optionally Favorite, Go to Season, Go to Show.
  */
 @Composable
 fun EpisodeActionButtons(
@@ -376,8 +376,7 @@ fun EpisodeActionButtons(
     favorite: Boolean,
     onPlayClick: (resumePosition: Long) -> Unit,
     onWatchedClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onPlaylistClick: (() -> Unit)? = null,
+    onFavoriteClick: (() -> Unit)? = null,
     onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
@@ -444,31 +443,20 @@ fun EpisodeActionButtons(
             )
         }
 
-        // Favorite button
-        item("favorite") {
-            ExpandablePlayButton(
-                title = if (favorite) "Remove Favorite" else "Add to Favorites",
-                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
-                onClick = onFavoriteClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
-        }
-
-        // Playlist button (only shown when no resume progress - otherwise in More popup)
-        if (onPlaylistClick != null) {
-            item("playlist") {
+        // Favorite button (only shown when no resume progress - otherwise in More popup)
+        if (onFavoriteClick != null) {
+            item("favorite") {
                 ExpandablePlayButton(
-                    title = "Add to Playlist",
-                    icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                    iconColor = IconColors.Playlist,
-                    onClick = onPlaylistClick,
+                    title = if (favorite) "Remove Favorite" else "Add to Favorites",
+                    icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                    iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                    onClick = onFavoriteClick,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                 )
             }
         }
 
-        // More button (Media Info, optionally Add to Playlist, Go to Season, Go to Show)
+        // More button (Media Info, Add to Playlist, optionally Favorite, Go to Season, Go to Show)
         item("more") {
             ExpandablePlayButton(
                 title = "More",

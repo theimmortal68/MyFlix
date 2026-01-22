@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Tv
 import androidx.tv.material3.MaterialTheme
@@ -211,13 +213,8 @@ fun EpisodeDetailScreen(
                             onPlayClick(resumeTicks / 10_000)
                         },
                         onWatchedClick = onWatchedClick,
-                        onFavoriteClick = onFavoriteClick,
-                        // Show playlist button only when no resume (saves space)
-                        onPlaylistClick = if (!hasProgress) {
-                            { showPlaylistDialog = true }
-                        } else {
-                            null
-                        },
+                        // Show favorite button only when no resume (saves space)
+                        onFavoriteClick = if (!hasProgress) onFavoriteClick else null,
                         onMoreClick = {
                             val seasonLabel = buildSeasonEpisodeLabel(episode)
                             dialogParams = DialogParams(
@@ -235,15 +232,23 @@ fun EpisodeDetailScreen(
                                         dialogParams = null
                                         mediaInfoItem = episode
                                     },
-                                    // Add to Playlist in More popup only when resuming
+                                    DialogItem(
+                                        text = "Add to Playlist",
+                                        icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                        iconTint = IconColors.Playlist,
+                                    ) {
+                                        dialogParams = null
+                                        showPlaylistDialog = true
+                                    },
+                                    // Favorite in More popup only when resuming
                                     if (hasProgress) {
                                         DialogItem(
-                                            text = "Add to Playlist",
-                                            icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                                            iconTint = IconColors.Playlist,
+                                            text = if (favorite) "Remove Favorite" else "Add to Favorites",
+                                            icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                                            iconTint = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
                                         ) {
                                             dialogParams = null
-                                            showPlaylistDialog = true
+                                            onFavoriteClick()
                                         }
                                     } else {
                                         null
