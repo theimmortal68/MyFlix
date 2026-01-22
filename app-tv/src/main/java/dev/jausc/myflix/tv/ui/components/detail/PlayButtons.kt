@@ -23,7 +23,7 @@ import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.TvOff
 import androidx.compose.material.icons.outlined.Visibility
@@ -190,7 +190,7 @@ fun ExpandablePlayButtons(
         item("playlist") {
             ExpandablePlayButton(
                 title = "Add to Playlist",
-                icon = Icons.Outlined.PlaylistAdd,
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
                 iconColor = IconColors.Playlist,
                 onClick = onPlaylistClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
@@ -290,7 +290,7 @@ fun SeriesActionButtons(
         item("playlist") {
             ExpandablePlayButton(
                 title = "Add to Playlist",
-                icon = Icons.Outlined.PlaylistAdd,
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
                 iconColor = IconColors.Playlist,
                 onClick = onPlaylistClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
@@ -388,7 +388,7 @@ fun SeasonActionButtons(
         item("playlist") {
             ExpandablePlayButton(
                 title = "Add to Playlist",
-                icon = Icons.Outlined.PlaylistAdd,
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
                 iconColor = IconColors.Playlist,
                 onClick = onPlaylistClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
@@ -502,7 +502,7 @@ fun EpisodeActionButtons(
         item("playlist") {
             ExpandablePlayButton(
                 title = "Add to Playlist",
-                icon = Icons.Outlined.PlaylistAdd,
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
                 iconColor = IconColors.Playlist,
                 onClick = onPlaylistClick,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),

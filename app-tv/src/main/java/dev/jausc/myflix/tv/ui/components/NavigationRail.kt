@@ -77,7 +77,22 @@ fun NavigationRail(
     contentFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
+    // Focus requesters for explicit navigation across the spacer
     val searchFocusRequester = remember { FocusRequester() }
+    val homeFocusRequester = remember { FocusRequester() }
+    val showsFocusRequester = remember { FocusRequester() }
+    val moviesFocusRequester = remember { FocusRequester() }
+    val collectionsFocusRequester = remember { FocusRequester() }
+    val universesFocusRequester = remember { FocusRequester() }
+    val discoverFocusRequester = remember { FocusRequester() }
+    val settingsFocusRequester = remember { FocusRequester() }
+
+    // Determine which item is above settings (after the spacer)
+    val lastMainItem = when {
+        showDiscover -> discoverFocusRequester
+        showUniverses -> universesFocusRequester
+        else -> collectionsFocusRequester
+    }
 
     Column(
         modifier = modifier
@@ -93,7 +108,8 @@ fun NavigationRail(
             onClick = { onItemSelected(NavItem.SEARCH) },
             contentFocusRequester = contentFocusRequester,
             modifier = Modifier.focusRequester(searchFocusRequester),
-            isFirst = true,
+            upFocusRequester = FocusRequester.Cancel,
+            downFocusRequester = homeFocusRequester,
         )
 
         // Main nav items
@@ -102,6 +118,9 @@ fun NavigationRail(
             isSelected = selectedItem == NavItem.HOME,
             onClick = { onItemSelected(NavItem.HOME) },
             contentFocusRequester = contentFocusRequester,
+            modifier = Modifier.focusRequester(homeFocusRequester),
+            upFocusRequester = searchFocusRequester,
+            downFocusRequester = showsFocusRequester,
         )
 
         NavRailItem(
@@ -109,6 +128,9 @@ fun NavigationRail(
             isSelected = selectedItem == NavItem.SHOWS,
             onClick = { onItemSelected(NavItem.SHOWS) },
             contentFocusRequester = contentFocusRequester,
+            modifier = Modifier.focusRequester(showsFocusRequester),
+            upFocusRequester = homeFocusRequester,
+            downFocusRequester = moviesFocusRequester,
         )
 
         NavRailItem(
@@ -116,6 +138,9 @@ fun NavigationRail(
             isSelected = selectedItem == NavItem.MOVIES,
             onClick = { onItemSelected(NavItem.MOVIES) },
             contentFocusRequester = contentFocusRequester,
+            modifier = Modifier.focusRequester(moviesFocusRequester),
+            upFocusRequester = showsFocusRequester,
+            downFocusRequester = collectionsFocusRequester,
         )
 
         NavRailItem(
@@ -123,6 +148,11 @@ fun NavigationRail(
             isSelected = selectedItem == NavItem.COLLECTIONS,
             onClick = { onItemSelected(NavItem.COLLECTIONS) },
             contentFocusRequester = contentFocusRequester,
+            modifier = Modifier.focusRequester(collectionsFocusRequester),
+            upFocusRequester = moviesFocusRequester,
+            downFocusRequester = if (showUniverses) universesFocusRequester
+                else if (showDiscover) discoverFocusRequester
+                else settingsFocusRequester,
         )
 
         if (showUniverses) {
@@ -131,6 +161,9 @@ fun NavigationRail(
                 isSelected = selectedItem == NavItem.UNIVERSES,
                 onClick = { onItemSelected(NavItem.UNIVERSES) },
                 contentFocusRequester = contentFocusRequester,
+                modifier = Modifier.focusRequester(universesFocusRequester),
+                upFocusRequester = collectionsFocusRequester,
+                downFocusRequester = if (showDiscover) discoverFocusRequester else settingsFocusRequester,
             )
         }
 
@@ -140,6 +173,9 @@ fun NavigationRail(
                 isSelected = selectedItem == NavItem.DISCOVER,
                 onClick = { onItemSelected(NavItem.DISCOVER) },
                 contentFocusRequester = contentFocusRequester,
+                modifier = Modifier.focusRequester(discoverFocusRequester),
+                upFocusRequester = if (showUniverses) universesFocusRequester else collectionsFocusRequester,
+                downFocusRequester = settingsFocusRequester,
             )
         }
 
@@ -152,7 +188,9 @@ fun NavigationRail(
             isSelected = selectedItem == NavItem.SETTINGS,
             onClick = { onItemSelected(NavItem.SETTINGS) },
             contentFocusRequester = contentFocusRequester,
-            isLast = true,
+            modifier = Modifier.focusRequester(settingsFocusRequester),
+            upFocusRequester = lastMainItem,
+            downFocusRequester = FocusRequester.Cancel,
         )
     }
 }
@@ -164,8 +202,8 @@ private fun NavRailItem(
     onClick: () -> Unit,
     contentFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
-    isFirst: Boolean = false,
-    isLast: Boolean = false,
+    upFocusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -199,10 +237,15 @@ private fun NavRailItem(
                 if (contentFocusRequester != null) {
                     right = contentFocusRequester
                 }
+                // Explicit vertical navigation to handle Spacer
+                if (upFocusRequester != null) {
+                    up = upFocusRequester
+                }
+                if (downFocusRequester != null) {
+                    down = downFocusRequester
+                }
                 // Prevent focus from going off-screen
                 left = FocusRequester.Cancel
-                if (isFirst) up = FocusRequester.Cancel
-                if (isLast) down = FocusRequester.Cancel
             }
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown &&
