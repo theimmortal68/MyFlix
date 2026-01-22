@@ -531,7 +531,7 @@ private fun EpisodeDetailsHeader(
                 maxLines = 5,
                 onClick = onOverviewClick,
                 modifier = Modifier
-                    .fillMaxWidth(0.8f)
+                    .fillMaxWidth()
                     .focusRequester(descriptionFocusRequester)
                     .focusProperties {
                         down = downFocusRequester

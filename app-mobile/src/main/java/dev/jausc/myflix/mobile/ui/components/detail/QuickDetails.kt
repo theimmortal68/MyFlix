@@ -226,7 +226,7 @@ fun MediaBadgesRow(
             Image(
                 painter = painterResource(id = resId),
                 contentDescription = "Resolution",
-                modifier = Modifier.height(12.dp),
+                modifier = Modifier.height(10.dp),
                 contentScale = ContentScale.Fit,
             )
         }
@@ -241,7 +241,7 @@ fun MediaBadgesRow(
             Image(
                 painter = painterResource(id = resId),
                 contentDescription = "Audio",
-                modifier = Modifier.height(12.dp),
+                modifier = Modifier.height(10.dp),
                 contentScale = ContentScale.Fit,
             )
         }
@@ -256,7 +256,7 @@ fun MediaBadgesRow(
             Image(
                 painter = painterResource(id = resId),
                 contentDescription = "Edition",
-                modifier = Modifier.height(12.dp),
+                modifier = Modifier.height(10.dp),
                 contentScale = ContentScale.Fit,
             )
         }
