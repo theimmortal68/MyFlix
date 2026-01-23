@@ -33,11 +33,11 @@ class WebSocketEventParser(
             val data = element["Data"]?.jsonObject
 
             when (messageType) {
-                "Playstate" -> parsePlaystateMessage(data)
-                "Play" -> parsePlayMessage(data)
-                "GeneralCommand" -> parseGeneralCommand(data)
-                "LibraryChanged" -> parseLibraryChanged(data)
-                "UserDataChanged" -> parseUserDataChanged(data)
+                "Playstate" -> { parsePlaystateMessage(data) }
+                "Play" -> { parsePlayMessage(data) }
+                "GeneralCommand" -> { parseGeneralCommand(data) }
+                "LibraryChanged" -> { parseLibraryChanged(data) }
+                "UserDataChanged" -> { parseUserDataChanged(data) }
                 else -> {
                     Log.d(TAG, "Ignoring unknown message type: $messageType")
                     null

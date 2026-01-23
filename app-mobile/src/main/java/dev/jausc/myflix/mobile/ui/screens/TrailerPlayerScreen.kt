@@ -91,8 +91,8 @@ fun TrailerPlayerScreen(
             .clickable { showControls = !showControls },
     ) {
         when {
-            isLoading -> LoadingOverlay(text = "Loading trailer...")
-            errorMessage != null -> ErrorOverlay(message = errorMessage!!, onBack = onBack)
+            isLoading -> { LoadingOverlay(text = "Loading trailer...") }
+            errorMessage != null -> { ErrorOverlay(message = errorMessage!!, onBack = onBack) }
             resolvedStream != null -> {
                 TrailerVideoSurface(
                     playerController = playerController,
