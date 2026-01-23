@@ -832,7 +832,14 @@ private fun TvPlayerControlsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.2f)),
+            .background(Color.Black.copy(alpha = 0.2f))
+            .onPreviewKeyEvent { event ->
+                // Reset hide timer on any key press while navigating the overlay
+                if (event.type == KeyEventType.KeyDown) {
+                    onUserInteraction()
+                }
+                false // Don't consume the event, let it propagate
+            },
     ) {
         Box(
             modifier = Modifier
