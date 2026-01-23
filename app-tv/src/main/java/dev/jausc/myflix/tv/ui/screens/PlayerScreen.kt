@@ -15,6 +15,8 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.media3.common.C
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -728,13 +730,21 @@ private fun ExoPlayerSurfaceView(
     // Keep reference to PlayerView for direct updates
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
 
-    // Update resize mode when displayMode changes
+    // Update display mode when it changes
     LaunchedEffect(displayMode) {
-        playerView?.resizeMode = when (displayMode) {
-            PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-            PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-            PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+        playerView?.let { view ->
+            val resizeMode = when (displayMode) {
+                PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PlayerDisplayMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+            }
+            view.resizeMode = resizeMode
+            // Also set video scaling mode on the player itself
+            playerController.exoPlayer?.videoScalingMode = when (displayMode) {
+                PlayerDisplayMode.STRETCH -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                else -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT
+            }
         }
     }
 
@@ -744,10 +754,10 @@ private fun ExoPlayerSurfaceView(
                 player = playerController.exoPlayer
                 useController = false
                 resizeMode = when (displayMode) {
-                    PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+                    PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    PlayerDisplayMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
                 }
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
