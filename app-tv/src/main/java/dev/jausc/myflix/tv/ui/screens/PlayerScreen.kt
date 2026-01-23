@@ -38,9 +38,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
@@ -61,16 +65,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.ClosedCaptionOff
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.ClosedCaption
+import androidx.compose.material.icons.outlined.ClosedCaptionOff
+import androidx.compose.material.icons.outlined.FormatSize
+import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
@@ -105,7 +110,6 @@ import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DialogSectionHeader
-import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
@@ -791,7 +795,6 @@ private fun TvPlayerControlsOverlay(
     val isHDR = videoQuality.contains("HDR")
     val accentColor = TvColors.BluePrimary
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
-    var showMediaInfo by remember { mutableStateOf(false) }
     var showChaptersRow by remember { mutableStateOf(false) }
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }
@@ -988,31 +991,6 @@ private fun TvPlayerControlsOverlay(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TvActionButton(
-                    label = "Info",
-                    icon = Icons.Default.Info,
-                    accentColor = accentColor,
-                ) {
-                    onUserInteraction()
-                    showMediaInfo = true
-                }
-                if (skipLabel != null && onSkipSegment != null) {
-                    Spacer(modifier = Modifier.width(18.dp))
-                    TvActionButton(
-                        label = skipLabel,
-                        icon = Icons.Default.FastForward,
-                        accentColor = accentColor,
-                    ) {
-                        onUserInteraction()
-                        onSkipSegment()
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier
@@ -1022,251 +1000,281 @@ private fun TvPlayerControlsOverlay(
                     },
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                TvActionButton(
-                    label = "Audio",
-                    icon = Icons.AutoMirrored.Filled.VolumeUp,
-                    accentColor = accentColor,
-                    focusRequester = settingsRowFocusRequester,
-                    onDownPressed = {
-                        if (!showChaptersRow) {
-                            showChaptersRow = true
-                            chaptersRowFocusRequester.requestFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    },
+                // Left group: Audio, Subtitles, Sub Style
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    onUserInteraction()
-                    val items = if (audioStreams.isEmpty()) {
-                        listOf(
-                            DialogItem(
-                                text = "No audio tracks available",
-                                icon = Icons.AutoMirrored.Filled.VolumeUp,
-                                iconTint = ActionColors.Audio,
-                                enabled = false,
-                                onClick = {},
-                            ),
-                        )
-                    } else {
-                        audioStreams.map {
-                            DialogItem(
-                                text = it.audioLabel(),
-                                icon = Icons.AutoMirrored.Filled.VolumeUp,
-                                iconTint = ActionColors.Audio,
-                                onClick = { onAudioSelected(it.index) },
-                            )
-                        }
-                    }
-                    dialogParams = DialogParams(title = "Audio Tracks", items = items)
-                }
-                TvActionButton(
-                    label = "Subtitles",
-                    icon = Icons.Default.ClosedCaption,
-                    accentColor = accentColor,
-                    onDownPressed = {
-                        if (!showChaptersRow) {
-                            showChaptersRow = true
-                            chaptersRowFocusRequester.requestFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                ) {
-                    onUserInteraction()
-                    val items = if (subtitleStreams.isEmpty()) {
-                        listOf(
-                            DialogItem(
-                                text = "No subtitles available",
-                                icon = Icons.Default.ClosedCaptionOff,
-                                iconTint = ActionColors.Subtitles,
-                                enabled = false,
-                                onClick = {},
-                            ),
-                        )
-                    } else {
-                        val entries = mutableListOf<DialogItemEntry>(
-                            DialogItem(
-                                text = "Off",
-                                icon = Icons.Default.ClosedCaptionOff,
-                                iconTint = ActionColors.Subtitles,
-                                onClick = { onSubtitleSelected(PlayerConstants.TRACK_DISABLED) },
-                            ),
-                        )
-                        entries.addAll(
-                            subtitleStreams.map {
+                    TvActionButton(
+                        label = "Audio",
+                        icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                        accentColor = accentColor,
+                        focusRequester = settingsRowFocusRequester,
+                        onDownPressed = {
+                            if (!showChaptersRow) {
+                                showChaptersRow = true
+                                chaptersRowFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    ) {
+                        onUserInteraction()
+                        val items = if (audioStreams.isEmpty()) {
+                            listOf(
                                 DialogItem(
-                                    text = it.subtitleLabel(),
-                                    icon = Icons.Default.ClosedCaption,
+                                    text = "No audio tracks available",
+                                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                                    iconTint = ActionColors.Audio,
+                                    enabled = false,
+                                    onClick = {},
+                                ),
+                            )
+                        } else {
+                            audioStreams.map {
+                                DialogItem(
+                                    text = it.audioLabel(),
+                                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                                    iconTint = ActionColors.Audio,
+                                    onClick = { onAudioSelected(it.index) },
+                                )
+                            }
+                        }
+                        dialogParams = DialogParams(title = "Audio Tracks", items = items)
+                    }
+                    TvActionButton(
+                        label = "Subtitles",
+                        icon = Icons.Outlined.ClosedCaption,
+                        accentColor = accentColor,
+                        onDownPressed = {
+                            if (!showChaptersRow) {
+                                showChaptersRow = true
+                                chaptersRowFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    ) {
+                        onUserInteraction()
+                        val items = if (subtitleStreams.isEmpty()) {
+                            listOf(
+                                DialogItem(
+                                    text = "No subtitles available",
+                                    icon = Icons.Outlined.ClosedCaptionOff,
                                     iconTint = ActionColors.Subtitles,
-                                    onClick = { onSubtitleSelected(it.index) },
+                                    enabled = false,
+                                    onClick = {},
+                                ),
+                            )
+                        } else {
+                            val entries = mutableListOf<DialogItemEntry>(
+                                DialogItem(
+                                    text = "Off",
+                                    icon = Icons.Outlined.ClosedCaptionOff,
+                                    iconTint = ActionColors.Subtitles,
+                                    onClick = { onSubtitleSelected(PlayerConstants.TRACK_DISABLED) },
+                                ),
+                            )
+                            entries.addAll(
+                                subtitleStreams.map {
+                                    DialogItem(
+                                        text = it.subtitleLabel(),
+                                        icon = Icons.Outlined.ClosedCaption,
+                                        iconTint = ActionColors.Subtitles,
+                                        onClick = { onSubtitleSelected(it.index) },
+                                    )
+                                },
+                            )
+                            entries
+                        }
+                        dialogParams = DialogParams(title = "Subtitles", items = items)
+                    }
+                    TvActionButton(
+                        label = "Sub Style",
+                        icon = Icons.Outlined.FormatSize,
+                        accentColor = accentColor,
+                        onDownPressed = {
+                            if (!showChaptersRow) {
+                                showChaptersRow = true
+                                chaptersRowFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    ) {
+                        onUserInteraction()
+                        val items = mutableListOf<DialogItemEntry>()
+
+                        // Font Size section
+                        items.add(DialogSectionHeader("Font Size"))
+                        items.addAll(
+                            SubtitleFontSize.entries.map { size ->
+                                DialogItem(
+                                    text = size.label,
+                                    icon = Icons.Outlined.FormatSize,
+                                    iconTint = if (subtitleStyle.fontSize == size) ActionColors.Subtitles else Color.Gray,
+                                    onClick = {
+                                        onUserInteraction()
+                                        onSubtitleStyleChanged(subtitleStyle.copy(fontSize = size))
+                                    },
                                 )
                             },
                         )
-                        entries
+
+                        // Font Color section
+                        items.add(DialogSectionHeader("Font Color"))
+                        items.addAll(
+                            SubtitleColor.entries.map { color ->
+                                DialogItem(
+                                    text = color.label,
+                                    icon = Icons.Outlined.ClosedCaption,
+                                    iconTint = Color(color.argb),
+                                    onClick = {
+                                        onUserInteraction()
+                                        onSubtitleStyleChanged(subtitleStyle.copy(fontColor = color))
+                                    },
+                                )
+                            },
+                        )
+
+                        // Background Opacity section
+                        items.add(DialogSectionHeader("Background"))
+                        val opacities = listOf(0, 25, 50, 75, 100)
+                        items.addAll(
+                            opacities.map { opacity ->
+                                DialogItem(
+                                    text = "$opacity%",
+                                    icon = Icons.Outlined.FormatSize,
+                                    iconTint = if (subtitleStyle.backgroundOpacity == opacity) ActionColors.Subtitles else Color.Gray,
+                                    onClick = {
+                                        onUserInteraction()
+                                        onSubtitleStyleChanged(subtitleStyle.copy(backgroundOpacity = opacity))
+                                    },
+                                )
+                            },
+                        )
+
+                        dialogParams = DialogParams(title = "Subtitle Style", items = items)
                     }
-                    dialogParams = DialogParams(title = "Subtitles", items = items)
                 }
-                TvActionButton(
-                    label = "Sub Style",
-                    icon = Icons.Default.FormatSize,
-                    accentColor = accentColor,
-                    onDownPressed = {
-                        if (!showChaptersRow) {
-                            showChaptersRow = true
-                            chaptersRowFocusRequester.requestFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                ) {
-                    onUserInteraction()
-                    val items = mutableListOf<DialogItemEntry>()
 
-                    // Font Size section
-                    items.add(DialogSectionHeader("Font Size"))
-                    items.addAll(
-                        SubtitleFontSize.entries.map { size ->
-                            DialogItem(
-                                text = size.label,
-                                icon = Icons.Default.FormatSize,
-                                iconTint = if (subtitleStyle.fontSize == size) ActionColors.Subtitles else Color.Gray,
-                                onClick = {
-                                    onUserInteraction()
-                                    onSubtitleStyleChanged(subtitleStyle.copy(fontSize = size))
-                                },
-                            )
-                        },
-                    )
-
-                    // Font Color section
-                    items.add(DialogSectionHeader("Font Color"))
-                    items.addAll(
-                        SubtitleColor.entries.map { color ->
-                            DialogItem(
-                                text = color.label,
-                                icon = Icons.Default.ClosedCaption,
-                                iconTint = Color(color.argb),
-                                onClick = {
-                                    onUserInteraction()
-                                    onSubtitleStyleChanged(subtitleStyle.copy(fontColor = color))
-                                },
-                            )
-                        },
-                    )
-
-                    // Background Opacity section
-                    items.add(DialogSectionHeader("Background"))
-                    val opacities = listOf(0, 25, 50, 75, 100)
-                    items.addAll(
-                        opacities.map { opacity ->
-                            DialogItem(
-                                text = "$opacity%",
-                                icon = Icons.Default.FormatSize,
-                                iconTint = if (subtitleStyle.backgroundOpacity == opacity) ActionColors.Subtitles else Color.Gray,
-                                onClick = {
-                                    onUserInteraction()
-                                    onSubtitleStyleChanged(subtitleStyle.copy(backgroundOpacity = opacity))
-                                },
-                            )
-                        },
-                    )
-
-                    dialogParams = DialogParams(title = "Subtitle Style", items = items)
-                }
-                TvActionButton(
-                    label = "Speed",
-                    icon = Icons.Default.Speed,
-                    accentColor = accentColor,
-                    onDownPressed = {
-                        if (!showChaptersRow) {
-                            showChaptersRow = true
-                            chaptersRowFocusRequester.requestFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    },
+                // Right group: Speed, Display, Quality (+ Skip if available)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    onUserInteraction()
-                    val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                    dialogParams = DialogParams(
-                        title = "Playback Speed",
-                        items = speeds.map { value ->
-                            DialogItem(
-                                text = "x${"%.2f".format(value)}",
-                                icon = Icons.Default.Speed,
-                                iconTint = ActionColors.Play,
-                                onClick = {
-                                    onUserInteraction()
-                                    onSpeedChanged(value)
-                                },
-                            )
-                        },
-                    )
-                }
-                TvActionButton(
-                    label = "Display",
-                    icon = Icons.Default.AspectRatio,
-                    accentColor = accentColor,
-                    onDownPressed = {
-                        if (!showChaptersRow) {
-                            showChaptersRow = true
-                            chaptersRowFocusRequester.requestFocus()
-                            true
-                        } else {
-                            false
+                    if (skipLabel != null && onSkipSegment != null) {
+                        TvActionButton(
+                            label = skipLabel,
+                            icon = Icons.Default.FastForward,
+                            accentColor = accentColor,
+                            onDownPressed = {
+                                if (!showChaptersRow) {
+                                    showChaptersRow = true
+                                    chaptersRowFocusRequester.requestFocus()
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                        ) {
+                            onUserInteraction()
+                            onSkipSegment()
                         }
-                    },
-                ) {
-                    onUserInteraction()
-                    dialogParams = DialogParams(
-                        title = "Display Mode",
-                        items = PlayerDisplayMode.values().map { mode ->
-                            DialogItem(
-                                text = mode.label,
-                                icon = Icons.Default.AspectRatio,
-                                iconTint = ActionColors.GoTo,
-                                onClick = {
-                                    onUserInteraction()
-                                    onDisplayModeChanged(mode)
-                                },
-                            )
+                    }
+                    TvActionButton(
+                        label = "Speed",
+                        icon = Icons.Outlined.Speed,
+                        accentColor = accentColor,
+                        onDownPressed = {
+                            if (!showChaptersRow) {
+                                showChaptersRow = true
+                                chaptersRowFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
                         },
-                    )
-                }
-                TvActionButton(
-                    label = "Quality",
-                    icon = Icons.Default.Speed,
-                    accentColor = accentColor,
-                    onDownPressed = {
-                        if (!showChaptersRow) {
-                            showChaptersRow = true
-                            chaptersRowFocusRequester.requestFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                ) {
-                    onUserInteraction()
-                    dialogParams = DialogParams(
-                        title = "Streaming Quality",
-                        items = PlaybackOptions.BITRATE_OPTIONS.map { (bitrate, label) ->
-                            val isSelected = bitrate == currentBitrate
-                            DialogItem(
-                                text = if (isSelected) "$label ✓" else label,
-                                icon = Icons.Default.Speed,
-                                iconTint = if (isSelected) ActionColors.Play else ActionColors.Audio,
-                                onClick = {
-                                    onUserInteraction()
-                                    onBitrateChanged(bitrate)
-                                },
-                            )
+                    ) {
+                        onUserInteraction()
+                        val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+                        dialogParams = DialogParams(
+                            title = "Playback Speed",
+                            items = speeds.map { value ->
+                                DialogItem(
+                                    text = "x${"%.2f".format(value)}",
+                                    icon = Icons.Outlined.Speed,
+                                    iconTint = ActionColors.Play,
+                                    onClick = {
+                                        onUserInteraction()
+                                        onSpeedChanged(value)
+                                    },
+                                )
+                            },
+                        )
+                    }
+                    TvActionButton(
+                        label = "Display",
+                        icon = Icons.Outlined.AspectRatio,
+                        accentColor = accentColor,
+                        onDownPressed = {
+                            if (!showChaptersRow) {
+                                showChaptersRow = true
+                                chaptersRowFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
                         },
-                    )
+                    ) {
+                        onUserInteraction()
+                        dialogParams = DialogParams(
+                            title = "Display Mode",
+                            items = PlayerDisplayMode.values().map { mode ->
+                                DialogItem(
+                                    text = mode.label,
+                                    icon = Icons.Outlined.AspectRatio,
+                                    iconTint = ActionColors.GoTo,
+                                    onClick = {
+                                        onUserInteraction()
+                                        onDisplayModeChanged(mode)
+                                    },
+                                )
+                            },
+                        )
+                    }
+                    TvActionButton(
+                        label = "Quality",
+                        icon = Icons.Outlined.HighQuality,
+                        accentColor = accentColor,
+                        onDownPressed = {
+                            if (!showChaptersRow) {
+                                showChaptersRow = true
+                                chaptersRowFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    ) {
+                        onUserInteraction()
+                        dialogParams = DialogParams(
+                            title = "Streaming Quality",
+                            items = PlaybackOptions.BITRATE_OPTIONS.map { (bitrate, label) ->
+                                val isSelected = bitrate == currentBitrate
+                                DialogItem(
+                                    text = if (isSelected) "$label ✓" else label,
+                                    icon = Icons.Outlined.HighQuality,
+                                    iconTint = if (isSelected) ActionColors.Play else ActionColors.Audio,
+                                    onClick = {
+                                        onUserInteraction()
+                                        onBitrateChanged(bitrate)
+                                    },
+                                )
+                            },
+                        )
+                    }
                 }
             }
 
@@ -1301,13 +1309,6 @@ private fun TvPlayerControlsOverlay(
             onDismissRequest = { dialogParams = null },
         )
     }
-
-    if (showMediaInfo && item != null) {
-        MediaInfoDialog(
-            item = item,
-            onDismiss = { showMediaInfo = false },
-        )
-    }
 }
 
 @Composable
@@ -1328,10 +1329,13 @@ private fun TvControlButton(
         ),
         onClick = onClick,
         modifier = Modifier
-            .size(width = if (isPrimary) 140.dp else 120.dp, height = 56.dp)
+            .height(44.dp)
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(horizontal = if (isPrimary) 24.dp else 16.dp),
+        ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -1350,38 +1354,80 @@ private fun TvActionButton(
     onDownPressed: (() -> Boolean)? = null,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, accentColor),
-                shape = MaterialTheme.shapes.medium,
-            ),
-        ),
+    var isFocused by remember { mutableStateOf(false) }
+
+    // Animation for the halo effect
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.6f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "haloAlpha",
+    )
+
+    val haloScale by animateFloatAsState(
+        targetValue = if (isFocused) 1f else 0.5f,
+        animationSpec = tween(durationMillis = 200),
+        label = "haloScale",
+    )
+
+    val iconScale by animateFloatAsState(
+        targetValue = if (isFocused) 1.15f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        label = "iconScale",
+    )
+
+    Box(
         modifier = Modifier
-            .size(28.dp)
-            .wrapContentWidth()
+            .size(32.dp)
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+            }
+            .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
                     onDownPressed?.invoke() == true
+                } else if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
                 } else {
                     false
                 }
             },
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier,
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(20.dp))
-        }
+        // Halo effect (blurred circle behind the icon)
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .scale(haloScale)
+                .alpha(haloAlpha * 0.4f)
+                .blur(6.dp)
+                .clip(CircleShape)
+                .background(accentColor),
+        )
+
+        // Secondary inner glow
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .scale(haloScale)
+                .alpha(haloAlpha * 0.3f)
+                .blur(3.dp)
+                .clip(CircleShape)
+                .background(accentColor),
+        )
+
+        // Icon
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            modifier = Modifier
+                .size(20.dp)
+                .scale(iconScale),
+            tint = if (isFocused) accentColor else Color.White.copy(alpha = 0.8f),
+        )
     }
 }
 
