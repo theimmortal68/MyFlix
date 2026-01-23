@@ -35,10 +35,8 @@ class ServerManager(context: Context) {
     private fun refreshFromStorage() {
         _servers.value = store.getServers()
         val activeId = store.getActiveServerId()
-        _activeServer.value = if (activeId != null) {
-            _servers.value.find { it.serverId == activeId }
-        } else {
-            null
+        _activeServer.value = activeId?.let { id ->
+            _servers.value.find { it.serverId == id }
         }
     }
 

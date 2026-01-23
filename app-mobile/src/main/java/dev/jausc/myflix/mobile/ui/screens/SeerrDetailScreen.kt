@@ -459,10 +459,8 @@ fun SeerrDetailScreen(
                                     currentMedia.genres!!.take(4).forEach { genre ->
                                         MobileGenreChip(
                                             name = genre.name,
-                                            onClick = if (onNavigateGenre != null) {
-                                                { onNavigateGenre(mediaType, genre.id, genre.name) }
-                                            } else {
-                                                null
+                                            onClick = onNavigateGenre?.let { navigate ->
+                                                { navigate(mediaType, genre.id, genre.name) }
                                             },
                                         )
                                     }
