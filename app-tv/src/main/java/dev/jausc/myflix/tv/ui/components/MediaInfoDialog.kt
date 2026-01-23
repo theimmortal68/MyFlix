@@ -68,8 +68,8 @@ fun MediaInfoDialog(
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
             usePlatformDefaultWidth = false,
         ),
     ) {
@@ -92,16 +92,16 @@ fun MediaInfoDialog(
                 val listState = rememberLazyListState()
                 val closeFocusRequester = remember { FocusRequester() }
 
+                val descriptionSection = buildDescriptionRows(item)
                 val generalSection = buildGeneralRows(item, mediaSource)
                 val videoSection = videoStream?.let { buildVideoRows(it) }
                 val audioSection = audioStream?.let { buildAudioRows(it) }
                 val subtitleSection = subtitleStream?.let { buildSubtitleRows(it) }
-                val descriptionSection = buildDescriptionRows(item)
 
                 // Build list of sections for LazyColumn
                 val allSections = buildList {
-                    add("General" to generalSection)
                     if (descriptionSection.isNotEmpty()) add("Description" to descriptionSection)
+                    add("General" to generalSection)
                     videoSection?.let { add("Video" to it) }
                     audioSection?.let { add("Audio" to it) }
                     subtitleSection?.let { add("Subtitle" to it) }

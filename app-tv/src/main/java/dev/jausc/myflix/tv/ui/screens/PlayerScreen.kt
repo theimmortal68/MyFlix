@@ -1377,12 +1377,11 @@ private fun TvActionButton(
             },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
+            modifier = Modifier.padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(18.dp))
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White)
+            Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(20.dp))
         }
     }
 }
