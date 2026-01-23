@@ -210,9 +210,7 @@ class PoTokenWebView private constructor(
         }
     }
 
-    override fun isExpired(): Boolean {
-        return Instant.now().isAfter(expirationInstant)
-    }
+    override fun isExpired(): Boolean = Instant.now().isAfter(expirationInstant)
 
     private fun addPoTokenDeferred(identifier: String, deferred: CompletableDeferred<String>) {
         synchronized(poTokenDeferreds) {

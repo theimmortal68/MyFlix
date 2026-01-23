@@ -73,9 +73,7 @@ fun parseIntegrityTokenData(rawIntegrityTokenData: String): Pair<String, Long> {
  * Converts a string (usually the identifier used as input to obtainPoToken) to a JavaScript
  * Uint8Array that can be embedded directly in JavaScript code.
  */
-fun stringToU8(identifier: String): String {
-    return newUint8Array(identifier.toByteArray())
-}
+fun stringToU8(identifier: String): String = newUint8Array(identifier.toByteArray())
 
 /**
  * Takes a poToken encoded as a sequence of bytes represented as integers separated by commas
@@ -105,13 +103,10 @@ private fun descramble(scrambledChallenge: String): String {
  * Decodes a base64 string encoded in the specific base64 representation used by YouTube, and
  * returns a JavaScript Uint8Array that can be embedded directly in JavaScript code.
  */
-private fun base64ToU8(base64: String): String {
-    return newUint8Array(base64ToByteArray(base64))
-}
+private fun base64ToU8(base64: String): String = newUint8Array(base64ToByteArray(base64))
 
-private fun newUint8Array(contents: ByteArray): String {
-    return "new Uint8Array([" + contents.joinToString(",") { (it.toInt() and 0xFF).toString() } + "])"
-}
+private fun newUint8Array(contents: ByteArray): String =
+    "new Uint8Array([" + contents.joinToString(",") { (it.toInt() and 0xFF).toString() } + "])"
 
 /**
  * Decodes a base64 string encoded in the specific base64 representation used by YouTube.

@@ -98,9 +98,8 @@ class UpdateManager(
      * Parse version string, removing 'v' prefix if present.
      * "v1.2.3" -> "1.2.3"
      */
-    private fun parseVersion(version: String): String {
-        return version.removePrefix("v").removePrefix("V").trim()
-    }
+    private fun parseVersion(version: String): String =
+        version.removePrefix("v").removePrefix("V").trim()
 
     /**
      * Compare versions to check if latest is newer than current.

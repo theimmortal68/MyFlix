@@ -406,9 +406,7 @@ data class SeerrGenre(
  * Get a color for a genre based on its ID.
  * Returns a consistent color for each genre.
  */
-fun SeerrGenre.getColor(): Long {
-    return GenreColors.forGenre(id, name)
-}
+fun SeerrGenre.getColor(): Long = GenreColors.forGenre(id, name)
 
 /**
  * Predefined colors for common genres.
@@ -461,9 +459,8 @@ object GenreColors {
         0xFF6366F1L, // Indigo
     )
 
-    fun forGenre(id: Int, name: String): Long {
-        return genreColorMap[id] ?: fallbackColors[name.hashCode().mod(fallbackColors.size)]
-    }
+    fun forGenre(id: Int, name: String): Long =
+        genreColorMap[id] ?: fallbackColors[name.hashCode().mod(fallbackColors.size)]
 }
 
 /**
@@ -949,9 +946,8 @@ object StudioColors {
         0xFFEC4899L, // Pink
     )
 
-    fun forStudio(id: Int): Long {
-        return studioColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
-    }
+    fun forStudio(id: Int): Long =
+        studioColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
 }
 
 /**
@@ -994,9 +990,8 @@ object NetworkColors {
         0xFFEC4899L, // Pink
     )
 
-    fun forNetwork(id: Int): Long {
-        return networkColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
-    }
+    fun forNetwork(id: Int): Long =
+        networkColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
 }
 
 /**

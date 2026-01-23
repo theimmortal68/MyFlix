@@ -184,9 +184,7 @@ private val studioLogoResources: Map<String, Int> = mapOf(
  * Get the drawable resource ID for a studio name.
  * Returns null if no matching logo is found.
  */
-fun getStudioLogoResource(studioName: String): Int? {
-    return studioLogoResources[studioName]
-}
+fun getStudioLogoResource(studioName: String): Int? = studioLogoResources[studioName]
 
 /**
  * Row of studio logos for movie/series detail screens.

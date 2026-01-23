@@ -51,7 +51,6 @@ object PlaybackOptions {
      * @param mode Mode key (OFF, AUTO, 60, 120)
      * @return Human-readable label or the mode key if not found
      */
-    fun getRefreshRateModeLabel(mode: String): String {
-        return REFRESH_RATE_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
-    }
+    fun getRefreshRateModeLabel(mode: String): String =
+        REFRESH_RATE_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 }
