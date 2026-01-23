@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -159,6 +160,9 @@ fun DialogPopup(
             )
 
             // Items list
+            // Identify first and last focusable items to trap focus
+            val dialogItems = remember(params.items) { params.items.filterIsInstance<DialogItem>() }
+            
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -182,11 +186,15 @@ fun DialogPopup(
                             )
                         }
                         is DialogItem -> {
-                            val itemFocusRequester = if (params.items.filterIsInstance<DialogItem>().firstOrNull() == item) {
+                            val itemFocusRequester = if (dialogItems.firstOrNull() == item) {
                                 focusRequester
                             } else {
                                 remember { FocusRequester() }
                             }
+                            
+                            val isFirst = dialogItems.firstOrNull() == item
+                            val isLast = dialogItems.lastOrNull() == item
+                            
                             DialogMenuItem(
                                 item = item,
                                 enabled = !waiting && item.enabled,
@@ -194,6 +202,8 @@ fun DialogPopup(
                                     item.onClick()
                                     onDismissRequest()
                                 },
+                                isFirst = isFirst,
+                                isLast = isLast,
                                 modifier = Modifier.focusRequester(itemFocusRequester),
                             )
                         }
@@ -209,6 +219,8 @@ private fun DialogMenuItem(
     item: DialogItem,
     enabled: Boolean,
     onClick: () -> Unit,
+    isFirst: Boolean,
+    isLast: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -220,7 +232,12 @@ private fun DialogMenuItem(
             focusedContainerColor = Color.White.copy(alpha = 0.15f),
             disabledContainerColor = Color.Transparent,
         ),
-        modifier = modifier,
+        modifier = modifier.focusProperties {
+            left = FocusRequester.Cancel
+            right = FocusRequester.Cancel
+            if (isFirst) up = FocusRequester.Cancel
+            if (isLast) down = FocusRequester.Cancel
+        },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

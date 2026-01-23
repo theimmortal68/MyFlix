@@ -90,6 +90,8 @@ fun ExitConfirmationDialog(
                         .focusProperties {
                             left = FocusRequester.Cancel
                             right = exitFocusRequester
+                            up = FocusRequester.Cancel
+                            down = FocusRequester.Cancel
                         },
                     shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ButtonDefaults.colors(
@@ -116,6 +118,8 @@ fun ExitConfirmationDialog(
                         .focusProperties {
                             left = cancelFocusRequester
                             right = FocusRequester.Cancel
+                            up = FocusRequester.Cancel
+                            down = FocusRequester.Cancel
                         },
                     shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ButtonDefaults.colors(

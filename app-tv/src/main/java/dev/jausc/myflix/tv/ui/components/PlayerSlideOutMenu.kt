@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -326,7 +327,6 @@ fun PlayerSlideOutMenuSectioned(
             }
         }
     }
-    var isFirstItem = true
     var focusedIndex by remember { mutableStateOf(0) }
 
     LaunchedEffect(visible) {
@@ -467,6 +467,9 @@ fun PlayerSlideOutMenuSectioned(
                 ) {
                     var startIndex = 0
                     sections.forEach { section ->
+                        // Capture startIndex for this section scope
+                        val sectionStartIndex = startIndex
+                        
                         // Section header
                         item(key = "header_${section.title}") {
                             Text(
@@ -484,13 +487,8 @@ fun PlayerSlideOutMenuSectioned(
                         }
 
                         itemsIndexed(section.items, key = { _, item -> "${section.title}_${item.text}" }) { index, item ->
-                            val globalIndex = startIndex + index
-                            val itemFocusRequester = if (isFirstItem) {
-                                isFirstItem = false
-                                itemFocusRequesters.first()
-                            } else {
-                                itemFocusRequesters[globalIndex]
-                            }
+                            val globalIndex = sectionStartIndex + index
+                            
                             val itemModifier = if (onItemAnchorChanged != null) {
                                 Modifier.onGloballyPositioned { coordinates ->
                                     val position = coordinates.positionInRoot()
@@ -518,7 +516,7 @@ fun PlayerSlideOutMenuSectioned(
                                 leftFocusRequester = leftFocusRequester,
                                 rightFocusRequester = rightFocusRequester,
                                 onFocused = { focusedIndex = globalIndex },
-                                modifier = itemModifier.focusRequester(itemFocusRequester),
+                                modifier = itemModifier.focusRequester(itemFocusRequesters[globalIndex]),
                             )
                         }
                         startIndex += section.items.size
@@ -549,12 +547,14 @@ private fun SlideOutMenuItemRow(
         },
         enabled = item.enabled,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(4.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (item.selected) Color.White.copy(alpha = 0.1f) else Color.Transparent,
             focusedContainerColor = Color.White.copy(alpha = 0.2f),
             disabledContainerColor = Color.Transparent,
         ),
         modifier = modifier
+            .fillMaxWidth()
             .padding(horizontal = 4.dp)
             .onFocusChanged { state ->
                 if (state.isFocused) {
@@ -624,6 +624,7 @@ private fun SlideOutMenuItemRow(
                 } else {
                     Color.White.copy(alpha = 0.4f)
                 },
+                modifier = Modifier.weight(1f),
             )
         }
     }

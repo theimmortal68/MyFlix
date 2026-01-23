@@ -1650,9 +1650,14 @@ private fun TvActionButton(
                 val position = coordinates.positionInRoot()
                 val size = coordinates.size
                 with(density) {
+                    val anchorX = if (anchorAlignment == MenuAnchorAlignment.BottomStart) {
+                        position.x.toDp()
+                    } else {
+                        (position.x + size.width).toDp()
+                    }
                     buttonPosition = MenuAnchor(
-                        x = (position.x + size.width).toDp(),
-                        y = (position.y + size.height).toDp(),
+                        x = anchorX,
+                        y = position.y.toDp(),
                         alignment = anchorAlignment,
                         placement = MenuAnchorPlacement.Above,
                     )

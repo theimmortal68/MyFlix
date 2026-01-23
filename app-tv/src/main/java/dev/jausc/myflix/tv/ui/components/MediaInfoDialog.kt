@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -132,6 +133,9 @@ fun MediaInfoDialog(
                     items = allSections,
                     key = { _, (label, _) -> label },
                 ) { index, (label, rows) ->
+                    val isFirst = index == 0
+                    val isLast = index == allSections.lastIndex
+                    
                     MediaInfoSection(
                         label = label,
                         rows = rows,
@@ -146,7 +150,13 @@ fun MediaInfoDialog(
                                 } else {
                                     Modifier
                                 },
-                            ),
+                            )
+                            .focusProperties {
+                                left = FocusRequester.Cancel
+                                right = FocusRequester.Cancel
+                                if (isFirst) up = FocusRequester.Cancel
+                                if (isLast) down = closeFocusRequester
+                            },
                     )
                 }
             }
@@ -158,7 +168,12 @@ fun MediaInfoDialog(
                 onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.End)
-                    .focusRequester(closeFocusRequester),
+                    .focusRequester(closeFocusRequester)
+                    .focusProperties {
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
+                        down = FocusRequester.Cancel
+                    },
                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                 colors = ButtonDefaults.colors(
                     containerColor = Color.White.copy(alpha = 0.1f),
