@@ -46,12 +46,15 @@ import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
+import dev.jausc.myflix.tv.ui.components.library.LibraryFilterMenu
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
+import dev.jausc.myflix.tv.ui.components.library.LibrarySortMenu
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
@@ -93,6 +96,10 @@ fun LibraryScreen(
     val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
+    var sortMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
 
     // Track focused item for dynamic background
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -191,25 +198,16 @@ fun LibraryScreen(
                         totalItems = state.totalRecordCount,
                         loadedItems = state.items.size,
                         filterState = state.filterState,
-                        availableGenres = state.availableGenres,
-                        availableParentalRatings = state.availableParentalRatings,
-                        collectionType = collectionType,
                         onViewModeChange = { viewModel.setViewMode(it) },
-                        onSortChange = { sortBy, sortOrder ->
-                            viewModel.updateSort(sortBy, sortOrder)
-                        },
-                        onFilterChange = { watchedFilter, ratingFilter, yearRange, seriesStatus ->
-                            viewModel.applyFilters(watchedFilter, ratingFilter, yearRange, seriesStatus)
-                        },
-                        onGenreToggle = { viewModel.toggleGenre(it) },
-                        onClearGenres = { viewModel.clearGenres() },
-                        onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
-                        onClearParentalRatings = { viewModel.clearParentalRatings() },
                         onShuffleClick = {
                             viewModel.getShuffleItemId()?.let { itemId ->
                                 onItemClick(itemId)
                             }
                         },
+                        onFilterMenuRequested = { showFilterMenu = true },
+                        onSortMenuRequested = { showSortMenu = true },
+                        onFilterAnchorChanged = { filterMenuAnchor = it },
+                        onSortAnchorChanged = { sortMenuAnchor = it },
                         modifier = Modifier
                             .padding(horizontal = 24.dp)
                             .focusRequester(filterBarFocusRequester),
@@ -303,7 +301,45 @@ fun LibraryScreen(
                     }
                 }
             }
+
         }
+
+        LibraryFilterMenu(
+            visible = showFilterMenu,
+            currentWatchedFilter = state.filterState.watchedFilter,
+            currentRatingFilter = state.filterState.ratingFilter,
+            currentYearRange = state.filterState.yearRange,
+            currentSeriesStatus = state.filterState.seriesStatus,
+            availableGenres = state.availableGenres,
+            selectedGenres = state.filterState.selectedGenres,
+            availableParentalRatings = state.availableParentalRatings,
+            selectedParentalRatings = state.filterState.selectedParentalRatings,
+            showSeriesStatusFilter = collectionType == "tvshows",
+            onGenreToggle = { viewModel.toggleGenre(it) },
+            onClearGenres = { viewModel.clearGenres() },
+            onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
+            onClearParentalRatings = { viewModel.clearParentalRatings() },
+            onFilterChange = { watched, rating ->
+                viewModel.applyFilters(watched, rating, state.filterState.yearRange, state.filterState.seriesStatus)
+            },
+            onYearRangeChange = { range ->
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, range, state.filterState.seriesStatus)
+            },
+            onSeriesStatusChange = { status ->
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, status)
+            },
+            onDismiss = { showFilterMenu = false },
+            anchor = filterMenuAnchor,
+        )
+
+        LibrarySortMenu(
+            visible = showSortMenu,
+            currentSortBy = state.filterState.sortBy,
+            currentSortOrder = state.filterState.sortOrder,
+            onSortChange = { sortBy, sortOrder -> viewModel.updateSort(sortBy, sortOrder) },
+            onDismiss = { showSortMenu = false },
+            anchor = sortMenuAnchor,
+        )
     }
 }
 

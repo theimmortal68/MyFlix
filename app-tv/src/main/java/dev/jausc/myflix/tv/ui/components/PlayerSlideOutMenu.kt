@@ -21,20 +21,34 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -45,6 +59,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import kotlin.math.max
 
 /**
  * Netflix-style slide-out menu item.
@@ -55,6 +70,7 @@ data class SlideOutMenuItem(
     val iconTint: Color = Color.White,
     val selected: Boolean = false,
     val enabled: Boolean = true,
+    val dismissOnClick: Boolean = true,
     val onClick: () -> Unit,
 )
 
@@ -67,12 +83,27 @@ data class SlideOutMenuSection(
 )
 
 /**
+ * Horizontal alignment for the popup menu relative to the anchor point.
+ */
+enum class MenuAnchorAlignment {
+    BottomStart,
+    BottomEnd,
+}
+
+enum class MenuAnchorPlacement {
+    Above,
+    Below,
+}
+
+/**
  * Anchor position for menu placement.
- * Represents the center-bottom of the button that triggered the menu.
+ * Represents the bottom edge of the button that triggered the menu.
  */
 data class MenuAnchor(
     val x: Dp,
     val y: Dp,
+    val alignment: MenuAnchorAlignment = MenuAnchorAlignment.BottomEnd,
+    val placement: MenuAnchorPlacement = MenuAnchorPlacement.Above,
 )
 
 /**
@@ -87,15 +118,30 @@ fun PlayerSlideOutMenu(
     items: List<SlideOutMenuItem>,
     onDismiss: () -> Unit,
     anchor: MenuAnchor? = null,
+    firstItemFocusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
-    val focusRequester = remember { FocusRequester() }
+    if (visible) {
+        BackHandler { onDismiss() }
+    }
+    val itemFocusRequesters = remember(items.size, firstItemFocusRequester) {
+        List(items.size) { index ->
+            if (index == 0 && firstItemFocusRequester != null) {
+                firstItemFocusRequester
+            } else {
+                FocusRequester()
+            }
+        }
+    }
     val listState = rememberLazyListState()
+    var focusedIndex by remember { mutableStateOf(0) }
 
     // Focus first item when menu appears
     LaunchedEffect(visible) {
-        if (visible) {
-            focusRequester.requestFocus()
+        if (visible && itemFocusRequesters.isNotEmpty()) {
+            itemFocusRequesters.first().requestFocus()
         }
     }
 
@@ -103,15 +149,22 @@ fun PlayerSlideOutMenu(
         val density = LocalDensity.current
         val menuWidth = 200.dp
         val menuHeight = 300.dp // Approximate max height
+        var measuredWidthPx by remember { mutableStateOf<Float?>(null) }
+        var measuredHeightPx by remember { mutableStateOf<Float?>(null) }
+        val menuWidthPx = with(density) { measuredWidthPx ?: menuWidth.toPx() }
+        val menuHeightPx = with(density) { measuredHeightPx ?: menuHeight.toPx() }
 
         // Calculate menu position based on anchor
         val offsetX = if (anchor != null) {
             with(density) {
-                // Center the menu horizontally on the anchor, but keep within bounds
                 val anchorPx = anchor.x.toPx()
-                val menuWidthPx = menuWidth.toPx()
                 val maxWidthPx = maxWidth.toPx()
-                val targetX = (anchorPx - menuWidthPx / 2).coerceIn(16f, maxWidthPx - menuWidthPx - 16f)
+                val rawX = when (anchor.alignment) {
+                    MenuAnchorAlignment.BottomStart -> anchorPx
+                    MenuAnchorAlignment.BottomEnd -> anchorPx - menuWidthPx
+                }
+                val maxX = max(16f, maxWidthPx - menuWidthPx - 16f)
+                val targetX = rawX.coerceIn(16f, maxX)
                 targetX.toInt()
             }
         } else {
@@ -120,9 +173,12 @@ fun PlayerSlideOutMenu(
 
         val offsetY = if (anchor != null) {
             with(density) {
-                // Position above the anchor with some padding
                 val anchorPx = anchor.y.toPx()
-                val targetY = (anchorPx - menuHeight.toPx() - 16.dp.toPx()).coerceAtLeast(48f)
+                val targetY = if (anchor.placement == MenuAnchorPlacement.Below) {
+                    anchorPx + 12.dp.toPx()
+                } else {
+                    (anchorPx - menuHeightPx).coerceAtLeast(48f)
+                }
                 targetY.toInt()
             }
         } else {
@@ -131,7 +187,14 @@ fun PlayerSlideOutMenu(
 
         // Transform origin for scale animation (bottom center of menu, pointing to anchor)
         val transformOrigin = if (anchor != null) {
-            TransformOrigin(0.5f, 1f) // Scale from bottom center
+            when (anchor.alignment) {
+                MenuAnchorAlignment.BottomStart -> {
+                    if (anchor.placement == MenuAnchorPlacement.Below) TransformOrigin(0f, 0f) else TransformOrigin(0f, 1f)
+                }
+                MenuAnchorAlignment.BottomEnd -> {
+                    if (anchor.placement == MenuAnchorPlacement.Below) TransformOrigin(1f, 0f) else TransformOrigin(1f, 1f)
+                }
+            }
         } else {
             TransformOrigin(1f, 0.5f) // Scale from right center (fallback)
         }
@@ -167,6 +230,28 @@ fun PlayerSlideOutMenu(
             Column(
                 modifier = Modifier
                     .widthIn(min = 180.dp, max = 260.dp)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (event.key) {
+                            Key.DirectionUp -> {
+                                if (focusedIndex > 0) {
+                                    itemFocusRequesters[focusedIndex - 1].requestFocus()
+                                }
+                                true
+                            }
+                            Key.DirectionDown -> {
+                                if (focusedIndex < items.lastIndex) {
+                                    itemFocusRequesters[focusedIndex + 1].requestFocus()
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                    .onGloballyPositioned { coordinates ->
+                        measuredWidthPx = coordinates.size.width.toFloat()
+                        measuredHeightPx = coordinates.size.height.toFloat()
+                    }
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -193,16 +278,16 @@ fun PlayerSlideOutMenu(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    items(items, key = { it.text }) { item ->
-                        val itemFocusRequester = if (items.indexOf(item) == 0) {
-                            focusRequester
-                        } else {
-                            remember { FocusRequester() }
-                        }
+                    itemsIndexed(items, key = { _, item -> item.text }) { index, item ->
                         SlideOutMenuItemRow(
                             item = item,
+                            isFirst = index == 0,
+                            isLast = index == items.lastIndex,
                             onDismiss = onDismiss,
-                            modifier = Modifier.focusRequester(itemFocusRequester),
+                            leftFocusRequester = leftFocusRequester,
+                            rightFocusRequester = rightFocusRequester,
+                            onFocused = { focusedIndex = index },
+                            modifier = Modifier.focusRequester(itemFocusRequesters[index]),
                         )
                     }
                 }
@@ -222,14 +307,31 @@ fun PlayerSlideOutMenuSectioned(
     sections: List<SlideOutMenuSection>,
     onDismiss: () -> Unit,
     anchor: MenuAnchor? = null,
+    onItemAnchorChanged: ((SlideOutMenuItem, MenuAnchor) -> Unit)? = null,
+    firstItemFocusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
-    val focusRequester = remember { FocusRequester() }
+    if (visible) {
+        BackHandler { onDismiss() }
+    }
+    val totalItems = remember(sections) { sections.sumOf { it.items.size } }
+    val itemFocusRequesters = remember(totalItems, firstItemFocusRequester) {
+        List(totalItems) { index ->
+            if (index == 0 && firstItemFocusRequester != null) {
+                firstItemFocusRequester
+            } else {
+                FocusRequester()
+            }
+        }
+    }
     var isFirstItem = true
+    var focusedIndex by remember { mutableStateOf(0) }
 
     LaunchedEffect(visible) {
-        if (visible) {
-            focusRequester.requestFocus()
+        if (visible && itemFocusRequesters.isNotEmpty()) {
+            itemFocusRequesters.first().requestFocus()
         }
     }
 
@@ -237,14 +339,22 @@ fun PlayerSlideOutMenuSectioned(
         val density = LocalDensity.current
         val menuWidth = 220.dp
         val menuHeight = 400.dp // Sectioned menus are taller
+        var measuredWidthPx by remember { mutableStateOf<Float?>(null) }
+        var measuredHeightPx by remember { mutableStateOf<Float?>(null) }
+        val menuWidthPx = with(density) { measuredWidthPx ?: menuWidth.toPx() }
+        val menuHeightPx = with(density) { measuredHeightPx ?: menuHeight.toPx() }
 
         // Calculate menu position based on anchor
         val offsetX = if (anchor != null) {
             with(density) {
                 val anchorPx = anchor.x.toPx()
-                val menuWidthPx = menuWidth.toPx()
                 val maxWidthPx = maxWidth.toPx()
-                val targetX = (anchorPx - menuWidthPx / 2).coerceIn(16f, maxWidthPx - menuWidthPx - 16f)
+                val rawX = when (anchor.alignment) {
+                    MenuAnchorAlignment.BottomStart -> anchorPx
+                    MenuAnchorAlignment.BottomEnd -> anchorPx - menuWidthPx
+                }
+                val maxX = max(16f, maxWidthPx - menuWidthPx - 16f)
+                val targetX = rawX.coerceIn(16f, maxX)
                 targetX.toInt()
             }
         } else {
@@ -254,7 +364,11 @@ fun PlayerSlideOutMenuSectioned(
         val offsetY = if (anchor != null) {
             with(density) {
                 val anchorPx = anchor.y.toPx()
-                val targetY = (anchorPx - menuHeight.toPx() - 16.dp.toPx()).coerceAtLeast(48f)
+                val targetY = if (anchor.placement == MenuAnchorPlacement.Below) {
+                    anchorPx + 12.dp.toPx()
+                } else {
+                    (anchorPx - menuHeightPx).coerceAtLeast(48f)
+                }
                 targetY.toInt()
             }
         } else {
@@ -262,7 +376,14 @@ fun PlayerSlideOutMenuSectioned(
         }
 
         val transformOrigin = if (anchor != null) {
-            TransformOrigin(0.5f, 1f)
+            when (anchor.alignment) {
+                MenuAnchorAlignment.BottomStart -> {
+                    if (anchor.placement == MenuAnchorPlacement.Below) TransformOrigin(0f, 0f) else TransformOrigin(0f, 1f)
+                }
+                MenuAnchorAlignment.BottomEnd -> {
+                    if (anchor.placement == MenuAnchorPlacement.Below) TransformOrigin(1f, 0f) else TransformOrigin(1f, 1f)
+                }
+            }
         } else {
             TransformOrigin(1f, 0.5f)
         }
@@ -298,6 +419,28 @@ fun PlayerSlideOutMenuSectioned(
             Column(
                 modifier = Modifier
                     .widthIn(min = 180.dp, max = 280.dp)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (event.key) {
+                            Key.DirectionUp -> {
+                                if (focusedIndex > 0) {
+                                    itemFocusRequesters[focusedIndex - 1].requestFocus()
+                                }
+                                true
+                            }
+                            Key.DirectionDown -> {
+                                if (focusedIndex < totalItems - 1) {
+                                    itemFocusRequesters[focusedIndex + 1].requestFocus()
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                    .onGloballyPositioned { coordinates ->
+                        measuredWidthPx = coordinates.size.width.toFloat()
+                        measuredHeightPx = coordinates.size.height.toFloat()
+                    }
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -322,6 +465,7 @@ fun PlayerSlideOutMenuSectioned(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
+                    var startIndex = 0
                     sections.forEach { section ->
                         // Section header
                         item(key = "header_${section.title}") {
@@ -339,19 +483,45 @@ fun PlayerSlideOutMenuSectioned(
                             )
                         }
 
-                        items(section.items, key = { "${section.title}_${it.text}" }) { item ->
+                        itemsIndexed(section.items, key = { _, item -> "${section.title}_${item.text}" }) { index, item ->
+                            val globalIndex = startIndex + index
                             val itemFocusRequester = if (isFirstItem) {
                                 isFirstItem = false
-                                focusRequester
+                                itemFocusRequesters.first()
                             } else {
-                                remember { FocusRequester() }
+                                itemFocusRequesters[globalIndex]
+                            }
+                            val itemModifier = if (onItemAnchorChanged != null) {
+                                Modifier.onGloballyPositioned { coordinates ->
+                                    val position = coordinates.positionInRoot()
+                                    val size = coordinates.size
+                                    with(density) {
+                                        onItemAnchorChanged(
+                                            item,
+                                            MenuAnchor(
+                                                x = (position.x + size.width).toDp(),
+                                                y = position.y.toDp(),
+                                                alignment = MenuAnchorAlignment.BottomStart,
+                                                placement = MenuAnchorPlacement.Below,
+                                            ),
+                                        )
+                                    }
+                                }
+                            } else {
+                                Modifier
                             }
                             SlideOutMenuItemRow(
                                 item = item,
+                                isFirst = globalIndex == 0,
+                                isLast = globalIndex == totalItems - 1,
                                 onDismiss = onDismiss,
-                                modifier = Modifier.focusRequester(itemFocusRequester),
+                                leftFocusRequester = leftFocusRequester,
+                                rightFocusRequester = rightFocusRequester,
+                                onFocused = { focusedIndex = globalIndex },
+                                modifier = itemModifier.focusRequester(itemFocusRequester),
                             )
                         }
+                        startIndex += section.items.size
                     }
                 }
             }
@@ -362,13 +532,20 @@ fun PlayerSlideOutMenuSectioned(
 @Composable
 private fun SlideOutMenuItemRow(
     item: SlideOutMenuItem,
+    isFirst: Boolean,
+    isLast: Boolean,
     onDismiss: () -> Unit,
+    leftFocusRequester: FocusRequester?,
+    rightFocusRequester: FocusRequester?,
+    onFocused: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = {
             item.onClick()
-            onDismiss()
+            if (item.dismissOnClick) {
+                onDismiss()
+            }
         },
         enabled = item.enabled,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(4.dp)),
@@ -377,7 +554,49 @@ private fun SlideOutMenuItemRow(
             focusedContainerColor = Color.White.copy(alpha = 0.2f),
             disabledContainerColor = Color.Transparent,
         ),
-        modifier = modifier.padding(horizontal = 4.dp),
+        modifier = modifier
+            .padding(horizontal = 4.dp)
+            .onFocusChanged { state ->
+                if (state.isFocused) {
+                    onFocused?.invoke()
+                }
+            }
+            .focusProperties {
+                left = leftFocusRequester ?: FocusRequester.Cancel
+                right = rightFocusRequester ?: FocusRequester.Cancel
+                if (isFirst) {
+                    up = FocusRequester.Cancel
+                }
+                if (isLast) {
+                    down = FocusRequester.Cancel
+                }
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) {
+                    return@onPreviewKeyEvent false
+                }
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        if (leftFocusRequester != null) {
+                            leftFocusRequester.requestFocus()
+                            true
+                        } else {
+                            true
+                        }
+                    }
+                    Key.DirectionRight -> {
+                        if (rightFocusRequester != null) {
+                            rightFocusRequester.requestFocus()
+                            true
+                        } else {
+                            true
+                        }
+                    }
+                    Key.DirectionUp -> false
+                    Key.DirectionDown -> false
+                    else -> false
+                }
+            },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

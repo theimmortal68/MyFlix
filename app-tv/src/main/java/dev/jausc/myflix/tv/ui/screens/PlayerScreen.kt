@@ -126,6 +126,8 @@ import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
 import dev.jausc.myflix.tv.ui.components.MenuAnchor
+import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
+import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
@@ -1071,6 +1073,7 @@ private fun TvPlayerControlsOverlay(
                         label = "Audio",
                         icon = Icons.AutoMirrored.Outlined.VolumeUp,
                         focusRequester = settingsRowFocusRequester,
+                        anchorAlignment = MenuAnchorAlignment.BottomStart,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1088,6 +1091,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Subtitles",
                         icon = Icons.Outlined.ClosedCaption,
+                        anchorAlignment = MenuAnchorAlignment.BottomStart,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1105,6 +1109,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Sub Style",
                         icon = Icons.Outlined.FormatSize,
+                        anchorAlignment = MenuAnchorAlignment.BottomStart,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1229,6 +1234,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Speed",
                         icon = Icons.Outlined.Speed,
+                        anchorAlignment = MenuAnchorAlignment.BottomEnd,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1246,6 +1252,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Display",
                         icon = Icons.Outlined.AspectRatio,
+                        anchorAlignment = MenuAnchorAlignment.BottomEnd,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1263,6 +1270,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Quality",
                         icon = Icons.Outlined.HighQuality,
+                        anchorAlignment = MenuAnchorAlignment.BottomEnd,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1613,6 +1621,7 @@ private fun TvActionButton(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     focusRequester: FocusRequester? = null,
+    anchorAlignment: MenuAnchorAlignment = MenuAnchorAlignment.BottomEnd,
     onDownPressed: (() -> Boolean)? = null,
     onClickWithPosition: ((MenuAnchor) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
@@ -1642,8 +1651,10 @@ private fun TvActionButton(
                 val size = coordinates.size
                 with(density) {
                     buttonPosition = MenuAnchor(
-                        x = (position.x + size.width / 2).toDp(),
-                        y = position.y.toDp(),
+                        x = (position.x + size.width).toDp(),
+                        y = (position.y + size.height).toDp(),
+                        alignment = anchorAlignment,
+                        placement = MenuAnchorPlacement.Above,
                     )
                 }
             }

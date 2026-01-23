@@ -16,13 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.ViewModule
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,8 +37,9 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -53,13 +53,17 @@ import dev.jausc.myflix.core.common.model.SeriesStatusFilter
 import dev.jausc.myflix.core.common.model.SortOrder
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
-import dev.jausc.myflix.tv.ui.components.TvDropdownMenu
-import dev.jausc.myflix.tv.ui.components.TvDropdownMenuItem
-import dev.jausc.myflix.tv.ui.components.TvDropdownMenuItemWithCheck
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
+import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
+import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
- * Icon-based filter bar for library screens with inline dropdown menus.
+ * Icon-based filter bar for library screens with slide-out menus.
  *
  * Layout: Title | ItemCount | Spacer | [Poster][Thumbnail] | [Filter][Sort][Shuffle]
  */
@@ -69,17 +73,12 @@ fun LibraryFilterBar(
     totalItems: Int,
     loadedItems: Int,
     filterState: LibraryFilterState,
-    availableGenres: List<String>,
-    availableParentalRatings: List<String>,
-    collectionType: String?,
     onViewModeChange: (LibraryViewMode) -> Unit,
-    onSortChange: (LibrarySortOption, SortOrder) -> Unit,
-    onFilterChange: (WatchedFilter, Float?, YearRange, SeriesStatusFilter) -> Unit,
-    onGenreToggle: (String) -> Unit,
-    onClearGenres: () -> Unit,
-    onParentalRatingToggle: (String) -> Unit,
-    onClearParentalRatings: () -> Unit,
     onShuffleClick: () -> Unit,
+    onFilterMenuRequested: () -> Unit,
+    onSortMenuRequested: () -> Unit,
+    onFilterAnchorChanged: (MenuAnchor) -> Unit,
+    onSortAnchorChanged: (MenuAnchor) -> Unit,
     modifier: Modifier = Modifier,
     onUpNavigation: () -> Unit = {},
     firstButtonFocusRequester: FocusRequester? = null,
@@ -93,9 +92,7 @@ fun LibraryFilterBar(
     val sortFocusRequester = remember { FocusRequester() }
     val shuffleFocusRequester = remember { FocusRequester() }
 
-    // Dropdown states
-    var showSortDropdown by remember { mutableStateOf(false) }
-    var showFilterDropdown by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
 
     Row(
         modifier = modifier
@@ -170,12 +167,27 @@ fun LibraryFilterBar(
         Spacer(modifier = Modifier.width(16.dp))
 
         // Filter button with dropdown
-        Box {
+        Box(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                val size = coordinates.size
+                with(density) {
+                    onFilterAnchorChanged(
+                        MenuAnchor(
+                            x = (position.x + size.width).toDp(),
+                            y = (position.y + size.height).toDp(),
+                            alignment = MenuAnchorAlignment.BottomEnd,
+                            placement = MenuAnchorPlacement.Below,
+                        ),
+                    )
+                }
+            },
+        ) {
             FilterBarButton(
                 icon = Icons.Outlined.FilterAlt,
                 contentDescription = "Filter",
                 isSelected = filterState.hasActiveFilters,
-                onClick = { showFilterDropdown = true },
+                onClick = onFilterMenuRequested,
                 modifier = Modifier
                     .focusRequester(filterFocusRequester)
                     .focusProperties {
@@ -184,42 +196,30 @@ fun LibraryFilterBar(
                         down = gridFocusRequester ?: FocusRequester.Default
                     },
             )
-
-            FilterDropdownMenu(
-                expanded = showFilterDropdown,
-                currentWatchedFilter = filterState.watchedFilter,
-                currentRatingFilter = filterState.ratingFilter,
-                currentYearRange = filterState.yearRange,
-                currentSeriesStatus = filterState.seriesStatus,
-                availableGenres = availableGenres,
-                selectedGenres = filterState.selectedGenres,
-                availableParentalRatings = availableParentalRatings,
-                selectedParentalRatings = filterState.selectedParentalRatings,
-                showSeriesStatusFilter = collectionType == "tvshows",
-                onGenreToggle = onGenreToggle,
-                onClearGenres = onClearGenres,
-                onParentalRatingToggle = onParentalRatingToggle,
-                onClearParentalRatings = onClearParentalRatings,
-                onFilterChange = { watched, rating ->
-                    onFilterChange(watched, rating, filterState.yearRange, filterState.seriesStatus)
-                },
-                onYearRangeChange = { range ->
-                    onFilterChange(filterState.watchedFilter, filterState.ratingFilter, range, filterState.seriesStatus)
-                },
-                onSeriesStatusChange = { status ->
-                    onFilterChange(filterState.watchedFilter, filterState.ratingFilter, filterState.yearRange, status)
-                },
-                onDismiss = { showFilterDropdown = false },
-            )
         }
 
         // Sort button with dropdown
-        Box {
+        Box(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                val size = coordinates.size
+                with(density) {
+                    onSortAnchorChanged(
+                        MenuAnchor(
+                            x = (position.x + size.width).toDp(),
+                            y = (position.y + size.height).toDp(),
+                            alignment = MenuAnchorAlignment.BottomEnd,
+                            placement = MenuAnchorPlacement.Below,
+                        ),
+                    )
+                }
+            },
+        ) {
             FilterBarButton(
                 icon = Icons.AutoMirrored.Outlined.Sort,
                 contentDescription = "Sort",
                 isSelected = false,
-                onClick = { showSortDropdown = true },
+                onClick = onSortMenuRequested,
                 modifier = Modifier
                     .focusRequester(sortFocusRequester)
                     .focusProperties {
@@ -227,14 +227,6 @@ fun LibraryFilterBar(
                         right = shuffleFocusRequester
                         down = gridFocusRequester ?: FocusRequester.Default
                     },
-            )
-
-            SortDropdownMenu(
-                expanded = showSortDropdown,
-                currentSortBy = filterState.sortBy,
-                currentSortOrder = filterState.sortOrder,
-                onSortChange = onSortChange,
-                onDismiss = { showSortDropdown = false },
             )
         }
 
@@ -259,57 +251,54 @@ fun LibraryFilterBar(
  * Sort dropdown menu anchored to button.
  */
 @Composable
-private fun SortDropdownMenu(
-    expanded: Boolean,
+internal fun LibrarySortMenu(
+    visible: Boolean,
     currentSortBy: LibrarySortOption,
     currentSortOrder: SortOrder,
     onSortChange: (LibrarySortOption, SortOrder) -> Unit,
     onDismiss: () -> Unit,
+    anchor: MenuAnchor?,
 ) {
-    val itemTextStyle = MaterialTheme.typography.bodySmall
-    TvDropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        offset = DpOffset(0.dp, 4.dp),
-    ) {
-        // Sort options
-        LibrarySortOption.entries.forEach { option ->
-            val isSelected = option == currentSortBy
-            TvDropdownMenuItemWithCheck(
-                text = option.label,
-                isSelected = isSelected,
-                textStyle = itemTextStyle,
-                onClick = {
-                    onSortChange(option, currentSortOrder)
-                    onDismiss()
+    PlayerSlideOutMenuSectioned(
+        visible = visible,
+        title = "Sort",
+        sections = listOf(
+            SlideOutMenuSection(
+                title = "Sort By",
+                items = LibrarySortOption.entries.map { option ->
+                    SlideOutMenuItem(
+                        text = option.label,
+                        selected = option == currentSortBy,
+                        onClick = {
+                            onSortChange(option, currentSortOrder)
+                        },
+                    )
                 },
-            )
-        }
-
-        HorizontalDivider(color = TvColors.SurfaceElevated)
-
-        // Sort order options
-        SortOrder.entries.forEach { order ->
-            val isSelected = order == currentSortOrder
-            TvDropdownMenuItemWithCheck(
-                text = order.label,
-                isSelected = isSelected,
-                textStyle = itemTextStyle,
-                onClick = {
-                    onSortChange(currentSortBy, order)
-                    onDismiss()
+            ),
+            SlideOutMenuSection(
+                title = "Order",
+                items = SortOrder.entries.map { order ->
+                    SlideOutMenuItem(
+                        text = order.label,
+                        selected = order == currentSortOrder,
+                        onClick = {
+                            onSortChange(currentSortBy, order)
+                        },
+                    )
                 },
-            )
-        }
-    }
+            ),
+        ),
+        onDismiss = onDismiss,
+        anchor = anchor,
+    )
 }
 
 /**
  * Filter dropdown menu anchored to button.
  */
 @Composable
-private fun FilterDropdownMenu(
-    expanded: Boolean,
+internal fun LibraryFilterMenu(
+    visible: Boolean,
     currentWatchedFilter: WatchedFilter,
     currentRatingFilter: Float?,
     currentYearRange: YearRange,
@@ -327,25 +316,19 @@ private fun FilterDropdownMenu(
     onYearRangeChange: (YearRange) -> Unit,
     onSeriesStatusChange: (SeriesStatusFilter) -> Unit,
     onDismiss: () -> Unit,
+    anchor: MenuAnchor?,
 ) {
-    val headerStyle = MaterialTheme.typography.titleSmall
-    val itemTextStyle = MaterialTheme.typography.bodySmall
-    val submenuOffset = DpOffset(220.dp, 0.dp)
-    var showWatchedMenu by remember { mutableStateOf(false) }
-    var showRatingMenu by remember { mutableStateOf(false) }
-    var showYearMenu by remember { mutableStateOf(false) }
-    var showGenreMenu by remember { mutableStateOf(false) }
-    var showParentalMenu by remember { mutableStateOf(false) }
-    var showSeriesStatusMenu by remember { mutableStateOf(false) }
+    var activeSubmenu by remember { mutableStateOf<LibraryFilterSubmenu?>(null) }
+    val submenuAnchors = remember { mutableStateMapOf<LibraryFilterSubmenu, MenuAnchor>() }
+    val mainMenuFocusRequester = remember { FocusRequester() }
+    val submenuFocusRequester = remember { FocusRequester() }
 
-    val closeAllSubmenus = {
-        showWatchedMenu = false
-        showRatingMenu = false
-        showYearMenu = false
-        showGenreMenu = false
-        showParentalMenu = false
-        showSeriesStatusMenu = false
+    LaunchedEffect(visible) {
+        if (!visible) {
+            activeSubmenu = null
+        }
     }
+
     val ratingOptions = listOf(
         null to "Any Rating",
         5f to "5+ Rating",
@@ -365,263 +348,201 @@ private fun FilterDropdownMenu(
             add(YearRange(year, year) to year.toString())
         }
     }
-
-    TvDropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        offset = DpOffset(0.dp, 4.dp),
-    ) {
-        LaunchedEffect(expanded) {
-            if (!expanded) {
-                closeAllSubmenus()
-            }
-        }
-
-        Box {
-            SubMenuItem(
-                label = "Watched Status",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showWatchedMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showWatchedMenu,
-                onDismissRequest = { showWatchedMenu = false },
-                offset = submenuOffset,
-            ) {
-                WatchedFilter.entries.forEach { filter ->
-                    val isSelected = filter == currentWatchedFilter
-                    TvDropdownMenuItemWithCheck(
-                        text = filter.label,
-                        isSelected = isSelected,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showWatchedMenu = false },
-                        onClick = {
-                            onFilterChange(filter, currentRatingFilter)
-                            onDismiss()
-                        },
-                    )
-                }
-            }
-        }
-
-        Box {
-            SubMenuItem(
-                label = "Minimum Rating",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showRatingMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showRatingMenu,
-                onDismissRequest = { showRatingMenu = false },
-                offset = submenuOffset,
-            ) {
-                ratingOptions.forEach { (rating, label) ->
-                    val isSelected = currentRatingFilter == rating
-                    TvDropdownMenuItemWithCheck(
-                        text = label,
-                        isSelected = isSelected,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showRatingMenu = false },
-                        onClick = {
-                            onFilterChange(currentWatchedFilter, rating)
-                            onDismiss()
-                        },
-                    )
-                }
-            }
-        }
-
-        Box {
-            SubMenuItem(
-                label = "Year",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showYearMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showYearMenu,
-                onDismissRequest = { showYearMenu = false },
-                offset = submenuOffset,
-            ) {
-                yearOptions.forEach { (range, label) ->
-                    val isSelected = range == currentYearRange
-                    TvDropdownMenuItemWithCheck(
-                        text = label,
-                        isSelected = isSelected,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showYearMenu = false },
-                        onClick = {
-                            onYearRangeChange(range)
-                            onDismiss()
-                        },
-                    )
-                }
-            }
-        }
-
-        Box {
-            SubMenuItem(
-                label = "Genres",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showGenreMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showGenreMenu,
-                onDismissRequest = { showGenreMenu = false },
-                offset = submenuOffset,
-            ) {
-                val sortedGenres = availableGenres.sorted()
-                if (sortedGenres.isEmpty()) {
-                    TvDropdownMenuItem(
-                        text = "No genres available",
-                        onClick = {},
-                        enabled = false,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showGenreMenu = false },
-                    )
-                } else {
-                    TvDropdownMenuItemWithCheck(
-                        text = "All Genres",
-                        isSelected = selectedGenres.isEmpty(),
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showGenreMenu = false },
-                        onClick = {
-                            onClearGenres()
-                            onDismiss()
-                        },
-                    )
-                    sortedGenres.forEach { genre ->
-                        TvDropdownMenuItemWithCheck(
-                            text = genre,
-                            isSelected = selectedGenres.contains(genre),
-                            textStyle = itemTextStyle,
-                            onLeftPressed = { showGenreMenu = false },
-                            onClick = {
-                                onGenreToggle(genre)
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        Box {
-            SubMenuItem(
-                label = "Parental Rating",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showParentalMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showParentalMenu,
-                onDismissRequest = { showParentalMenu = false },
-                offset = submenuOffset,
-            ) {
-                val sortedRatings = availableParentalRatings.sorted()
-                if (sortedRatings.isEmpty()) {
-                    TvDropdownMenuItem(
-                        text = "No ratings available",
-                        onClick = {},
-                        enabled = false,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showParentalMenu = false },
-                    )
-                } else {
-                    TvDropdownMenuItemWithCheck(
-                        text = "All Ratings",
-                        isSelected = selectedParentalRatings.isEmpty(),
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showParentalMenu = false },
-                        onClick = {
-                            onClearParentalRatings()
-                            onDismiss()
-                        },
-                    )
-                    sortedRatings.forEach { rating ->
-                        TvDropdownMenuItemWithCheck(
-                            text = rating,
-                            isSelected = selectedParentalRatings.contains(rating),
-                            textStyle = itemTextStyle,
-                            onLeftPressed = { showParentalMenu = false },
-                            onClick = {
-                                onParentalRatingToggle(rating)
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        // Series Status filter (only shown for TV shows library)
+    val sortedGenres = availableGenres.sorted()
+    val sortedRatings = availableParentalRatings.sorted()
+    val submenuEntries = buildList {
+        add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Watched, "Watched Status"))
+        add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Rating, "Minimum Rating"))
+        add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Year, "Year"))
+        add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Genres, "Genres"))
+        add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Parental, "Parental Rating"))
         if (showSeriesStatusFilter) {
-            Box {
-                SubMenuItem(
-                    label = "Series Status",
-                    headerStyle = headerStyle,
-                    onClick = {
-                        closeAllSubmenus()
-                        showSeriesStatusMenu = true
-                    },
+            add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.SeriesStatus, "Series Status"))
+        }
+    }
+
+    PlayerSlideOutMenuSectioned(
+        visible = visible,
+        title = "Filter",
+        sections = listOf(
+            SlideOutMenuSection(
+                title = "Filters",
+                items = submenuEntries.map { entry ->
+                    SlideOutMenuItem(
+                        text = entry.label,
+                        dismissOnClick = false,
+                        onClick = { activeSubmenu = entry.submenu },
+                    )
+                },
+            ),
+        ),
+        onDismiss = onDismiss,
+        anchor = anchor,
+        onItemAnchorChanged = { item, itemAnchor ->
+            val entry = submenuEntries.firstOrNull { it.label == item.text }
+            if (entry != null) {
+                submenuAnchors[entry.submenu] = itemAnchor
+            }
+        },
+        firstItemFocusRequester = mainMenuFocusRequester,
+        rightFocusRequester = if (activeSubmenu != null) submenuFocusRequester else null,
+    )
+
+    val submenuAnchor = activeSubmenu?.let { submenuAnchors[it] } ?: anchor
+    when (activeSubmenu) {
+        LibraryFilterSubmenu.Watched -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Watched Status",
+                items = WatchedFilter.entries.map { filter ->
+                    SlideOutMenuItem(
+                        text = filter.label,
+                        selected = filter == currentWatchedFilter,
+                        onClick = { onFilterChange(filter, currentRatingFilter) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        LibraryFilterSubmenu.Rating -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Minimum Rating",
+                items = ratingOptions.map { (rating, label) ->
+                    SlideOutMenuItem(
+                        text = label,
+                        selected = currentRatingFilter == rating,
+                        onClick = { onFilterChange(currentWatchedFilter, rating) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        LibraryFilterSubmenu.Year -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Year",
+                items = yearOptions.map { (range, label) ->
+                    SlideOutMenuItem(
+                        text = label,
+                        selected = range == currentYearRange,
+                        onClick = { onYearRangeChange(range) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        LibraryFilterSubmenu.Genres -> {
+            val items = if (sortedGenres.isEmpty()) {
+                listOf(
+                    SlideOutMenuItem(
+                        text = "No genres available",
+                        enabled = false,
+                        onClick = {},
+                    ),
                 )
-                TvDropdownMenu(
-                    expanded = showSeriesStatusMenu,
-                    onDismissRequest = { showSeriesStatusMenu = false },
-                    offset = submenuOffset,
-                ) {
-                    SeriesStatusFilter.entries.forEach { status ->
-                        val isSelected = status == currentSeriesStatus
-                        TvDropdownMenuItemWithCheck(
-                            text = status.label,
-                            isSelected = isSelected,
-                            textStyle = itemTextStyle,
-                            onLeftPressed = { showSeriesStatusMenu = false },
-                            onClick = {
-                                onSeriesStatusChange(status)
-                                onDismiss()
-                            },
-                        )
-                    }
+            } else {
+                listOf(
+                    SlideOutMenuItem(
+                        text = "All Genres",
+                        selected = selectedGenres.isEmpty(),
+                        onClick = { onClearGenres() },
+                    ),
+                ) + sortedGenres.map { genre ->
+                    SlideOutMenuItem(
+                        text = genre,
+                        selected = selectedGenres.contains(genre),
+                        onClick = { onGenreToggle(genre) },
+                    )
                 }
             }
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Genres",
+                items = items,
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
         }
+        LibraryFilterSubmenu.Parental -> {
+            val items = if (sortedRatings.isEmpty()) {
+                listOf(
+                    SlideOutMenuItem(
+                        text = "No ratings available",
+                        enabled = false,
+                        onClick = {},
+                    ),
+                )
+            } else {
+                listOf(
+                    SlideOutMenuItem(
+                        text = "All Ratings",
+                        selected = selectedParentalRatings.isEmpty(),
+                        onClick = { onClearParentalRatings() },
+                    ),
+                ) + sortedRatings.map { rating ->
+                    SlideOutMenuItem(
+                        text = rating,
+                        selected = selectedParentalRatings.contains(rating),
+                        onClick = { onParentalRatingToggle(rating) },
+                    )
+                }
+            }
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Parental Rating",
+                items = items,
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        LibraryFilterSubmenu.SeriesStatus -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Series Status",
+                items = SeriesStatusFilter.entries.map { status ->
+                    SlideOutMenuItem(
+                        text = status.label,
+                        selected = status == currentSeriesStatus,
+                        onClick = { onSeriesStatusChange(status) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        null -> Unit
     }
 }
 
-@Composable
-private fun SubMenuItem(
-    label: String,
-    headerStyle: TextStyle,
-    onClick: () -> Unit,
-) {
-    TvDropdownMenuItem(
-        text = label,
-        onClick = onClick,
-        textStyle = headerStyle,
-        onRightPressed = onClick,
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-        },
-    )
+private enum class LibraryFilterSubmenu {
+    Watched,
+    Rating,
+    Year,
+    Genres,
+    Parental,
+    SeriesStatus,
 }
+
+private data class LibraryFilterSubmenuEntry(
+    val submenu: LibraryFilterSubmenu,
+    val label: String,
+)
 
 /**
  * Unified button component for the filter bar.
