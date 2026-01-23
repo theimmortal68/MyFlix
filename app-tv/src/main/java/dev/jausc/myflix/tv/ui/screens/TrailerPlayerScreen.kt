@@ -41,6 +41,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import dev.jausc.myflix.core.common.youtube.YouTubeTrailerResolver
 import dev.jausc.myflix.core.common.youtube.YouTubeStream
 import dev.jausc.myflix.core.player.PlayerController
@@ -119,7 +122,11 @@ fun TrailerPlayerScreen(
     ) {
         when {
             isLoading -> LoadingOverlay(text = "Loading trailer...")
-            errorMessage != null -> ErrorOverlay(message = errorMessage!!, onBack = onBack)
+            errorMessage != null -> ErrorOverlay(
+                message = errorMessage!!,
+                onBack = onBack,
+                onOpenYouTube = { openYouTubeTrailer(context, videoKey) },
+            )
             resolvedStream != null -> {
                 TrailerVideoSurface(
                     playerController = playerController,
@@ -261,16 +268,41 @@ private fun LoadingOverlay(text: String) {
 }
 
 @Composable
-private fun ErrorOverlay(message: String, onBack: () -> Unit) {
+private fun ErrorOverlay(
+    message: String,
+    onBack: () -> Unit,
+    onOpenYouTube: () -> Unit,
+) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = message, color = Color.White)
             Spacer(modifier = Modifier.height(12.dp))
-            TvIconTextButton(
-                icon = Icons.Outlined.Close,
-                text = "Back",
-                onClick = onBack,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TvIconTextButton(
+                    icon = Icons.Outlined.PlayArrow,
+                    text = "Open in YouTube",
+                    onClick = onOpenYouTube,
+                )
+                TvIconTextButton(
+                    icon = Icons.Outlined.Close,
+                    text = "Back",
+                    onClick = onBack,
+                )
+            }
         }
+    }
+}
+
+private fun openYouTubeTrailer(context: android.content.Context, videoKey: String) {
+    val appUri = Uri.parse("vnd.youtube:$videoKey")
+    val webUri = Uri.parse("https://www.youtube.com/watch?v=$videoKey")
+    val intent = Intent(Intent.ACTION_VIEW, appUri)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, webUri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }

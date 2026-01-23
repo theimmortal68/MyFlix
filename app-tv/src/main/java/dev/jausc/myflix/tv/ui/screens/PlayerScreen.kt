@@ -1336,8 +1336,14 @@ private fun TvActionButton(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.08f),
-            focusedContainerColor = Color.White.copy(alpha = 0.18f),
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, accentColor),
+                shape = MaterialTheme.shapes.medium,
+            ),
         ),
         modifier = Modifier
             .height(56.dp)
@@ -1396,6 +1402,7 @@ private fun ChapterThumbRow(
             val isFirst = index == 0
             ChapterThumbCard(
                 chapter = chapter,
+                chapterIndex = index,
                 startMs = startMs,
                 trickplayProvider = trickplayProvider,
                 jellyfinClient = jellyfinClient,
@@ -1412,6 +1419,7 @@ private fun ChapterThumbRow(
 @Composable
 private fun ChapterThumbCard(
     chapter: JellyfinChapter,
+    chapterIndex: Int,
     startMs: Long,
     trickplayProvider: TrickplayProvider?,
     jellyfinClient: JellyfinClient?,
@@ -1420,6 +1428,7 @@ private fun ChapterThumbCard(
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
+    val hasChapterImage = jellyfinClient != null && itemId != null
     val hasPreview = trickplayProvider != null && jellyfinClient != null && itemId != null
     val label = PlayerUtils.formatTime(startMs)
 
@@ -1441,7 +1450,16 @@ private fun ChapterThumbCard(
             .height(118.dp),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (hasPreview) {
+            if (hasChapterImage) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(jellyfinClient!!.getChapterImageUrl(itemId!!, chapterIndex, maxWidth = 360))
+                        .build(),
+                    contentDescription = chapter.name ?: "Chapter",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (hasPreview) {
                 val provider = trickplayProvider!!
                 val tileIndex = provider.getTileImageIndex(startMs)
                 val (offsetX, offsetY) = provider.getTileOffset(startMs)
