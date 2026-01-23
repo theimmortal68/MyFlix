@@ -1772,9 +1772,10 @@ class JellyfinClient(
         }
 
         // Build transcoding profile - prefer HEVC if supported, otherwise H.264
-        val transcodingVideoCodec = when {
-            caps?.supportsHevc() == true -> "hevc,h264" // Prefer HEVC, fallback to H.264
-            else -> "h264"
+        val transcodingVideoCodec = if (caps?.supportsHevc() == true) {
+            "hevc,h264" // Prefer HEVC, fallback to H.264
+        } else {
+            "h264"
         }
 
         return DeviceProfile(
@@ -1925,7 +1926,6 @@ class JellyfinClient(
     private fun determineTranscodeReasons(source: MediaSource): List<String> {
         val reasons = mutableListOf<String>()
         val videoStream = source.mediaStreams?.find { it.type == "Video" }
-        val audioStream = source.mediaStreams?.find { it.type == "Audio" }
 
         if (videoStream != null) {
             val codec = videoStream.codec?.lowercase()
@@ -1978,11 +1978,11 @@ class JellyfinClient(
 
             // Check for HDR/Dolby Vision which may require transcoding
             val rangeType = videoStream.videoRangeType?.lowercase()
-            if (rangeType?.contains("dovi") == true || rangeType?.contains("dolby") == true) {
+            if ((rangeType?.contains("dovi") == true || rangeType?.contains("dolby") == true) &&
+                !reasons.contains("VideoProfileNotSupported")
+            ) {
                 // Dolby Vision often requires transcoding
-                if (!reasons.contains("VideoProfileNotSupported")) {
-                    reasons.add("VideoRangeTypeNotSupported")
-                }
+                reasons.add("VideoRangeTypeNotSupported")
             }
         }
 
@@ -2036,8 +2036,11 @@ class JellyfinClient(
             }
             // Ensure API key is in URL
             streamUrl = if (!url.contains("api_key=") && !url.contains("ApiKey=")) {
-                if (url.contains("?")) "$url&api_key=$accessToken"
-                else "$url?api_key=$accessToken"
+                if (url.contains("?")) {
+                    "$url&api_key=$accessToken"
+                } else {
+                    "$url?api_key=$accessToken"
+                }
             } else {
                 url
             }
