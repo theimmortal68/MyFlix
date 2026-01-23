@@ -49,7 +49,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.common.HeroContentBuilder
-import dev.jausc.myflix.core.viewmodel.HomeUiState
 import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
