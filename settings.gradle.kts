@@ -23,12 +23,12 @@ dependencyResolutionManagement {
 rootProject.name = "MyFlix"
 
 // Use local NewPipeExtractor v0.25.0 with PoTokenProvider support
-includeBuild("NewPipeExtractor") {
-    dependencySubstitution {
-        substitute(module("com.github.TeamNewPipe:NewPipeExtractor"))
-            .using(project(":extractor"))
-    }
-}
+// includeBuild("NewPipeExtractor") {
+//    dependencySubstitution {
+//        substitute(module("com.github.TeamNewPipe:NewPipeExtractor"))
+//            .using(project(":extractor"))
+//    }
+// }
 
 // App modules
 include(":app-tv")
