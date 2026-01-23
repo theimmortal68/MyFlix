@@ -16,7 +16,6 @@ import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.util.Rational
-import androidx.media3.common.C
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,8 +72,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.transformations
-import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
-import dev.jausc.myflix.core.viewmodel.PlayerUiState
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import androidx.media3.ui.PlayerView
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -126,7 +123,7 @@ fun PlayerScreen(
         val consumer = androidx.core.util.Consumer<androidx.core.app.PictureInPictureModeChangedInfo> { info ->
             isInPipMode = info.isInPictureInPictureMode
         }
-        
+
         // Initial check
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             isInPipMode = activity?.isInPictureInPictureMode == true
@@ -213,7 +210,7 @@ fun PlayerScreen(
             onPlayerActiveChange(true, Rational(16, 9))
         }
     }
-    
+
     DisposableEffect(Unit) {
         onDispose {
             onPlayerActiveChange(false, null)
@@ -391,9 +388,9 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable { 
+            .clickable {
                 if (!isInPipMode) {
-                    viewModel.toggleControls() 
+                    viewModel.toggleControls()
                 }
             },
     ) {

@@ -28,14 +28,12 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
-import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.mobile.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.core.common.model.DetailInfoItem
 import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
-import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons

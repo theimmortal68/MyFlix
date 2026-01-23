@@ -205,7 +205,7 @@ fun SeasonDetailScreen(
                                             )
                                         }
                                     }
-                            
+
                                     // External links
                                     if (externalLinks.isNotEmpty()) {
                                         item(key = "links") {
@@ -216,7 +216,7 @@ fun SeasonDetailScreen(
                                             )
                                         }
                                     }
-                            
+
                                     // Next Up
                                     state.nextUpEpisode?.let { nextUp ->
                                         item(key = "next_up") {
@@ -298,7 +298,7 @@ fun SeasonDetailScreen(
                                             )
                                         }
                                     }
-                            
+
                                     // Episodes row (selected season)
                                     if (state.episodes.isNotEmpty()) {
                                         item(key = "episodes") {

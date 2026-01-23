@@ -279,6 +279,7 @@ fun SeerrDiscoverByNetworkScreen(
     )
 }
 
+@Suppress("UnusedPrivateMember")
 @Composable
 private fun SeerrMediaListScreen(
     title: String,
@@ -1078,7 +1079,6 @@ private fun SeerrFilterableMediaListScreen(
         // Year selection bottom sheet
         if (showYearSheet) {
             val currentYear = java.time.Year.now().value
-            val yearOptions = listOf("Any") + (currentYear downTo 1990).map { it.toString() }
             PopupMenu(
                 params = BottomSheetParams(
                     title = "Year Range",
@@ -1200,7 +1200,7 @@ private suspend fun loadMobileTrendingWithFilters(
     seerrClient: SeerrClient,
     page: Int,
     mediaType: MediaTypeFilter,
-    genreIds: Set<Int>,
+    @Suppress("UnusedParameter") genreIds: Set<Int>,
     releaseStatus: ReleaseStatusFilter,
 ): Result<SeerrDiscoverResult> {
     return seerrClient.getTrending(page).map { result ->
