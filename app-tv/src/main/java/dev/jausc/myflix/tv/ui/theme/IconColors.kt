@@ -17,7 +17,7 @@ object IconColors {
     val Trailer = Color(0xFFFBBF24) // Yellow
     val MediaInfo = Color(0xFF3B82F6) // Blue
     val Info = Color(0xFF60A5FA) // Light Blue (for general info buttons)
-    
+
     // Navigation specific colors
     val NavHome = Color(0xFF60A5FA) // Blue
     val NavSearch = Color(0xFFA78BFA) // Purple

@@ -51,7 +51,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.tv.material3.Icon
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
-import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.core.common.model.actors
@@ -76,9 +75,7 @@ import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
-import dev.jausc.myflix.tv.ui.components.detail.getStudioLogoResource
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
-import dev.jausc.myflix.tv.ui.components.detail.SeriesQuickDetails
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.launch
@@ -168,11 +165,15 @@ fun SeriesDetailScreen(
         }
         trailerVideo?.url != null -> {
             val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else {
+            if (key.isBlank()) {
+                null
+            } else {
                 { onTrailerClick(key, trailerVideo.name) }
             }
         }
-        else -> null
+        else -> {
+            null
+        }
     }
 
     val featureSections = remember(state.specialFeatures, trailerItem?.id) {
@@ -1121,6 +1122,7 @@ private val networkMatchPriority = listOf(
  * Get embedded drawable resource ID for a network name.
  * Handles exact matches first, then tries partial matching for combined networks.
  */
+@Suppress("ReturnCount")
 private fun getNetworkLogoResource(name: String): Int? {
     // Try exact match first
     networkLogoResources[name]?.let { return it }

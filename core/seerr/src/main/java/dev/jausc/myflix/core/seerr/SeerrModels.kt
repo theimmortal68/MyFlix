@@ -887,6 +887,7 @@ fun List<SeerrMedia>.filterDiscoverable(): List<SeerrMedia> = filter { media ->
  * Movie studio (production company) for browsing.
  * Uses TMDB production company IDs.
  */
+@Suppress("DataClassContainsFunctions")
 data class SeerrStudio(
     val id: Int,
     val name: String,
@@ -900,6 +901,7 @@ data class SeerrStudio(
  * TV network for browsing.
  * Uses TMDB network IDs.
  */
+@Suppress("DataClassContainsFunctions")
 data class SeerrNetwork(
     val id: Int,
     val name: String,

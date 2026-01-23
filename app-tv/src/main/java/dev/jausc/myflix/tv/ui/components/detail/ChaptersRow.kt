@@ -51,6 +51,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Clicking a chapter seeks to that position in the video.
  * Matches home screen row styling with accent bar.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun ChaptersRow(
     chapters: List<JellyfinChapter>,

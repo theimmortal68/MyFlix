@@ -1,3 +1,5 @@
+@file:Suppress("MultilineRawStringIndentation")
+
 package dev.jausc.myflix.core.common.potoken
 
 import android.content.Context

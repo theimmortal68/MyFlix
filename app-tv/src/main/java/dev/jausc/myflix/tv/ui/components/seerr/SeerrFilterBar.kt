@@ -16,7 +16,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -99,7 +98,7 @@ fun buildYearOptions(): List<SeerrYearOption> {
         add(SeerrYearOption(currentYear - 4, currentYear, "Last 5 Years"))
         add(SeerrYearOption(currentYear - 9, currentYear, "Last 10 Years"))
         // Add individual years
-        (currentYear downTo (currentYear - 20)).forEach { year ->
+        (currentYear downTo currentYear - 20).forEach { year ->
             add(SeerrYearOption(year, year, year.toString()))
         }
     }

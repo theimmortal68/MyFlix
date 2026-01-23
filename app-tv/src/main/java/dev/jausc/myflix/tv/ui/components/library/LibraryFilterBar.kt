@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -385,7 +384,7 @@ internal fun LibraryFilterMenu(
             }
         },
         firstItemFocusRequester = mainMenuFocusRequester,
-        rightFocusRequester = if (activeSubmenu != null) submenuFocusRequester else null,
+        rightFocusRequester = activeSubmenu?.let { submenuFocusRequester },
     )
 
     val submenuAnchor = activeSubmenu?.let { submenuAnchors[it] } ?: anchor
@@ -526,7 +525,9 @@ internal fun LibraryFilterMenu(
                 leftFocusRequester = mainMenuFocusRequester,
             )
         }
-        null -> Unit
+        null -> {
+            // No submenu shown
+        }
     }
 }
 

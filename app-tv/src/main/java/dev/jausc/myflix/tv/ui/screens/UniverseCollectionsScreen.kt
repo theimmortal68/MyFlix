@@ -89,15 +89,13 @@ fun UniverseCollectionsScreen(
 
     // Focus on first item when loading completes
     LaunchedEffect(isLoading, collections) {
-        if (!isLoading && collections.isNotEmpty()) {
-            if (!didRequestInitialFocus) {
-                didRequestInitialFocus = true
-                delay(100)
-                try {
-                    firstItemFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                    // Focus request failed, ignore
-                }
+        if (!isLoading && collections.isNotEmpty() && !didRequestInitialFocus) {
+            didRequestInitialFocus = true
+            delay(100)
+            try {
+                firstItemFocusRequester.requestFocus()
+            } catch (_: Exception) {
+                // Focus request failed, ignore
             }
         }
     }

@@ -135,7 +135,7 @@ fun MediaInfoDialog(
                 ) { index, (label, rows) ->
                     val isFirst = index == 0
                     val isLast = index == allSections.lastIndex
-                    
+
                     MediaInfoSection(
                         label = label,
                         rows = rows,

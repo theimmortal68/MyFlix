@@ -6,6 +6,8 @@
     "WildcardImport",
     "NoWildcardImports",
     "LabeledExpression",
+    "UnusedParameter",
+    "UnusedPrivateMember",
 )
 
 package dev.jausc.myflix.tv.ui.components
@@ -77,11 +79,9 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
-import dev.jausc.myflix.core.common.model.formattedPremiereDate
 import dev.jausc.myflix.core.common.model.isEpisode
 import dev.jausc.myflix.core.common.model.isMovie
 import dev.jausc.myflix.core.common.model.isSeries
-import dev.jausc.myflix.core.common.model.isUpcomingEpisode
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.theme.IconColors

@@ -519,15 +519,12 @@ class PlayerController(
          */
         @RequiresApi(Build.VERSION_CODES.M)
         private fun getDisplay(context: Context): Display? {
-            return when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                    context.display
-                }
-                else -> {
-                    val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                    @Suppress("DEPRECATION")
-                    windowManager.defaultDisplay
-                }
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.display
+            } else {
+                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay
             }
         }
     }

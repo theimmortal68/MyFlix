@@ -128,7 +128,7 @@ fun SeerrSetupScreen(
             val host = hostWithPort.replace(Regex(":\\d+$"), "")
 
             // Check if host is an IP address (v4 or v6)
-            val isIpAddress = host.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$")) ||
+            val isIpAddress = host.matches(Regex("""^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$""")) ||
                 host.startsWith("[") || // IPv6
                 host == "localhost" ||
                 host == "127.0.0.1"

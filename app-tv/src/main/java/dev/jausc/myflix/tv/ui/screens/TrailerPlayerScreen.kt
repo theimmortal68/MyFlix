@@ -113,7 +113,7 @@ fun TrailerPlayerScreen(
                             onBack()
                             true
                         }
-                        else -> false
+                        else -> { false }
                     }
                 } else {
                     false
@@ -121,12 +121,16 @@ fun TrailerPlayerScreen(
             },
     ) {
         when {
-            isLoading -> LoadingOverlay(text = "Loading trailer...")
-            errorMessage != null -> ErrorOverlay(
-                message = errorMessage!!,
-                onBack = onBack,
-                onOpenYouTube = { openYouTubeTrailer(context, videoKey) },
-            )
+            isLoading -> {
+                LoadingOverlay(text = "Loading trailer...")
+            }
+            errorMessage != null -> {
+                ErrorOverlay(
+                    message = errorMessage!!,
+                    onBack = onBack,
+                    onOpenYouTube = { openYouTubeTrailer(context, videoKey) },
+                )
+            }
             resolvedStream != null -> {
                 TrailerVideoSurface(
                     playerController = playerController,

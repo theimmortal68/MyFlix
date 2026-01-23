@@ -897,7 +897,8 @@ private fun MobileSeerrRequestSection(
                     )
                     (1..seasonCount).forEach { season ->
                         val seasonStatus = seasonStatuses
-                            ?.find { it.seasonNumber == season }?.status
+                            ?.find { it.seasonNumber == season }
+                            ?.status
                         val statusColor = getMobileSeasonStatusColor(seasonStatus)
                         FilterChip(
                             selected = selectedSeasons.contains(season),

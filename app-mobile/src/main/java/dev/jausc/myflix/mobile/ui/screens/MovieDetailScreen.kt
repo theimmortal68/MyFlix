@@ -87,6 +87,7 @@ fun MovieDetailScreen(
     }
 
     // Build action for trailer button - prefer local, fallback to remote
+    @Suppress("UnusedPrivateProperty")
     val trailerAction: (() -> Unit)? = remember(trailerItem, remoteTrailer) {
         when {
             trailerItem != null -> {
@@ -97,7 +98,9 @@ fun MovieDetailScreen(
                     { onTrailerClick(key, remoteTrailer.name) }
                 }
             }
-            else -> null
+            else -> {
+                null
+            }
         }
     }
 

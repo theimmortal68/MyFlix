@@ -115,6 +115,7 @@ fun TvPopupContainer(
             TransformOrigin(0.5f, 0.5f) // Scale from center
         }
 
+        @Suppress("UnusedPrivateProperty")
         val alignment = if (anchor != null) Alignment.TopStart else Alignment.Center
 
         // Backdrop scrim

@@ -82,11 +82,15 @@ fun SeriesDetailScreen(
         }
         trailerVideo?.url != null -> {
             val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else {
+            if (key.isBlank()) {
+                null
+            } else {
                 { onTrailerClick(key, trailerVideo.name) }
             }
         }
-        else -> null
+        else -> {
+            null
+        }
     }
 
     // Cast & crew

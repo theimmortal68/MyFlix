@@ -152,9 +152,13 @@ fun NavigationRail(
             contentFocusRequester = contentFocusRequester,
             modifier = Modifier.focusRequester(collectionsFocusRequester),
             upFocusRequester = moviesFocusRequester,
-            downFocusRequester = if (showUniverses) universesFocusRequester
-                else if (showDiscover) discoverFocusRequester
-                else settingsFocusRequester,
+            downFocusRequester = if (showUniverses) {
+                universesFocusRequester
+            } else if (showDiscover) {
+                discoverFocusRequester
+            } else {
+                settingsFocusRequester
+            },
         )
 
         if (showUniverses) {

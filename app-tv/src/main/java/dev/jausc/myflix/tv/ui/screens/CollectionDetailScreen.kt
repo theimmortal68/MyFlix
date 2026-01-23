@@ -82,6 +82,7 @@ private const val ITEMS_ROW = HEADER_ROW + 1
  * Collection detail screen showing collection info and all items within it.
  * Plex-style hero layout with backdrop and 7-column grid of items.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun CollectionDetailScreen(
     collectionId: String,
@@ -162,11 +163,11 @@ fun CollectionDetailScreen(
             val hasBackdrop = !item.backdropImageTags.isNullOrEmpty()
             if (hasBackdrop) {
                 jellyfinClient.getBackdropUrl(item.id, item.backdropImageTags?.firstOrNull())
-            } else if (item.imageTags?.primary != null) {
-                // Fall back to primary image for gradient extraction
-                jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
             } else {
-                null
+                // Fall back to primary image for gradient extraction
+                item.imageTags?.primary?.let { primary ->
+                    jellyfinClient.getPrimaryImageUrl(item.id, primary)
+                }
             }
         }
     }
@@ -405,7 +406,7 @@ private fun ItemHeroContent(
                     color = TvColors.TextSecondary,
                 )
             }
-            
+
             item.officialRating?.let { rating ->
                  Box(
                     modifier = Modifier
@@ -422,7 +423,7 @@ private fun ItemHeroContent(
                     )
                 }
             }
-            
+
             item.communityRating?.let { rating ->
                  Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                      Icon(
@@ -508,6 +509,7 @@ private fun CollectionHeroContent(
 /**
  * Action buttons for collection detail screen.
  */
+@Suppress("UnusedParameter")
 @Composable
 private fun CollectionActionButtons(
     favorite: Boolean,
@@ -571,6 +573,7 @@ private fun CollectionActionButtons(
  * Fallback backdrop using the primary poster image when no backdrop is available.
  * Styled similarly to DetailBackdropLayer but positioned for portrait images.
  */
+@Suppress("UnusedPrivateMember")
 @Composable
 private fun CollectionPrimaryBackdrop(
     item: JellyfinItem,

@@ -1936,9 +1936,8 @@ private val LANGUAGE_OPTIONS = listOf(
 /**
  * Get display name for a language code.
  */
-private fun getLanguageDisplayName(code: String?): String {
-    return LANGUAGE_OPTIONS.find { it.first == code }?.second ?: code ?: "Server Default"
-}
+private fun getLanguageDisplayName(code: String?): String =
+    LANGUAGE_OPTIONS.find { it.first == code }?.second ?: code ?: "Server Default"
 
 @Composable
 private fun LanguageSelectionDialog(
@@ -2072,9 +2071,8 @@ private fun LanguageItem(
 /**
  * Get display name for a bitrate value.
  */
-private fun getBitrateDisplayName(bitrateMbps: Int): String {
-    return PlaybackOptions.getBitrateLabel(bitrateMbps)
-}
+private fun getBitrateDisplayName(bitrateMbps: Int): String =
+    PlaybackOptions.getBitrateLabel(bitrateMbps)
 
 @Composable
 private fun BitrateSelectionDialog(
@@ -2378,16 +2376,14 @@ private val SKIP_MODE_OPTIONS = listOf(
 /**
  * Get display name for a skip mode value.
  */
-private fun getSkipModeDisplayName(mode: String): String {
-    return SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
-}
+private fun getSkipModeDisplayName(mode: String): String =
+    SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 
 /**
  * Get display name for a refresh rate mode value.
  */
-private fun getRefreshRateModeDisplayName(mode: String): String {
-    return PlaybackOptions.getRefreshRateModeLabel(mode)
-}
+private fun getRefreshRateModeDisplayName(mode: String): String =
+    PlaybackOptions.getRefreshRateModeLabel(mode)
 
 @Composable
 private fun SkipModeSelectionDialog(

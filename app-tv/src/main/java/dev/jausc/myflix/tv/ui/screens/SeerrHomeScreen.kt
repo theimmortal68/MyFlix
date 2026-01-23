@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -101,11 +100,8 @@ import dev.jausc.myflix.core.seerr.SeerrNetworkRow
 import dev.jausc.myflix.core.seerr.SeerrStudio
 import dev.jausc.myflix.core.seerr.SeerrStudioRow
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
-import dev.jausc.myflix.core.seerr.SeerrRequest
-import dev.jausc.myflix.core.seerr.SeerrRequestRow
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrRowType
-import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry

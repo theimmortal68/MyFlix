@@ -162,7 +162,7 @@ fun DialogPopup(
             // Items list
             // Identify first and last focusable items to trap focus
             val dialogItems = remember(params.items) { params.items.filterIsInstance<DialogItem>() }
-            
+
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -191,10 +191,10 @@ fun DialogPopup(
                             } else {
                                 remember { FocusRequester() }
                             }
-                            
+
                             val isFirst = dialogItems.firstOrNull() == item
                             val isLast = dialogItems.lastOrNull() == item
-                            
+
                             DialogMenuItem(
                                 item = item,
                                 enabled = !waiting && item.enabled,

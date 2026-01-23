@@ -87,6 +87,7 @@ private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
 /**
  * Season detail screen with backdrop hero and season tabs.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun SeasonDetailScreen(
     state: DetailUiState,

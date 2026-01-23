@@ -278,6 +278,7 @@ fun SeerrDiscoverByNetworkScreen(
     )
 }
 
+@Suppress("UnusedPrivateMember")
 @Composable
 private fun SeerrMediaGridScreen(
     title: String,
@@ -910,6 +911,7 @@ private fun SeerrFilterableMediaGridScreen(
 // Filter Helper Functions
 // ============================================================================
 
+@Suppress("UnusedParameter")
 private suspend fun loadTrendingWithFilters(
     seerrClient: SeerrClient,
     page: Int,

@@ -48,7 +48,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.common.HeroContentBuilder
-import dev.jausc.myflix.core.viewmodel.HomeUiState
 import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -403,6 +402,7 @@ private data class RowData(
  * Main home content with hero section and scrollable rows.
  * Uses Wholphin's exact pattern for stable scroll behavior.
  */
+@Suppress("UnusedParameter")
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun HomeContent(

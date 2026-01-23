@@ -199,9 +199,8 @@ class DreamViewModel(
         }
     }
 
-    private fun formatCurrentTime(): String {
-        return LocalTime.now().format(timeFormatter)
-    }
+    private fun formatCurrentTime(): String =
+        LocalTime.now().format(timeFormatter)
 
     override fun onCleared() {
         super.onCleared()

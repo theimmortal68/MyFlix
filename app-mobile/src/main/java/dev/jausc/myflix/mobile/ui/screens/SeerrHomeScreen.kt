@@ -443,7 +443,9 @@ private fun buildSeerrMenuItems(
 ): List<MenuItemEntry> {
     return buildSeerrActionItems(media, actions).mapNotNull { entry ->
         when (entry) {
-            is SeerrActionDivider -> MenuItemDivider
+            is SeerrActionDivider -> {
+                MenuItemDivider
+            }
             is SeerrActionItem -> {
                 if (entry.enabled) {
                     MenuItem(
@@ -479,6 +481,7 @@ private fun SeerrQuickActionChip(
     }
 }
 
+@Suppress("UnusedPrivateMember")
 @Composable
 private fun MobileSeerrStatusBadge(status: Int?) {
     val (color, icon, text) = when (status) {

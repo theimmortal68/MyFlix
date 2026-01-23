@@ -52,6 +52,7 @@ node_modules/
 package-lock.json
 
 # Claude Code / AI assistant config
+CLAUDE.md
 
 .claude/
 

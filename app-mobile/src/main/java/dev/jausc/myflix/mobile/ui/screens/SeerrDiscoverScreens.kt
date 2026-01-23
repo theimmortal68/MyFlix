@@ -892,7 +892,7 @@ private fun SeerrFilterableMediaListScreen(
                         selected = minRating != null,
                         onClick = { showRatingSheet = true },
                         label = { Text(minRating?.let { "Rating: ${it.toInt()}+" } ?: "Rating") },
-                        leadingIcon = if (minRating != null) {
+                        leadingIcon = minRating?.let {
                             {
                                 Icon(
                                     imageVector = Icons.Outlined.Check,
@@ -900,8 +900,6 @@ private fun SeerrFilterableMediaListScreen(
                                     modifier = Modifier.size(16.dp),
                                 )
                             }
-                        } else {
-                            null
                         },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color(0xFFFBBF24).copy(alpha = 0.2f),

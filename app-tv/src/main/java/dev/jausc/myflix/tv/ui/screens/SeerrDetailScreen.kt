@@ -10,8 +10,6 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -109,6 +107,7 @@ fun SeerrDetailScreen(
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
+    @Suppress("UNUSED_VARIABLE")
     val context = LocalContext.current
 
     // Focus requester for the main action button
@@ -466,10 +465,8 @@ fun SeerrDetailScreen(
                                                 genres.forEach { genre ->
                                                     GenreChip(
                                                         name = genre.name,
-                                                        onClick = if (onNavigateGenre != null) {
-                                                            { onNavigateGenre(mediaType, genre.id, genre.name) }
-                                                        } else {
-                                                            null
+                                                        onClick = onNavigateGenre?.let { navigateGenre ->
+                                                            { navigateGenre(mediaType, genre.id, genre.name) }
                                                         },
                                                     )
                                                 }
@@ -631,7 +628,8 @@ fun SeerrDetailScreen(
                                                     val seasonNumber = index + 1
                                                     val selected = selectedSeasons.contains(seasonNumber)
                                                     val seasonStatus = currentMedia.mediaInfo?.seasons
-                                                        ?.find { it.seasonNumber == seasonNumber }?.status
+                                                        ?.find { it.seasonNumber == seasonNumber }
+                                                        ?.status
                                                     val statusColor = getSeasonStatusColor(seasonStatus)
                                                     Button(
                                                         onClick = {

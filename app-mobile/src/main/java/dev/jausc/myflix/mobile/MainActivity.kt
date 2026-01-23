@@ -85,21 +85,22 @@ sealed class DeepLinkData {
 private fun parseDeepLink(uri: Uri): DeepLinkData? {
     if (uri.scheme != "myflix") return null
 
-    return when (uri.host) {
-        "quickconnect" -> {
-            val serverUrl = uri.getQueryParameter("server")?.let {
-                try {
-                    URLDecoder.decode(it, "UTF-8")
-                } catch (e: Exception) {
-                    null
-                }
+    return if (uri.host == "quickconnect") {
+        val serverUrl = uri.getQueryParameter("server")?.let {
+            try {
+                URLDecoder.decode(it, "UTF-8")
+            } catch (e: Exception) {
+                null
             }
-            val code = uri.getQueryParameter("code")
-            if (serverUrl != null && code != null) {
-                DeepLinkData.QuickConnectAuthorize(serverUrl, code)
-            } else null
         }
-        else -> null
+        val code = uri.getQueryParameter("code")
+        if (serverUrl != null && code != null) {
+            DeepLinkData.QuickConnectAuthorize(serverUrl, code)
+        } else {
+            null
+        }
+    } else {
+        null
     }
 }
 
@@ -359,7 +360,9 @@ fun MyFlixMobileContent(
                         // Invalidate cache to refresh content
                         jellyfinClient.invalidateCache()
                     }
-                    else -> Unit
+                    else -> {
+                        // Unhandled event
+                    }
                 }
             }
         }

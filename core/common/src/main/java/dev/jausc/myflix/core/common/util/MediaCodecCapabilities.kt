@@ -24,7 +24,8 @@ import android.util.Size
  * }
  * ```
  */
-class MediaCodecCapabilities(context: Context) {
+@Suppress("UnusedPrivateProperty")
+class MediaCodecCapabilities(@Suppress("UNUSED_PARAMETER") context: Context) {
     private val mediaCodecList by lazy { MediaCodecList(MediaCodecList.REGULAR_CODECS) }
 
     // MIME types
@@ -250,6 +251,7 @@ class MediaCodecCapabilities(context: Context) {
     // ==================== Resolution Detection ====================
 
     /** Get maximum supported resolution for a codec */
+    @Suppress("LoopWithTooManyJumpStatements")
     fun getMaxResolution(mime: String): Size {
         var maxWidth = 0
         var maxHeight = 0

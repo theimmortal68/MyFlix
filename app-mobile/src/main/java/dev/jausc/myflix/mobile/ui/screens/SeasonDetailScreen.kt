@@ -65,6 +65,7 @@ import java.util.Locale
 /**
  * Season detail screen with seasons + episodes layout.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun SeasonDetailScreen(
     state: DetailUiState,
@@ -659,6 +660,7 @@ private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
     }
 }
 
+@Suppress("UnusedParameter")
 private fun buildSubtitleMenu(
     episode: JellyfinItem,
     selectedIndex: Int?,

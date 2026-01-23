@@ -280,7 +280,9 @@ fun MyFlixTvApp() {
                         jellyfinClient.getLibraries().onSuccess { libraries = it }
                         jellyfinClient.invalidateCache()
                     }
-                    else -> Unit
+                    else -> {
+                        // Unhandled event
+                    }
                 }
             }
         }
@@ -289,12 +291,14 @@ fun MyFlixTvApp() {
     // Centralized navigation handler
     val handleNavigation: (NavItem) -> Unit = { navItem ->
         when (navItem) {
-            NavItem.HOME -> navController.navigate("home") {
-                popUpTo("home") { inclusive = true }
+            NavItem.HOME -> {
+                navController.navigate("home") {
+                    popUpTo("home") { inclusive = true }
+                }
             }
-            NavItem.SEARCH -> navController.navigate("search")
-            NavItem.SETTINGS -> navController.navigate("settings")
-            NavItem.DISCOVER -> navController.navigate("seerr")
+            NavItem.SEARCH -> { navController.navigate("search") }
+            NavItem.SETTINGS -> { navController.navigate("settings") }
+            NavItem.DISCOVER -> { navController.navigate("seerr") }
             NavItem.MOVIES -> {
                 LibraryFinder.findMoviesLibrary(libraries)?.let {
                     navController.navigate(
@@ -309,8 +313,8 @@ fun MyFlixTvApp() {
                     )
                 } ?: navController.navigate("home")
             }
-            NavItem.COLLECTIONS -> navController.navigate("collections")
-            NavItem.UNIVERSES -> navController.navigate("universes")
+            NavItem.COLLECTIONS -> { navController.navigate("collections") }
+            NavItem.UNIVERSES -> { navController.navigate("universes") }
         }
     }
 

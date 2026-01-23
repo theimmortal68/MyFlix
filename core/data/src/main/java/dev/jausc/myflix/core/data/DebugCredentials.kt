@@ -35,6 +35,7 @@ object DebugCredentials {
      * 1. App's assets (bundled in APK)
      * 2. App's files directory (for runtime placement via adb push)
      */
+    @Suppress("ReturnCount")
     fun read(context: Context): Credentials? {
         // Try assets first (bundled in APK during debug builds)
         try {

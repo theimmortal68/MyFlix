@@ -1334,9 +1334,10 @@ private fun UpdateSettingItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = isClickable) {
-                when (state) {
-                    is UpdateState.Available -> onDownload(state.info)
-                    else -> onCheck()
+                if (state is UpdateState.Available) {
+                    onDownload(state.info)
+                } else {
+                    onCheck()
                 }
             }
             .padding(16.dp),
@@ -1394,16 +1395,14 @@ private val SKIP_MODE_OPTIONS = listOf(
 /**
  * Get display name for a skip mode value.
  */
-private fun getSkipModeDisplayName(mode: String): String {
-    return SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
-}
+private fun getSkipModeDisplayName(mode: String): String =
+    SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 
 /**
  * Get display name for a refresh rate mode value.
  */
-private fun getRefreshRateModeDisplayName(mode: String): String {
-    return PlaybackOptions.getRefreshRateModeLabel(mode)
-}
+private fun getRefreshRateModeDisplayName(mode: String): String =
+    PlaybackOptions.getRefreshRateModeLabel(mode)
 
 @Composable
 private fun SkipModeSelectionDialog(

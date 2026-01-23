@@ -62,6 +62,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 
 @Composable
+@Suppress("UnusedParameter")
 fun LibraryScreen(
     libraryId: String,
     libraryName: String,

@@ -32,6 +32,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Circular person card for cast and crew display.
  * Shows person photo with name and optional role below.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun PersonCard(
     person: JellyfinPerson,

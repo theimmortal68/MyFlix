@@ -24,6 +24,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Detail screen router that shows MovieDetailScreen or SeriesDetailScreen
  * based on the item type. Plex-style detail screens with backdrop hero.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun DetailScreen(
     itemId: String,

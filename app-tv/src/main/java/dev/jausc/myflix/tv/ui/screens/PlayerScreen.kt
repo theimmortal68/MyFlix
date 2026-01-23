@@ -6,6 +6,7 @@
     "WildcardImport",
     "NoWildcardImports",
     "LabeledExpression",
+    "UnusedPrivateMember",
 )
 
 package dev.jausc.myflix.tv.ui.screens
@@ -15,7 +16,6 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.media3.common.C
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -94,8 +93,6 @@ import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
-import dev.jausc.myflix.core.viewmodel.PlayerUiState
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*

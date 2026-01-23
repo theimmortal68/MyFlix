@@ -246,7 +246,7 @@ fun PlayerSlideOutMenu(
                                 }
                                 true
                             }
-                            else -> false
+                            else -> { false }
                         }
                     }
                     .onGloballyPositioned { coordinates ->
@@ -434,7 +434,7 @@ fun PlayerSlideOutMenuSectioned(
                                 }
                                 true
                             }
-                            else -> false
+                            else -> { false }
                         }
                     }
                     .onGloballyPositioned { coordinates ->
@@ -469,7 +469,7 @@ fun PlayerSlideOutMenuSectioned(
                     sections.forEach { section ->
                         // Capture startIndex for this section scope
                         val sectionStartIndex = startIndex
-                        
+
                         // Section header
                         item(key = "header_${section.title}") {
                             Text(
@@ -488,7 +488,7 @@ fun PlayerSlideOutMenuSectioned(
 
                         itemsIndexed(section.items, key = { _, item -> "${section.title}_${item.text}" }) { index, item ->
                             val globalIndex = sectionStartIndex + index
-                            
+
                             val itemModifier = if (onItemAnchorChanged != null) {
                                 Modifier.onGloballyPositioned { coordinates ->
                                     val position = coordinates.positionInRoot()
@@ -592,9 +592,9 @@ private fun SlideOutMenuItemRow(
                             true
                         }
                     }
-                    Key.DirectionUp -> false
-                    Key.DirectionDown -> false
-                    else -> false
+                    Key.DirectionUp -> { false }
+                    Key.DirectionDown -> { false }
+                    else -> { false }
                 }
             },
     ) {

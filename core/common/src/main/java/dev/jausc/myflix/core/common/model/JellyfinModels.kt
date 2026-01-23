@@ -472,6 +472,7 @@ enum class MediaSegmentAction {
  * A media segment (intro, outro, recap, etc.) for skip functionality.
  */
 @Serializable
+@Suppress("DataClassContainsFunctions")
 data class MediaSegment(
     @SerialName("Id") val id: String? = null,
     @SerialName("ItemId") val itemId: String,

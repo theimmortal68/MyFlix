@@ -352,35 +352,33 @@ fun PlayerScreen(
     // Handle WebSocket remote control commands
     LaunchedEffect(webSocketEvents) {
         webSocketEvents?.collect { event ->
-            when (event) {
-                is WebSocketEvent.PlaystateCommand -> {
-                    android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
-                    when (event.command) {
-                        PlaystateCommandType.PlayPause -> playerController.togglePause()
-                        PlaystateCommandType.Pause -> playerController.pause()
-                        PlaystateCommandType.Unpause -> playerController.resume()
-                        PlaystateCommandType.Stop -> {
-                            viewModel.stopPlayback(playerController.state.value.position)
-                            onBack()
+            if (event is WebSocketEvent.PlaystateCommand) {
+                android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
+                when (event.command) {
+                    PlaystateCommandType.PlayPause -> { playerController.togglePause() }
+                    PlaystateCommandType.Pause -> { playerController.pause() }
+                    PlaystateCommandType.Unpause -> { playerController.resume() }
+                    PlaystateCommandType.Stop -> {
+                        viewModel.stopPlayback(playerController.state.value.position)
+                        onBack()
+                    }
+                    PlaystateCommandType.Seek -> {
+                        event.seekPositionTicks?.let { ticks ->
+                            val positionMs = PlayerUtils.ticksToMs(ticks)
+                            playerController.seekTo(positionMs)
                         }
-                        PlaystateCommandType.Seek -> {
-                            event.seekPositionTicks?.let { ticks ->
-                                val positionMs = PlayerUtils.ticksToMs(ticks)
-                                playerController.seekTo(positionMs)
-                            }
-                        }
-                        PlaystateCommandType.Rewind -> playerController.seekRelative(-skipBackwardMs)
-                        PlaystateCommandType.FastForward -> playerController.seekRelative(skipForwardMs)
-                        PlaystateCommandType.NextTrack -> viewModel.playNextNow()
-                        PlaystateCommandType.PreviousTrack -> {
-                            if (playerController.state.value.position > 5000) {
-                                playerController.seekTo(0)
-                            }
+                    }
+                    PlaystateCommandType.Rewind -> { playerController.seekRelative(-skipBackwardMs) }
+                    PlaystateCommandType.FastForward -> { playerController.seekRelative(skipForwardMs) }
+                    PlaystateCommandType.NextTrack -> { viewModel.playNextNow() }
+                    PlaystateCommandType.PreviousTrack -> {
+                        if (playerController.state.value.position > 5000) {
+                            playerController.seekTo(0)
                         }
                     }
                 }
-                else -> Unit // Other events handled by MainActivity
             }
+            // Other events handled by MainActivity
         }
     }
 
@@ -625,15 +623,19 @@ private fun MpvSurfaceView(
         // Calculate size maintaining aspect ratio (letterbox/pillarbox)
         val containerAspect = containerWidth / containerHeight
         val (surfaceWidth, surfaceHeight) = when (displayMode) {
-            PlayerDisplayMode.FIT -> if (videoAspect > containerAspect) {
-                containerWidth to containerWidth / videoAspect
-            } else {
-                containerHeight * videoAspect to containerHeight
+            PlayerDisplayMode.FIT -> {
+                if (videoAspect > containerAspect) {
+                    containerWidth to containerWidth / videoAspect
+                } else {
+                    containerHeight * videoAspect to containerHeight
+                }
             }
-            PlayerDisplayMode.FILL -> if (videoAspect > containerAspect) {
-                containerHeight * videoAspect to containerHeight
-            } else {
-                containerWidth to containerWidth / videoAspect
+            PlayerDisplayMode.FILL -> {
+                if (videoAspect > containerAspect) {
+                    containerHeight * videoAspect to containerHeight
+                } else {
+                    containerWidth to containerWidth / videoAspect
+                }
             }
             PlayerDisplayMode.ZOOM -> {
                 val zoomFactor = 1.1f
@@ -644,7 +646,9 @@ private fun MpvSurfaceView(
                 }
                 base.first * zoomFactor to base.second * zoomFactor
             }
-            PlayerDisplayMode.STRETCH -> containerWidth to containerHeight
+            PlayerDisplayMode.STRETCH -> {
+                containerWidth to containerHeight
+            }
         }
 
         AndroidView(

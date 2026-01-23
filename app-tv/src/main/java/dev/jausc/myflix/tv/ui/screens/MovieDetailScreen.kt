@@ -56,7 +56,6 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
-import dev.jausc.myflix.core.common.model.directorNames
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
@@ -156,11 +155,15 @@ fun MovieDetailScreen(
         }
         trailerVideo?.url != null -> {
             val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else {
+            if (key.isBlank()) {
+                null
+            } else {
                 { onTrailerClick(key, trailerVideo.name) }
             }
         }
-        else -> null
+        else -> {
+            null
+        }
     }
 
     // Build categorized feature sections (excludes the trailer shown on play button)

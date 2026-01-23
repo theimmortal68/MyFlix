@@ -386,7 +386,7 @@ private fun getEditionImageResource(itemName: String, tags: List<String>?, path:
     val pathLower = path?.lowercase() ?: ""
 
     // Extract text from square brackets in path (e.g., "[Director's Cut]")
-    val bracketPattern = Regex("\\[([^\\]]+)\\]")
+    val bracketPattern = Regex("""\[([^\]]+)\]""")
     val pathBrackets = bracketPattern.findAll(pathLower).map { it.groupValues[1] }.toList()
 
     // Helper to check if any source contains the pattern
