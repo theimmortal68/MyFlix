@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -33,10 +34,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusGroup
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import coil3.compose.AsyncImage
@@ -48,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
@@ -76,6 +80,7 @@ import androidx.tv.material3.*
 import androidx.tv.material3.Border
 import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.JellyfinChapter
 import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
@@ -1248,47 +1253,18 @@ private fun TvPlayerControlsOverlay(
 
             if (showChaptersRow) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusProperties { up = settingsRowFocusRequester },
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    TvActionButton(
-                        label = "Chapters",
-                        icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                        accentColor = accentColor,
-                        focusRequester = chaptersRowFocusRequester,
-                    ) {
+                ChapterThumbRow(
+                    chapters = item?.chapters.orEmpty(),
+                    trickplayProvider = trickplayProvider,
+                    jellyfinClient = jellyfinClient,
+                    itemId = itemId,
+                    upFocusRequester = settingsRowFocusRequester,
+                    rowFocusRequester = chaptersRowFocusRequester,
+                    onChapterSelected = { chapterMs ->
                         onUserInteraction()
-                        val chapters = item?.chapters.orEmpty()
-                        val items = if (chapters.isEmpty()) {
-                            listOf(
-                                DialogItem(
-                                    text = "No chapters available",
-                                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                                    iconTint = ActionColors.Season,
-                                    enabled = false,
-                                    onClick = {},
-                                ),
-                            )
-                        } else {
-                            chapters.map { chapter ->
-                                val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
-                                DialogItem(
-                                    text = "${chapter.name ?: "Chapter"} • ${PlayerUtils.formatTime(startMs)}",
-                                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                                    iconTint = ActionColors.Season,
-                                    onClick = {
-                                        onUserInteraction()
-                                        onSeekTo(startMs)
-                                    },
-                                )
-                            }
-                        }
-                        dialogParams = DialogParams(title = "Chapters", items = items)
-                    }
-                }
+                        onSeekTo(chapterMs)
+                    },
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -1382,6 +1358,144 @@ private fun TvActionButton(
         ) {
             Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(18.dp))
             Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun ChapterThumbRow(
+    chapters: List<JellyfinChapter>,
+    trickplayProvider: TrickplayProvider?,
+    jellyfinClient: JellyfinClient?,
+    itemId: String?,
+    upFocusRequester: FocusRequester,
+    rowFocusRequester: FocusRequester,
+    onChapterSelected: (Long) -> Unit,
+) {
+    if (chapters.isEmpty()) {
+        Text(
+            text = "No chapters available",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+        )
+        return
+    }
+
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusGroup(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp),
+    ) {
+        itemsIndexed(chapters) { index, chapter ->
+            val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
+            val isFirst = index == 0
+            ChapterThumbCard(
+                chapter = chapter,
+                startMs = startMs,
+                trickplayProvider = trickplayProvider,
+                jellyfinClient = jellyfinClient,
+                itemId = itemId,
+                modifier = Modifier
+                    .then(if (isFirst) Modifier.focusRequester(rowFocusRequester) else Modifier)
+                    .focusProperties { up = upFocusRequester },
+                onClick = { onChapterSelected(startMs) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChapterThumbCard(
+    chapter: JellyfinChapter,
+    startMs: Long,
+    trickplayProvider: TrickplayProvider?,
+    jellyfinClient: JellyfinClient?,
+    itemId: String?,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val hasPreview = trickplayProvider != null && jellyfinClient != null && itemId != null
+    val label = PlayerUtils.formatTime(startMs)
+
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.4f),
+            focusedContainerColor = Color.Black.copy(alpha = 0.6f),
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = MaterialTheme.shapes.medium,
+            ),
+        ),
+        modifier = modifier
+            .width(210.dp)
+            .height(118.dp),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (hasPreview) {
+                val provider = trickplayProvider!!
+                val tileIndex = provider.getTileImageIndex(startMs)
+                val (offsetX, offsetY) = provider.getTileOffset(startMs)
+                val thumbnailWidth = provider.thumbnailWidth
+                val thumbnailHeight = provider.thumbnailHeight
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(
+                            jellyfinClient!!.getTrickplayTileUrl(
+                                itemId = itemId!!,
+                                width = thumbnailWidth,
+                                tileIndex = tileIndex,
+                                mediaSourceId = provider.getMediaSourceId(),
+                            ),
+                        )
+                        .transformations(
+                            SubsetTransformation(
+                                x = offsetX,
+                                y = offsetY,
+                                cropWidth = thumbnailWidth,
+                                cropHeight = thumbnailHeight,
+                            ),
+                        )
+                        .build(),
+                    contentDescription = chapter.name ?: "Chapter",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(topEnd = 8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+
+            chapter.name?.takeIf { it.isNotBlank() }?.let { name ->
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp),
+                )
+            }
         }
     }
 }
