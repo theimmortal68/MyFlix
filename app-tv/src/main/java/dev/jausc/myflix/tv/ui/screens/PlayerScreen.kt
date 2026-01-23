@@ -1013,7 +1013,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Audio",
                         icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                                                focusRequester = settingsRowFocusRequester,
+                        focusRequester = settingsRowFocusRequester,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1049,7 +1049,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Subtitles",
                         icon = Icons.Outlined.ClosedCaption,
-                                                onDownPressed = {
+                        onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 true
@@ -1095,7 +1095,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Sub Style",
                         icon = Icons.Outlined.FormatSize,
-                                                onDownPressed = {
+                        onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 true
@@ -1252,7 +1252,7 @@ private fun TvPlayerControlsOverlay(
                         TvActionButton(
                             label = skipLabel,
                             icon = Icons.Default.FastForward,
-                                                        onDownPressed = {
+                            onDownPressed = {
                                 if (!showChaptersRow) {
                                     showChaptersRow = true
                                     true
@@ -1268,7 +1268,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Speed",
                         icon = Icons.Outlined.Speed,
-                                                onDownPressed = {
+                        onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 true
@@ -1297,7 +1297,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Display",
                         icon = Icons.Outlined.AspectRatio,
-                                                onDownPressed = {
+                        onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 true
@@ -1325,7 +1325,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Quality",
                         icon = Icons.Outlined.HighQuality,
-                                                onDownPressed = {
+                        onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 true
