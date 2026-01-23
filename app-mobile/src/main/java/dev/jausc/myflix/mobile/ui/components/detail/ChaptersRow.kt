@@ -39,7 +39,7 @@ import dev.jausc.myflix.core.common.util.TimeFormatUtil
 @Composable
 fun ChaptersRow(
     chapters: List<JellyfinChapter>,
-    itemId: String,
+    @Suppress("UnusedParameter") itemId: String,
     getChapterImageUrl: (Int) -> String,
     onChapterClick: (Long) -> Unit,
     modifier: Modifier = Modifier,

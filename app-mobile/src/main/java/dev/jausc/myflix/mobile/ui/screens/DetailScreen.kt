@@ -31,9 +31,9 @@ fun DetailScreen(
     onPlayItemClick: (String, Long?) -> Unit,
     onEpisodeClick: (String) -> Unit,
     onTrailerClick: (videoKey: String, title: String?) -> Unit,
-    onBack: () -> Unit,
+    @Suppress("UnusedParameter") onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
-    onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
+    @Suppress("UnusedParameter") onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
     onNavigateToPerson: (String) -> Unit = {},
 ) {
     // ViewModel with manual DI
