@@ -2059,7 +2059,11 @@ class JellyfinClient(
                 add("SegmentContainer=ts")
                 add("EnableAutoStreamCopy=false")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
-                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+                subtitleStreamIndex?.let {
+                    add("SubtitleStreamIndex=$it")
+                    // Burn subtitles into video stream for transcoding
+                    add("SubtitleMethod=Encode")
+                }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
                 if (reasons.isNotEmpty()) {
                     add("TranscodeReasons=${reasons.joinToString(",")}")
@@ -2126,7 +2130,11 @@ class JellyfinClient(
                 add("SegmentContainer=ts")
                 add("EnableAutoStreamCopy=false")
                 audioStreamIndex?.let { add("AudioStreamIndex=$it") }
-                subtitleStreamIndex?.let { add("SubtitleStreamIndex=$it") }
+                subtitleStreamIndex?.let {
+                    add("SubtitleStreamIndex=$it")
+                    // Burn subtitles into video stream for transcoding
+                    add("SubtitleMethod=Encode")
+                }
                 playbackInfo.playSessionId?.let { add("PlaySessionId=$it") }
                 // Add codec-specific parameters to help server identify transcoding reason
                 if (videoCodec == "hevc" || videoCodec == "h265") {
