@@ -1160,6 +1160,15 @@ private fun TvPlayerControlsOverlay(
                 }
 
                 // Center group: Playback controls (play/pause, seek, chapters)
+                val handleDownPressed: () -> Boolean = {
+                    if (!showChaptersRow) {
+                        showChaptersRow = true
+                        true
+                    } else {
+                        false
+                    }
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1170,6 +1179,7 @@ private fun TvPlayerControlsOverlay(
                             icon = Icons.Default.SkipPrevious,
                             contentDescription = "Previous Chapter",
                             enabled = previousChapterMs != null,
+                            onDownPressed = handleDownPressed,
                         ) {
                             onUserInteraction()
                             previousChapterMs?.let { onSeekTo(it) }
@@ -1179,6 +1189,7 @@ private fun TvPlayerControlsOverlay(
                     TvPlaybackButton(
                         icon = Icons.Default.Replay10,
                         contentDescription = "Rewind 10 seconds",
+                        onDownPressed = handleDownPressed,
                     ) {
                         onUserInteraction()
                         onSeekRelative(-skipBackwardMs)
@@ -1189,6 +1200,7 @@ private fun TvPlayerControlsOverlay(
                         contentDescription = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
                         isPrimary = true,
                         focusRequester = playPauseFocusRequester,
+                        onDownPressed = handleDownPressed,
                     ) {
                         onUserInteraction()
                         onPlayPause()
@@ -1197,6 +1209,7 @@ private fun TvPlayerControlsOverlay(
                     TvPlaybackButton(
                         icon = Icons.Default.Forward10,
                         contentDescription = "Forward 10 seconds",
+                        onDownPressed = handleDownPressed,
                     ) {
                         onUserInteraction()
                         onSeekRelative(skipForwardMs)
@@ -1208,6 +1221,7 @@ private fun TvPlayerControlsOverlay(
                             icon = Icons.Default.SkipNext,
                             contentDescription = "Next Chapter",
                             enabled = nextChapterMs != null,
+                            onDownPressed = handleDownPressed,
                         ) {
                             onUserInteraction()
                             nextChapterMs?.let { onSeekTo(it) }
@@ -1218,6 +1232,7 @@ private fun TvPlayerControlsOverlay(
                         TvPlaybackButton(
                             icon = Icons.Default.SkipNext,
                             contentDescription = "Next Episode",
+                            onDownPressed = handleDownPressed,
                         ) {
                             onUserInteraction()
                             onPlayNext()
@@ -1404,6 +1419,7 @@ private fun TvPlaybackButton(
     enabled: Boolean = true,
     isPrimary: Boolean = false,
     focusRequester: FocusRequester? = null,
+    onDownPressed: (() -> Boolean)? = null,
     onClick: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -1422,8 +1438,8 @@ private fun TvPlaybackButton(
         label = "buttonScale",
     )
 
-    val buttonSize = if (isPrimary) 48.dp else 40.dp
-    val iconSize = if (isPrimary) 28.dp else 24.dp
+    val buttonSize = if (isPrimary) 40.dp else 36.dp
+    val iconSize = if (isPrimary) 24.dp else 20.dp
     val backgroundColor = if (isPrimary) Color.White else Color.Black.copy(alpha = 0.6f)
     val iconColor = if (isPrimary) Color.Black else Color.White
 
@@ -1437,7 +1453,9 @@ private fun TvPlaybackButton(
             }
             .focusable()
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown &&
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                    onDownPressed?.invoke() == true
+                } else if (event.type == KeyEventType.KeyDown &&
                     (event.key == Key.Enter || event.key == Key.DirectionCenter)
                 ) {
                     if (enabled) onClick()
