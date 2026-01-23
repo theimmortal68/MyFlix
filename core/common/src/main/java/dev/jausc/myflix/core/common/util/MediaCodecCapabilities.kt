@@ -142,13 +142,14 @@ class MediaCodecCapabilities(context: Context) {
     // ==================== HEVC (H.265) ====================
 
     /** Check if device has any HEVC decoder */
-    fun supportsHevc(): Boolean = hasCodecForMime(MIME_VIDEO_HEVC)
+    fun supportsHevc(): Boolean = hasCodecForMime(MIME_VIDEO_HEVC, requireHardware = true)
 
     /** Check if device supports HEVC Main 10 profile (10-bit HEVC) */
     fun supportsHevcMain10(): Boolean = hasDecoder(
         MIME_VIDEO_HEVC,
         CodecProfileLevel.HEVCProfileMain10,
         CodecProfileLevel.HEVCMainTierLevel4,
+        requireHardware = true,
     )
 
     /** Check if device supports HEVC HDR10 */
@@ -158,6 +159,7 @@ class MediaCodecCapabilities(context: Context) {
             MIME_VIDEO_HEVC,
             CodecProfileLevel.HEVCProfileMain10HDR10,
             CodecProfileLevel.HEVCMainTierLevel4,
+            requireHardware = true,
         )
 
     /** Check if device supports HEVC HDR10+ */
@@ -166,6 +168,7 @@ class MediaCodecCapabilities(context: Context) {
             MIME_VIDEO_HEVC,
             CodecProfileLevel.HEVCProfileMain10HDR10Plus,
             CodecProfileLevel.HEVCMainTierLevel4,
+            requireHardware = true,
         )
 
     /** Get maximum supported HEVC level for main profile */
@@ -175,7 +178,7 @@ class MediaCodecCapabilities(context: Context) {
     fun getHevcMain10Level(): Int = getHevcLevel(CodecProfileLevel.HEVCProfileMain10)
 
     private fun getHevcLevel(profile: Int): Int {
-        val level = getDecoderLevel(MIME_VIDEO_HEVC, profile)
+        val level = getDecoderLevel(MIME_VIDEO_HEVC, profile, requireHardware = true)
         return HEVC_LEVELS.asReversed().find { it.first <= level }?.second ?: 0
     }
 
@@ -192,13 +195,14 @@ class MediaCodecCapabilities(context: Context) {
     // ==================== AV1 ====================
 
     /** Check if device has any AV1 decoder */
-    fun supportsAv1(): Boolean = hasCodecForMime(MIME_VIDEO_AV1)
+    fun supportsAv1(): Boolean = hasCodecForMime(MIME_VIDEO_AV1, requireHardware = true)
 
     /** Check if device supports AV1 Main 10 profile (10-bit AV1) */
     fun supportsAv1Main10(): Boolean = hasDecoder(
         MIME_VIDEO_AV1,
         AV1_PROFILE_MAIN10,
         AV1_LEVEL_5,
+        requireHardware = true,
     )
 
     /** Check if device supports AV1 HDR10 */
@@ -206,6 +210,7 @@ class MediaCodecCapabilities(context: Context) {
         MIME_VIDEO_AV1,
         AV1_PROFILE_MAIN10_HDR10,
         AV1_LEVEL_5,
+        requireHardware = true,
     )
 
     /** Get supported AV1 profiles as strings for DeviceProfile */
@@ -281,9 +286,10 @@ class MediaCodecCapabilities(context: Context) {
     // ==================== Utility Methods ====================
 
     /** Check if device has a decoder for the given MIME type */
-    private fun hasCodecForMime(mime: String): Boolean {
+    private fun hasCodecForMime(mime: String, requireHardware: Boolean = false): Boolean {
         for (info in mediaCodecList.codecInfos) {
             if (info.isEncoder) continue
+            if (requireHardware && !isHardwareDecoder(info)) continue
 
             if (info.supportedTypes.any { it.equals(mime, ignoreCase = true) }) {
                 Log.d(TAG, "Found decoder ${info.name} for $mime")
@@ -294,9 +300,15 @@ class MediaCodecCapabilities(context: Context) {
     }
 
     /** Check if device has a decoder with specific profile and level */
-    private fun hasDecoder(mime: String, profile: Int, minLevel: Int): Boolean {
+    private fun hasDecoder(
+        mime: String,
+        profile: Int,
+        minLevel: Int,
+        requireHardware: Boolean = false,
+    ): Boolean {
         for (info in mediaCodecList.codecInfos) {
             if (info.isEncoder) continue
+            if (requireHardware && !isHardwareDecoder(info)) continue
 
             try {
                 val capabilities = info.getCapabilitiesForType(mime)
@@ -314,11 +326,16 @@ class MediaCodecCapabilities(context: Context) {
     }
 
     /** Get maximum supported level for a profile */
-    private fun getDecoderLevel(mime: String, profile: Int): Int {
+    private fun getDecoderLevel(
+        mime: String,
+        profile: Int,
+        requireHardware: Boolean = false,
+    ): Int {
         var maxLevel = 0
 
         for (info in mediaCodecList.codecInfos) {
             if (info.isEncoder) continue
+            if (requireHardware && !isHardwareDecoder(info)) continue
 
             try {
                 val capabilities = info.getCapabilitiesForType(mime)
@@ -333,6 +350,16 @@ class MediaCodecCapabilities(context: Context) {
         }
 
         return maxLevel
+    }
+
+    private fun isHardwareDecoder(info: android.media.MediaCodecInfo): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            info.isHardwareAccelerated && !info.isSoftwareOnly
+        } else {
+            val name = info.name.lowercase()
+            !name.startsWith("omx.google.") && !name.startsWith("c2.android.") &&
+                !name.contains("sw") && !name.contains("software")
+        }
     }
 
     // ==================== Summary Methods ====================

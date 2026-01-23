@@ -243,6 +243,25 @@ class PlayerController(
         currentPlayer?.setSubtitleStyle(style)
     }
 
+    /**
+     * Switch to MPV backend as a fallback when ExoPlayer fails.
+     * Returns true if MPV was initialized.
+     */
+    fun switchToMpvForError(reason: String? = null): Boolean {
+        if (currentPlayer is MpvPlayer) return true
+        if (!MpvPlayer.isAvailable()) return false
+
+        val isDvContent = currentMediaInfo?.isDolbyVision == true
+        if (isDvContent && isDvCapable) {
+            Log.w(TAG, "ExoPlayer error but DV content on DV device; keeping ExoPlayer")
+            return false
+        }
+
+        Log.w(TAG, "Falling back to MPV${reason?.let { ": $it" } ?: ""}")
+        release()
+        return initializeMpv()
+    }
+
     fun release() {
         stateForwardingJob?.cancel()
         stateForwardingJob = null

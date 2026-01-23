@@ -200,6 +200,7 @@ fun PlayerScreen(
 
     // Current bitrate - can be changed during playback (0 = no limit / direct play)
     var currentBitrate by remember { mutableIntStateOf(maxStreamingBitrate) }
+    var didFallbackToMpv by remember { mutableStateOf(false) }
 
     // Update active state and aspect ratio for PiP
     LaunchedEffect(playbackState.videoWidth, playbackState.videoHeight) {
@@ -331,6 +332,21 @@ fun PlayerScreen(
     LaunchedEffect(subtitleStyle, playerController.isInitialized) {
         if (playerController.isInitialized) {
             playerController.setSubtitleStyle(subtitleStyle)
+        }
+    }
+
+    // Fallback to MPV if ExoPlayer fails to decode
+    LaunchedEffect(playbackState.error, effectiveStreamUrl) {
+        if (!didFallbackToMpv &&
+            playbackState.error != null &&
+            effectiveStreamUrl != null &&
+            playerController.backend == PlayerBackend.EXOPLAYER
+        ) {
+            val fallbackPosition = playbackState.position
+            if (playerController.switchToMpvForError(playbackState.error)) {
+                didFallbackToMpv = true
+                currentStartPositionMs = fallbackPosition
+            }
         }
     }
 
