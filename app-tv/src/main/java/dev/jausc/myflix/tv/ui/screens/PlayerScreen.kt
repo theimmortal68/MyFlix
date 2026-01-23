@@ -932,7 +932,8 @@ private fun TvPlayerControlsOverlay(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 12.dp),
         ) {
             // Interactive seek bar with trickplay preview
             InteractiveSeekBar(
@@ -1284,13 +1285,6 @@ private fun TvPlayerControlsOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "◀ -${skipBackwardLabel}s  |  ▶ +${skipForwardLabel}s  |  OK Play/Pause",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
         }
     }
 
