@@ -575,6 +575,13 @@ fun PlayerScreen(
                         )
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
+                    onMenuOpenChanged = { isOpen ->
+                        if (isOpen) {
+                            viewModel.cancelControlsHideTimer()
+                        } else {
+                            viewModel.resetControlsHideTimer()
+                        }
+                    },
                     playPauseFocusRequester = playPauseFocusRequester,
                     trickplayProvider = state.trickplayProvider,
                     jellyfinClient = jellyfinClient,
@@ -835,6 +842,7 @@ private fun TvPlayerControlsOverlay(
     currentBitrate: Int,
     onBitrateChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
+    onMenuOpenChanged: (Boolean) -> Unit,
     playPauseFocusRequester: FocusRequester,
     trickplayProvider: TrickplayProvider? = null,
     jellyfinClient: JellyfinClient? = null,
@@ -849,6 +857,11 @@ private fun TvPlayerControlsOverlay(
     // Slide-out menu state
     var activeMenu by remember { mutableStateOf<PlayerMenuType?>(null) }
     var menuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
+
+    // Notify parent when menu opens/closes to control hide timer
+    LaunchedEffect(activeMenu) {
+        onMenuOpenChanged(activeMenu != null)
+    }
     var showChaptersRow by remember { mutableStateOf(false) }
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }

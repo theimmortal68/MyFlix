@@ -1,27 +1,20 @@
 @file:Suppress(
-    "LongMethod",
     "MagicNumber",
-    "WildcardImport",
-    "NoWildcardImports",
-    "LabeledExpression",
-    "ModifierMissing",
-    "ParameterNaming",
-    "ComposableParamOrder",
 )
 
 package dev.jausc.myflix.tv.ui.components
 
 import android.view.KeyEvent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,19 +24,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.unit.sp
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 
 /**
@@ -95,48 +88,29 @@ data class DialogParams(
 )
 
 /**
- * Modal dialog popup for long-press context menus.
+ * Netflix-style popup menu for context menus and actions.
  * Displays a list of actions the user can perform on an item.
  *
  * Features:
+ * - Compact dark gradient styling
+ * - Scale-in animation from center
  * - 1-second delay after long-press to prevent accidental selection
- * - Immediate re-enable when button is released
  * - D-pad navigation support
- * - Semi-transparent backdrop
  */
 @Composable
-fun DialogPopup(params: DialogParams, onDismissRequest: () -> Unit, modifier: Modifier = Modifier) {
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        DialogPopupContent(
-            title = params.title,
-            items = params.items,
-            waitToLoad = params.fromLongClick,
-            onDismissRequest = onDismissRequest,
-            modifier = modifier,
-        )
-    }
-}
-
-@Composable
-private fun DialogPopupContent(
-    title: String,
-    items: List<DialogItemEntry>,
-    waitToLoad: Boolean,
+fun DialogPopup(
+    params: DialogParams,
     onDismissRequest: () -> Unit,
+    anchor: PopupAnchor? = null,
     modifier: Modifier = Modifier,
 ) {
-    // Anti-propagation: 1-second delay after long-press dialog appears
-    // This prevents the long-press release from selecting the first item
-    var waiting by remember { mutableStateOf(waitToLoad) }
+    val focusRequester = remember { FocusRequester() }
+    val listState = rememberLazyListState()
 
-    if (waitToLoad) {
+    // Anti-propagation: 1-second delay after long-press dialog appears
+    var waiting by remember { mutableStateOf(params.fromLongClick) }
+
+    if (params.fromLongClick) {
         LaunchedEffect(Unit) {
             waiting = true
             delay(1000)
@@ -144,77 +118,83 @@ private fun DialogPopupContent(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f))
+    // Focus first item when popup appears
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    TvPopupContainer(
+        visible = true,
+        onDismiss = onDismissRequest,
+        anchor = anchor,
+        minWidth = 220.dp,
+        maxWidth = 320.dp,
+        maxHeight = 400.dp,
+        modifier = modifier.onKeyEvent { event ->
             // Detect key release to immediately re-enable items
-            .onKeyEvent { event ->
-                val code = event.nativeKeyEvent.keyCode
-                if (event.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
-                    code in setOf(
-                        KeyEvent.KEYCODE_ENTER,
-                        KeyEvent.KEYCODE_DPAD_CENTER,
-                        KeyEvent.KEYCODE_NUMPAD_ENTER,
-                    )
-                ) {
-                    waiting = false
-                }
-                false
-            },
-        contentAlignment = Alignment.Center,
+            val code = event.nativeKeyEvent.keyCode
+            if (event.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
+                code in setOf(
+                    KeyEvent.KEYCODE_ENTER,
+                    KeyEvent.KEYCODE_DPAD_CENTER,
+                    KeyEvent.KEYCODE_NUMPAD_ENTER,
+                )
+            ) {
+                waiting = false
+            }
+            false
+        },
     ) {
         Column(
-            modifier = modifier
-                .widthIn(min = 300.dp, max = 400.dp)
-                .background(
-                    TvColors.Surface,
-                    RoundedCornerShape(16.dp),
-                )
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // Title
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
+                text = params.title,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = TvColors.TextPrimary,
+                color = Color.White.copy(alpha = 0.9f),
+                letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
 
             // Items list
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                items(items) { item ->
+                items(params.items) { item ->
                     when (item) {
                         is DialogItemDivider -> {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                                    .background(TvColors.TextSecondary.copy(alpha = 0.2f))
-                                    .padding(vertical = 0.5.dp),
+                                    .padding(vertical = 6.dp),
                             )
                         }
                         is DialogSectionHeader -> {
                             Text(
                                 text = item.text,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = TvColors.TextSecondary,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                             )
                         }
                         is DialogItem -> {
-                            DialogListItem(
+                            val itemFocusRequester = if (params.items.filterIsInstance<DialogItem>().firstOrNull() == item) {
+                                focusRequester
+                            } else {
+                                remember { FocusRequester() }
+                            }
+                            DialogMenuItem(
                                 item = item,
                                 enabled = !waiting && item.enabled,
                                 onClick = {
                                     item.onClick()
                                     onDismissRequest()
                                 },
+                                modifier = Modifier.focusRequester(itemFocusRequester),
                             )
                         }
                     }
@@ -225,36 +205,44 @@ private fun DialogPopupContent(
 }
 
 @Composable
-private fun DialogListItem(item: DialogItem, enabled: Boolean, onClick: () -> Unit) {
-    ListItem(
-        selected = false,
+private fun DialogMenuItem(
+    item: DialogItem,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
         onClick = onClick,
         enabled = enabled,
-        headlineContent = {
-            Text(
-                text = item.text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) TvColors.TextPrimary else TvColors.TextSecondary,
-            )
-        },
-        leadingContent = item.icon?.let { icon ->
-            {
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.White.copy(alpha = 0.15f),
+            disabledContainerColor = Color.Transparent,
+        ),
+        modifier = modifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            item.icon?.let { icon ->
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (enabled) item.iconTint else TvColors.TextSecondary,
+                    tint = if (enabled) item.iconTint else Color.White.copy(alpha = 0.3f),
+                    modifier = Modifier.size(20.dp),
                 )
             }
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = TvColors.FocusedSurface,
-            selectedContainerColor = Color.Transparent,
-            disabledContainerColor = Color.Transparent,
-        ),
-        shape = ListItemDefaults.shape(
-            shape = RoundedCornerShape(8.dp),
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    )
+            Text(
+                text = item.text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Normal,
+                color = if (enabled) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.4f),
+            )
+        }
+    }
 }

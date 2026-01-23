@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.Checkbox
 import androidx.tv.material3.CheckboxDefaults
 import androidx.tv.material3.Icon
@@ -81,6 +80,7 @@ import dev.jausc.myflix.tv.BuildConfig
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
+import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
@@ -1066,28 +1066,27 @@ private fun SelectionDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 350.dp,
+        maxWidth = 450.dp,
+        maxHeight = 500.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Scrollable list of items
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 400.dp),
+                modifier = Modifier.heightIn(max = 350.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(availableItems.size) { index ->
@@ -1498,28 +1497,27 @@ private fun ServerManagementDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 350.dp,
+        maxWidth = 450.dp,
+        maxHeight = 500.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = "Manage Servers",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Server list
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 400.dp),
+                modifier = Modifier.heightIn(max = 350.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(servers) { server ->
@@ -1702,28 +1700,29 @@ private fun ConfirmRemoveServerDialog(
         confirmFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 320.dp,
+        maxWidth = 400.dp,
+    ) {
+        Column {
             Text(
                 text = "Remove Server?",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Are you sure you want to remove \"${server.serverName}\"? You will need to log in again to access this server.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 24.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.7f),
             )
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1954,28 +1953,27 @@ private fun LanguageSelectionDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 300.dp,
+        maxWidth = 400.dp,
+        maxHeight = 500.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Language list
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 400.dp),
+                modifier = Modifier.heightIn(max = 350.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(LANGUAGE_OPTIONS.size) { index ->
@@ -2090,36 +2088,36 @@ private fun BitrateSelectionDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 300.dp,
+        maxWidth = 400.dp,
+        maxHeight = 500.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = "Max Streaming Quality",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Subtitle
             Text(
                 text = "Lower values force transcoding for larger files",
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                color = Color.White.copy(alpha = 0.6f),
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Bitrate list
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 400.dp),
+                modifier = Modifier.heightIn(max = 350.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(PlaybackOptions.BITRATE_OPTIONS.size) { index ->
@@ -2246,36 +2244,35 @@ private fun SkipDurationSelectionDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 280.dp,
+        maxWidth = 350.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Subtitle
             Text(
                 text = "Duration for $title button",
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                color = Color.White.copy(alpha = 0.6f),
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Duration list
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 300.dp),
+                modifier = Modifier.heightIn(max = 280.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(SKIP_DURATION_OPTIONS.size) { index ->
@@ -2405,36 +2402,35 @@ private fun SkipModeSelectionDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 280.dp,
+        maxWidth = 350.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Subtitle
             Text(
                 text = "Choose behavior when segment is detected",
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                color = Color.White.copy(alpha = 0.6f),
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Mode list
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 200.dp),
+                modifier = Modifier.heightIn(max = 180.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(SKIP_MODE_OPTIONS.size) { index ->
@@ -2542,36 +2538,35 @@ private fun RefreshRateModeSelectionDialog(
         firstItemFocusRequester.requestFocus()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TvColors.Surface)
-                .padding(24.dp),
-        ) {
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 300.dp,
+        maxWidth = 380.dp,
+    ) {
+        Column {
             // Title
             Text(
                 text = "Refresh Rate",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Subtitle
             Text(
                 text = "Match display refresh rate to video for smoother playback",
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                color = Color.White.copy(alpha = 0.6f),
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Mode list
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(max = 250.dp),
+                modifier = Modifier.heightIn(max = 220.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(PlaybackOptions.REFRESH_RATE_MODE_OPTIONS.size) { index ->

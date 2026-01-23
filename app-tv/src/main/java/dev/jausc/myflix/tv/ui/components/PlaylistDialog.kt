@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,8 +19,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,8 +37,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
@@ -80,185 +76,173 @@ fun AddToPlaylistDialog(
         isLoading = false
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 350.dp,
+        maxWidth = 450.dp,
+        modifier = modifier,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f)),
-            contentAlignment = Alignment.Center,
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(
-                modifier = modifier
-                    .widthIn(min = 350.dp, max = 450.dp)
-                    .background(TvColors.Surface, RoundedCornerShape(16.dp))
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            // Title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Title
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                        contentDescription = null,
-                        tint = TvColors.BluePrimary,
-                        modifier = Modifier.size(28.dp),
-                    )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                    contentDescription = null,
+                    tint = TvColors.BluePrimary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(
+                    text = "Add to Playlist",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
+            }
+
+            // Subtitle showing item name
+            Text(
+                text = itemName,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.6f),
+                maxLines = 1,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            when {
+                isLoading -> {
                     Text(
-                        text = "Add to Playlist",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TvColors.TextPrimary,
+                        text = "Loading playlists...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.6f),
                     )
                 }
-
-                // Subtitle showing item name
-                Text(
-                    text = itemName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TvColors.TextSecondary,
-                    maxLines = 1,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                when {
-                    isLoading -> {
-                        Text(
-                            text = "Loading playlists...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TvColors.TextSecondary,
-                        )
-                    }
-                    error != null -> {
-                        Text(
-                            text = "Error: $error",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Red,
-                        )
-                    }
-                    showCreateNew -> {
-                        // Create new playlist form
-                        CreatePlaylistForm(
-                            name = newPlaylistName,
-                            onNameChange = { newPlaylistName = it },
-                            isCreating = isCreating,
-                            onCancel = { showCreateNew = false },
-                            onCreate = {
-                                if (newPlaylistName.isNotBlank()) {
-                                    isCreating = true
-                                    scope.launch {
-                                        jellyfinClient.createPlaylist(
-                                            name = newPlaylistName,
-                                            itemIds = listOf(itemId),
-                                        ).onSuccess {
-                                            onSuccess(newPlaylistName)
-                                            onDismiss()
-                                        }.onFailure {
-                                            error = it.message
-                                            isCreating = false
-                                        }
+                error != null -> {
+                    Text(
+                        text = "Error: $error",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TvColors.Error,
+                    )
+                }
+                showCreateNew -> {
+                    // Create new playlist form
+                    CreatePlaylistForm(
+                        name = newPlaylistName,
+                        onNameChange = { newPlaylistName = it },
+                        isCreating = isCreating,
+                        onCancel = { showCreateNew = false },
+                        onCreate = {
+                            if (newPlaylistName.isNotBlank()) {
+                                isCreating = true
+                                scope.launch {
+                                    jellyfinClient.createPlaylist(
+                                        name = newPlaylistName,
+                                        itemIds = listOf(itemId),
+                                    ).onSuccess {
+                                        onSuccess(newPlaylistName)
+                                        onDismiss()
+                                    }.onFailure {
+                                        error = it.message
+                                        isCreating = false
                                     }
                                 }
-                            },
-                        )
-                    }
-                    else -> {
-                        // Playlist list
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.weight(1f, fill = false),
-                        ) {
-                            // Create new option
-                            item("create_new") {
-                                ListItem(
-                                    selected = false,
-                                    onClick = { showCreateNew = true },
-                                    headlineContent = {
-                                        Text(
-                                            text = "Create New Playlist",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium,
-                                            color = TvColors.BluePrimary,
-                                        )
-                                    },
-                                    leadingContent = {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Add,
-                                            contentDescription = null,
-                                            tint = TvColors.BluePrimary,
-                                        )
-                                    },
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = Color.Transparent,
-                                        focusedContainerColor = TvColors.FocusedSurface,
-                                    ),
-                                    shape = ListItemDefaults.shape(
-                                        shape = RoundedCornerShape(8.dp),
-                                    ),
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
                             }
-
-                            // Existing playlists
-                            items(playlists, key = { it.id }) { playlist ->
-                                ListItem(
-                                    selected = false,
-                                    onClick = {
-                                        scope.launch {
-                                            jellyfinClient.addToPlaylist(playlist.id, listOf(itemId))
-                                                .onSuccess {
-                                                    onSuccess(playlist.name)
-                                                    onDismiss()
-                                                }
-                                                .onFailure { error = it.message }
-                                        }
-                                    },
-                                    headlineContent = {
-                                        Text(
-                                            text = playlist.name,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = TvColors.TextPrimary,
-                                        )
-                                    },
-                                    supportingContent = playlist.childCount?.let { count ->
-                                        {
-                                            Text(
-                                                text = "$count items",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = TvColors.TextSecondary,
-                                            )
-                                        }
-                                    },
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = Color.Transparent,
-                                        focusedContainerColor = TvColors.FocusedSurface,
-                                    ),
-                                    shape = ListItemDefaults.shape(
-                                        shape = RoundedCornerShape(8.dp),
-                                    ),
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-
-                            // Empty state
-                            if (playlists.isEmpty()) {
-                                item("empty") {
+                        },
+                    )
+                }
+                else -> {
+                    // Playlist list
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        // Create new option
+                        item("create_new") {
+                            ListItem(
+                                selected = false,
+                                onClick = { showCreateNew = true },
+                                headlineContent = {
                                     Text(
-                                        text = "No playlists yet",
+                                        text = "Create New Playlist",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = TvColors.TextSecondary,
-                                        modifier = Modifier.padding(16.dp),
+                                        fontWeight = FontWeight.Medium,
+                                        color = TvColors.BluePrimary,
                                     )
-                                }
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Add,
+                                        contentDescription = null,
+                                        tint = TvColors.BluePrimary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                },
+                                colors = ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    focusedContainerColor = Color.White.copy(alpha = 0.15f),
+                                ),
+                                shape = ListItemDefaults.shape(
+                                    shape = RoundedCornerShape(6.dp),
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        // Existing playlists
+                        items(playlists, key = { it.id }) { playlist ->
+                            ListItem(
+                                selected = false,
+                                onClick = {
+                                    scope.launch {
+                                        jellyfinClient.addToPlaylist(playlist.id, listOf(itemId))
+                                            .onSuccess {
+                                                onSuccess(playlist.name)
+                                                onDismiss()
+                                            }
+                                            .onFailure { error = it.message }
+                                    }
+                                },
+                                headlineContent = {
+                                    Text(
+                                        text = playlist.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                    )
+                                },
+                                supportingContent = playlist.childCount?.let { count ->
+                                    {
+                                        Text(
+                                            text = "$count items",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.5f),
+                                        )
+                                    }
+                                },
+                                colors = ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    focusedContainerColor = Color.White.copy(alpha = 0.15f),
+                                ),
+                                shape = ListItemDefaults.shape(
+                                    shape = RoundedCornerShape(6.dp),
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        // Empty state
+                        if (playlists.isEmpty()) {
+                            item("empty") {
+                                Text(
+                                    text = "No playlists yet",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.padding(16.dp),
+                                )
                             }
                         }
                     }
@@ -283,20 +267,21 @@ private fun CreatePlaylistForm(
     }
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
             text = "Playlist Name",
-            style = MaterialTheme.typography.labelLarge,
-            color = TvColors.TextSecondary,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White.copy(alpha = 0.6f),
         )
 
         BasicTextField(
             value = name,
             onValueChange = onNameChange,
             enabled = !isCreating,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = TvColors.TextPrimary,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = Color.White,
             ),
             cursorBrush = SolidColor(TvColors.BluePrimary),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -304,16 +289,16 @@ private fun CreatePlaylistForm(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TvColors.SurfaceElevated, RoundedCornerShape(8.dp))
-                .padding(16.dp)
+                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                .padding(12.dp)
                 .focusRequester(focusRequester),
             decorationBox = { innerTextField ->
                 Box {
                     if (name.isEmpty()) {
                         Text(
                             text = "Enter playlist name...",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TvColors.TextSecondary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.4f),
                         )
                     }
                     innerTextField()
@@ -322,7 +307,7 @@ private fun CreatePlaylistForm(
         )
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             ListItem(
@@ -332,15 +317,15 @@ private fun CreatePlaylistForm(
                 headlineContent = {
                     Text(
                         text = "Cancel",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TvColors.TextSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f),
                     )
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated,
-                    focusedContainerColor = TvColors.FocusedSurface,
+                    containerColor = Color.White.copy(alpha = 0.1f),
+                    focusedContainerColor = Color.White.copy(alpha = 0.15f),
                 ),
-                shape = ListItemDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                shape = ListItemDefaults.shape(shape = RoundedCornerShape(6.dp)),
                 modifier = Modifier.weight(1f),
             )
             ListItem(
@@ -350,16 +335,16 @@ private fun CreatePlaylistForm(
                 headlineContent = {
                     Text(
                         text = if (isCreating) "Creating..." else "Create",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        color = if (name.isNotBlank()) TvColors.BluePrimary else TvColors.TextSecondary,
+                        color = if (name.isNotBlank()) Color.White else Color.White.copy(alpha = 0.4f),
                     )
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated,
+                    containerColor = TvColors.BluePrimary.copy(alpha = 0.6f),
                     focusedContainerColor = TvColors.BluePrimary,
                 ),
-                shape = ListItemDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                shape = ListItemDefaults.shape(shape = RoundedCornerShape(6.dp)),
                 modifier = Modifier.weight(1f),
             )
         }

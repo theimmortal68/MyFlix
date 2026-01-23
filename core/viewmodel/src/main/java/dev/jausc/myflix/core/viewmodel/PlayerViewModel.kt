@@ -484,6 +484,15 @@ class PlayerViewModel(
         }
     }
 
+    /**
+     * Cancel the auto-hide timer without starting a new one.
+     * Call this when a menu is open to prevent controls from hiding.
+     */
+    fun cancelControlsHideTimer() {
+        controlsHideJob?.cancel()
+        controlsHideJob = null
+    }
+
     // ==================== Queue Management ====================
 
     /**

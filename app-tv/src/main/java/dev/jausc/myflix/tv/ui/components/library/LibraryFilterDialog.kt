@@ -2,20 +2,19 @@
 
 package dev.jausc.myflix.tv.ui.components.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,9 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.FilterChip
@@ -39,6 +37,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
+import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -75,30 +74,28 @@ fun LibraryFilterDialog(
     val currentYear = YearRange.currentYear
     val yearOptions = listOf(null) + (currentYear downTo 1950).toList()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 380.dp,
+        maxWidth = 450.dp,
     ) {
-        Column(
-            modifier = Modifier
-                .width(400.dp)
-                .background(TvColors.Surface, MaterialTheme.shapes.medium)
-                .padding(20.dp),
-        ) {
+        Column {
             Text(
                 text = "Filters",
-                style = MaterialTheme.typography.titleLarge,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Watched Status Section
             Text(
                 text = "Watched Status",
-                style = MaterialTheme.typography.titleSmall,
-                color = TvColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(bottom = 8.dp),
             )
 
@@ -148,8 +145,9 @@ fun LibraryFilterDialog(
             // Rating Section
             Text(
                 text = "Minimum Rating",
-                style = MaterialTheme.typography.titleSmall,
-                color = TvColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(bottom = 8.dp),
             )
 
@@ -194,8 +192,9 @@ fun LibraryFilterDialog(
             // Year Range Section
             Text(
                 text = "Year Range",
-                style = MaterialTheme.typography.titleSmall,
-                color = TvColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.padding(bottom = 8.dp),
             )
 
@@ -208,7 +207,7 @@ fun LibraryFilterDialog(
                     Text(
                         text = "From",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TvColors.TextSecondary,
+                        color = Color.White.copy(alpha = 0.5f),
                     )
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -250,7 +249,7 @@ fun LibraryFilterDialog(
                     Text(
                         text = "To",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TvColors.TextSecondary,
+                        color = Color.White.copy(alpha = 0.5f),
                     )
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -281,7 +280,7 @@ fun LibraryFilterDialog(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Action buttons
             Row(
@@ -296,10 +295,11 @@ fun LibraryFilterDialog(
                         yearFrom = null
                         yearTo = null
                     },
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated,
-                        contentColor = TvColors.TextSecondary,
-                        focusedContainerColor = TvColors.Error.copy(alpha = 0.8f),
+                        containerColor = Color.White.copy(alpha = 0.1f),
+                        contentColor = Color.White,
+                        focusedContainerColor = TvColors.Error,
                         focusedContentColor = Color.White,
                     ),
                 ) {
@@ -308,9 +308,12 @@ fun LibraryFilterDialog(
 
                 Button(
                     onClick = onDismiss,
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ButtonDefaults.colors(
-                        containerColor = TvColors.SurfaceElevated,
-                        contentColor = TvColors.TextPrimary,
+                        containerColor = Color.White.copy(alpha = 0.1f),
+                        contentColor = Color.White,
+                        focusedContainerColor = TvColors.BluePrimary,
+                        focusedContentColor = Color.White,
                     ),
                 ) {
                     Text("Cancel")
@@ -320,9 +323,12 @@ fun LibraryFilterDialog(
                     onClick = {
                         onApply(watchedFilter, ratingFilter, YearRange(yearFrom, yearTo))
                     },
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ButtonDefaults.colors(
-                        containerColor = TvColors.BluePrimary,
+                        containerColor = TvColors.BluePrimary.copy(alpha = 0.6f),
                         contentColor = Color.White,
+                        focusedContainerColor = TvColors.BluePrimary,
+                        focusedContentColor = Color.White,
                     ),
                 ) {
                     Text("Apply")

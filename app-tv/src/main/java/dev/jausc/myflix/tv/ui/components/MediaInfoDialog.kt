@@ -2,19 +2,15 @@
 
 package dev.jausc.myflix.tv.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,13 +29,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
-import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSource
@@ -49,7 +43,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 /**
- * Dialog displaying technical media information for a video item.
+ * Netflix-style dialog displaying technical media information for a video item.
  * Shows video codec, resolution, audio tracks, subtitles, and container format.
  */
 @Composable
@@ -65,129 +59,118 @@ fun MediaInfoDialog(
     val subtitleStream = mediaStreams.firstOrNull { it.type == "Subtitle" && it.isDefault }
         ?: mediaStreams.firstOrNull { it.type == "Subtitle" }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false,
-        ),
+    val listState = rememberLazyListState()
+    val closeFocusRequester = remember { FocusRequester() }
+    val firstSectionFocusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+
+    val descriptionSection = buildDescriptionRows(item)
+    val generalSection = buildGeneralRows(item, mediaSource)
+    val videoSection = videoStream?.let { buildVideoRows(it) }
+    val audioSection = audioStream?.let { buildAudioRows(it) }
+    val subtitleSection = subtitleStream?.let { buildSubtitleRows(it) }
+
+    // Build list of sections for LazyColumn
+    val allSections = buildList {
+        if (descriptionSection.isNotEmpty()) add("Description" to descriptionSection)
+        add("General" to generalSection)
+        videoSection?.let { add("Video" to it) }
+        audioSection?.let { add("Audio" to it) }
+        subtitleSection?.let { add("Subtitle" to it) }
+    }
+
+    // Focus the first section for easy scrolling
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(100)
+        try {
+            firstSectionFocusRequester.requestFocus()
+        } catch (_: Exception) {
+            try {
+                closeFocusRequester.requestFocus()
+            } catch (_: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 500.dp,
+        maxWidth = 700.dp,
+        maxHeight = 600.dp,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.8f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
+        Column {
+            // Header
+            Text(
+                text = "Media Information",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TvColors.BluePrimary,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Scrollable content with focusable sections for D-pad navigation
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
-                    .widthIn(min = 640.dp, max = 960.dp)
-                    .fillMaxHeight(0.85f)
-                    .padding(32.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = SurfaceDefaults.colors(
-                    containerColor = TvColors.Surface,
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .heightIn(max = 450.dp),
+            ) {
+                itemsIndexed(
+                    items = allSections,
+                    key = { _, (label, _) -> label },
+                ) { index, (label, rows) ->
+                    MediaInfoSection(
+                        label = label,
+                        rows = rows,
+                        index = index,
+                        listState = listState,
+                        scope = scope,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (index == 0) {
+                                    Modifier.focusRequester(firstSectionFocusRequester)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Close button
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .focusRequester(closeFocusRequester),
+                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                colors = ButtonDefaults.colors(
+                    containerColor = Color.White.copy(alpha = 0.1f),
+                    contentColor = Color.White,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
                 ),
             ) {
-                val listState = rememberLazyListState()
-                val closeFocusRequester = remember { FocusRequester() }
-
-                val descriptionSection = buildDescriptionRows(item)
-                val generalSection = buildGeneralRows(item, mediaSource)
-                val videoSection = videoStream?.let { buildVideoRows(it) }
-                val audioSection = audioStream?.let { buildAudioRows(it) }
-                val subtitleSection = subtitleStream?.let { buildSubtitleRows(it) }
-
-                // Build list of sections for LazyColumn
-                val allSections = buildList {
-                    if (descriptionSection.isNotEmpty()) add("Description" to descriptionSection)
-                    add("General" to generalSection)
-                    videoSection?.let { add("Video" to it) }
-                    audioSection?.let { add("Audio" to it) }
-                    subtitleSection?.let { add("Subtitle" to it) }
-                }
-
-                val firstSectionFocusRequester = remember { FocusRequester() }
-                val scope = rememberCoroutineScope()
-
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    // Fixed header
-                    Text(
-                        text = "Media Information",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TvColors.TextPrimary,
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = item.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.BluePrimary,
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Scrollable content with focusable sections for D-pad navigation
-                    LazyColumn(
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    ) {
-                        itemsIndexed(
-                            items = allSections,
-                            key = { _, (label, _) -> label },
-                        ) { index, (label, rows) ->
-                            MediaInfoSection(
-                                label = label,
-                                rows = rows,
-                                index = index,
-                                listState = listState,
-                                scope = scope,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .then(
-                                        if (index == 0) {
-                                            Modifier.focusRequester(firstSectionFocusRequester)
-                                        } else {
-                                            Modifier
-                                        },
-                                    ),
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Fixed footer with close button
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .focusRequester(closeFocusRequester),
-                    ) {
-                        Text("Close")
-                    }
-                }
-
-                // Focus the first section for easy scrolling
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(100)
-                    try {
-                        firstSectionFocusRequester.requestFocus()
-                    } catch (_: Exception) {
-                        // Focus request failed, try close button
-                        try {
-                            closeFocusRequester.requestFocus()
-                        } catch (_: Exception) {
-                            // Ignore
-                        }
-                    }
-                }
+                Text(
+                    text = "Close",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
         }
     }
@@ -205,7 +188,7 @@ private fun MediaInfoSection(
     var isFocused by remember { mutableStateOf(false) }
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
             .onFocusChanged {
                 isFocused = it.isFocused
@@ -220,24 +203,25 @@ private fun MediaInfoSection(
                         .border(
                             width = 2.dp,
                             color = TvColors.BluePrimary,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(6.dp),
                         )
                         .padding(8.dp)
                 } else {
-                    Modifier.padding(10.dp) // Offset to keep alignment when border appears
+                    Modifier.padding(10.dp)
                 },
             ),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isFocused) TvColors.BluePrimary else TvColors.TextSecondary,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isFocused) TvColors.BluePrimary else Color.White.copy(alpha = 0.6f),
         )
         rows.forEach { (title, value) ->
             Text(
                 text = "$title: $value",
                 style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary,
+                color = Color.White.copy(alpha = 0.9f),
             )
         }
     }

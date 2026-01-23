@@ -2,18 +2,17 @@
 
 package dev.jausc.myflix.tv.ui.components.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -22,9 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -34,6 +32,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.LibrarySortOption
 import dev.jausc.myflix.core.common.model.SortOrder
+import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -52,24 +51,21 @@ fun LibrarySortDialog(
         focusRequester.requestFocus()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 280.dp,
+        maxWidth = 350.dp,
     ) {
-        Column(
-            modifier = Modifier
-                .width(320.dp)
-                .background(TvColors.Surface, MaterialTheme.shapes.medium)
-                .padding(16.dp),
-        ) {
+        Column {
             Text(
                 text = "Sort By",
                 style = MaterialTheme.typography.titleMedium,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 12.dp),
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Sort options
             LibrarySortOption.entries.forEachIndexed { index, option ->
@@ -79,27 +75,27 @@ fun LibrarySortDialog(
                         onSortSelected(option, currentSortOrder)
                     },
                     modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
-                    shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = if (isSelected) {
-                            TvColors.BluePrimary.copy(alpha = 0.2f)
+                            Color.White.copy(alpha = 0.1f)
                         } else {
                             Color.Transparent
                         },
-                        focusedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
+                        focusedContainerColor = Color.White.copy(alpha = 0.15f),
                     ),
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = option.label,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) TvColors.BluePrimary else TvColors.TextPrimary,
+                            color = if (isSelected) TvColors.BluePrimary else Color.White.copy(alpha = 0.9f),
                         )
                         if (isSelected) {
                             Icon(
@@ -113,14 +109,15 @@ fun LibrarySortDialog(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Sort order section
             Text(
                 text = "Order",
-                style = MaterialTheme.typography.titleMedium,
-                color = TvColors.TextPrimary,
-                modifier = Modifier.padding(bottom = 12.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             SortOrder.entries.forEach { order ->
@@ -129,27 +126,27 @@ fun LibrarySortDialog(
                     onClick = {
                         onSortSelected(currentSortBy, order)
                     },
-                    shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = if (isSelected) {
-                            TvColors.BluePrimary.copy(alpha = 0.2f)
+                            Color.White.copy(alpha = 0.1f)
                         } else {
                             Color.Transparent
                         },
-                        focusedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
+                        focusedContainerColor = Color.White.copy(alpha = 0.15f),
                     ),
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = order.label,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) TvColors.BluePrimary else TvColors.TextPrimary,
+                            color = if (isSelected) TvColors.BluePrimary else Color.White.copy(alpha = 0.9f),
                         )
                         if (isSelected) {
                             Icon(
@@ -168,9 +165,12 @@ fun LibrarySortDialog(
             Button(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.End),
+                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                 colors = ButtonDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated,
-                    contentColor = TvColors.TextPrimary,
+                    containerColor = Color.White.copy(alpha = 0.1f),
+                    contentColor = Color.White,
+                    focusedContainerColor = TvColors.BluePrimary,
+                    focusedContentColor = Color.White,
                 ),
             ) {
                 Text("Close")
