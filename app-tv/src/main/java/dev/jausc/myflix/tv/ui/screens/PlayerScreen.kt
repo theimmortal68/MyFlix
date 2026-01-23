@@ -1831,7 +1831,7 @@ private fun SeekPreview(
                         )
                         .build(),
                     contentDescription = "Seek preview",
-                    contentScale = ContentScale.Fit,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

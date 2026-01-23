@@ -2286,12 +2286,13 @@ class JellyfinClient(
         tileIndex: Int,
         mediaSourceId: String? = null,
     ): String {
-        val params = buildString {
+        val params = buildList {
+            add("api_key=$accessToken")
             if (mediaSourceId != null) {
-                append("?mediaSourceId=$mediaSourceId")
+                add("mediaSourceId=$mediaSourceId")
             }
-        }
-        return "$baseUrl/Videos/$itemId/Trickplay/$width/$tileIndex.jpg$params"
+        }.joinToString("&")
+        return "$baseUrl/Videos/$itemId/Trickplay/$width/$tileIndex.jpg?$params"
     }
 
     // ==================== Playback Reporting ====================
