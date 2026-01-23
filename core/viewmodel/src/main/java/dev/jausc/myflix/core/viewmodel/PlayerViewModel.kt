@@ -50,7 +50,7 @@ data class PlayerUiState(
     val startPositionMs: Long = 0L,
     val error: String? = null,
     val playerReady: Boolean = false,
-    val showControls: Boolean = true,
+    val showControls: Boolean = false,
     val mediaSourceId: String? = null,
     val audioStreams: List<MediaStream> = emptyList(),
     val subtitleStreams: List<MediaStream> = emptyList(),

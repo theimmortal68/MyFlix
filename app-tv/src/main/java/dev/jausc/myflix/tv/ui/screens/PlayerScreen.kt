@@ -70,6 +70,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.ClosedCaptionOff
@@ -905,11 +907,36 @@ private fun TvPlayerControlsOverlay(
         // Center controls
         val skipBackwardLabel = (skipBackwardMs / 1000).toInt()
         val skipForwardLabel = (skipForwardMs / 1000).toInt()
+        val chapters = item?.chapters.orEmpty()
+        val currentPositionMs = playbackState.position
+
+        // Find previous and next chapter positions
+        val previousChapterMs = chapters
+            .mapNotNull { it.startPositionTicks?.let { ticks -> PlayerUtils.ticksToMs(ticks) } }
+            .filter { it < currentPositionMs - 3000 } // Must be at least 3s before current position
+            .maxOrNull()
+        val nextChapterMs = chapters
+            .mapNotNull { it.startPositionTicks?.let { ticks -> PlayerUtils.ticksToMs(ticks) } }
+            .filter { it > currentPositionMs + 1000 } // Must be at least 1s after current position
+            .minOrNull()
+
         Row(
             modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Previous chapter button
+            if (chapters.isNotEmpty()) {
+                TvIconButton(
+                    icon = Icons.Default.SkipPrevious,
+                    contentDescription = "Previous Chapter",
+                    enabled = previousChapterMs != null,
+                ) {
+                    onUserInteraction()
+                    previousChapterMs?.let { onSeekTo(it) }
+                }
+            }
+
             TvControlButton(label = "-${skipBackwardLabel}s") {
                 onUserInteraction()
                 onSeekRelative(-skipBackwardMs)
@@ -917,7 +944,7 @@ private fun TvPlayerControlsOverlay(
             TvControlButton(
                 label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
                 isPrimary = true,
-                                focusRequester = playPauseFocusRequester,
+                focusRequester = playPauseFocusRequester,
             ) {
                 onUserInteraction()
                 onPlayPause()
@@ -926,6 +953,19 @@ private fun TvPlayerControlsOverlay(
                 onUserInteraction()
                 onSeekRelative(skipForwardMs)
             }
+
+            // Next chapter button
+            if (chapters.isNotEmpty()) {
+                TvIconButton(
+                    icon = Icons.Default.SkipNext,
+                    contentDescription = "Next Chapter",
+                    enabled = nextChapterMs != null,
+                ) {
+                    onUserInteraction()
+                    nextChapterMs?.let { onSeekTo(it) }
+                }
+            }
+
             if (onPlayNext != null) {
                 TvControlButton(label = "Next") {
                     onUserInteraction()
@@ -1327,6 +1367,37 @@ private fun TvControlButton(
                 text = label,
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = textColor,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val alpha = if (enabled) 1f else 0.4f
+    Surface(
+        shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.6f),
+            focusedContainerColor = Color.White.copy(alpha = 0.2f),
+        ),
+        onClick = { if (enabled) onClick() },
+        modifier = Modifier.size(36.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = Color.White.copy(alpha = alpha),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
