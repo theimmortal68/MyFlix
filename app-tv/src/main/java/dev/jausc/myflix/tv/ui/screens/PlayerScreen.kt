@@ -986,7 +986,7 @@ private fun TvPlayerControlsOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier
@@ -1267,6 +1267,8 @@ private fun TvPlayerControlsOverlay(
                 }
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
             if (showChaptersRow) {
                 ChapterThumbRow(
                     chapters = item?.chapters.orEmpty(),
@@ -1318,16 +1320,18 @@ private fun TvControlButton(
         ),
         onClick = onClick,
         modifier = Modifier
-            .height(44.dp)
+            .height(36.dp)
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(horizontal = if (isPrimary) 24.dp else 16.dp),
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = if (isPrimary) 20.dp else 12.dp),
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = textColor,
             )
         }
@@ -1427,7 +1431,7 @@ private fun ChapterThumbRow(
         modifier = Modifier
             .fillMaxWidth()
             .focusGroup(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 24.dp),
     ) {
         itemsIndexed(chapters) { index, chapter ->
@@ -1479,8 +1483,8 @@ private fun ChapterThumbCard(
             ),
         ),
         modifier = modifier
-            .width(210.dp)
-            .height(118.dp),
+            .width(160.dp)
+            .height(90.dp),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (hasChapterImage) {
@@ -1647,7 +1651,7 @@ private fun InteractiveSeekBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (isSeeking && trickplayProvider != null) 150.dp else 8.dp),
+            .height(if (isSeeking && trickplayProvider != null) 150.dp else 4.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         // Seek preview thumbnail (shown when seeking and trickplay available)
@@ -1692,7 +1696,7 @@ private fun InteractiveSeekBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (isFocused || isSeeking) 12.dp else 8.dp)
+                .height(if (isFocused || isSeeking) 6.dp else 4.dp)
                 .align(Alignment.BottomCenter)
                 .clip(MaterialTheme.shapes.small)
                 .background(Color.White.copy(alpha = 0.3f))
