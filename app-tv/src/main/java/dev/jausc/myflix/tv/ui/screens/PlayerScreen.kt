@@ -543,6 +543,7 @@ fun PlayerScreen(
                     onSpeedChanged = { speed -> playerController.setSpeed(speed) },
                     displayMode = displayMode,
                     onDisplayModeChanged = { mode ->
+                        android.util.Log.d("PlayerScreen", "onDisplayModeChanged: $mode (was $displayMode)")
                         displayMode = mode
                         appPreferences.setPlayerDisplayMode(mode.name)
                     },
@@ -732,6 +733,7 @@ private fun ExoPlayerSurfaceView(
 
     // Update display mode when it changes
     LaunchedEffect(displayMode) {
+        android.util.Log.d("PlayerScreen", "LaunchedEffect(displayMode): $displayMode, playerView=$playerView")
         playerView?.let { view ->
             val resizeMode = when (displayMode) {
                 PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -739,12 +741,15 @@ private fun ExoPlayerSurfaceView(
                 PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
             }
+            android.util.Log.d("PlayerScreen", "Setting resizeMode=$resizeMode for displayMode=$displayMode")
             view.resizeMode = resizeMode
             // Also set video scaling mode on the player itself
-            playerController.exoPlayer?.videoScalingMode = when (displayMode) {
+            val scalingMode = when (displayMode) {
                 PlayerDisplayMode.STRETCH -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
                 else -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT
             }
+            android.util.Log.d("PlayerScreen", "Setting videoScalingMode=$scalingMode")
+            playerController.exoPlayer?.videoScalingMode = scalingMode
         }
     }
 
