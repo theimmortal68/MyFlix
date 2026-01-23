@@ -82,6 +82,12 @@ abstract class AppPreferences(context: Context) {
     }
     val playerDisplayMode: StateFlow<String> by lazy { _playerDisplayMode.asStateFlow() }
 
+    private val _videoZoom: MutableStateFlow<Float> by lazy {
+        MutableStateFlow(prefs.getFloat(PreferenceKeys.Prefs.VIDEO_ZOOM, PreferenceKeys.Defaults.VIDEO_ZOOM))
+    }
+    /** Video zoom level (1.0 = no zoom, up to 2.0 = 2x zoom for cropping letterboxing). */
+    val videoZoom: StateFlow<Float> by lazy { _videoZoom.asStateFlow() }
+
     private val _refreshRateMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.REFRESH_RATE_MODE, PreferenceKeys.Defaults.REFRESH_RATE_MODE)
@@ -299,6 +305,16 @@ abstract class AppPreferences(context: Context) {
     fun setPlayerDisplayMode(mode: String) {
         prefs.edit().putString(PreferenceKeys.Prefs.PLAYER_DISPLAY_MODE, mode).apply()
         _playerDisplayMode.value = mode
+    }
+
+    /**
+     * Set the video zoom level for cropping letterboxing.
+     * @param zoom Zoom level from 1.0 (no zoom) to 2.0 (2x zoom)
+     */
+    fun setVideoZoom(zoom: Float) {
+        val clampedZoom = zoom.coerceIn(1.0f, 2.0f)
+        prefs.edit().putFloat(PreferenceKeys.Prefs.VIDEO_ZOOM, clampedZoom).apply()
+        _videoZoom.value = clampedZoom
     }
 
     /**
