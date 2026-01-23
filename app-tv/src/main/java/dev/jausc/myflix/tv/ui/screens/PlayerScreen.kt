@@ -54,6 +54,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
@@ -123,6 +125,7 @@ import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
 import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
@@ -845,6 +848,7 @@ private fun TvPlayerControlsOverlay(
     val isHDR = videoQuality.contains("HDR")
     // Slide-out menu state
     var activeMenu by remember { mutableStateOf<PlayerMenuType?>(null) }
+    var menuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
     var showChaptersRow by remember { mutableStateOf(false) }
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }
@@ -1062,10 +1066,12 @@ private fun TvPlayerControlsOverlay(
                                 false
                             }
                         },
-                    ) {
-                        onUserInteraction()
-                        activeMenu = PlayerMenuType.Audio
-                    }
+                        onClickWithPosition = { anchor ->
+                            onUserInteraction()
+                            menuAnchor = anchor
+                            activeMenu = PlayerMenuType.Audio
+                        },
+                    )
                     TvActionButton(
                         label = "Subtitles",
                         icon = Icons.Outlined.ClosedCaption,
@@ -1077,10 +1083,12 @@ private fun TvPlayerControlsOverlay(
                                 false
                             }
                         },
-                    ) {
-                        onUserInteraction()
-                        activeMenu = PlayerMenuType.Subtitles
-                    }
+                        onClickWithPosition = { anchor ->
+                            onUserInteraction()
+                            menuAnchor = anchor
+                            activeMenu = PlayerMenuType.Subtitles
+                        },
+                    )
                     TvActionButton(
                         label = "Sub Style",
                         icon = Icons.Outlined.FormatSize,
@@ -1092,10 +1100,12 @@ private fun TvPlayerControlsOverlay(
                                 false
                             }
                         },
-                    ) {
-                        onUserInteraction()
-                        activeMenu = PlayerMenuType.SubtitleStyle
-                    }
+                        onClickWithPosition = { anchor ->
+                            onUserInteraction()
+                            menuAnchor = anchor
+                            activeMenu = PlayerMenuType.SubtitleStyle
+                        },
+                    )
                 }
 
                 // Center group: Playback controls (play/pause, seek, chapters)
@@ -1214,10 +1224,12 @@ private fun TvPlayerControlsOverlay(
                                 false
                             }
                         },
-                    ) {
-                        onUserInteraction()
-                        activeMenu = PlayerMenuType.Speed
-                    }
+                        onClickWithPosition = { anchor ->
+                            onUserInteraction()
+                            menuAnchor = anchor
+                            activeMenu = PlayerMenuType.Speed
+                        },
+                    )
                     TvActionButton(
                         label = "Display",
                         icon = Icons.Outlined.AspectRatio,
@@ -1229,10 +1241,12 @@ private fun TvPlayerControlsOverlay(
                                 false
                             }
                         },
-                    ) {
-                        onUserInteraction()
-                        activeMenu = PlayerMenuType.DisplayMode
-                    }
+                        onClickWithPosition = { anchor ->
+                            onUserInteraction()
+                            menuAnchor = anchor
+                            activeMenu = PlayerMenuType.DisplayMode
+                        },
+                    )
                     TvActionButton(
                         label = "Quality",
                         icon = Icons.Outlined.HighQuality,
@@ -1244,10 +1258,12 @@ private fun TvPlayerControlsOverlay(
                                 false
                             }
                         },
-                    ) {
-                        onUserInteraction()
-                        activeMenu = PlayerMenuType.Quality
-                    }
+                        onClickWithPosition = { anchor ->
+                            onUserInteraction()
+                            menuAnchor = anchor
+                            activeMenu = PlayerMenuType.Quality
+                        },
+                    )
                 }
             }
 
@@ -1271,7 +1287,7 @@ private fun TvPlayerControlsOverlay(
         }
     }
 
-    // Audio track slide-out menu
+    // Audio track popup menu
     PlayerSlideOutMenu(
         visible = activeMenu == PlayerMenuType.Audio,
         title = "Audio",
@@ -1301,9 +1317,10 @@ private fun TvPlayerControlsOverlay(
             }
         },
         onDismiss = { activeMenu = null },
+        anchor = menuAnchor,
     )
 
-    // Subtitles slide-out menu
+    // Subtitles popup menu
     PlayerSlideOutMenu(
         visible = activeMenu == PlayerMenuType.Subtitles,
         title = "Subtitles",
@@ -1344,9 +1361,10 @@ private fun TvPlayerControlsOverlay(
             }
         },
         onDismiss = { activeMenu = null },
+        anchor = menuAnchor,
     )
 
-    // Subtitle style slide-out menu (sectioned)
+    // Subtitle style popup menu (sectioned)
     PlayerSlideOutMenuSectioned(
         visible = activeMenu == PlayerMenuType.SubtitleStyle,
         title = "Subtitle Style",
@@ -1398,9 +1416,10 @@ private fun TvPlayerControlsOverlay(
             ),
         ),
         onDismiss = { activeMenu = null },
+        anchor = menuAnchor,
     )
 
-    // Playback speed slide-out menu
+    // Playback speed popup menu
     PlayerSlideOutMenu(
         visible = activeMenu == PlayerMenuType.Speed,
         title = "Playback Speed",
@@ -1417,9 +1436,10 @@ private fun TvPlayerControlsOverlay(
             )
         },
         onDismiss = { activeMenu = null },
+        anchor = menuAnchor,
     )
 
-    // Display mode slide-out menu
+    // Display mode popup menu
     PlayerSlideOutMenu(
         visible = activeMenu == PlayerMenuType.DisplayMode,
         title = "Display Mode",
@@ -1436,9 +1456,10 @@ private fun TvPlayerControlsOverlay(
             )
         },
         onDismiss = { activeMenu = null },
+        anchor = menuAnchor,
     )
 
-    // Streaming quality slide-out menu
+    // Streaming quality popup menu
     PlayerSlideOutMenu(
         visible = activeMenu == PlayerMenuType.Quality,
         title = "Streaming Quality",
@@ -1455,6 +1476,7 @@ private fun TvPlayerControlsOverlay(
             )
         },
         onDismiss = { activeMenu = null },
+        anchor = menuAnchor,
     )
 }
 
@@ -1579,9 +1601,12 @@ private fun TvActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     focusRequester: FocusRequester? = null,
     onDownPressed: (() -> Boolean)? = null,
-    onClick: () -> Unit,
+    onClickWithPosition: ((MenuAnchor) -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    var buttonPosition by remember { mutableStateOf<MenuAnchor?>(null) }
 
     // Animation for the glow effect
     val glowAlpha by animateFloatAsState(
@@ -1599,6 +1624,16 @@ private fun TvActionButton(
     Box(
         modifier = Modifier
             .size(32.dp)
+            .onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                val size = coordinates.size
+                with(density) {
+                    buttonPosition = MenuAnchor(
+                        x = (position.x + size.width / 2).toDp(),
+                        y = position.y.toDp(),
+                    )
+                }
+            }
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused
@@ -1610,7 +1645,8 @@ private fun TvActionButton(
                 } else if (event.type == KeyEventType.KeyDown &&
                     (event.key == Key.Enter || event.key == Key.DirectionCenter)
                 ) {
-                    onClick()
+                    buttonPosition?.let { onClickWithPosition?.invoke(it) }
+                    onClick?.invoke()
                     true
                 } else {
                     false

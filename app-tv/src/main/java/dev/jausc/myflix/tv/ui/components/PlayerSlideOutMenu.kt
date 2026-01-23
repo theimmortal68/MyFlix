@@ -6,14 +6,16 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -30,8 +32,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -61,9 +67,18 @@ data class SlideOutMenuSection(
 )
 
 /**
- * Netflix-style slide-out menu for player overlay.
+ * Anchor position for menu placement.
+ * Represents the center-bottom of the button that triggered the menu.
+ */
+data class MenuAnchor(
+    val x: Dp,
+    val y: Dp,
+)
+
+/**
+ * Netflix-style popup menu for player overlay.
  * Compact design with small text and minimal padding.
- * Slides in from the right side.
+ * Appears above the anchor point with a scale animation from the anchor.
  */
 @Composable
 fun PlayerSlideOutMenu(
@@ -71,6 +86,7 @@ fun PlayerSlideOutMenu(
     title: String,
     items: List<SlideOutMenuItem>,
     onDismiss: () -> Unit,
+    anchor: MenuAnchor? = null,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -83,7 +99,43 @@ fun PlayerSlideOutMenu(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val menuWidth = 200.dp
+        val menuHeight = 300.dp // Approximate max height
+
+        // Calculate menu position based on anchor
+        val offsetX = if (anchor != null) {
+            with(density) {
+                // Center the menu horizontally on the anchor, but keep within bounds
+                val anchorPx = anchor.x.toPx()
+                val menuWidthPx = menuWidth.toPx()
+                val maxWidthPx = maxWidth.toPx()
+                val targetX = (anchorPx - menuWidthPx / 2).coerceIn(16f, maxWidthPx - menuWidthPx - 16f)
+                targetX.toInt()
+            }
+        } else {
+            with(density) { (maxWidth - menuWidth - 24.dp).toPx().toInt() }
+        }
+
+        val offsetY = if (anchor != null) {
+            with(density) {
+                // Position above the anchor with some padding
+                val anchorPx = anchor.y.toPx()
+                val targetY = (anchorPx - menuHeight.toPx() - 16.dp.toPx()).coerceAtLeast(48f)
+                targetY.toInt()
+            }
+        } else {
+            with(density) { 48.dp.toPx().toInt() }
+        }
+
+        // Transform origin for scale animation (bottom center of menu, pointing to anchor)
+        val transformOrigin = if (anchor != null) {
+            TransformOrigin(0.5f, 1f) // Scale from bottom center
+        } else {
+            TransformOrigin(1f, 0.5f) // Scale from right center (fallback)
+        }
+
         // Dismiss scrim
         AnimatedVisibility(
             visible = visible,
@@ -97,22 +149,29 @@ fun PlayerSlideOutMenu(
             )
         }
 
-        // Slide-out panel from right
+        // Popup menu panel
         AnimatedVisibility(
             visible = visible,
-            enter = slideInHorizontally(tween(200)) { it } + fadeIn(tween(200)),
-            exit = slideOutHorizontally(tween(150)) { it } + fadeOut(tween(150)),
-            modifier = Modifier.align(Alignment.CenterEnd),
+            enter = scaleIn(
+                animationSpec = tween(200),
+                initialScale = 0.8f,
+                transformOrigin = transformOrigin,
+            ) + fadeIn(tween(200)),
+            exit = scaleOut(
+                animationSpec = tween(150),
+                targetScale = 0.8f,
+                transformOrigin = transformOrigin,
+            ) + fadeOut(tween(150)),
+            modifier = Modifier.offset { IntOffset(offsetX, offsetY) },
         ) {
             Column(
                 modifier = Modifier
                     .widthIn(min = 180.dp, max = 260.dp)
-                    .padding(end = 24.dp, top = 48.dp, bottom = 120.dp)
                     .background(
-                        brush = Brush.horizontalGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xE6181818),
                                 Color(0xF2141414),
+                                Color(0xE6181818),
                             ),
                         ),
                         shape = RoundedCornerShape(8.dp),
@@ -135,7 +194,11 @@ fun PlayerSlideOutMenu(
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
                     items(items, key = { it.text }) { item ->
-                        val itemFocusRequester = if (items.indexOf(item) == 0) focusRequester else remember { FocusRequester() }
+                        val itemFocusRequester = if (items.indexOf(item) == 0) {
+                            focusRequester
+                        } else {
+                            remember { FocusRequester() }
+                        }
                         SlideOutMenuItemRow(
                             item = item,
                             onDismiss = onDismiss,
@@ -149,7 +212,8 @@ fun PlayerSlideOutMenu(
 }
 
 /**
- * Netflix-style slide-out menu with sections.
+ * Netflix-style popup menu with sections.
+ * Appears above the anchor point with a scale animation.
  */
 @Composable
 fun PlayerSlideOutMenuSectioned(
@@ -157,6 +221,7 @@ fun PlayerSlideOutMenuSectioned(
     title: String,
     sections: List<SlideOutMenuSection>,
     onDismiss: () -> Unit,
+    anchor: MenuAnchor? = null,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -168,7 +233,40 @@ fun PlayerSlideOutMenuSectioned(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val menuWidth = 220.dp
+        val menuHeight = 400.dp // Sectioned menus are taller
+
+        // Calculate menu position based on anchor
+        val offsetX = if (anchor != null) {
+            with(density) {
+                val anchorPx = anchor.x.toPx()
+                val menuWidthPx = menuWidth.toPx()
+                val maxWidthPx = maxWidth.toPx()
+                val targetX = (anchorPx - menuWidthPx / 2).coerceIn(16f, maxWidthPx - menuWidthPx - 16f)
+                targetX.toInt()
+            }
+        } else {
+            with(density) { (maxWidth - menuWidth - 24.dp).toPx().toInt() }
+        }
+
+        val offsetY = if (anchor != null) {
+            with(density) {
+                val anchorPx = anchor.y.toPx()
+                val targetY = (anchorPx - menuHeight.toPx() - 16.dp.toPx()).coerceAtLeast(48f)
+                targetY.toInt()
+            }
+        } else {
+            with(density) { 48.dp.toPx().toInt() }
+        }
+
+        val transformOrigin = if (anchor != null) {
+            TransformOrigin(0.5f, 1f)
+        } else {
+            TransformOrigin(1f, 0.5f)
+        }
+
         // Dismiss scrim
         AnimatedVisibility(
             visible = visible,
@@ -182,22 +280,29 @@ fun PlayerSlideOutMenuSectioned(
             )
         }
 
-        // Slide-out panel
+        // Popup menu panel
         AnimatedVisibility(
             visible = visible,
-            enter = slideInHorizontally(tween(200)) { it } + fadeIn(tween(200)),
-            exit = slideOutHorizontally(tween(150)) { it } + fadeOut(tween(150)),
-            modifier = Modifier.align(Alignment.CenterEnd),
+            enter = scaleIn(
+                animationSpec = tween(200),
+                initialScale = 0.8f,
+                transformOrigin = transformOrigin,
+            ) + fadeIn(tween(200)),
+            exit = scaleOut(
+                animationSpec = tween(150),
+                targetScale = 0.8f,
+                transformOrigin = transformOrigin,
+            ) + fadeOut(tween(150)),
+            modifier = Modifier.offset { IntOffset(offsetX, offsetY) },
         ) {
             Column(
                 modifier = Modifier
-                    .widthIn(min = 180.dp, max = 260.dp)
-                    .padding(end = 24.dp, top = 48.dp, bottom = 120.dp)
+                    .widthIn(min = 180.dp, max = 280.dp)
                     .background(
-                        brush = Brush.horizontalGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xE6181818),
                                 Color(0xF2141414),
+                                Color(0xE6181818),
                             ),
                         ),
                         shape = RoundedCornerShape(8.dp),
