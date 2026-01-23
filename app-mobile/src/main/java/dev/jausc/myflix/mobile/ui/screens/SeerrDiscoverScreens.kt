@@ -206,8 +206,11 @@ fun SeerrDiscoverByGenreScreen(
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showReleaseStatusFilter = true,
-            defaultMediaType = if (mediaType == "movie") MediaTypeFilter.MOVIES
-                else MediaTypeFilter.TV_SHOWS,
+            defaultMediaType = if (mediaType == "movie") {
+                MediaTypeFilter.MOVIES
+            } else {
+                MediaTypeFilter.TV_SHOWS
+            },
         ),
         loadItems = { page, _, _, releaseStatus, sort, rating, fromYear, toYear ->
             if (mediaType == "movie") {
@@ -455,7 +458,9 @@ private fun buildSeerrMenuItems(
 ): List<MenuItemEntry> {
     return buildSeerrActionItems(media, actions).mapNotNull { entry ->
         when (entry) {
-            is SeerrActionDivider -> MenuItemDivider
+            is SeerrActionDivider -> {
+                MenuItemDivider
+            }
             is SeerrActionItem -> {
                 if (entry.enabled) {
                     MenuItem(
@@ -1091,8 +1096,11 @@ private fun SeerrFilterableMediaListScreen(
                     ) + listOf(
                         MenuItem(
                             text = "Last 5 Years (${currentYear - 5}-$currentYear)",
-                            icon = if (yearFrom == currentYear - 5 && yearTo == currentYear)
-                                Icons.Outlined.Check else null,
+                            icon = if (yearFrom == currentYear - 5 && yearTo == currentYear) {
+                                Icons.Outlined.Check
+                            } else {
+                                null
+                            },
                             iconTint = Color(0xFF34D399),
                             onClick = {
                                 yearFrom = currentYear - 5
@@ -1103,8 +1111,11 @@ private fun SeerrFilterableMediaListScreen(
                         ),
                         MenuItem(
                             text = "Last 10 Years (${currentYear - 10}-$currentYear)",
-                            icon = if (yearFrom == currentYear - 10 && yearTo == currentYear)
-                                Icons.Outlined.Check else null,
+                            icon = if (yearFrom == currentYear - 10 && yearTo == currentYear) {
+                                Icons.Outlined.Check
+                            } else {
+                                null
+                            },
                             iconTint = Color(0xFF34D399),
                             onClick = {
                                 yearFrom = currentYear - 10
@@ -1115,8 +1126,11 @@ private fun SeerrFilterableMediaListScreen(
                         ),
                         MenuItem(
                             text = "2020s (2020-$currentYear)",
-                            icon = if (yearFrom == 2020 && yearTo == currentYear)
-                                Icons.Outlined.Check else null,
+                            icon = if (yearFrom == 2020 && yearTo == currentYear) {
+                                Icons.Outlined.Check
+                            } else {
+                                null
+                            },
                             iconTint = Color(0xFF34D399),
                             onClick = {
                                 yearFrom = 2020
@@ -1127,8 +1141,11 @@ private fun SeerrFilterableMediaListScreen(
                         ),
                         MenuItem(
                             text = "2010s (2010-2019)",
-                            icon = if (yearFrom == 2010 && yearTo == 2019)
-                                Icons.Outlined.Check else null,
+                            icon = if (yearFrom == 2010 && yearTo == 2019) {
+                                Icons.Outlined.Check
+                            } else {
+                                null
+                            },
                             iconTint = Color(0xFF34D399),
                             onClick = {
                                 yearFrom = 2010
@@ -1139,8 +1156,11 @@ private fun SeerrFilterableMediaListScreen(
                         ),
                         MenuItem(
                             text = "2000s (2000-2009)",
-                            icon = if (yearFrom == 2000 && yearTo == 2009)
-                                Icons.Outlined.Check else null,
+                            icon = if (yearFrom == 2000 && yearTo == 2009) {
+                                Icons.Outlined.Check
+                            } else {
+                                null
+                            },
                             iconTint = Color(0xFF34D399),
                             onClick = {
                                 yearFrom = 2000
@@ -1151,8 +1171,11 @@ private fun SeerrFilterableMediaListScreen(
                         ),
                         MenuItem(
                             text = "Classic (Before 2000)",
-                            icon = if (yearFrom == null && yearTo == 1999)
-                                Icons.Outlined.Check else null,
+                            icon = if (yearFrom == null && yearTo == 1999) {
+                                Icons.Outlined.Check
+                            } else {
+                                null
+                            },
                             iconTint = Color(0xFF34D399),
                             onClick = {
                                 yearFrom = null
