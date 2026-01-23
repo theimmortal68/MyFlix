@@ -1645,11 +1645,11 @@ private fun InteractiveSeekBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (isSeeking && trickplayProvider != null) 150.dp else 4.dp),
+            .height(if (isFocused && trickplayProvider != null) 150.dp else 4.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        // Seek preview thumbnail (shown when seeking and trickplay available)
-        if (isSeeking && trickplayProvider != null && jellyfinClient != null && itemId != null) {
+        // Seek preview thumbnail (shown when progress bar is focused and trickplay available)
+        if (isFocused && trickplayProvider != null && jellyfinClient != null && itemId != null) {
             val tileIndex = trickplayProvider.getTileImageIndex(seekPosition)
             val (offsetX, offsetY) = trickplayProvider.getTileOffset(seekPosition)
             val thumbnailWidth = trickplayProvider.thumbnailWidth
@@ -1675,7 +1675,7 @@ private fun InteractiveSeekBar(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp),
             )
-        } else if (isSeeking) {
+        } else if (isFocused) {
             // Time-only preview when trickplay not available
             TimeOnlyPreview(
                 timeLabel = PlayerUtils.formatTime(seekPosition),
