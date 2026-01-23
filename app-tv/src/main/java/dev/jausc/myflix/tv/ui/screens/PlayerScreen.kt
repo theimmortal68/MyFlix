@@ -1007,6 +1007,7 @@ private fun TvPlayerControlsOverlay(
             ) {
                 // Left group: Audio, Subtitles, Sub Style
                 Row(
+                    modifier = Modifier.focusGroup(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     TvActionButton(
@@ -1244,6 +1245,7 @@ private fun TvPlayerControlsOverlay(
 
                 // Right group: Speed, Display, Quality (+ Skip if available)
                 Row(
+                    modifier = Modifier.focusGroup(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (skipLabel != null && onSkipSegment != null) {
