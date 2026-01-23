@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
@@ -48,6 +47,7 @@ import dev.jausc.myflix.tv.ui.util.SubsetTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -768,6 +768,9 @@ private fun TvPlayerControlsOverlay(
     val accentColor = TvColors.BluePrimary
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var showMediaInfo by remember { mutableStateOf(false) }
+    var showChaptersRow by remember { mutableStateOf(false) }
+    val settingsRowFocusRequester = remember { FocusRequester() }
+    val chaptersRowFocusRequester = remember { FocusRequester() }
 
     // Seeking state for interactive progress bar
     var isSeeking by remember { mutableStateOf(false) }
@@ -963,9 +966,18 @@ private fun TvPlayerControlsOverlay(
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.End,
             ) {
+                TvActionButton(
+                    label = "Info",
+                    icon = Icons.Default.Info,
+                    accentColor = accentColor,
+                ) {
+                    onUserInteraction()
+                    showMediaInfo = true
+                }
                 if (skipLabel != null && onSkipSegment != null) {
+                    Spacer(modifier = Modifier.width(18.dp))
                     TvActionButton(
                         label = skipLabel,
                         icon = Icons.Default.FastForward,
@@ -975,10 +987,31 @@ private fun TvPlayerControlsOverlay(
                         onSkipSegment()
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusProperties {
+                        down = if (showChaptersRow) chaptersRowFocusRequester else FocusRequester.Cancel
+                    },
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 TvActionButton(
                     label = "Audio",
                     icon = Icons.AutoMirrored.Filled.VolumeUp,
                     accentColor = accentColor,
+                    focusRequester = settingsRowFocusRequester,
+                    onDownPressed = {
+                        if (!showChaptersRow) {
+                            showChaptersRow = true
+                            chaptersRowFocusRequester.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 ) {
                     onUserInteraction()
                     val items = if (audioStreams.isEmpty()) {
@@ -1007,6 +1040,15 @@ private fun TvPlayerControlsOverlay(
                     label = "Subtitles",
                     icon = Icons.Default.ClosedCaption,
                     accentColor = accentColor,
+                    onDownPressed = {
+                        if (!showChaptersRow) {
+                            showChaptersRow = true
+                            chaptersRowFocusRequester.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 ) {
                     onUserInteraction()
                     val items = if (subtitleStreams.isEmpty()) {
@@ -1046,6 +1088,15 @@ private fun TvPlayerControlsOverlay(
                     label = "Sub Style",
                     icon = Icons.Default.FormatSize,
                     accentColor = accentColor,
+                    onDownPressed = {
+                        if (!showChaptersRow) {
+                            showChaptersRow = true
+                            chaptersRowFocusRequester.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 ) {
                     onUserInteraction()
                     val items = mutableListOf<DialogItemEntry>()
@@ -1105,6 +1156,15 @@ private fun TvPlayerControlsOverlay(
                     label = "Speed",
                     icon = Icons.Default.Speed,
                     accentColor = accentColor,
+                    onDownPressed = {
+                        if (!showChaptersRow) {
+                            showChaptersRow = true
+                            chaptersRowFocusRequester.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 ) {
                     onUserInteraction()
                     val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
@@ -1127,6 +1187,15 @@ private fun TvPlayerControlsOverlay(
                     label = "Display",
                     icon = Icons.Default.AspectRatio,
                     accentColor = accentColor,
+                    onDownPressed = {
+                        if (!showChaptersRow) {
+                            showChaptersRow = true
+                            chaptersRowFocusRequester.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 ) {
                     onUserInteraction()
                     dialogParams = DialogParams(
@@ -1148,6 +1217,15 @@ private fun TvPlayerControlsOverlay(
                     label = "Quality",
                     icon = Icons.Default.Speed,
                     accentColor = accentColor,
+                    onDownPressed = {
+                        if (!showChaptersRow) {
+                            showChaptersRow = true
+                            chaptersRowFocusRequester.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 ) {
                     onUserInteraction()
                     dialogParams = DialogParams(
@@ -1166,46 +1244,50 @@ private fun TvPlayerControlsOverlay(
                         },
                     )
                 }
-                TvActionButton(
-                    label = "Chapters",
-                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                    accentColor = accentColor,
+            }
+
+            if (showChaptersRow) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusProperties { up = settingsRowFocusRequester },
+                    horizontalArrangement = Arrangement.Center,
                 ) {
-                    onUserInteraction()
-                    val chapters = item?.chapters.orEmpty()
-                    val items = if (chapters.isEmpty()) {
-                        listOf(
-                            DialogItem(
-                                text = "No chapters available",
-                                icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                                iconTint = ActionColors.Season,
-                                enabled = false,
-                                onClick = {},
-                            ),
-                        )
-                    } else {
-                        chapters.map { chapter ->
-                            val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
-                            DialogItem(
-                                text = "${chapter.name ?: "Chapter"} • ${PlayerUtils.formatTime(startMs)}",
-                                icon = Icons.AutoMirrored.Filled.FormatListBulleted,
-                                iconTint = ActionColors.Season,
-                                onClick = {
-                                    onUserInteraction()
-                                    onSeekTo(startMs)
-                                },
+                    TvActionButton(
+                        label = "Chapters",
+                        icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                        accentColor = accentColor,
+                        focusRequester = chaptersRowFocusRequester,
+                    ) {
+                        onUserInteraction()
+                        val chapters = item?.chapters.orEmpty()
+                        val items = if (chapters.isEmpty()) {
+                            listOf(
+                                DialogItem(
+                                    text = "No chapters available",
+                                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                                    iconTint = ActionColors.Season,
+                                    enabled = false,
+                                    onClick = {},
+                                ),
                             )
+                        } else {
+                            chapters.map { chapter ->
+                                val startMs = chapter.startPositionTicks?.let { PlayerUtils.ticksToMs(it) } ?: 0L
+                                DialogItem(
+                                    text = "${chapter.name ?: "Chapter"} • ${PlayerUtils.formatTime(startMs)}",
+                                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                                    iconTint = ActionColors.Season,
+                                    onClick = {
+                                        onUserInteraction()
+                                        onSeekTo(startMs)
+                                    },
+                                )
+                            }
                         }
+                        dialogParams = DialogParams(title = "Chapters", items = items)
                     }
-                    dialogParams = DialogParams(title = "Chapters", items = items)
-                }
-                TvActionButton(
-                    label = "Info",
-                    icon = Icons.Default.Info,
-                    accentColor = accentColor,
-                ) {
-                    onUserInteraction()
-                    showMediaInfo = true
                 }
             }
 
@@ -1270,6 +1352,8 @@ private fun TvActionButton(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     accentColor: Color,
+    focusRequester: FocusRequester? = null,
+    onDownPressed: (() -> Boolean)? = null,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -1279,21 +1363,24 @@ private fun TvActionButton(
             containerColor = Color.White.copy(alpha = 0.08f),
             focusedContainerColor = Color.White.copy(alpha = 0.18f),
         ),
-        modifier = Modifier.height(56.dp),
+        modifier = Modifier
+            .height(56.dp)
+            .width(150.dp)
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                    onDownPressed?.invoke() == true
+                } else {
+                    false
+                }
+            },
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(30.dp)
-                    .background(accentColor.copy(alpha = 0.2f), CircleShape),
-            ) {
-                Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(18.dp))
-            }
+            Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(18.dp))
             Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.White)
         }
     }
