@@ -15,7 +15,7 @@ object TimeFormatUtil {
     fun formatTicksToTime(ticks: Long): String {
         val totalSeconds = ticks / 10_000_000
         val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
+        val minutes = totalSeconds % 3600 / 60
         val seconds = totalSeconds % 60
 
         return if (hours > 0) {
@@ -34,7 +34,7 @@ object TimeFormatUtil {
     fun formatMillisToTime(milliseconds: Long): String {
         val totalSeconds = milliseconds / 1000
         val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
+        val minutes = totalSeconds % 3600 / 60
         val seconds = totalSeconds % 60
 
         return if (hours > 0) {

@@ -101,7 +101,8 @@ class PoTokenWebView private constructor(
                 val parsedChallengeData = parseChallengeData(responseBody)
                 Handler(Looper.getMainLooper()).post {
                     webView.evaluateJavascript(
-                        """try {
+                        """
+                        try {
                             data = $parsedChallengeData
                             runBotGuard(data).then(function (result) {
                                 this.webPoSignalOutput = result.webPoSignalOutput
@@ -111,7 +112,8 @@ class PoTokenWebView private constructor(
                             })
                         } catch (error) {
                             $JS_INTERFACE.onJsInitializationError(error + "\n" + error.stack)
-                        }""",
+                        }
+                        """.trimIndent(),
                         null
                     )
                 }
@@ -136,7 +138,7 @@ class PoTokenWebView private constructor(
             try {
                 val responseBody = makeBotguardRequest(
                     "https://www.youtube.com/api/jnn/v1/GenerateIT",
-                    "[ \"$REQUEST_KEY\", \"$botguardResponse\" ]"
+                    """[ "$REQUEST_KEY", "$botguardResponse" ]"""
                 )
 
                 val (integrityToken, expirationTimeInSeconds) = parseIntegrityTokenData(responseBody)
@@ -165,7 +167,8 @@ class PoTokenWebView private constructor(
 
                 val u8Identifier = stringToU8(identifier)
                 webView.evaluateJavascript(
-                    """try {
+                    """
+                    try {
                         identifier = "$identifier"
                         u8Identifier = $u8Identifier
                         poTokenU8 = obtainPoToken(webPoSignalOutput, integrityToken, u8Identifier)
@@ -177,7 +180,8 @@ class PoTokenWebView private constructor(
                         $JS_INTERFACE.onObtainPoTokenResult(identifier, poTokenU8String)
                     } catch (error) {
                         $JS_INTERFACE.onObtainPoTokenError(identifier, error + "\n" + error.stack)
-                    }"""
+                    }
+                    """.trimIndent()
                 ) {}
 
                 // Wait for the deferred to complete

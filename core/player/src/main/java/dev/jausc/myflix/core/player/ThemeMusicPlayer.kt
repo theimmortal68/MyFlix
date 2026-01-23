@@ -190,7 +190,7 @@ class ThemeMusicPlayer(
                     val currentVolume = volume
 
                     for (step in FADE_STEPS downTo 0) {
-                        val newVolume = (currentVolume / FADE_STEPS) * step
+                        val newVolume = currentVolume / FADE_STEPS * step
                         player.setVolume(newVolume, newVolume)
                         delay(stepDelay)
                     }

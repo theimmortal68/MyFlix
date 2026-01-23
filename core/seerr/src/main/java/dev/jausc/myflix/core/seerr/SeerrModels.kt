@@ -932,8 +932,8 @@ object StudioColors {
         1632 to 0xFF000000L,   // Lionsgate - Black
         923 to 0xFF8B5CF6L,    // Legendary - Purple
         11461 to 0xFFDC2626L,  // Bad Robot - Red
-        82968 to 0xFF000000L,  // Apple Studios - Black
-        127928 to 0xFF000000L, // A24 - Black
+        82_968 to 0xFF000000L,  // Apple Studios - Black
+        127_928 to 0xFF000000L, // A24 - Black
         2785 to 0xFF6366F1L,   // Castle Rock - Indigo
     )
 
@@ -1003,7 +1003,7 @@ object NetworkColors {
 object PopularStudios {
     val studios = listOf(
         SeerrStudio(2, "Disney", "/wdrCwmRnLFJhEoH8GSfymY85KHT.png"),
-        SeerrStudio(127928, "20th Century Studios", "/h0rjX5vjW5r8yEnUBStFarjcLT4.png"),
+        SeerrStudio(127_928, "20th Century Studios", "/h0rjX5vjW5r8yEnUBStFarjcLT4.png"),
         SeerrStudio(34, "Sony Pictures", "/GagSvqWlyPdkFHMfQ3pNq6ix9P.png"),
         SeerrStudio(174, "Warner Bros. Pictures", "/ky0xOc5OrhzkZ1N6KyUxacfQsCk.png"),
         SeerrStudio(33, "Universal", "/8lvHyhjr8oUKOOy2dKXoALWKdp0.png"),
@@ -1012,7 +1012,7 @@ object PopularStudios {
         SeerrStudio(521, "DreamWorks", "/kP7t6RwGz2AvvTkvnI1uteEwHet.png"),
         SeerrStudio(420, "Marvel Studios", "/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"),
         SeerrStudio(9993, "DC", "/2Tc1P3Ac8M479naPp1kYT3izLS5.png"),
-        SeerrStudio(41077, "A24", "/1ZXsGaFPgrgS6ZZGS37AqD5uU12.png"),
+        SeerrStudio(41_077, "A24", "/1ZXsGaFPgrgS6ZZGS37AqD5uU12.png"),
     )
 
     /** Build the image URL for a studio logo (white duotone for dark backgrounds) */
