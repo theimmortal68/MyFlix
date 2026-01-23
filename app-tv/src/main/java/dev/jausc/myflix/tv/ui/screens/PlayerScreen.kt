@@ -113,7 +113,6 @@ import dev.jausc.myflix.tv.ui.components.DialogSectionHeader
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
-import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -793,7 +792,6 @@ private fun TvPlayerControlsOverlay(
     val playerType = playbackState.playerType
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
-    val accentColor = TvColors.BluePrimary
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var showChaptersRow by remember { mutableStateOf(false) }
     val settingsRowFocusRequester = remember { FocusRequester() }
@@ -886,7 +884,7 @@ private fun TvPlayerControlsOverlay(
                 when {
                     isDV -> PlayerBadge(
                         text = "Dolby Vision",
-                        backgroundColor = accentColor,
+                        backgroundColor = Color(0xFF000000),
                     )
                     isHDR -> PlayerBadge(
                         text = "HDR",
@@ -912,8 +910,7 @@ private fun TvPlayerControlsOverlay(
             TvControlButton(
                 label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
                 isPrimary = true,
-                accentColor = accentColor,
-                focusRequester = playPauseFocusRequester,
+                                focusRequester = playPauseFocusRequester,
             ) {
                 onUserInteraction()
                 onPlayPause()
@@ -947,8 +944,7 @@ private fun TvPlayerControlsOverlay(
                 jellyfinClient = jellyfinClient,
                 itemId = itemId,
                 focusRequester = seekBarFocusRequester,
-                accentColor = accentColor,
-                onSeekStart = {
+                                onSeekStart = {
                     isSeeking = true
                     seekPosition = playbackState.position
                     onUserInteraction()
@@ -976,7 +972,7 @@ private fun TvPlayerControlsOverlay(
                 Text(
                     text = if (isSeeking) PlayerUtils.formatTime(seekPosition) else PlayerUtils.formatTime(playbackState.position),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSeeking) accentColor else Color.White,
+                    color = Color.White,
                 )
                 Text(
                     text = "x${"%.2f".format(playbackState.speed)}",
@@ -1007,8 +1003,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Audio",
                         icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                        accentColor = accentColor,
-                        focusRequester = settingsRowFocusRequester,
+                                                focusRequester = settingsRowFocusRequester,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1045,8 +1040,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Subtitles",
                         icon = Icons.Outlined.ClosedCaption,
-                        accentColor = accentColor,
-                        onDownPressed = {
+                                                onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 chaptersRowFocusRequester.requestFocus()
@@ -1093,8 +1087,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Sub Style",
                         icon = Icons.Outlined.FormatSize,
-                        accentColor = accentColor,
-                        onDownPressed = {
+                                                onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 chaptersRowFocusRequester.requestFocus()
@@ -1168,8 +1161,7 @@ private fun TvPlayerControlsOverlay(
                         TvActionButton(
                             label = skipLabel,
                             icon = Icons.Default.FastForward,
-                            accentColor = accentColor,
-                            onDownPressed = {
+                                                        onDownPressed = {
                                 if (!showChaptersRow) {
                                     showChaptersRow = true
                                     chaptersRowFocusRequester.requestFocus()
@@ -1186,8 +1178,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Speed",
                         icon = Icons.Outlined.Speed,
-                        accentColor = accentColor,
-                        onDownPressed = {
+                                                onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 chaptersRowFocusRequester.requestFocus()
@@ -1217,8 +1208,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Display",
                         icon = Icons.Outlined.AspectRatio,
-                        accentColor = accentColor,
-                        onDownPressed = {
+                                                onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 chaptersRowFocusRequester.requestFocus()
@@ -1247,8 +1237,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Quality",
                         icon = Icons.Outlined.HighQuality,
-                        accentColor = accentColor,
-                        onDownPressed = {
+                                                onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
                                 chaptersRowFocusRequester.requestFocus()
@@ -1315,12 +1304,12 @@ private fun TvPlayerControlsOverlay(
 private fun TvControlButton(
     label: String,
     isPrimary: Boolean = false,
-    accentColor: Color = TvColors.BluePrimary,
     focusRequester: FocusRequester? = null,
     onClick: () -> Unit,
 ) {
-    val backgroundColor = if (isPrimary) accentColor else Color.Black.copy(alpha = 0.7f)
-    val focusedColor = if (isPrimary) accentColor.copy(alpha = 0.9f) else TvColors.Surface
+    val backgroundColor = if (isPrimary) Color.White else Color.Black.copy(alpha = 0.6f)
+    val focusedColor = if (isPrimary) Color.White else Color.White.copy(alpha = 0.2f)
+    val textColor = if (isPrimary) Color.Black else Color.White
     Surface(
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
@@ -1339,7 +1328,7 @@ private fun TvControlButton(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.White,
+                color = textColor,
             )
         }
     }
@@ -1349,28 +1338,21 @@ private fun TvControlButton(
 private fun TvActionButton(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: Color,
     focusRequester: FocusRequester? = null,
     onDownPressed: (() -> Boolean)? = null,
     onClick: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    // Animation for the halo effect
-    val haloAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 0.6f else 0f,
+    // Animation for the glow effect
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.5f else 0f,
         animationSpec = tween(durationMillis = 200),
-        label = "haloAlpha",
-    )
-
-    val haloScale by animateFloatAsState(
-        targetValue = if (isFocused) 1f else 0.5f,
-        animationSpec = tween(durationMillis = 200),
-        label = "haloScale",
+        label = "glowAlpha",
     )
 
     val iconScale by animateFloatAsState(
-        targetValue = if (isFocused) 1.15f else 1f,
+        targetValue = if (isFocused) 1.1f else 1f,
         animationSpec = tween(durationMillis = 150),
         label = "iconScale",
     )
@@ -1397,26 +1379,14 @@ private fun TvActionButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        // Halo effect (blurred circle behind the icon)
+        // Subtle glow effect
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .scale(haloScale)
-                .alpha(haloAlpha * 0.4f)
-                .blur(6.dp)
+                .size(26.dp)
+                .alpha(glowAlpha)
+                .blur(4.dp)
                 .clip(CircleShape)
-                .background(accentColor),
-        )
-
-        // Secondary inner glow
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .scale(haloScale)
-                .alpha(haloAlpha * 0.3f)
-                .blur(3.dp)
-                .clip(CircleShape)
-                .background(accentColor),
+                .background(Color.White),
         )
 
         // Icon
@@ -1426,7 +1396,7 @@ private fun TvActionButton(
             modifier = Modifier
                 .size(20.dp)
                 .scale(iconScale),
-            tint = if (isFocused) accentColor else Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused) Color.White else Color.White.copy(alpha = 0.7f),
         )
     }
 }
@@ -1504,7 +1474,7 @@ private fun ChapterThumbCard(
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                border = BorderStroke(2.dp, Color.White),
                 shape = MaterialTheme.shapes.medium,
             ),
         ),
@@ -1621,7 +1591,7 @@ private fun SkipSegmentButton(
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Black.copy(alpha = 0.8f),
-            focusedContainerColor = TvColors.BluePrimary,
+            focusedContainerColor = Color.White.copy(alpha = 0.2f),
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
@@ -1666,7 +1636,6 @@ private fun InteractiveSeekBar(
     jellyfinClient: JellyfinClient?,
     itemId: String?,
     focusRequester: FocusRequester,
-    accentColor: Color,
     onSeekStart: () -> Unit,
     onSeekChange: (Long) -> Unit,
     onSeekConfirm: () -> Unit,
@@ -1773,7 +1742,7 @@ private fun InteractiveSeekBar(
                     .fillMaxHeight()
                     .fillMaxWidth(displayProgress.coerceIn(0f, 1f))
                     .background(
-                        if (isSeeking) accentColor.copy(alpha = 0.85f) else accentColor,
+                        Color.White.copy(alpha = if (isSeeking) 0.9f else 1f),
                         MaterialTheme.shapes.small,
                     ),
             )
@@ -1912,7 +1881,7 @@ private fun TimeOnlyPreview(
                 .width(previewWidthDp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.Black.copy(alpha = 0.9f))
-                .border(2.dp, TvColors.BluePrimary, RoundedCornerShape(8.dp))
+                .border(2.dp, Color.White, RoundedCornerShape(8.dp))
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
