@@ -62,7 +62,7 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.transformations
 import dev.jausc.myflix.core.player.TrickplayProvider
-import dev.jausc.myflix.tv.ui.util.SubsetTransformation
+import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import androidx.compose.ui.geometry.Size as ComposeSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier

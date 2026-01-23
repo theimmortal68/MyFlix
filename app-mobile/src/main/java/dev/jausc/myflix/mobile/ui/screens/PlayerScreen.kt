@@ -97,7 +97,7 @@ import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
-import dev.jausc.myflix.mobile.ui.util.SubsetTransformation
+import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive

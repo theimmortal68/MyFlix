@@ -49,6 +49,9 @@ dependencies {
     implementation("androidx.compose.foundation:foundation-layout")
     implementation("androidx.compose.ui:ui")
 
+    // Coil - for SubsetTransformation
+    api("io.coil-kt.coil3:coil-core:${rootProject.extra["coilVersion"]}")
+
     // Material Icons - for ActionMenuBuilder
     api("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")

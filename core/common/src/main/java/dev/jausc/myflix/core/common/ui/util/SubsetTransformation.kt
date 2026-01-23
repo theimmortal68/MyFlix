@@ -1,4 +1,4 @@
-package dev.jausc.myflix.tv.ui.util
+package dev.jausc.myflix.core.common.ui.util
 
 import android.graphics.Bitmap
 import coil3.size.Size
