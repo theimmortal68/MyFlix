@@ -1364,7 +1364,7 @@ private fun TvActionButton(
             ),
         ),
         modifier = Modifier
-            .height(44.dp)
+            .height(32.dp)
             .wrapContentWidth()
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onPreviewKeyEvent { event ->
@@ -1376,7 +1376,7 @@ private fun TvActionButton(
             },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
