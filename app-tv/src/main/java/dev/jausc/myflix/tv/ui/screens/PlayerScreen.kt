@@ -15,6 +15,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.media3.common.C
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -89,7 +90,6 @@ import androidx.compose.material.icons.outlined.ClosedCaptionOff
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
@@ -113,6 +113,7 @@ import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
 import kotlinx.coroutines.flow.SharedFlow
 import dev.jausc.myflix.core.player.PlayerConstants
+import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.core.player.SubtitleStyle
@@ -158,9 +159,8 @@ fun PlayerScreen(
     val skipForwardMs = remember(skipForwardSeconds) { skipForwardSeconds * 1000L }
     val skipBackwardMs = remember(skipBackwardSeconds) { skipBackwardSeconds * 1000L }
 
-    // Get video zoom preference
-    val savedVideoZoom by appPreferences.videoZoom.collectAsState()
-    var videoZoom by remember(savedVideoZoom) { mutableFloatStateOf(savedVideoZoom) }
+    // Get display mode preference
+    val displayModeName by appPreferences.playerDisplayMode.collectAsState()
 
     // Get refresh rate mode preference
     val refreshRateMode by appPreferences.refreshRateMode.collectAsState()
@@ -199,6 +199,11 @@ fun PlayerScreen(
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
+    var displayMode by remember(displayModeName) {
+        mutableStateOf(
+            try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
+        )
+    }
 
     // Current bitrate - can be changed during playback (0 = no limit / direct play)
     var currentBitrate by remember { mutableIntStateOf(maxStreamingBitrate) }
@@ -448,7 +453,7 @@ fun PlayerScreen(
                         playerController = playerController,
                         url = effectiveStreamUrl,
                         startPositionMs = currentStartPositionMs,
-                        videoZoom = videoZoom,
+                        displayMode = displayMode,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -457,7 +462,7 @@ fun PlayerScreen(
                         playerController = playerController,
                         url = effectiveStreamUrl,
                         startPositionMs = currentStartPositionMs,
-                        videoZoom = videoZoom,
+                        displayMode = displayMode,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -536,10 +541,11 @@ fun PlayerScreen(
                     onSeekRelative = { offset -> playerController.seekRelative(offset) },
                     onSeekTo = { position -> playerController.seekTo(position) },
                     onSpeedChanged = { speed -> playerController.setSpeed(speed) },
-                    videoZoom = videoZoom,
-                    onZoomChanged = { zoom ->
-                        videoZoom = zoom
-                        appPreferences.setVideoZoom(zoom)
+                    displayMode = displayMode,
+                    onDisplayModeChanged = { mode ->
+                        android.util.Log.d("PlayerScreen", "onDisplayModeChanged: $mode (was $displayMode)")
+                        displayMode = mode
+                        appPreferences.setPlayerDisplayMode(mode.name)
                     },
                     currentBitrate = currentBitrate,
                     onBitrateChanged = { bitrate ->
@@ -622,10 +628,11 @@ private fun MpvSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
-    videoZoom: Float,
+    displayMode: PlayerDisplayMode,
     modifier: Modifier = Modifier,
 ) {
     var surfaceReady by remember { mutableStateOf(false) }
+    val playbackState by playerController.state.collectAsState()
 
     // Start playback when surface is ready
     LaunchedEffect(surfaceReady, url) {
@@ -634,11 +641,48 @@ private fun MpvSurfaceView(
         }
     }
 
-    // Use BoxWithConstraints and apply zoom via scale
-    Box(
+    // Use BoxWithConstraints to get container size and calculate proper aspect ratio
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
+        val containerWidth = constraints.maxWidth.toFloat()
+        val containerHeight = constraints.maxHeight.toFloat()
+        val videoAspect = if (playbackState.videoAspectRatio > 0) {
+            playbackState.videoAspectRatio
+        } else if (playbackState.videoWidth > 0 && playbackState.videoHeight > 0) {
+            playbackState.videoWidth.toFloat() / playbackState.videoHeight.toFloat()
+        } else {
+            16f / 9f // Default to 16:9
+        }
+
+        // Calculate size maintaining aspect ratio (letterbox/pillarbox)
+        val containerAspect = containerWidth / containerHeight
+        val (surfaceWidth, surfaceHeight) = when (displayMode) {
+            PlayerDisplayMode.FIT -> if (videoAspect > containerAspect) {
+                containerWidth to containerWidth / videoAspect
+            } else {
+                containerHeight * videoAspect to containerHeight
+            }
+            PlayerDisplayMode.FILL -> if (videoAspect > containerAspect) {
+                containerHeight * videoAspect to containerHeight
+            } else {
+                containerWidth to containerWidth / videoAspect
+            }
+            PlayerDisplayMode.ZOOM -> {
+                val zoomFactor = 1.1f
+                val base = if (videoAspect > containerAspect) {
+                    containerHeight * videoAspect to containerHeight
+                } else {
+                    containerWidth to containerWidth / videoAspect
+                }
+                base.first * zoomFactor to base.second * zoomFactor
+            }
+            PlayerDisplayMode.STRETCH -> containerWidth to containerHeight
+        }
+
         AndroidView(
             factory = { ctx ->
                 SurfaceView(ctx).apply {
@@ -660,9 +704,12 @@ private fun MpvSurfaceView(
                     })
                 }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .scale(videoZoom),
+            modifier = with(density) {
+                Modifier.size(
+                    width = surfaceWidth.toDp(),
+                    height = surfaceHeight.toDp(),
+                )
+            },
         )
     }
 }
@@ -673,7 +720,7 @@ private fun ExoPlayerSurfaceView(
     playerController: PlayerController,
     url: String,
     startPositionMs: Long,
-    videoZoom: Float,
+    displayMode: PlayerDisplayMode,
     modifier: Modifier = Modifier,
 ) {
     // Start playback
@@ -684,11 +731,34 @@ private fun ExoPlayerSurfaceView(
     // Keep reference to PlayerView for direct updates
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
 
-    // Update zoom when it changes
-    LaunchedEffect(videoZoom) {
+    // Update display mode when it changes - use view scaling for hardcoded letterboxing
+    LaunchedEffect(displayMode) {
+        android.util.Log.d("PlayerScreen", "LaunchedEffect(displayMode): $displayMode, playerView=$playerView")
         playerView?.let { view ->
-            view.scaleX = videoZoom
-            view.scaleY = videoZoom
+            // For hardcoded letterboxing, we need to scale the view to zoom/crop
+            // Scale factors: FIT=1.0, FILL=1.33 (for 2.35:1), ZOOM=1.5, STRETCH=different X/Y
+            when (displayMode) {
+                PlayerDisplayMode.FIT -> {
+                    view.scaleX = 1.0f
+                    view.scaleY = 1.0f
+                }
+                PlayerDisplayMode.FILL -> {
+                    // Scale to crop typical 2.35:1 letterboxing (scale ~1.33)
+                    view.scaleX = 1.33f
+                    view.scaleY = 1.33f
+                }
+                PlayerDisplayMode.ZOOM -> {
+                    // Zoom in more
+                    view.scaleX = 1.5f
+                    view.scaleY = 1.5f
+                }
+                PlayerDisplayMode.STRETCH -> {
+                    // Stretch to fill - scale Y more to remove letterboxing without scaling X
+                    view.scaleX = 1.0f
+                    view.scaleY = 1.33f
+                }
+            }
+            android.util.Log.d("PlayerScreen", "Set scale: scaleX=${view.scaleX}, scaleY=${view.scaleY}")
         }
     }
 
@@ -702,15 +772,11 @@ private fun ExoPlayerSurfaceView(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
-                scaleX = videoZoom
-                scaleY = videoZoom
                 playerView = this
             }
         },
         update = { view ->
             view.player = playerController.exoPlayer
-            view.scaleX = videoZoom
-            view.scaleY = videoZoom
             playerView = view
         },
         modifier = modifier,
@@ -750,8 +816,8 @@ private fun TvPlayerControlsOverlay(
     onSeekRelative: (Long) -> Unit,
     onSeekTo: (Long) -> Unit,
     onSpeedChanged: (Float) -> Unit,
-    videoZoom: Float,
-    onZoomChanged: (Float) -> Unit,
+    displayMode: PlayerDisplayMode,
+    onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
     currentBitrate: Int,
     onBitrateChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
@@ -1257,8 +1323,8 @@ private fun TvPlayerControlsOverlay(
                         )
                     }
                     TvActionButton(
-                        label = "Zoom",
-                        icon = Icons.Outlined.ZoomIn,
+                        label = "Display",
+                        icon = Icons.Outlined.AspectRatio,
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
@@ -1269,27 +1335,16 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        // Zoom level options from 100% to 200%
-                        val zoomOptions = listOf(
-                            1.0f to "100%",
-                            1.1f to "110%",
-                            1.2f to "120%",
-                            1.33f to "133%",
-                            1.5f to "150%",
-                            1.75f to "175%",
-                            2.0f to "200%",
-                        )
                         dialogParams = DialogParams(
-                            title = "Video Zoom",
-                            items = zoomOptions.map { (zoom, label) ->
-                                val isSelected = (videoZoom - zoom).let { kotlin.math.abs(it) < 0.01f }
+                            title = "Display Mode",
+                            items = PlayerDisplayMode.values().map { mode ->
                                 DialogItem(
-                                    text = if (isSelected) "$label ✓" else label,
-                                    icon = Icons.Outlined.ZoomIn,
-                                    iconTint = if (isSelected) ActionColors.Play else ActionColors.GoTo,
+                                    text = mode.label,
+                                    icon = Icons.Outlined.AspectRatio,
+                                    iconTint = ActionColors.GoTo,
                                     onClick = {
                                         onUserInteraction()
-                                        onZoomChanged(zoom)
+                                        onDisplayModeChanged(mode)
                                     },
                                 )
                             },

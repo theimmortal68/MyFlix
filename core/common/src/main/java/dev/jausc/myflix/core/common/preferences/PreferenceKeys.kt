@@ -86,11 +86,8 @@ object PreferenceKeys {
         /** Skip backward duration in seconds */
         const val SKIP_BACKWARD_SECONDS = "skip_backward_seconds"
 
-        /** Player display mode (FIT, FILL, ZOOM, STRETCH) - deprecated, use VIDEO_ZOOM */
+        /** Player display mode (FIT, FILL, ZOOM, STRETCH) */
         const val PLAYER_DISPLAY_MODE = "player_display_mode"
-
-        /** Video zoom level (1.0 = fit, up to 2.0 = 2x zoom) */
-        const val VIDEO_ZOOM = "video_zoom"
 
         /** Refresh rate switching mode (OFF, AUTO, 60, 120) */
         const val REFRESH_RATE_MODE = "refresh_rate_mode"
@@ -220,10 +217,8 @@ object PreferenceKeys {
         const val SKIP_FORWARD_SECONDS = 10
         /** Default skip backward duration: 10 seconds */
         const val SKIP_BACKWARD_SECONDS = 10
-        /** Default to FIT (letterbox/pillarbox) - deprecated, use VIDEO_ZOOM */
+        /** Default to FIT (letterbox/pillarbox) */
         const val PLAYER_DISPLAY_MODE = "FIT"
-        /** Default video zoom: 1.0 (no zoom, show letterboxing) */
-        const val VIDEO_ZOOM = 1.0f
         /** Default refresh rate mode: OFF (no switching) */
         const val REFRESH_RATE_MODE = "OFF"
         // Media segment defaults (OFF, ASK, AUTO)
