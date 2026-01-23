@@ -119,16 +119,27 @@ import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleColor
-import dev.jausc.myflix.tv.ui.components.DialogItem
-import dev.jausc.myflix.tv.ui.components.DialogItemEntry
-import dev.jausc.myflix.tv.ui.components.DialogParams
-import dev.jausc.myflix.tv.ui.components.DialogPopup
-import dev.jausc.myflix.tv.ui.components.DialogSectionHeader
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+
+/**
+ * Types of slide-out menus in the player overlay.
+ */
+private sealed class PlayerMenuType {
+    data object Audio : PlayerMenuType()
+    data object Subtitles : PlayerMenuType()
+    data object SubtitleStyle : PlayerMenuType()
+    data object Speed : PlayerMenuType()
+    data object DisplayMode : PlayerMenuType()
+    data object Quality : PlayerMenuType()
+}
 
 @Composable
 fun PlayerScreen(
@@ -832,7 +843,8 @@ private fun TvPlayerControlsOverlay(
     val playerType = playbackState.playerType
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
-    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    // Slide-out menu state
+    var activeMenu by remember { mutableStateOf<PlayerMenuType?>(null) }
     var showChaptersRow by remember { mutableStateOf(false) }
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }
@@ -1052,27 +1064,7 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        val items = if (audioStreams.isEmpty()) {
-                            listOf(
-                                DialogItem(
-                                    text = "No audio tracks available",
-                                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                                    iconTint = ActionColors.Audio,
-                                    enabled = false,
-                                    onClick = {},
-                                ),
-                            )
-                        } else {
-                            audioStreams.map {
-                                DialogItem(
-                                    text = it.audioLabel(),
-                                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                                    iconTint = ActionColors.Audio,
-                                    onClick = { onAudioSelected(it.index) },
-                                )
-                            }
-                        }
-                        dialogParams = DialogParams(title = "Audio Tracks", items = items)
+                        activeMenu = PlayerMenuType.Audio
                     }
                     TvActionButton(
                         label = "Subtitles",
@@ -1087,38 +1079,7 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        val items = if (subtitleStreams.isEmpty()) {
-                            listOf(
-                                DialogItem(
-                                    text = "No subtitles available",
-                                    icon = Icons.Outlined.ClosedCaptionOff,
-                                    iconTint = ActionColors.Subtitles,
-                                    enabled = false,
-                                    onClick = {},
-                                ),
-                            )
-                        } else {
-                            val entries = mutableListOf<DialogItemEntry>(
-                                DialogItem(
-                                    text = "Off",
-                                    icon = Icons.Outlined.ClosedCaptionOff,
-                                    iconTint = ActionColors.Subtitles,
-                                    onClick = { onSubtitleSelected(PlayerConstants.TRACK_DISABLED) },
-                                ),
-                            )
-                            entries.addAll(
-                                subtitleStreams.map {
-                                    DialogItem(
-                                        text = it.subtitleLabel(),
-                                        icon = Icons.Outlined.ClosedCaption,
-                                        iconTint = ActionColors.Subtitles,
-                                        onClick = { onSubtitleSelected(it.index) },
-                                    )
-                                },
-                            )
-                            entries
-                        }
-                        dialogParams = DialogParams(title = "Subtitles", items = items)
+                        activeMenu = PlayerMenuType.Subtitles
                     }
                     TvActionButton(
                         label = "Sub Style",
@@ -1133,58 +1094,7 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        val items = mutableListOf<DialogItemEntry>()
-
-                        // Font Size section
-                        items.add(DialogSectionHeader("Font Size"))
-                        items.addAll(
-                            SubtitleFontSize.entries.map { size ->
-                                DialogItem(
-                                    text = size.label,
-                                    icon = Icons.Outlined.FormatSize,
-                                    iconTint = if (subtitleStyle.fontSize == size) ActionColors.Subtitles else Color.Gray,
-                                    onClick = {
-                                        onUserInteraction()
-                                        onSubtitleStyleChanged(subtitleStyle.copy(fontSize = size))
-                                    },
-                                )
-                            },
-                        )
-
-                        // Font Color section
-                        items.add(DialogSectionHeader("Font Color"))
-                        items.addAll(
-                            SubtitleColor.entries.map { color ->
-                                DialogItem(
-                                    text = color.label,
-                                    icon = Icons.Outlined.ClosedCaption,
-                                    iconTint = Color(color.argb),
-                                    onClick = {
-                                        onUserInteraction()
-                                        onSubtitleStyleChanged(subtitleStyle.copy(fontColor = color))
-                                    },
-                                )
-                            },
-                        )
-
-                        // Background Opacity section
-                        items.add(DialogSectionHeader("Background"))
-                        val opacities = listOf(0, 25, 50, 75, 100)
-                        items.addAll(
-                            opacities.map { opacity ->
-                                DialogItem(
-                                    text = "$opacity%",
-                                    icon = Icons.Outlined.FormatSize,
-                                    iconTint = if (subtitleStyle.backgroundOpacity == opacity) ActionColors.Subtitles else Color.Gray,
-                                    onClick = {
-                                        onUserInteraction()
-                                        onSubtitleStyleChanged(subtitleStyle.copy(backgroundOpacity = opacity))
-                                    },
-                                )
-                            },
-                        )
-
-                        dialogParams = DialogParams(title = "Subtitle Style", items = items)
+                        activeMenu = PlayerMenuType.SubtitleStyle
                     }
                 }
 
@@ -1306,21 +1216,7 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                        dialogParams = DialogParams(
-                            title = "Playback Speed",
-                            items = speeds.map { value ->
-                                DialogItem(
-                                    text = "x${"%.2f".format(value)}",
-                                    icon = Icons.Outlined.Speed,
-                                    iconTint = ActionColors.Play,
-                                    onClick = {
-                                        onUserInteraction()
-                                        onSpeedChanged(value)
-                                    },
-                                )
-                            },
-                        )
+                        activeMenu = PlayerMenuType.Speed
                     }
                     TvActionButton(
                         label = "Display",
@@ -1335,20 +1231,7 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        dialogParams = DialogParams(
-                            title = "Display Mode",
-                            items = PlayerDisplayMode.values().map { mode ->
-                                DialogItem(
-                                    text = mode.label,
-                                    icon = Icons.Outlined.AspectRatio,
-                                    iconTint = ActionColors.GoTo,
-                                    onClick = {
-                                        onUserInteraction()
-                                        onDisplayModeChanged(mode)
-                                    },
-                                )
-                            },
-                        )
+                        activeMenu = PlayerMenuType.DisplayMode
                     }
                     TvActionButton(
                         label = "Quality",
@@ -1363,21 +1246,7 @@ private fun TvPlayerControlsOverlay(
                         },
                     ) {
                         onUserInteraction()
-                        dialogParams = DialogParams(
-                            title = "Streaming Quality",
-                            items = PlaybackOptions.BITRATE_OPTIONS.map { (bitrate, label) ->
-                                val isSelected = bitrate == currentBitrate
-                                DialogItem(
-                                    text = if (isSelected) "$label ✓" else label,
-                                    icon = Icons.Outlined.HighQuality,
-                                    iconTint = if (isSelected) ActionColors.Play else ActionColors.Audio,
-                                    onClick = {
-                                        onUserInteraction()
-                                        onBitrateChanged(bitrate)
-                                    },
-                                )
-                            },
-                        )
+                        activeMenu = PlayerMenuType.Quality
                     }
                 }
             }
@@ -1402,12 +1271,191 @@ private fun TvPlayerControlsOverlay(
         }
     }
 
-    dialogParams?.let { params ->
-        DialogPopup(
-            params = params,
-            onDismissRequest = { dialogParams = null },
-        )
-    }
+    // Audio track slide-out menu
+    PlayerSlideOutMenu(
+        visible = activeMenu == PlayerMenuType.Audio,
+        title = "Audio",
+        items = if (audioStreams.isEmpty()) {
+            listOf(
+                SlideOutMenuItem(
+                    text = "No audio tracks",
+                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                    iconTint = ActionColors.Audio,
+                    enabled = false,
+                    onClick = {},
+                ),
+            )
+        } else {
+            audioStreams.map { stream ->
+                val isSelected = stream.index == selectedAudioIndex
+                SlideOutMenuItem(
+                    text = stream.audioLabel(),
+                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                    iconTint = ActionColors.Audio,
+                    selected = isSelected,
+                    onClick = {
+                        onUserInteraction()
+                        onAudioSelected(stream.index)
+                    },
+                )
+            }
+        },
+        onDismiss = { activeMenu = null },
+    )
+
+    // Subtitles slide-out menu
+    PlayerSlideOutMenu(
+        visible = activeMenu == PlayerMenuType.Subtitles,
+        title = "Subtitles",
+        items = if (subtitleStreams.isEmpty()) {
+            listOf(
+                SlideOutMenuItem(
+                    text = "No subtitles available",
+                    icon = Icons.Outlined.ClosedCaptionOff,
+                    iconTint = ActionColors.Subtitles,
+                    enabled = false,
+                    onClick = {},
+                ),
+            )
+        } else {
+            listOf(
+                SlideOutMenuItem(
+                    text = "Off",
+                    icon = Icons.Outlined.ClosedCaptionOff,
+                    iconTint = ActionColors.Subtitles,
+                    selected = selectedSubtitleIndex == PlayerConstants.TRACK_DISABLED,
+                    onClick = {
+                        onUserInteraction()
+                        onSubtitleSelected(PlayerConstants.TRACK_DISABLED)
+                    },
+                ),
+            ) + subtitleStreams.map { stream ->
+                val isSelected = stream.index == selectedSubtitleIndex
+                SlideOutMenuItem(
+                    text = stream.subtitleLabel(),
+                    icon = Icons.Outlined.ClosedCaption,
+                    iconTint = ActionColors.Subtitles,
+                    selected = isSelected,
+                    onClick = {
+                        onUserInteraction()
+                        onSubtitleSelected(stream.index)
+                    },
+                )
+            }
+        },
+        onDismiss = { activeMenu = null },
+    )
+
+    // Subtitle style slide-out menu (sectioned)
+    PlayerSlideOutMenuSectioned(
+        visible = activeMenu == PlayerMenuType.SubtitleStyle,
+        title = "Subtitle Style",
+        sections = listOf(
+            SlideOutMenuSection(
+                title = "Font Size",
+                items = SubtitleFontSize.entries.map { size ->
+                    SlideOutMenuItem(
+                        text = size.label,
+                        icon = Icons.Outlined.FormatSize,
+                        iconTint = ActionColors.Subtitles,
+                        selected = subtitleStyle.fontSize == size,
+                        onClick = {
+                            onUserInteraction()
+                            onSubtitleStyleChanged(subtitleStyle.copy(fontSize = size))
+                        },
+                    )
+                },
+            ),
+            SlideOutMenuSection(
+                title = "Font Color",
+                items = SubtitleColor.entries.map { color ->
+                    SlideOutMenuItem(
+                        text = color.label,
+                        icon = Icons.Outlined.ClosedCaption,
+                        iconTint = Color(color.argb),
+                        selected = subtitleStyle.fontColor == color,
+                        onClick = {
+                            onUserInteraction()
+                            onSubtitleStyleChanged(subtitleStyle.copy(fontColor = color))
+                        },
+                    )
+                },
+            ),
+            SlideOutMenuSection(
+                title = "Background",
+                items = listOf(0, 25, 50, 75, 100).map { opacity ->
+                    SlideOutMenuItem(
+                        text = "$opacity%",
+                        icon = Icons.Outlined.FormatSize,
+                        iconTint = ActionColors.Subtitles,
+                        selected = subtitleStyle.backgroundOpacity == opacity,
+                        onClick = {
+                            onUserInteraction()
+                            onSubtitleStyleChanged(subtitleStyle.copy(backgroundOpacity = opacity))
+                        },
+                    )
+                },
+            ),
+        ),
+        onDismiss = { activeMenu = null },
+    )
+
+    // Playback speed slide-out menu
+    PlayerSlideOutMenu(
+        visible = activeMenu == PlayerMenuType.Speed,
+        title = "Playback Speed",
+        items = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).map { speed ->
+            SlideOutMenuItem(
+                text = "x${"%.2f".format(speed)}",
+                icon = Icons.Outlined.Speed,
+                iconTint = ActionColors.Play,
+                selected = playbackState.speed == speed,
+                onClick = {
+                    onUserInteraction()
+                    onSpeedChanged(speed)
+                },
+            )
+        },
+        onDismiss = { activeMenu = null },
+    )
+
+    // Display mode slide-out menu
+    PlayerSlideOutMenu(
+        visible = activeMenu == PlayerMenuType.DisplayMode,
+        title = "Display Mode",
+        items = PlayerDisplayMode.entries.map { mode ->
+            SlideOutMenuItem(
+                text = mode.label,
+                icon = Icons.Outlined.AspectRatio,
+                iconTint = ActionColors.GoTo,
+                selected = displayMode == mode,
+                onClick = {
+                    onUserInteraction()
+                    onDisplayModeChanged(mode)
+                },
+            )
+        },
+        onDismiss = { activeMenu = null },
+    )
+
+    // Streaming quality slide-out menu
+    PlayerSlideOutMenu(
+        visible = activeMenu == PlayerMenuType.Quality,
+        title = "Streaming Quality",
+        items = PlaybackOptions.BITRATE_OPTIONS.map { (bitrate, label) ->
+            SlideOutMenuItem(
+                text = label,
+                icon = Icons.Outlined.HighQuality,
+                iconTint = ActionColors.Audio,
+                selected = bitrate == currentBitrate,
+                onClick = {
+                    onUserInteraction()
+                    onBitrateChanged(bitrate)
+                },
+            )
+        },
+        onDismiss = { activeMenu = null },
+    )
 }
 
 @Composable
