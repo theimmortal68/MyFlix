@@ -725,37 +725,43 @@ private fun ExoPlayerSurfaceView(
         playerController.play(url, startPositionMs)
     }
 
-    // Convert display mode to resize mode
-    val resizeMode = when (displayMode) {
-        PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-        PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-        PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        // FIXED_WIDTH stretches video to fill width, scaling height proportionally
-        // Combined with MATCH_PARENT layout, this effectively stretches the video
-        PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+    // Keep reference to PlayerView for direct updates
+    var playerView by remember { mutableStateOf<PlayerView?>(null) }
+
+    // Update resize mode when displayMode changes
+    LaunchedEffect(displayMode) {
+        playerView?.resizeMode = when (displayMode) {
+            PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+            PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+            PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+        }
     }
 
-    // Use key to force AndroidView recreation when displayMode changes
-    key(displayMode) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = playerController.exoPlayer
-                    useController = false
-                    this.resizeMode = resizeMode
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = playerController.exoPlayer
+                useController = false
+                resizeMode = when (displayMode) {
+                    PlayerDisplayMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    PlayerDisplayMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    PlayerDisplayMode.ZOOM -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    PlayerDisplayMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
                 }
-            },
-            update = { view ->
-                view.player = playerController.exoPlayer
-                view.resizeMode = resizeMode
-            },
-            modifier = modifier,
-        )
-    }
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+                playerView = this
+            }
+        },
+        update = { view ->
+            view.player = playerController.exoPlayer
+            playerView = view
+        },
+        modifier = modifier,
+    )
 }
 
 @Composable
