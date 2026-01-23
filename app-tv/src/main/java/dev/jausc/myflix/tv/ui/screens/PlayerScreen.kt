@@ -731,25 +731,34 @@ private fun ExoPlayerSurfaceView(
     // Keep reference to PlayerView for direct updates
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
 
-    // Update display mode when it changes
+    // Update display mode when it changes - use view scaling for hardcoded letterboxing
     LaunchedEffect(displayMode) {
         android.util.Log.d("PlayerScreen", "LaunchedEffect(displayMode): $displayMode, playerView=$playerView")
         playerView?.let { view ->
-            val resizeMode = when (displayMode) {
-                PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                PlayerDisplayMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+            // For hardcoded letterboxing, we need to scale the view to zoom/crop
+            // Scale factors: FIT=1.0, FILL=1.33 (for 2.35:1), ZOOM=1.5, STRETCH=different X/Y
+            when (displayMode) {
+                PlayerDisplayMode.FIT -> {
+                    view.scaleX = 1.0f
+                    view.scaleY = 1.0f
+                }
+                PlayerDisplayMode.FILL -> {
+                    // Scale to crop typical 2.35:1 letterboxing (scale ~1.33)
+                    view.scaleX = 1.33f
+                    view.scaleY = 1.33f
+                }
+                PlayerDisplayMode.ZOOM -> {
+                    // Zoom in more
+                    view.scaleX = 1.5f
+                    view.scaleY = 1.5f
+                }
+                PlayerDisplayMode.STRETCH -> {
+                    // Stretch to fill - scale Y more to remove letterboxing without scaling X
+                    view.scaleX = 1.0f
+                    view.scaleY = 1.33f
+                }
             }
-            android.util.Log.d("PlayerScreen", "Setting resizeMode=$resizeMode for displayMode=$displayMode")
-            view.resizeMode = resizeMode
-            // Also set video scaling mode on the player itself
-            val scalingMode = when (displayMode) {
-                PlayerDisplayMode.STRETCH -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
-                else -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT
-            }
-            android.util.Log.d("PlayerScreen", "Setting videoScalingMode=$scalingMode")
-            playerController.exoPlayer?.videoScalingMode = scalingMode
+            android.util.Log.d("PlayerScreen", "Set scale: scaleX=${view.scaleX}, scaleY=${view.scaleY}")
         }
     }
 
@@ -758,12 +767,7 @@ private fun ExoPlayerSurfaceView(
             PlayerView(ctx).apply {
                 player = playerController.exoPlayer
                 useController = false
-                resizeMode = when (displayMode) {
-                    PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    PlayerDisplayMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                }
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,

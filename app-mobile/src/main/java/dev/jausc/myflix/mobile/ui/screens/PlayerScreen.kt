@@ -698,20 +698,30 @@ private fun ExoPlayerSurfaceView(
     // Keep reference to PlayerView for direct updates
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
 
-    // Update display mode when it changes
+    // Update display mode when it changes - use view scaling for hardcoded letterboxing
     LaunchedEffect(displayMode) {
         playerView?.let { view ->
-            val resizeMode = when (displayMode) {
-                PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                PlayerDisplayMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-            }
-            view.resizeMode = resizeMode
-            // Also set video scaling mode on the player itself
-            playerController.exoPlayer?.videoScalingMode = when (displayMode) {
-                PlayerDisplayMode.STRETCH -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
-                else -> C.VIDEO_SCALING_MODE_SCALE_TO_FIT
+            // For hardcoded letterboxing, we need to scale the view to zoom/crop
+            when (displayMode) {
+                PlayerDisplayMode.FIT -> {
+                    view.scaleX = 1.0f
+                    view.scaleY = 1.0f
+                }
+                PlayerDisplayMode.FILL -> {
+                    // Scale to crop typical 2.35:1 letterboxing
+                    view.scaleX = 1.33f
+                    view.scaleY = 1.33f
+                }
+                PlayerDisplayMode.ZOOM -> {
+                    // Zoom in more
+                    view.scaleX = 1.5f
+                    view.scaleY = 1.5f
+                }
+                PlayerDisplayMode.STRETCH -> {
+                    // Stretch to fill - scale Y more to remove letterboxing without scaling X
+                    view.scaleX = 1.0f
+                    view.scaleY = 1.33f
+                }
             }
         }
     }
@@ -721,12 +731,7 @@ private fun ExoPlayerSurfaceView(
             PlayerView(ctx).apply {
                 player = playerController.exoPlayer
                 useController = false
-                resizeMode = when (displayMode) {
-                    PlayerDisplayMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    PlayerDisplayMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    PlayerDisplayMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    PlayerDisplayMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                }
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
