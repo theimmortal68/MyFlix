@@ -1271,7 +1271,6 @@ private fun TvPlayerControlsOverlay(
             }
 
             if (showChaptersRow) {
-                Spacer(modifier = Modifier.height(12.dp))
                 ChapterThumbRow(
                     chapters = item?.chapters.orEmpty(),
                     trickplayProvider = trickplayProvider,
