@@ -199,7 +199,7 @@ private fun MediaInfoSection(
     rows: List<Pair<String, String>>,
     index: Int,
     listState: androidx.compose.foundation.lazy.LazyListState,
-    scope: androidx.compose.runtime.CoroutineScope,
+    scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
