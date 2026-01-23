@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -496,10 +497,22 @@ fun PlayerScreen(
                         selectedStream?.language?.let { language ->
                             appPreferences.setPreferredAudioLanguage(language)
                         }
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = index,
+                            subtitleStreamIndex = selectedSubtitleIndex,
+                            maxBitrateMbps = currentBitrate,
+                            startPositionMs = playbackState.position,
+                        )
                     },
                     onSubtitleSelected = { index ->
                         currentStartPositionMs = playbackState.position
                         viewModel.setSubtitleStreamIndex(index)
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = selectedAudioIndex,
+                            subtitleStreamIndex = index,
+                            maxBitrateMbps = currentBitrate,
+                            startPositionMs = playbackState.position,
+                        )
                     },
                     subtitleStyle = subtitleStyle,
                     onSubtitleStyleChanged = { newStyle ->
@@ -522,6 +535,12 @@ fun PlayerScreen(
                         currentBitrate = bitrate
                         // Also save as preference for future playback
                         appPreferences.setMaxStreamingBitrate(bitrate)
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = selectedAudioIndex,
+                            subtitleStreamIndex = selectedSubtitleIndex,
+                            maxBitrateMbps = bitrate,
+                            startPositionMs = playbackState.position,
+                        )
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     playPauseFocusRequester = playPauseFocusRequester,
@@ -1346,8 +1365,8 @@ private fun TvActionButton(
             ),
         ),
         modifier = Modifier
-            .height(56.dp)
-            .width(150.dp)
+            .height(44.dp)
+            .wrapContentWidth()
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
@@ -1358,12 +1377,12 @@ private fun TvActionButton(
             },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(18.dp))
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.White)
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White)
         }
     }
 }

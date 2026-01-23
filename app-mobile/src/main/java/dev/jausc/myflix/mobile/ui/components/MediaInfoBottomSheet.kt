@@ -54,13 +54,13 @@ fun MediaInfoBottomSheet(
         ) {
             Text(
                 text = "Media Information",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
             Text(
                 text = item.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
 
@@ -70,6 +70,14 @@ fun MediaInfoBottomSheet(
                 label = "General",
                 rows = buildGeneralRows(item, mediaSource),
             )
+
+            val descriptionRows = buildDescriptionRows(item)
+            if (descriptionRows.isNotEmpty()) {
+                MediaInfoSection(
+                    label = "Description",
+                    rows = descriptionRows,
+                )
+            }
 
             videoStream?.let { stream ->
                 MediaInfoSection(
@@ -105,13 +113,13 @@ private fun MediaInfoSection(
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         rows.forEach { (title, value) ->
             Text(
                 text = "$title: $value",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -128,6 +136,11 @@ private fun buildGeneralRows(item: JellyfinItem, mediaSource: MediaSource?): Lis
         formatBitrate(mediaSource?.bitrate)?.let { add("Bitrate" to it) }
         formatRuntime(runtimeTicks)?.let { add("Runtime" to it) }
     }
+}
+
+private fun buildDescriptionRows(item: JellyfinItem): List<Pair<String, String>> {
+    val description = item.overview?.trim().orEmpty()
+    return if (description.isNotBlank()) listOf("Overview" to description) else emptyList()
 }
 
 private fun buildVideoRows(stream: MediaStream): List<Pair<String, String>> = buildList {

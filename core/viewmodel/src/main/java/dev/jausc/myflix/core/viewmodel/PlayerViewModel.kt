@@ -401,6 +401,50 @@ class PlayerViewModel(
         _uiState.update { it.copy(selectedSubtitleStreamIndex = index) }
     }
 
+    fun updatePlaybackOptions(
+        audioStreamIndex: Int?,
+        subtitleStreamIndex: Int?,
+        maxBitrateMbps: Int?,
+        startPositionMs: Long,
+    ) {
+        startPositionOverrideMs = startPositionMs
+        viewModelScope.launch {
+            val state = _uiState.value
+            val mediaSourceId = state.mediaSourceId
+            val maxBitrate = maxBitrateMbps?.takeIf { it > 0 }
+
+            val streamResult = jellyfinClient.getStreamUrlWithSession(
+                itemId = currentItemId,
+                mediaSourceId = mediaSourceId,
+                audioStreamIndex = audioStreamIndex,
+                subtitleStreamIndex = subtitleStreamIndex,
+                maxBitrateMbps = maxBitrate,
+            ).getOrElse {
+                android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
+                JellyfinClient.StreamUrlResult(
+                    streamUrl = jellyfinClient.getStreamUrl(currentItemId, audioStreamIndex, subtitleStreamIndex),
+                    playSessionId = null,
+                    liveStreamId = null,
+                    playMethod = "DirectPlay",
+                )
+            }
+
+            _uiState.update {
+                it.copy(
+                    streamUrl = streamResult.streamUrl,
+                    startPositionMs = startPositionMs,
+                    selectedAudioStreamIndex = audioStreamIndex,
+                    selectedSubtitleStreamIndex = subtitleStreamIndex,
+                    playSessionId = streamResult.playSessionId,
+                    liveStreamId = streamResult.liveStreamId,
+                    playMethod = streamResult.playMethod,
+                    maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
+                    transcodeReasons = streamResult.transcodeReasons,
+                )
+            }
+        }
+    }
+
     /**
      * Show controls and reset auto-hide timer.
      */

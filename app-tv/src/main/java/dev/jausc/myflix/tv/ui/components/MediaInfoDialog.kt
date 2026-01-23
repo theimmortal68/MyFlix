@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -44,6 +45,7 @@ import dev.jausc.myflix.core.common.model.MediaSource
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * Dialog displaying technical media information for a video item.
@@ -93,16 +95,19 @@ fun MediaInfoDialog(
                 val videoSection = videoStream?.let { buildVideoRows(it) }
                 val audioSection = audioStream?.let { buildAudioRows(it) }
                 val subtitleSection = subtitleStream?.let { buildSubtitleRows(it) }
+                val descriptionSection = buildDescriptionRows(item)
 
                 // Build list of sections for LazyColumn
                 val allSections = buildList {
                     add("General" to generalSection)
+                    if (descriptionSection.isNotEmpty()) add("Description" to descriptionSection)
                     videoSection?.let { add("Video" to it) }
                     audioSection?.let { add("Audio" to it) }
                     subtitleSection?.let { add("Subtitle" to it) }
                 }
 
                 val firstSectionFocusRequester = remember { FocusRequester() }
+                val scope = rememberCoroutineScope()
 
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -110,7 +115,7 @@ fun MediaInfoDialog(
                     // Fixed header
                     Text(
                         text = "Media Information",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         color = TvColors.TextPrimary,
                     )
 
@@ -118,7 +123,7 @@ fun MediaInfoDialog(
 
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         color = TvColors.BluePrimary,
                     )
 
@@ -139,6 +144,9 @@ fun MediaInfoDialog(
                             MediaInfoSection(
                                 label = label,
                                 rows = rows,
+                                index = index,
+                                listState = listState,
+                                scope = scope,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .then(
@@ -188,6 +196,9 @@ fun MediaInfoDialog(
 private fun MediaInfoSection(
     label: String,
     rows: List<Pair<String, String>>,
+    index: Int,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    scope: androidx.compose.runtime.CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -195,7 +206,12 @@ private fun MediaInfoSection(
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
-            .onFocusChanged { isFocused = it.isFocused }
+            .onFocusChanged {
+                isFocused = it.isFocused
+                if (it.isFocused) {
+                    scope.launch { listState.animateScrollToItem(index) }
+                }
+            }
             .focusable()
             .then(
                 if (isFocused) {
@@ -213,13 +229,13 @@ private fun MediaInfoSection(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = if (isFocused) TvColors.BluePrimary else TvColors.TextSecondary,
         )
         rows.forEach { (title, value) ->
             Text(
                 text = "$title: $value",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextPrimary,
             )
         }
@@ -236,6 +252,11 @@ private fun buildGeneralRows(item: JellyfinItem, mediaSource: MediaSource?): Lis
         formatBitrate(mediaSource?.bitrate)?.let { add("Bitrate" to it) }
         formatRuntime(runtimeTicks)?.let { add("Runtime" to it) }
     }
+}
+
+private fun buildDescriptionRows(item: JellyfinItem): List<Pair<String, String>> {
+    val description = item.overview?.trim().orEmpty()
+    return if (description.isNotBlank()) listOf("Overview" to description) else emptyList()
 }
 
 private fun buildVideoRows(stream: MediaStream): List<Pair<String, String>> = buildList {

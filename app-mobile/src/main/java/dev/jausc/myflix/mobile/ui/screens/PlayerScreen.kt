@@ -476,10 +476,22 @@ fun PlayerScreen(
                         selectedStream?.language?.let { language ->
                             appPreferences.setPreferredAudioLanguage(language)
                         }
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = index,
+                            subtitleStreamIndex = selectedSubtitleIndex,
+                            maxBitrateMbps = currentBitrate,
+                            startPositionMs = playbackState.position,
+                        )
                     },
                     onSubtitleSelected = { index ->
                         currentStartPositionMs = playbackState.position
                         viewModel.setSubtitleStreamIndex(index)
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = selectedAudioIndex,
+                            subtitleStreamIndex = index,
+                            maxBitrateMbps = currentBitrate,
+                            startPositionMs = playbackState.position,
+                        )
                     },
                     subtitleStyle = subtitleStyle,
                     onSubtitleStyleChanged = { newStyle ->
@@ -501,6 +513,12 @@ fun PlayerScreen(
                         currentStartPositionMs = playbackState.position
                         currentBitrate = bitrate
                         appPreferences.setMaxStreamingBitrate(bitrate)
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = selectedAudioIndex,
+                            subtitleStreamIndex = selectedSubtitleIndex,
+                            maxBitrateMbps = bitrate,
+                            startPositionMs = playbackState.position,
+                        )
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onBack = onBack,
@@ -1364,6 +1382,11 @@ private fun MobilePlayerSheetContent(
             val mediaSource = item?.mediaSources?.firstOrNull()
             val streams = mediaSource?.mediaStreams.orEmpty()
             LazyColumn {
+                item {
+                    item?.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                        SheetInfoRow("Description", overview)
+                    }
+                }
                 item {
                     SheetInfoRow("Container", mediaSource?.container?.uppercase() ?: "Unknown")
                     streams.firstOrNull { it.type == "Video" }?.let { video ->
