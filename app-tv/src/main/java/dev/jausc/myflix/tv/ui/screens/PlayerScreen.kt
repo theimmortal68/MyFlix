@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
@@ -48,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +62,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.ClosedCaptionOff
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.ui.viewinterop.AndroidView
@@ -444,6 +447,13 @@ fun PlayerScreen(
                 }
             }
 
+            val activeSegment = state.activeSegment
+            val currentSkipMode = when (activeSegment?.type) {
+                MediaSegmentType.Intro -> skipIntroMode
+                MediaSegmentType.Outro -> skipCreditsMode
+                else -> "OFF"
+            }
+
             // Controls overlay
             if (state.showControls && !state.showAutoPlayCountdown) {
                 TvPlayerControlsOverlay(
@@ -496,6 +506,20 @@ fun PlayerScreen(
                     trickplayProvider = state.trickplayProvider,
                     jellyfinClient = jellyfinClient,
                     itemId = state.item?.id,
+                    skipLabel = if (activeSegment != null && currentSkipMode == "ASK") {
+                        viewModel.getSkipButtonLabel()
+                    } else {
+                        null
+                    },
+                    onSkipSegment = if (activeSegment != null && currentSkipMode == "ASK") {
+                        {
+                            viewModel.getSkipTargetMs()?.let { targetMs ->
+                                playerController.seekTo(targetMs)
+                            }
+                        }
+                    } else {
+                        null
+                    },
                 )
             }
 
@@ -509,14 +533,6 @@ fun PlayerScreen(
                     onCancel = { viewModel.cancelQueue() },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
-            }
-
-            // Skip segment button (intro/outro) - respects user preferences
-            val activeSegment = state.activeSegment
-            val currentSkipMode = when (activeSegment?.type) {
-                MediaSegmentType.Intro -> skipIntroMode
-                MediaSegmentType.Outro -> skipCreditsMode
-                else -> "OFF"
             }
 
             // Auto-skip: automatically skip when entering a segment and mode is AUTO
@@ -725,11 +741,14 @@ private fun TvPlayerControlsOverlay(
     trickplayProvider: TrickplayProvider? = null,
     jellyfinClient: JellyfinClient? = null,
     itemId: String? = null,
+    skipLabel: String? = null,
+    onSkipSegment: (() -> Unit)? = null,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val playerType = playbackState.playerType
     val isDV = videoQuality.contains("Dolby Vision")
     val isHDR = videoQuality.contains("HDR")
+    val accentColor = TvColors.BluePrimary
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
     var showMediaInfo by remember { mutableStateOf(false) }
 
@@ -749,12 +768,35 @@ private fun TvPlayerControlsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+            .background(Color.Black.copy(alpha = 0.2f)),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .height(220.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.9f), Color.Transparent),
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .height(260.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)),
+                    ),
+                ),
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
             Text(
                 text = item?.name ?: "",
@@ -797,7 +839,7 @@ private fun TvPlayerControlsOverlay(
                 when {
                     isDV -> PlayerBadge(
                         text = "Dolby Vision",
-                        backgroundColor = Color(0xFFE50914),
+                        backgroundColor = accentColor,
                     )
                     isHDR -> PlayerBadge(
                         text = "HDR",
@@ -822,6 +864,8 @@ private fun TvPlayerControlsOverlay(
             }
             TvControlButton(
                 label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
+                isPrimary = true,
+                accentColor = accentColor,
                 focusRequester = playPauseFocusRequester,
             ) {
                 onUserInteraction()
@@ -844,7 +888,7 @@ private fun TvPlayerControlsOverlay(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
         ) {
             // Interactive seek bar with trickplay preview
             InteractiveSeekBar(
@@ -856,6 +900,7 @@ private fun TvPlayerControlsOverlay(
                 jellyfinClient = jellyfinClient,
                 itemId = itemId,
                 focusRequester = seekBarFocusRequester,
+                accentColor = accentColor,
                 onSeekStart = {
                     isSeeking = true
                     seekPosition = playbackState.position
@@ -884,7 +929,7 @@ private fun TvPlayerControlsOverlay(
                 Text(
                     text = if (isSeeking) PlayerUtils.formatTime(seekPosition) else PlayerUtils.formatTime(playbackState.position),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSeeking) TvColors.BluePrimary else Color.White,
+                    color = if (isSeeking) accentColor else Color.White,
                 )
                 Text(
                     text = "x${"%.2f".format(playbackState.speed)}",
@@ -901,9 +946,23 @@ private fun TvPlayerControlsOverlay(
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                TvActionButton("Audio") {
+                if (skipLabel != null && onSkipSegment != null) {
+                    TvActionButton(
+                        label = skipLabel,
+                        icon = Icons.Default.FastForward,
+                        accentColor = accentColor,
+                    ) {
+                        onUserInteraction()
+                        onSkipSegment()
+                    }
+                }
+                TvActionButton(
+                    label = "Audio",
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     val items = if (audioStreams.isEmpty()) {
                         listOf(
@@ -927,7 +986,11 @@ private fun TvPlayerControlsOverlay(
                     }
                     dialogParams = DialogParams(title = "Audio Tracks", items = items)
                 }
-                TvActionButton("Subtitles") {
+                TvActionButton(
+                    label = "Subtitles",
+                    icon = Icons.Default.ClosedCaption,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     val items = if (subtitleStreams.isEmpty()) {
                         listOf(
@@ -962,7 +1025,11 @@ private fun TvPlayerControlsOverlay(
                     }
                     dialogParams = DialogParams(title = "Subtitles", items = items)
                 }
-                TvActionButton("Sub Style") {
+                TvActionButton(
+                    label = "Sub Style",
+                    icon = Icons.Default.FormatSize,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     val items = mutableListOf<DialogItemEntry>()
 
@@ -1017,7 +1084,11 @@ private fun TvPlayerControlsOverlay(
 
                     dialogParams = DialogParams(title = "Subtitle Style", items = items)
                 }
-                TvActionButton("Speed") {
+                TvActionButton(
+                    label = "Speed",
+                    icon = Icons.Default.Speed,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
                     dialogParams = DialogParams(
@@ -1035,7 +1106,11 @@ private fun TvPlayerControlsOverlay(
                         },
                     )
                 }
-                TvActionButton("Display") {
+                TvActionButton(
+                    label = "Display",
+                    icon = Icons.Default.AspectRatio,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     dialogParams = DialogParams(
                         title = "Display Mode",
@@ -1052,7 +1127,11 @@ private fun TvPlayerControlsOverlay(
                         },
                     )
                 }
-                TvActionButton("Quality") {
+                TvActionButton(
+                    label = "Quality",
+                    icon = Icons.Default.Speed,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     dialogParams = DialogParams(
                         title = "Streaming Quality",
@@ -1070,7 +1149,11 @@ private fun TvPlayerControlsOverlay(
                         },
                     )
                 }
-                TvActionButton("Chapters") {
+                TvActionButton(
+                    label = "Chapters",
+                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     val chapters = item?.chapters.orEmpty()
                     val items = if (chapters.isEmpty()) {
@@ -1099,7 +1182,11 @@ private fun TvPlayerControlsOverlay(
                     }
                     dialogParams = DialogParams(title = "Chapters", items = items)
                 }
-                TvActionButton("Info") {
+                TvActionButton(
+                    label = "Info",
+                    icon = Icons.Default.Info,
+                    accentColor = accentColor,
+                ) {
                     onUserInteraction()
                     showMediaInfo = true
                 }
@@ -1133,34 +1220,65 @@ private fun TvPlayerControlsOverlay(
 @Composable
 private fun TvControlButton(
     label: String,
+    isPrimary: Boolean = false,
+    accentColor: Color = TvColors.BluePrimary,
     focusRequester: FocusRequester? = null,
     onClick: () -> Unit,
 ) {
+    val backgroundColor = if (isPrimary) accentColor else Color.Black.copy(alpha = 0.7f)
+    val focusedColor = if (isPrimary) accentColor.copy(alpha = 0.9f) else TvColors.Surface
     Surface(
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Black.copy(alpha = 0.7f),
-            focusedContainerColor = TvColors.Surface,
+            containerColor = backgroundColor,
+            focusedContainerColor = focusedColor,
         ),
         onClick = onClick,
         modifier = Modifier
-            .size(width = 120.dp, height = 56.dp)
+            .size(width = if (isPrimary) 140.dp else 120.dp, height = 56.dp)
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White,
+            )
         }
     }
 }
 
 @Composable
-private fun TvActionButton(label: String, onClick: () -> Unit) {
-    Button(
+private fun TvActionButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accentColor: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
         onClick = onClick,
-        modifier = Modifier.height(44.dp),
-        colors = ButtonDefaults.colors(containerColor = TvColors.Surface),
+        shape = RoundedCornerShape(20.dp),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.White.copy(alpha = 0.08f),
+            focusedContainerColor = Color.White.copy(alpha = 0.18f),
+        ),
+        modifier = Modifier.height(56.dp),
     ) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium)
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(accentColor.copy(alpha = 0.2f), CircleShape),
+            ) {
+                Icon(icon, contentDescription = label, tint = accentColor, modifier = Modifier.size(18.dp))
+            }
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.White)
+        }
     }
 }
 
@@ -1249,6 +1367,7 @@ private fun InteractiveSeekBar(
     jellyfinClient: JellyfinClient?,
     itemId: String?,
     focusRequester: FocusRequester,
+    accentColor: Color,
     onSeekStart: () -> Unit,
     onSeekChange: (Long) -> Unit,
     onSeekConfirm: () -> Unit,
@@ -1355,7 +1474,7 @@ private fun InteractiveSeekBar(
                     .fillMaxHeight()
                     .fillMaxWidth(displayProgress.coerceIn(0f, 1f))
                     .background(
-                        if (isSeeking) TvColors.BluePrimary.copy(alpha = 0.8f) else TvColors.BluePrimary,
+                        if (isSeeking) accentColor.copy(alpha = 0.85f) else accentColor,
                         MaterialTheme.shapes.small,
                     ),
             )
@@ -1506,4 +1625,3 @@ private fun TimeOnlyPreview(
         }
     }
 }
-

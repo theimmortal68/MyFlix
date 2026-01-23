@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.HighQuality
@@ -58,6 +60,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -65,6 +68,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.transformations
 import dev.jausc.myflix.core.viewmodel.PlayerMediaInfo
 import dev.jausc.myflix.core.viewmodel.PlayerUiState
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
@@ -85,12 +91,14 @@ import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
+import dev.jausc.myflix.core.player.TrickplayProvider
 import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
+import dev.jausc.myflix.mobile.ui.util.SubsetTransformation
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -425,6 +433,13 @@ fun PlayerScreen(
                 }
             }
 
+            val activeSegment = state.activeSegment
+            val currentSkipMode = when (activeSegment?.type) {
+                MediaSegmentType.Intro -> skipIntroMode
+                MediaSegmentType.Outro -> skipCreditsMode
+                else -> "OFF"
+            }
+
             // Controls overlay
             if (state.showControls && !isInPipMode) {
                 MobilePlayerControls(
@@ -473,6 +488,23 @@ fun PlayerScreen(
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onBack = onBack,
+                    trickplayProvider = state.trickplayProvider,
+                    jellyfinClient = jellyfinClient,
+                    itemId = state.item?.id,
+                    skipLabel = if (activeSegment != null && currentSkipMode == "ASK") {
+                        viewModel.getSkipButtonLabel()
+                    } else {
+                        null
+                    },
+                    onSkipSegment = if (activeSegment != null && currentSkipMode == "ASK") {
+                        {
+                            viewModel.getSkipTargetMs()?.let { targetMs ->
+                                playerController.seekTo(targetMs)
+                            }
+                        }
+                    } else {
+                        null
+                    },
                 )
             }
 
@@ -490,14 +522,6 @@ fun PlayerScreen(
                     },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
-            }
-
-            // Skip segment button (intro/outro) - respects user preferences
-            val activeSegment = state.activeSegment
-            val currentSkipMode = when (activeSegment?.type) {
-                MediaSegmentType.Intro -> skipIntroMode
-                MediaSegmentType.Outro -> skipCreditsMode
-                else -> "OFF"
             }
 
             // Auto-skip: automatically skip when entering a segment and mode is AUTO
@@ -691,6 +715,11 @@ private fun MobilePlayerControls(
     onBitrateChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
     onBack: () -> Unit,
+    trickplayProvider: TrickplayProvider? = null,
+    jellyfinClient: JellyfinClient? = null,
+    itemId: String? = null,
+    skipLabel: String? = null,
+    onSkipSegment: (() -> Unit)? = null,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val isDV = videoQuality.contains("Dolby Vision")
@@ -699,6 +728,9 @@ private fun MobilePlayerControls(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var activeSheet by remember { mutableStateOf<PlayerSheet?>(null) }
     val speed = playbackState.speed
+    val accentColor = Color(0xFF2563EB)
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubPositionMs by remember { mutableLongStateOf(playbackState.position) }
     val subtitleText = buildString {
         item?.seriesName?.let { append(it) }
         if (item?.parentIndexNumber != null && item.indexNumber != null) {
@@ -710,14 +742,39 @@ private fun MobilePlayerControls(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f)),
+            .background(Color.Black.copy(alpha = 0.15f)),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .height(200.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent),
+                    ),
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .height(240.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f)),
+                    ),
+                ),
+        )
+
         // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .statusBarsPadding(),
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .statusBarsPadding()
+                .align(Alignment.TopStart),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -757,13 +814,13 @@ private fun MobilePlayerControls(
                     if (videoQuality.isNotBlank()) {
                         PlayerPill(
                             text = videoQuality,
-                            backgroundColor = Color.White.copy(alpha = 0.15f),
+                            backgroundColor = Color.White.copy(alpha = 0.16f),
                         )
                     }
                     when {
                         isDV -> PlayerPill(
                             text = "Dolby Vision",
-                            backgroundColor = Color(0xFFE50914),
+                            backgroundColor = accentColor,
                         )
                         isHDR -> PlayerPill(
                             text = "HDR",
@@ -799,8 +856,8 @@ private fun MobilePlayerControls(
             }
             Surface(
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.15f),
-                modifier = Modifier.size(78.dp),
+                color = accentColor,
+                modifier = Modifier.size(82.dp),
             ) {
                 IconButton(
                     onClick = {
@@ -817,7 +874,7 @@ private fun MobilePlayerControls(
                         },
                         contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
                         tint = Color.White,
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(46.dp),
                     )
                 }
             }
@@ -861,15 +918,69 @@ private fun MobilePlayerControls(
                 .padding(16.dp)
                 .navigationBarsPadding(),
         ) {
+            LaunchedEffect(playbackState.position) {
+                if (!isScrubbing) {
+                    scrubPositionMs = playbackState.position
+                }
+            }
+
+            if (skipLabel != null && onSkipSegment != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    SkipActionPill(
+                        label = skipLabel,
+                        accentColor = accentColor,
+                        onClick = {
+                            onUserInteraction()
+                            onSkipSegment()
+                        },
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (isScrubbing) {
+                if (trickplayProvider != null && jellyfinClient != null && itemId != null) {
+                    TrickplayPreview(
+                        trickplayProvider = trickplayProvider,
+                        jellyfinClient = jellyfinClient,
+                        itemId = itemId,
+                        positionMs = scrubPositionMs,
+                        durationMs = playbackState.duration,
+                    )
+                } else {
+                    TimeOnlyPreview(
+                        timeLabel = PlayerUtils.formatTime(scrubPositionMs),
+                        progress = if (playbackState.duration > 0) {
+                            scrubPositionMs.toFloat() / playbackState.duration.toFloat()
+                        } else {
+                            0f
+                        },
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Slider(
-                value = playbackState.progress,
+                value = if (isScrubbing && playbackState.duration > 0) {
+                    (scrubPositionMs.toFloat() / playbackState.duration.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    playbackState.progress
+                },
                 onValueChange = {
                     onUserInteraction()
-                    onSeekTo((it * playbackState.duration).toLong())
+                    isScrubbing = true
+                    scrubPositionMs = (it * playbackState.duration).toLong()
+                    onSeekTo(scrubPositionMs)
+                },
+                onValueChangeFinished = {
+                    isScrubbing = false
                 },
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = accentColor,
                     inactiveTrackColor = Color.White.copy(alpha = 0.3f),
                 ),
             )
@@ -899,7 +1010,7 @@ private fun MobilePlayerControls(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                horizontalArrangement = Arrangement.SpaceAround,
             ) {
                 PlayerActionButton(
                     label = "Audio",
@@ -973,8 +1084,9 @@ private fun MobilePlayerControls(
         ModalBottomSheet(
             onDismissRequest = { activeSheet = null },
             sheetState = sheetState,
-            containerColor = Color(0xFF101318),
+            containerColor = Color(0xFF141414),
         ) {
+            SheetHandle()
             MobilePlayerSheetContent(
                 sheet = sheet,
                 item = item,
@@ -1040,13 +1152,13 @@ private enum class PlayerSheet {
 private fun PlayerPill(text: String, backgroundColor: Color, textColor: Color = Color.White) {
     Surface(
         color = backgroundColor,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = textColor,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
 }
@@ -1057,9 +1169,23 @@ private fun PlayerActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
 ) {
-    TextButton(onClick = onClick) {
-        Icon(icon, contentDescription = label, tint = Color.White)
-        Spacer(modifier = Modifier.width(6.dp))
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(68.dp)
+            .padding(vertical = 4.dp),
+    ) {
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.12f),
+            modifier = Modifier.size(44.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(icon, contentDescription = label, tint = Color.White)
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -1295,7 +1421,11 @@ private fun SheetRow(
             }
         }
         if (selected) {
-            Text(text = "Selected", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Selected",
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -1321,6 +1451,161 @@ private fun SheetEmptyState(message: String) {
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
     )
+}
+
+@Composable
+private fun SheetHandle() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(36.dp)
+                .height(4.dp)
+                .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(50)),
+        )
+    }
+}
+
+@Composable
+private fun SkipActionPill(
+    label: String,
+    accentColor: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = accentColor,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White,
+            )
+            Icon(
+                imageVector = Icons.Default.FastForward,
+                contentDescription = "Skip",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrickplayPreview(
+    trickplayProvider: TrickplayProvider,
+    jellyfinClient: JellyfinClient,
+    itemId: String,
+    positionMs: Long,
+    durationMs: Long,
+) {
+    val context = LocalContext.current
+    val tileIndex = trickplayProvider.getTileImageIndex(positionMs)
+    val (offsetX, offsetY) = trickplayProvider.getTileOffset(positionMs)
+    val thumbnailWidth = trickplayProvider.thumbnailWidth
+    val thumbnailHeight = trickplayProvider.thumbnailHeight
+    val progress = if (durationMs > 0) positionMs.toFloat() / durationMs.toFloat() else 0f
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val containerWidth = constraints.maxWidth.toFloat()
+        val previewWidthDp = 140.dp
+        val previewWidthPx = with(LocalDensity.current) { previewWidthDp.toPx() }
+        val targetX = containerWidth * progress - previewWidthPx / 2
+        val clampedX = targetX.coerceIn(0f, containerWidth - previewWidthPx)
+        val offsetDp = with(LocalDensity.current) { clampedX.toDp() }
+
+        Column(
+            modifier = Modifier
+                .offset(x = offsetDp)
+                .width(previewWidthDp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(previewWidthDp)
+                    .height(78.dp)
+                    .background(Color.Black, RoundedCornerShape(10.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(
+                            jellyfinClient.getTrickplayTileUrl(
+                                itemId = itemId,
+                                width = thumbnailWidth,
+                                tileIndex = tileIndex,
+                                mediaSourceId = trickplayProvider.getMediaSourceId(),
+                            ),
+                        )
+                        .transformations(
+                            SubsetTransformation(
+                                x = offsetX,
+                                y = offsetY,
+                                cropWidth = thumbnailWidth,
+                                cropHeight = thumbnailHeight,
+                            ),
+                        )
+                        .build(),
+                    contentDescription = "Seek preview",
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = PlayerUtils.formatTime(positionMs),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color.White,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeOnlyPreview(
+    timeLabel: String,
+    progress: Float,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val containerWidth = constraints.maxWidth.toFloat()
+        val previewWidthDp = 72.dp
+        val previewWidthPx = with(LocalDensity.current) { previewWidthDp.toPx() }
+        val targetX = containerWidth * progress - previewWidthPx / 2
+        val clampedX = targetX.coerceIn(0f, containerWidth - previewWidthPx)
+        val offsetDp = with(LocalDensity.current) { clampedX.toDp() }
+
+        Box(
+            modifier = Modifier
+                .offset(x = offsetDp)
+                .width(previewWidthDp)
+                .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = timeLabel,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White,
+            )
+        }
+    }
 }
 
 /**
