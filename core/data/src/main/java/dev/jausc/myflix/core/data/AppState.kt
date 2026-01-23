@@ -143,7 +143,9 @@ class AppState(private val context: Context, val jellyfinClient: JellyfinClient)
             // Try to get server name from server info
             jellyfinClient.configure(serverUrl, accessToken, userId, deviceId)
             val serverName = jellyfinClient.getServerInfo(serverUrl)
-                .getOrNull()?.serverName ?: "My Server"
+                .getOrNull()
+                ?.serverName
+                ?: "My Server"
 
             // Get username from credentials if available
             val userName = username ?: "User"

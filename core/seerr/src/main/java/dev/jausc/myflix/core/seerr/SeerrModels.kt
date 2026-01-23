@@ -93,11 +93,13 @@ data class SeerrMedia(
                 // Prefer US certification
                 val usRelease = releaseResults.find { it.iso31661 == "US" }
                 usRelease?.releaseDates?.firstOrNull { !it.certification.isNullOrBlank() }
-                    ?.certification?.let { return it }
+                    ?.certification
+                    ?.let { return it }
                 // Fallback to first available certification
                 releaseResults.flatMap { it.releaseDates ?: emptyList() }
                     .firstOrNull { !it.certification.isNullOrBlank() }
-                    ?.certification?.let { return it }
+                    ?.certification
+                    ?.let { return it }
             }
             // For TV: check contentRatings
             contentRatings?.results?.let { ratings ->

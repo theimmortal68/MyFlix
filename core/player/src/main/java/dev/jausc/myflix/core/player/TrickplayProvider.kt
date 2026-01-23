@@ -107,7 +107,8 @@ class TrickplayProvider(
             // Get the highest resolution available (largest width)
             val width = resolutionMap.keys
                 .mapNotNull { it.toIntOrNull() }
-                .maxOrNull() ?: return null
+                .maxOrNull()
+                ?: return null
 
             val info = resolutionMap[width.toString()] ?: return null
 

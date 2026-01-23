@@ -37,38 +37,45 @@ object SeerrDiscoverHelper {
                     seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
                 SeerrDiscoverSliderType.UPCOMING_TV ->
                     seerrClient.discoverTVWithParams(mapOf("firstAirDateGte" to today))
-                        .map { it.results }.getOrDefault(emptyList())
+                        .map { it.results }
+                        .getOrDefault(emptyList())
                 SeerrDiscoverSliderType.PLEX_WATCHLIST ->
                     emptyList() // Watchlist removed - use blacklist instead
                 SeerrDiscoverSliderType.TMDB_MOVIE_KEYWORD ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverMoviesWithParams(mapOf("keywords" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_TV_KEYWORD ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverTVWithParams(mapOf("keywords" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_MOVIE_GENRE ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverMoviesWithParams(mapOf("genre" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_TV_GENRE ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverTVWithParams(mapOf("genre" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_STUDIO ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverMoviesWithParams(mapOf("studio" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_NETWORK ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverTVWithParams(mapOf("network" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_SEARCH ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
@@ -81,12 +88,14 @@ object SeerrDiscoverHelper {
                 SeerrDiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverMoviesWithParams(mapOf("watchProviders" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_TV_STREAMING_SERVICES ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.discoverTVWithParams(mapOf("watchProviders" to data))
-                            .map { it.results }.getOrDefault(emptyList())
+                            .map { it.results }
+                            .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.RECENTLY_ADDED,
                 SeerrDiscoverSliderType.RECENT_REQUESTS,
