@@ -41,19 +41,25 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.transformations
 import dev.jausc.myflix.core.player.TrickplayProvider
 import dev.jausc.myflix.tv.ui.util.SubsetTransformation
+import androidx.compose.ui.geometry.Size as ComposeSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -70,6 +76,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.AspectRatio
@@ -904,9 +914,7 @@ private fun TvPlayerControlsOverlay(
             }
         }
 
-        // Center controls
-        val skipBackwardLabel = (skipBackwardMs / 1000).toInt()
-        val skipForwardLabel = (skipForwardMs / 1000).toInt()
+        // Playback state for controls
         val chapters = item?.chapters.orEmpty()
         val currentPositionMs = playbackState.position
 
@@ -919,60 +927,6 @@ private fun TvPlayerControlsOverlay(
             .mapNotNull { it.startPositionTicks?.let { ticks -> PlayerUtils.ticksToMs(ticks) } }
             .filter { it > currentPositionMs + 1000 } // Must be at least 1s after current position
             .minOrNull()
-
-        Row(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Previous chapter button
-            if (chapters.isNotEmpty()) {
-                TvIconButton(
-                    icon = Icons.Default.SkipPrevious,
-                    contentDescription = "Previous Chapter",
-                    enabled = previousChapterMs != null,
-                ) {
-                    onUserInteraction()
-                    previousChapterMs?.let { onSeekTo(it) }
-                }
-            }
-
-            TvControlButton(label = "-${skipBackwardLabel}s") {
-                onUserInteraction()
-                onSeekRelative(-skipBackwardMs)
-            }
-            TvControlButton(
-                label = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
-                isPrimary = true,
-                focusRequester = playPauseFocusRequester,
-            ) {
-                onUserInteraction()
-                onPlayPause()
-            }
-            TvControlButton(label = "+${skipForwardLabel}s") {
-                onUserInteraction()
-                onSeekRelative(skipForwardMs)
-            }
-
-            // Next chapter button
-            if (chapters.isNotEmpty()) {
-                TvIconButton(
-                    icon = Icons.Default.SkipNext,
-                    contentDescription = "Next Chapter",
-                    enabled = nextChapterMs != null,
-                ) {
-                    onUserInteraction()
-                    nextChapterMs?.let { onSeekTo(it) }
-                }
-            }
-
-            if (onPlayNext != null) {
-                TvControlButton(label = "Next") {
-                    onUserInteraction()
-                    onPlayNext()
-                }
-            }
-        }
 
         // Bottom bar
         Column(
@@ -1198,6 +1152,72 @@ private fun TvPlayerControlsOverlay(
                     }
                 }
 
+                // Center group: Playback controls (play/pause, seek, chapters)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Previous chapter button
+                    if (chapters.isNotEmpty()) {
+                        TvPlaybackButton(
+                            icon = Icons.Default.SkipPrevious,
+                            contentDescription = "Previous Chapter",
+                            enabled = previousChapterMs != null,
+                        ) {
+                            onUserInteraction()
+                            previousChapterMs?.let { onSeekTo(it) }
+                        }
+                    }
+
+                    TvPlaybackButton(
+                        icon = Icons.Default.Replay10,
+                        contentDescription = "Rewind 10 seconds",
+                    ) {
+                        onUserInteraction()
+                        onSeekRelative(-skipBackwardMs)
+                    }
+
+                    TvPlaybackButton(
+                        icon = if (playbackState.isPlaying && !playbackState.isPaused) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (playbackState.isPlaying && !playbackState.isPaused) "Pause" else "Play",
+                        isPrimary = true,
+                        focusRequester = playPauseFocusRequester,
+                    ) {
+                        onUserInteraction()
+                        onPlayPause()
+                    }
+
+                    TvPlaybackButton(
+                        icon = Icons.Default.Forward10,
+                        contentDescription = "Forward 10 seconds",
+                    ) {
+                        onUserInteraction()
+                        onSeekRelative(skipForwardMs)
+                    }
+
+                    // Next chapter button
+                    if (chapters.isNotEmpty()) {
+                        TvPlaybackButton(
+                            icon = Icons.Default.SkipNext,
+                            contentDescription = "Next Chapter",
+                            enabled = nextChapterMs != null,
+                        ) {
+                            onUserInteraction()
+                            nextChapterMs?.let { onSeekTo(it) }
+                        }
+                    }
+
+                    if (onPlayNext != null) {
+                        TvPlaybackButton(
+                            icon = Icons.Default.SkipNext,
+                            contentDescription = "Next Episode",
+                        ) {
+                            onUserInteraction()
+                            onPlayNext()
+                        }
+                    }
+                }
+
                 // Right group: Speed, Display, Quality (+ Skip if available)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1337,42 +1357,6 @@ private fun TvPlayerControlsOverlay(
 }
 
 @Composable
-private fun TvControlButton(
-    label: String,
-    isPrimary: Boolean = false,
-    focusRequester: FocusRequester? = null,
-    onClick: () -> Unit,
-) {
-    val backgroundColor = if (isPrimary) Color.White else Color.Black.copy(alpha = 0.6f)
-    val focusedColor = if (isPrimary) Color.White else Color.White.copy(alpha = 0.2f)
-    val textColor = if (isPrimary) Color.Black else Color.White
-    Surface(
-        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = backgroundColor,
-            focusedContainerColor = focusedColor,
-        ),
-        onClick = onClick,
-        modifier = Modifier
-            .height(36.dp)
-            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(horizontal = if (isPrimary) 20.dp else 12.dp),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = textColor,
-            )
-        }
-    }
-}
-
-@Composable
 private fun TvIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
@@ -1398,6 +1382,90 @@ private fun TvIconButton(
                 contentDescription = contentDescription,
                 tint = Color.White.copy(alpha = alpha),
                 modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Round playback control button (play/pause, seek, chapter skip).
+ */
+@Composable
+private fun TvPlaybackButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean = true,
+    isPrimary: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    onClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val alpha = if (enabled) 1f else 0.4f
+
+    // Animation for the glow effect
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.6f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "glowAlpha",
+    )
+
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isFocused) 1.1f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        label = "buttonScale",
+    )
+
+    val buttonSize = if (isPrimary) 48.dp else 40.dp
+    val iconSize = if (isPrimary) 28.dp else 24.dp
+    val backgroundColor = if (isPrimary) Color.White else Color.Black.copy(alpha = 0.6f)
+    val iconColor = if (isPrimary) Color.Black else Color.White
+
+    Box(
+        modifier = Modifier
+            .size(buttonSize)
+            .scale(buttonScale)
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+            }
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    if (enabled) onClick()
+                    true
+                } else {
+                    false
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        // Glow effect
+        if (!isPrimary) {
+            Box(
+                modifier = Modifier
+                    .size(buttonSize - 8.dp)
+                    .alpha(glowAlpha)
+                    .blur(6.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+            )
+        }
+
+        // Button background
+        Box(
+            modifier = Modifier
+                .size(buttonSize)
+                .clip(CircleShape)
+                .background(backgroundColor),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = iconColor.copy(alpha = alpha),
+                modifier = Modifier.size(iconSize),
             )
         }
     }
@@ -1740,6 +1808,8 @@ private fun InteractiveSeekBar(
                 offsetY = offsetY,
                 thumbnailWidth = thumbnailWidth,
                 thumbnailHeight = thumbnailHeight,
+                tileWidth = trickplayProvider.tileWidth,
+                tileHeight = trickplayProvider.tileHeight,
                 timeLabel = PlayerUtils.formatTime(seekPosition),
                 progress = progress,
                 modifier = Modifier
@@ -1849,6 +1919,10 @@ private fun InteractiveSeekBar(
 /**
  * Seek preview thumbnail with time label.
  */
+/**
+ * Seek preview thumbnail with time label.
+ * Uses Canvas with translate/scale to extract the correct tile from the grid.
+ */
 @Composable
 private fun SeekPreview(
     tileUrl: String,
@@ -1856,17 +1930,41 @@ private fun SeekPreview(
     offsetY: Int,
     thumbnailWidth: Int,
     thumbnailHeight: Int,
+    tileWidth: Int,
+    tileHeight: Int,
     timeLabel: String,
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
 
+    // Calculate display dimensions maintaining aspect ratio
+    val displayHeight = 90.dp
+    val displayWidth = displayHeight * (thumbnailWidth.toFloat() / thumbnailHeight)
+
+    // Calculate scale factor to fit thumbnail into display size
+    val scale = with(LocalDensity.current) { displayWidth.toPx() / thumbnailWidth }
+
+    // Load full tile image at original size
+    val imageRequest = remember(tileUrl) {
+        ImageRequest.Builder(context)
+            .data(tileUrl)
+            .size(coil3.size.Size.ORIGINAL)
+            .build()
+    }
+    val painter = rememberAsyncImagePainter(
+        model = imageRequest,
+        contentScale = ContentScale.None,
+    )
+
+    // Calculate tile position within grid
+    val tileX = offsetX / thumbnailWidth
+    val tileY = offsetY / thumbnailHeight
+
     // Calculate horizontal offset to position preview at seek location
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val containerWidth = constraints.maxWidth.toFloat()
-        val previewWidthDp = 160.dp
-        val previewWidthPx = with(LocalDensity.current) { previewWidthDp.toPx() }
+        val previewWidthPx = with(LocalDensity.current) { displayWidth.toPx() }
 
         // Calculate offset: center preview at progress position, but clamp to screen edges
         val targetX = containerWidth * progress - previewWidthPx / 2
@@ -1876,35 +1974,42 @@ private fun SeekPreview(
         Column(
             modifier = Modifier
                 .offset(x = offsetDp)
-                .width(previewWidthDp),
+                .width(displayWidth),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Thumbnail
+            // Thumbnail using Canvas
             Box(
                 modifier = Modifier
-                    .width(previewWidthDp)
-                    .height(90.dp)
+                    .width(displayWidth)
+                    .height(displayHeight)
                     .clip(RoundedCornerShape(8.dp))
                     .border(2.dp, Color.White, RoundedCornerShape(8.dp))
                     .background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(tileUrl)
-                        .transformations(
-                            SubsetTransformation(
-                                x = offsetX,
-                                y = offsetY,
-                                cropWidth = thumbnailWidth,
-                                cropHeight = thumbnailHeight,
-                            ),
-                        )
-                        .build(),
-                    contentDescription = "Seek preview",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Canvas(
+                    modifier = Modifier
+                        .width(displayWidth)
+                        .height(displayHeight)
+                        .clip(RoundedCornerShape(8.dp)),
+                ) {
+                    with(painter) {
+                        // Scale and translate to the correct position in the tile grid
+                        scale(scale, scale, pivot = Offset.Zero) {
+                            translate(
+                                left = -tileX.toFloat() * thumbnailWidth,
+                                top = -tileY.toFloat() * thumbnailHeight,
+                            ) {
+                                draw(
+                                    size = ComposeSize(
+                                        width = thumbnailWidth * tileWidth.toFloat(),
+                                        height = thumbnailHeight * tileHeight.toFloat(),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))

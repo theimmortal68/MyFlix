@@ -23,7 +23,10 @@ class TrickplayProvider(
     val thumbnailHeight: Int = trickplayInfo.height
 
     /** Width of tile grid (number of thumbnails horizontally) */
-    private val tileWidth: Int = trickplayInfo.tileWidth
+    val tileWidth: Int = trickplayInfo.tileWidth
+
+    /** Height of tile grid (number of thumbnails vertically) */
+    val tileHeight: Int = trickplayInfo.tileHeight
 
     /** Interval in milliseconds between thumbnails */
     private val intervalMs: Int = trickplayInfo.interval
