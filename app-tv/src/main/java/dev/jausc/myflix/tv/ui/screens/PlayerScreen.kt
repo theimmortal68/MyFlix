@@ -797,6 +797,13 @@ private fun TvPlayerControlsOverlay(
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }
 
+    // Request focus on chapters row after it becomes visible
+    LaunchedEffect(showChaptersRow) {
+        if (showChaptersRow) {
+            chaptersRowFocusRequester.requestFocus()
+        }
+    }
+
     // Seeking state for interactive progress bar
     var isSeeking by remember { mutableStateOf(false) }
     var seekPosition by remember { mutableLongStateOf(0L) }
@@ -1008,7 +1015,6 @@ private fun TvPlayerControlsOverlay(
                         onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
-                                chaptersRowFocusRequester.requestFocus()
                                 true
                             } else {
                                 false
@@ -1044,7 +1050,6 @@ private fun TvPlayerControlsOverlay(
                                                 onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
-                                chaptersRowFocusRequester.requestFocus()
                                 true
                             } else {
                                 false
@@ -1091,7 +1096,6 @@ private fun TvPlayerControlsOverlay(
                                                 onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
-                                chaptersRowFocusRequester.requestFocus()
                                 true
                             } else {
                                 false
@@ -1165,7 +1169,6 @@ private fun TvPlayerControlsOverlay(
                                                         onDownPressed = {
                                 if (!showChaptersRow) {
                                     showChaptersRow = true
-                                    chaptersRowFocusRequester.requestFocus()
                                     true
                                 } else {
                                     false
@@ -1182,7 +1185,6 @@ private fun TvPlayerControlsOverlay(
                                                 onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
-                                chaptersRowFocusRequester.requestFocus()
                                 true
                             } else {
                                 false
@@ -1212,7 +1214,6 @@ private fun TvPlayerControlsOverlay(
                                                 onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
-                                chaptersRowFocusRequester.requestFocus()
                                 true
                             } else {
                                 false
@@ -1241,7 +1242,6 @@ private fun TvPlayerControlsOverlay(
                                                 onDownPressed = {
                             if (!showChaptersRow) {
                                 showChaptersRow = true
-                                chaptersRowFocusRequester.requestFocus()
                                 true
                             } else {
                                 false
