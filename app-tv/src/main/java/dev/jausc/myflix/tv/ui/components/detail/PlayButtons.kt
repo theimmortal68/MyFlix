@@ -164,18 +164,20 @@ fun ExpandablePlayButtons(
             )
         }
 
-        // Favorite button
-        item("favorite") {
-            ExpandablePlayButton(
-                title = if (favorite) "Remove Favorite" else "Add to Favorites",
-                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
-                onClick = onFavoriteClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-            )
+        // Favorite button (only shown when no resume progress - otherwise in More popup)
+        if (!hasProgress) {
+            item("favorite") {
+                ExpandablePlayButton(
+                    title = if (favorite) "Remove Favorite" else "Add to Favorites",
+                    icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                    iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                    onClick = onFavoriteClick,
+                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                )
+            }
         }
 
-        // More button (Media Info, Add to Playlist)
+        // More button (Media Info, Add to Playlist, optionally Favorite when resuming)
         item("more") {
             ExpandablePlayButton(
                 title = "More",

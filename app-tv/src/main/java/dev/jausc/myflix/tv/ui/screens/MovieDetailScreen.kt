@@ -37,6 +37,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.draw.clip
@@ -249,9 +251,22 @@ fun MovieDetailScreen(
                         onFavoriteClick = onFavoriteClick,
                         onTrailerClick = trailerAction,
                         onMoreClick = {
-                            dialogParams = DialogParams(
-                                title = movie.name,
-                                items = listOf(
+                            // Build More popup items - include Favorite when resuming
+                            val moreItems = buildList {
+                                // Favorite option (only when resuming, otherwise shown as button)
+                                if (resumePositionTicks > 0L) {
+                                    add(
+                                        DialogItem(
+                                            text = if (favorite) "Remove Favorite" else "Add to Favorites",
+                                            icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                                            iconTint = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                                        ) {
+                                            dialogParams = null
+                                            onFavoriteClick()
+                                        }
+                                    )
+                                }
+                                add(
                                     DialogItem(
                                         text = "Media Info",
                                         icon = Icons.Outlined.Info,
@@ -259,7 +274,9 @@ fun MovieDetailScreen(
                                     ) {
                                         dialogParams = null
                                         mediaInfoItem = movie
-                                    },
+                                    }
+                                )
+                                add(
                                     DialogItem(
                                         text = "Add to Playlist",
                                         icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
@@ -267,8 +284,12 @@ fun MovieDetailScreen(
                                     ) {
                                         dialogParams = null
                                         showPlaylistDialog = true
-                                    },
-                                ),
+                                    }
+                                )
+                            }
+                            dialogParams = DialogParams(
+                                title = movie.name,
+                                items = moreItems,
                             )
                         },
                         buttonOnFocusChanged = {
