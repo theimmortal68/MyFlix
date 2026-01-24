@@ -13,21 +13,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -35,9 +44,13 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.seerr.SeerrGenre
-import dev.jausc.myflix.tv.ui.components.TvDropdownMenu
-import dev.jausc.myflix.tv.ui.components.TvDropdownMenuItem
-import dev.jausc.myflix.tv.ui.components.TvDropdownMenuItemWithCheck
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
+import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
+import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -98,7 +111,7 @@ fun buildYearOptions(): List<SeerrYearOption> {
         add(SeerrYearOption(currentYear - 4, currentYear, "Last 5 Years"))
         add(SeerrYearOption(currentYear - 9, currentYear, "Last 10 Years"))
         // Add individual years
-        (currentYear downTo currentYear - 20).forEach { year ->
+        for (year in currentYear downTo currentYear - 20) {
             add(SeerrYearOption(year, year, year.toString()))
         }
     }
@@ -126,8 +139,8 @@ data class SeerrFilterState(
 }
 
 /**
- * Icon-based filter bar for Seerr discover screens with dropdown menus.
- * Similar to LibraryFilterBar but for Seerr content.
+ * Icon-based filter bar for Seerr discover screens with slide-out menus.
+ * Uses anchor-based positioning like LibraryFilterBar.
  *
  * Layout: Back | Title | Spacer | [Filter][Sort]
  */
@@ -135,25 +148,32 @@ data class SeerrFilterState(
 fun SeerrFilterBar(
     title: String,
     filterState: SeerrFilterState,
-    genres: List<SeerrGenre>,
-    showMediaTypeFilter: Boolean,
-    showGenreFilter: Boolean,
-    showReleaseStatusFilter: Boolean,
     onBack: () -> Unit,
-    onMediaTypeChange: (SeerrMediaTypeOption) -> Unit,
-    onReleaseStatusChange: (SeerrReleaseStatusOption) -> Unit,
-    onSortChange: (SeerrSortOption) -> Unit,
-    onRatingChange: (Float?) -> Unit,
-    onYearChange: (Int?, Int?) -> Unit,
-    onGenreToggle: (Int) -> Unit,
-    onClearGenres: () -> Unit,
+    onFilterMenuRequested: () -> Unit,
+    onSortMenuRequested: () -> Unit,
+    onFilterAnchorChanged: (MenuAnchor) -> Unit,
+    onSortAnchorChanged: (MenuAnchor) -> Unit,
     modifier: Modifier = Modifier,
+    onUpNavigation: () -> Unit = {},
+    gridFocusRequester: FocusRequester? = null,
 ) {
-    var showFilterDropdown by remember { mutableStateOf(false) }
-    var showSortDropdown by remember { mutableStateOf(false) }
+    val backFocusRequester = remember { FocusRequester() }
+    val filterFocusRequester = remember { FocusRequester() }
+    val sortFocusRequester = remember { FocusRequester() }
+
+    val density = LocalDensity.current
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown) {
+                    onUpNavigation()
+                    true
+                } else {
+                    false
+                }
+            },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -162,6 +182,13 @@ fun SeerrFilterBar(
             icon = Icons.AutoMirrored.Outlined.ArrowBack,
             contentDescription = "Back",
             onClick = onBack,
+            modifier = Modifier
+                .focusRequester(backFocusRequester)
+                .focusProperties {
+                    left = FocusRequester.Cancel
+                    right = filterFocusRequester
+                    down = gridFocusRequester ?: FocusRequester.Default
+                },
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -175,82 +202,104 @@ fun SeerrFilterBar(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Filter button with dropdown
-        Box {
+        // Filter button with anchor tracking
+        Box(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                val size = coordinates.size
+                with(density) {
+                    onFilterAnchorChanged(
+                        MenuAnchor(
+                            x = (position.x + size.width).toDp(),
+                            y = (position.y + size.height).toDp(),
+                            alignment = MenuAnchorAlignment.BottomEnd,
+                            placement = MenuAnchorPlacement.Below,
+                        ),
+                    )
+                }
+            },
+        ) {
             FilterBarIconButton(
                 icon = Icons.Outlined.FilterAlt,
                 contentDescription = "Filter",
                 isSelected = filterState.hasActiveFilters,
-                onClick = { showFilterDropdown = true },
-            )
-
-            SeerrFilterDropdownMenu(
-                expanded = showFilterDropdown,
-                filterState = filterState,
-                genres = genres,
-                showMediaTypeFilter = showMediaTypeFilter,
-                showGenreFilter = showGenreFilter,
-                showReleaseStatusFilter = showReleaseStatusFilter,
-                onMediaTypeChange = onMediaTypeChange,
-                onReleaseStatusChange = onReleaseStatusChange,
-                onRatingChange = onRatingChange,
-                onYearChange = onYearChange,
-                onGenreToggle = onGenreToggle,
-                onClearGenres = onClearGenres,
-                onDismiss = { showFilterDropdown = false },
+                onClick = onFilterMenuRequested,
+                modifier = Modifier
+                    .focusRequester(filterFocusRequester)
+                    .focusProperties {
+                        left = backFocusRequester
+                        right = sortFocusRequester
+                        down = gridFocusRequester ?: FocusRequester.Default
+                    },
             )
         }
 
-        // Sort button with dropdown
-        Box {
+        // Sort button with anchor tracking
+        Box(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                val size = coordinates.size
+                with(density) {
+                    onSortAnchorChanged(
+                        MenuAnchor(
+                            x = (position.x + size.width).toDp(),
+                            y = (position.y + size.height).toDp(),
+                            alignment = MenuAnchorAlignment.BottomEnd,
+                            placement = MenuAnchorPlacement.Below,
+                        ),
+                    )
+                }
+            },
+        ) {
             FilterBarIconButton(
                 icon = Icons.AutoMirrored.Outlined.Sort,
                 contentDescription = "Sort",
                 isSelected = filterState.sortOption != SeerrSortOption.POPULARITY_DESC,
-                onClick = { showSortDropdown = true },
-            )
-
-            SeerrSortDropdownMenu(
-                expanded = showSortDropdown,
-                currentSort = filterState.sortOption,
-                onSortChange = onSortChange,
-                onDismiss = { showSortDropdown = false },
+                onClick = onSortMenuRequested,
+                modifier = Modifier
+                    .focusRequester(sortFocusRequester)
+                    .focusProperties {
+                        left = filterFocusRequester
+                        right = FocusRequester.Cancel
+                        down = gridFocusRequester ?: FocusRequester.Default
+                    },
             )
         }
     }
 }
 
+/**
+ * Sort slide-out menu for Seerr screens.
+ */
 @Composable
-private fun SeerrSortDropdownMenu(
-    expanded: Boolean,
+fun SeerrSortMenu(
+    visible: Boolean,
     currentSort: SeerrSortOption,
     onSortChange: (SeerrSortOption) -> Unit,
     onDismiss: () -> Unit,
+    anchor: MenuAnchor?,
 ) {
-    val itemTextStyle = MaterialTheme.typography.bodySmall
-
-    TvDropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        offset = DpOffset(0.dp, 4.dp),
-    ) {
-        SeerrSortOption.entries.forEach { option ->
-            TvDropdownMenuItemWithCheck(
+    PlayerSlideOutMenu(
+        visible = visible,
+        title = "Sort",
+        items = SeerrSortOption.entries.map { option ->
+            SlideOutMenuItem(
                 text = option.label,
-                isSelected = option == currentSort,
-                textStyle = itemTextStyle,
-                onClick = {
-                    onSortChange(option)
-                    onDismiss()
-                },
+                selected = option == currentSort,
+                onClick = { onSortChange(option) },
             )
-        }
-    }
+        },
+        onDismiss = onDismiss,
+        anchor = anchor,
+    )
 }
 
+/**
+ * Filter slide-out menu for Seerr screens.
+ */
 @Composable
-private fun SeerrFilterDropdownMenu(
-    expanded: Boolean,
+fun SeerrFilterMenu(
+    visible: Boolean,
     filterState: SeerrFilterState,
     genres: List<SeerrGenre>,
     showMediaTypeFilter: Boolean,
@@ -263,224 +312,190 @@ private fun SeerrFilterDropdownMenu(
     onGenreToggle: (Int) -> Unit,
     onClearGenres: () -> Unit,
     onDismiss: () -> Unit,
+    anchor: MenuAnchor?,
 ) {
-    val headerStyle = MaterialTheme.typography.titleSmall
-    val itemTextStyle = MaterialTheme.typography.bodySmall
-    val submenuOffset = DpOffset(220.dp, 0.dp)
+    var activeSubmenu by remember { mutableStateOf<SeerrFilterSubmenu?>(null) }
+    val submenuAnchors = remember { mutableStateMapOf<SeerrFilterSubmenu, MenuAnchor>() }
+    val mainMenuFocusRequester = remember { FocusRequester() }
+    val submenuFocusRequester = remember { FocusRequester() }
 
-    var showMediaTypeMenu by remember { mutableStateOf(false) }
-    var showReleaseStatusMenu by remember { mutableStateOf(false) }
-    var showRatingMenu by remember { mutableStateOf(false) }
-    var showYearMenu by remember { mutableStateOf(false) }
-    var showGenreMenu by remember { mutableStateOf(false) }
-
-    val closeAllSubmenus = {
-        showMediaTypeMenu = false
-        showReleaseStatusMenu = false
-        showRatingMenu = false
-        showYearMenu = false
-        showGenreMenu = false
+    LaunchedEffect(visible) {
+        if (!visible) {
+            activeSubmenu = null
+        }
     }
 
-    TvDropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        offset = DpOffset(0.dp, 4.dp),
-    ) {
-        // Media Type submenu
-        if (showMediaTypeFilter) {
-            Box {
-                SubMenuItem(
-                    label = "Media Type",
-                    headerStyle = headerStyle,
-                    onClick = {
-                        closeAllSubmenus()
-                        showMediaTypeMenu = true
-                    },
-                )
-                TvDropdownMenu(
-                    expanded = showMediaTypeMenu,
-                    onDismissRequest = { showMediaTypeMenu = false },
-                    offset = submenuOffset,
-                ) {
-                    SeerrMediaTypeOption.entries.forEach { option ->
-                        TvDropdownMenuItemWithCheck(
-                            text = option.label,
-                            isSelected = option == filterState.mediaType,
-                            textStyle = itemTextStyle,
-                            onLeftPressed = { showMediaTypeMenu = false },
-                            onClick = {
-                                onMediaTypeChange(option)
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
+    val yearOptions = remember { buildYearOptions() }
+    val sortedGenres = remember(genres) { genres.sortedBy { it.name } }
+
+    val submenuEntries = remember(showMediaTypeFilter, showReleaseStatusFilter, showGenreFilter, genres) {
+        buildList {
+            if (showMediaTypeFilter) {
+                add(SeerrFilterSubmenuEntry(SeerrFilterSubmenu.MediaType, "Media Type"))
             }
-        }
-
-        // Release Status submenu
-        if (showReleaseStatusFilter) {
-            Box {
-                SubMenuItem(
-                    label = "Release Status",
-                    headerStyle = headerStyle,
-                    onClick = {
-                        closeAllSubmenus()
-                        showReleaseStatusMenu = true
-                    },
-                )
-                TvDropdownMenu(
-                    expanded = showReleaseStatusMenu,
-                    onDismissRequest = { showReleaseStatusMenu = false },
-                    offset = submenuOffset,
-                ) {
-                    SeerrReleaseStatusOption.entries.forEach { option ->
-                        TvDropdownMenuItemWithCheck(
-                            text = option.label,
-                            isSelected = option == filterState.releaseStatus,
-                            textStyle = itemTextStyle,
-                            onLeftPressed = { showReleaseStatusMenu = false },
-                            onClick = {
-                                onReleaseStatusChange(option)
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
+            if (showReleaseStatusFilter) {
+                add(SeerrFilterSubmenuEntry(SeerrFilterSubmenu.ReleaseStatus, "Release Status"))
             }
-        }
-
-        // Rating submenu
-        Box {
-            SubMenuItem(
-                label = "Minimum Rating",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showRatingMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showRatingMenu,
-                onDismissRequest = { showRatingMenu = false },
-                offset = submenuOffset,
-            ) {
-                seerrRatingOptions.forEach { option ->
-                    TvDropdownMenuItemWithCheck(
-                        text = option.label,
-                        isSelected = option.value == filterState.minRating,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showRatingMenu = false },
-                        onClick = {
-                            onRatingChange(option.value)
-                            onDismiss()
-                        },
-                    )
-                }
-            }
-        }
-
-        // Year submenu
-        Box {
-            SubMenuItem(
-                label = "Year",
-                headerStyle = headerStyle,
-                onClick = {
-                    closeAllSubmenus()
-                    showYearMenu = true
-                },
-            )
-            TvDropdownMenu(
-                expanded = showYearMenu,
-                onDismissRequest = { showYearMenu = false },
-                offset = submenuOffset,
-            ) {
-                buildYearOptions().forEach { option ->
-                    val isSelected = option.from == filterState.yearFrom && option.to == filterState.yearTo
-                    TvDropdownMenuItemWithCheck(
-                        text = option.label,
-                        isSelected = isSelected,
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showYearMenu = false },
-                        onClick = {
-                            onYearChange(option.from, option.to)
-                            onDismiss()
-                        },
-                    )
-                }
-            }
-        }
-
-        // Genres submenu
-        if (showGenreFilter && genres.isNotEmpty()) {
-            Box {
-                SubMenuItem(
-                    label = "Genres",
-                    headerStyle = headerStyle,
-                    onClick = {
-                        closeAllSubmenus()
-                        showGenreMenu = true
-                    },
-                )
-                TvDropdownMenu(
-                    expanded = showGenreMenu,
-                    onDismissRequest = { showGenreMenu = false },
-                    offset = submenuOffset,
-                ) {
-                    // All Genres option
-                    TvDropdownMenuItemWithCheck(
-                        text = "All Genres",
-                        isSelected = filterState.selectedGenreIds.isEmpty(),
-                        textStyle = itemTextStyle,
-                        onLeftPressed = { showGenreMenu = false },
-                        onClick = {
-                            onClearGenres()
-                            onDismiss()
-                        },
-                    )
-
-                    HorizontalDivider(color = TvColors.SurfaceElevated)
-
-                    // Individual genres
-                    genres.forEach { genre ->
-                        TvDropdownMenuItemWithCheck(
-                            text = genre.name,
-                            isSelected = filterState.selectedGenreIds.contains(genre.id),
-                            textStyle = itemTextStyle,
-                            onLeftPressed = { showGenreMenu = false },
-                            onClick = {
-                                onGenreToggle(genre.id)
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
+            add(SeerrFilterSubmenuEntry(SeerrFilterSubmenu.Rating, "Minimum Rating"))
+            add(SeerrFilterSubmenuEntry(SeerrFilterSubmenu.Year, "Year"))
+            if (showGenreFilter && genres.isNotEmpty()) {
+                add(SeerrFilterSubmenuEntry(SeerrFilterSubmenu.Genres, "Genres"))
             }
         }
     }
-}
 
-@Composable
-private fun SubMenuItem(
-    label: String,
-    headerStyle: TextStyle,
-    onClick: () -> Unit,
-) {
-    TvDropdownMenuItem(
-        text = label,
-        onClick = onClick,
-        textStyle = headerStyle,
-        onRightPressed = onClick,
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
+    // Main filter menu with submenu navigation
+    PlayerSlideOutMenuSectioned(
+        visible = visible,
+        title = "Filter",
+        sections = listOf(
+            SlideOutMenuSection(
+                title = "Filters",
+                items = submenuEntries.map { entry ->
+                    SlideOutMenuItem(
+                        text = entry.label,
+                        dismissOnClick = false,
+                        onClick = { activeSubmenu = entry.submenu },
+                    )
+                },
+            ),
+        ),
+        onDismiss = onDismiss,
+        anchor = anchor,
+        onItemAnchorChanged = { item, itemAnchor ->
+            val entry = submenuEntries.firstOrNull { it.label == item.text }
+            if (entry != null) {
+                submenuAnchors[entry.submenu] = itemAnchor
+            }
         },
+        firstItemFocusRequester = mainMenuFocusRequester,
+        rightFocusRequester = activeSubmenu?.let { submenuFocusRequester },
     )
+
+    // Render active submenu
+    val submenuAnchor = activeSubmenu?.let { submenuAnchors[it] } ?: anchor
+    when (activeSubmenu) {
+        SeerrFilterSubmenu.MediaType -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Media Type",
+                items = SeerrMediaTypeOption.entries.map { option ->
+                    SlideOutMenuItem(
+                        text = option.label,
+                        selected = option == filterState.mediaType,
+                        onClick = { onMediaTypeChange(option) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        SeerrFilterSubmenu.ReleaseStatus -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Release Status",
+                items = SeerrReleaseStatusOption.entries.map { option ->
+                    SlideOutMenuItem(
+                        text = option.label,
+                        selected = option == filterState.releaseStatus,
+                        onClick = { onReleaseStatusChange(option) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        SeerrFilterSubmenu.Rating -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Minimum Rating",
+                items = seerrRatingOptions.map { option ->
+                    SlideOutMenuItem(
+                        text = option.label,
+                        selected = option.value == filterState.minRating,
+                        onClick = { onRatingChange(option.value) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        SeerrFilterSubmenu.Year -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Year",
+                items = yearOptions.map { option ->
+                    val isSelected = option.from == filterState.yearFrom && option.to == filterState.yearTo
+                    SlideOutMenuItem(
+                        text = option.label,
+                        selected = isSelected,
+                        onClick = { onYearChange(option.from, option.to) },
+                    )
+                },
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        SeerrFilterSubmenu.Genres -> {
+            val genreItems = if (sortedGenres.isEmpty()) {
+                listOf(
+                    SlideOutMenuItem(
+                        text = "No genres available",
+                        enabled = false,
+                        onClick = {},
+                    ),
+                )
+            } else {
+                listOf(
+                    SlideOutMenuItem(
+                        text = "All Genres",
+                        selected = filterState.selectedGenreIds.isEmpty(),
+                        onClick = { onClearGenres() },
+                    ),
+                ) + sortedGenres.map { genre ->
+                    SlideOutMenuItem(
+                        text = genre.name,
+                        selected = filterState.selectedGenreIds.contains(genre.id),
+                        onClick = { onGenreToggle(genre.id) },
+                    )
+                }
+            }
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Genres",
+                items = genreItems,
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
+        null -> {
+            // No submenu shown
+        }
+    }
 }
+
+private enum class SeerrFilterSubmenu {
+    MediaType,
+    ReleaseStatus,
+    Rating,
+    Year,
+    Genres,
+}
+
+private data class SeerrFilterSubmenuEntry(
+    val submenu: SeerrFilterSubmenu,
+    val label: String,
+)
 
 @Composable
 private fun FilterBarIconButton(

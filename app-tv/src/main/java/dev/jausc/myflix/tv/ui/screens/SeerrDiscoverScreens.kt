@@ -70,11 +70,14 @@ import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrFilterBar
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrFilterMenu
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrFilterState
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrMediaTypeOption
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrReleaseStatusOption
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrSortMenu
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrSortOption
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.flow.collectLatest
@@ -627,6 +630,12 @@ private fun SeerrFilterableMediaGridScreen(
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
 
+    // Menu state for slide-out menus
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    var filterAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
+    var sortAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
+
     // Seerr actions for context menu
     val seerrActions = remember(onMediaClick, scope, seerrClient) {
         SeerrMediaActions(
@@ -757,49 +766,16 @@ private fun SeerrFilterableMediaGridScreen(
             .background(TvColors.Background)
             .padding(horizontal = 48.dp, vertical = 24.dp),
     ) {
-        // Filter bar with back button, title, and dropdown filters
+        // Filter bar with back button, title, and slide-out menu triggers
         SeerrFilterBar(
             title = title,
             filterState = filterState,
-            genres = genres,
-            showMediaTypeFilter = filterConfig.showMediaTypeFilter,
-            showGenreFilter = filterConfig.showGenreFilter,
-            showReleaseStatusFilter = filterConfig.showReleaseStatusFilter,
             onBack = onBack,
-            onMediaTypeChange = { opt ->
-                filterState = filterState.copy(mediaType = opt)
-                filterTrigger++
-            },
-            onReleaseStatusChange = { opt ->
-                filterState = filterState.copy(releaseStatus = opt)
-                filterTrigger++
-            },
-            onSortChange = { opt ->
-                filterState = filterState.copy(sortOption = opt)
-                filterTrigger++
-            },
-            onRatingChange = { rating ->
-                filterState = filterState.copy(minRating = rating)
-                filterTrigger++
-            },
-            onYearChange = { from, to ->
-                filterState = filterState.copy(yearFrom = from, yearTo = to)
-                filterTrigger++
-            },
-            onGenreToggle = { genreId ->
-                filterState = filterState.copy(
-                    selectedGenreIds = if (filterState.selectedGenreIds.contains(genreId)) {
-                        filterState.selectedGenreIds - genreId
-                    } else {
-                        filterState.selectedGenreIds + genreId
-                    },
-                )
-                filterTrigger++
-            },
-            onClearGenres = {
-                filterState = filterState.copy(selectedGenreIds = emptySet())
-                filterTrigger++
-            },
+            onFilterMenuRequested = { showFilterMenu = true },
+            onSortMenuRequested = { showSortMenu = true },
+            onFilterAnchorChanged = { filterAnchor = it },
+            onSortAnchorChanged = { sortAnchor = it },
+            gridFocusRequester = firstItemFocusRequester,
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -904,6 +880,60 @@ private fun SeerrFilterableMediaGridScreen(
                 onDismissRequest = { dialogParams = null },
             )
         }
+
+        // Sort slide-out menu
+        SeerrSortMenu(
+            visible = showSortMenu,
+            currentSort = filterState.sortOption,
+            onSortChange = { opt ->
+                filterState = filterState.copy(sortOption = opt)
+                filterTrigger++
+            },
+            onDismiss = { showSortMenu = false },
+            anchor = sortAnchor,
+        )
+
+        // Filter slide-out menu
+        SeerrFilterMenu(
+            visible = showFilterMenu,
+            filterState = filterState,
+            genres = genres,
+            showMediaTypeFilter = filterConfig.showMediaTypeFilter,
+            showGenreFilter = filterConfig.showGenreFilter,
+            showReleaseStatusFilter = filterConfig.showReleaseStatusFilter,
+            onMediaTypeChange = { opt ->
+                filterState = filterState.copy(mediaType = opt)
+                filterTrigger++
+            },
+            onReleaseStatusChange = { opt ->
+                filterState = filterState.copy(releaseStatus = opt)
+                filterTrigger++
+            },
+            onRatingChange = { rating ->
+                filterState = filterState.copy(minRating = rating)
+                filterTrigger++
+            },
+            onYearChange = { from, to ->
+                filterState = filterState.copy(yearFrom = from, yearTo = to)
+                filterTrigger++
+            },
+            onGenreToggle = { genreId ->
+                filterState = filterState.copy(
+                    selectedGenreIds = if (filterState.selectedGenreIds.contains(genreId)) {
+                        filterState.selectedGenreIds - genreId
+                    } else {
+                        filterState.selectedGenreIds + genreId
+                    },
+                )
+                filterTrigger++
+            },
+            onClearGenres = {
+                filterState = filterState.copy(selectedGenreIds = emptySet())
+                filterTrigger++
+            },
+            onDismiss = { showFilterMenu = false },
+            anchor = filterAnchor,
+        )
     }
 }
 
