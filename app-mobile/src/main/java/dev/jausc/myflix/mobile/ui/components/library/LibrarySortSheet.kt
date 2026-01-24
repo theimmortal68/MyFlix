@@ -89,11 +89,7 @@ fun LibrarySortSheet(
 }
 
 @Composable
-private fun SortOptionItem(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
+private fun SortOptionItem(label: String, isSelected: Boolean, onClick: () -> Unit,) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

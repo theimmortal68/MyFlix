@@ -13,8 +13,7 @@ enum class LibrarySortOption(val jellyfinValue: String, val label: String) {
     ;
 
     companion object {
-        fun fromJellyfinValue(value: String): LibrarySortOption =
-            entries.find { it.jellyfinValue == value } ?: TITLE
+        fun fromJellyfinValue(value: String): LibrarySortOption = entries.find { it.jellyfinValue == value } ?: TITLE
     }
 }
 
@@ -27,8 +26,7 @@ enum class SortOrder(val jellyfinValue: String, val label: String) {
     ;
 
     companion object {
-        fun fromJellyfinValue(value: String): SortOrder =
-            entries.find { it.jellyfinValue == value } ?: ASCENDING
+        fun fromJellyfinValue(value: String): SortOrder = entries.find { it.jellyfinValue == value } ?: ASCENDING
     }
 }
 
@@ -36,13 +34,12 @@ enum class SortOrder(val jellyfinValue: String, val label: String) {
  * Library view mode - poster grid (2:3) or thumbnail grid (16:9).
  */
 enum class LibraryViewMode {
-    POSTER,    // 7 columns, 2:3 aspect ratio
+    POSTER, // 7 columns, 2:3 aspect ratio
     THUMBNAIL, // 4 columns, 16:9 aspect ratio
     ;
 
     companion object {
-        fun fromString(value: String): LibraryViewMode =
-            entries.find { it.name == value } ?: POSTER
+        fun fromString(value: String): LibraryViewMode = entries.find { it.name == value } ?: POSTER
     }
 }
 
@@ -56,8 +53,7 @@ enum class WatchedFilter(val label: String) {
     ;
 
     companion object {
-        fun fromString(value: String): WatchedFilter =
-            entries.find { it.name == value } ?: ALL
+        fun fromString(value: String): WatchedFilter = entries.find { it.name == value } ?: ALL
     }
 }
 
@@ -71,8 +67,7 @@ enum class SeriesStatusFilter(val jellyfinValue: String?, val label: String) {
     ;
 
     companion object {
-        fun fromString(value: String): SeriesStatusFilter =
-            entries.find { it.name == value } ?: ALL
+        fun fromString(value: String): SeriesStatusFilter = entries.find { it.name == value } ?: ALL
     }
 }
 

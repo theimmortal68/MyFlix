@@ -11,17 +11,16 @@
 
 package dev.jausc.myflix.mobile
 
+import android.app.PictureInPictureParams
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.app.PictureInPictureParams
-import android.util.Rational
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import java.net.URLDecoder
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -40,15 +39,17 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.mobile.ui.components.QuickConnectAuthorizationDialog
 import dev.jausc.myflix.mobile.ui.screens.DetailScreen
 import dev.jausc.myflix.mobile.ui.screens.HomeScreen
 import dev.jausc.myflix.mobile.ui.screens.LibraryScreen
 import dev.jausc.myflix.mobile.ui.screens.LoginScreen
+import dev.jausc.myflix.mobile.ui.screens.PersonDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.PlayerScreen
 import dev.jausc.myflix.mobile.ui.screens.SearchScreen
-import dev.jausc.myflix.mobile.ui.screens.PersonDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrActorDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrCollectionDetailScreen
+import dev.jausc.myflix.mobile.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverByNetworkScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverByStudioScreen
@@ -57,7 +58,6 @@ import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverTrendingScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverTvScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverUpcomingMoviesScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrDiscoverUpcomingTvScreen
-import dev.jausc.myflix.mobile.ui.screens.SeerrDetailScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrRequestsScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrSearchScreen
@@ -65,8 +65,8 @@ import dev.jausc.myflix.mobile.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.mobile.ui.screens.SettingsScreen
 import dev.jausc.myflix.mobile.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.mobile.ui.screens.TrailerWebViewScreen
-import dev.jausc.myflix.mobile.ui.components.QuickConnectAuthorizationDialog
 import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
+import java.net.URLDecoder
 
 /**
  * Deep link data parsed from incoming intents.

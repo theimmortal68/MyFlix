@@ -193,11 +193,7 @@ private fun MobileActorDetailContent(
 }
 
 @Composable
-private fun MobilePersonHeader(
-    state: SeerrActorDetailScreenState,
-    person: SeerrPerson,
-    seerrClient: SeerrClient,
-) {
+private fun MobilePersonHeader(state: SeerrActorDetailScreenState, person: SeerrPerson, seerrClient: SeerrClient,) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -265,11 +261,7 @@ private fun MobilePersonHeader(
 }
 
 @Composable
-private fun MobilePersonMediaCard(
-    credit: SeerrPersonCastCredit,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit,
-) {
+private fun MobilePersonMediaCard(credit: SeerrPersonCastCredit, seerrClient: SeerrClient, onClick: () -> Unit,) {
     Card(
         modifier = Modifier
             .fillMaxWidth()

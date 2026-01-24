@@ -1,7 +1,7 @@
 package dev.jausc.myflix.core.seerr
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Seerr API data models.
@@ -324,44 +324,64 @@ data class SeerrDiscoverSlider(
 enum class SeerrDiscoverSliderType {
     @SerialName("recentlyAdded")
     RECENTLY_ADDED,
+
     @SerialName("recentRequests")
     RECENT_REQUESTS,
+
     @SerialName("plexWatchlist")
     PLEX_WATCHLIST,
+
     @SerialName("trending")
     TRENDING,
+
     @SerialName("popularMovies")
     POPULAR_MOVIES,
+
     @SerialName("movieGenres")
     MOVIE_GENRES,
+
     @SerialName("upcomingMovies")
     UPCOMING_MOVIES,
+
     @SerialName("studios")
     STUDIOS,
+
     @SerialName("popularTV")
     POPULAR_TV,
+
     @SerialName("tvGenres")
     TV_GENRES,
+
     @SerialName("upcomingTV")
     UPCOMING_TV,
+
     @SerialName("networks")
     NETWORKS,
+
     @SerialName("tmdbMovieKeyword")
     TMDB_MOVIE_KEYWORD,
+
     @SerialName("tmdbTvKeyword")
     TMDB_TV_KEYWORD,
+
     @SerialName("tmdbMovieGenre")
     TMDB_MOVIE_GENRE,
+
     @SerialName("tmdbTvGenre")
     TMDB_TV_GENRE,
+
     @SerialName("tmdbStudio")
     TMDB_STUDIO,
+
     @SerialName("tmdbNetwork")
     TMDB_NETWORK,
+
     @SerialName("tmdbSearch")
     TMDB_SEARCH,
+
     @SerialName("tmdbMovieStreamingServices")
     TMDB_MOVIE_STREAMING_SERVICES,
+
     @SerialName("tmdbTvStreamingServices")
     TMDB_TV_STREAMING_SERVICES,
 }
@@ -417,25 +437,25 @@ object GenreColors {
     // Movie/TV genre colors (TMDB genre IDs)
     private val genreColorMap = mapOf(
         // Movie Genres
-        28 to 0xFFDC2626L,   // Action - Red
-        12 to 0xFFF97316L,   // Adventure - Orange
-        16 to 0xFF3B82F6L,   // Animation - Blue
-        35 to 0xFFFBBF24L,   // Comedy - Yellow
-        80 to 0xFF1F2937L,   // Crime - Dark Gray
-        99 to 0xFF059669L,   // Documentary - Green
-        18 to 0xFF7C3AEDL,   // Drama - Purple
+        28 to 0xFFDC2626L, // Action - Red
+        12 to 0xFFF97316L, // Adventure - Orange
+        16 to 0xFF3B82F6L, // Animation - Blue
+        35 to 0xFFFBBF24L, // Comedy - Yellow
+        80 to 0xFF1F2937L, // Crime - Dark Gray
+        99 to 0xFF059669L, // Documentary - Green
+        18 to 0xFF7C3AEDL, // Drama - Purple
         10751 to 0xFFEC4899L, // Family - Pink
-        14 to 0xFF8B5CF6L,   // Fantasy - Violet
-        36 to 0xFF92400EL,   // History - Brown
-        27 to 0xFF991B1BL,   // Horror - Dark Red
+        14 to 0xFF8B5CF6L, // Fantasy - Violet
+        36 to 0xFF92400EL, // History - Brown
+        27 to 0xFF991B1BL, // Horror - Dark Red
         10402 to 0xFFDB2777L, // Music - Magenta
-        9648 to 0xFF4B5563L,  // Mystery - Gray
+        9648 to 0xFF4B5563L, // Mystery - Gray
         10749 to 0xFFE11D48L, // Romance - Rose
-        878 to 0xFF0EA5E9L,   // Science Fiction - Cyan
+        878 to 0xFF0EA5E9L, // Science Fiction - Cyan
         10770 to 0xFF6366F1L, // TV Movie - Indigo
-        53 to 0xFF78350FL,    // Thriller - Amber Dark
+        53 to 0xFF78350FL, // Thriller - Amber Dark
         10752 to 0xFF4B5563L, // War - Slate
-        37 to 0xFFD97706L,    // Western - Amber
+        37 to 0xFFD97706L, // Western - Amber
         // TV Genres
         10759 to 0xFFDC2626L, // Action & Adventure - Red
         10762 to 0xFFEC4899L, // Kids - Pink
@@ -917,26 +937,26 @@ data class SeerrNetwork(
 object StudioColors {
     // Studio colors mapped by TMDB company ID
     private val studioColorMap = mapOf(
-        174 to 0xFF0046BEL,    // Warner Bros - Blue
-        2 to 0xFF0072CEL,      // Walt Disney Pictures - Blue
-        420 to 0xFFED1D24L,    // Marvel Studios - Red
-        33 to 0xFF0033A0L,     // Universal Pictures - Blue
-        4 to 0xFF0167B6L,      // Paramount Pictures - Blue
-        3 to 0xFFF9F5E3L,      // Pixar - Off White
-        5 to 0xFF002D62L,      // Columbia Pictures - Navy
-        7 to 0xFF000000L,      // DreamWorks - Black
-        25 to 0xFF003087L,     // 20th Century Fox - Blue
-        9993 to 0xFFFFE21FL,   // DC Films - Yellow
-        21 to 0xFF1F73B8L,     // Metro-Goldwyn-Mayer - Blue
-        12 to 0xFF000000L,     // New Line Cinema - Black
-        429 to 0xFFFA7D00L,    // Lucasfilm - Orange
-        34 to 0xFF0165E1L,     // Sony Pictures - Blue
-        1632 to 0xFF000000L,   // Lionsgate - Black
-        923 to 0xFF8B5CF6L,    // Legendary - Purple
-        11461 to 0xFFDC2626L,  // Bad Robot - Red
-        82_968 to 0xFF000000L,  // Apple Studios - Black
+        174 to 0xFF0046BEL, // Warner Bros - Blue
+        2 to 0xFF0072CEL, // Walt Disney Pictures - Blue
+        420 to 0xFFED1D24L, // Marvel Studios - Red
+        33 to 0xFF0033A0L, // Universal Pictures - Blue
+        4 to 0xFF0167B6L, // Paramount Pictures - Blue
+        3 to 0xFFF9F5E3L, // Pixar - Off White
+        5 to 0xFF002D62L, // Columbia Pictures - Navy
+        7 to 0xFF000000L, // DreamWorks - Black
+        25 to 0xFF003087L, // 20th Century Fox - Blue
+        9993 to 0xFFFFE21FL, // DC Films - Yellow
+        21 to 0xFF1F73B8L, // Metro-Goldwyn-Mayer - Blue
+        12 to 0xFF000000L, // New Line Cinema - Black
+        429 to 0xFFFA7D00L, // Lucasfilm - Orange
+        34 to 0xFF0165E1L, // Sony Pictures - Blue
+        1632 to 0xFF000000L, // Lionsgate - Black
+        923 to 0xFF8B5CF6L, // Legendary - Purple
+        11461 to 0xFFDC2626L, // Bad Robot - Red
+        82_968 to 0xFF000000L, // Apple Studios - Black
         127_928 to 0xFF000000L, // A24 - Black
-        2785 to 0xFF6366F1L,   // Castle Rock - Indigo
+        2785 to 0xFF6366F1L, // Castle Rock - Indigo
     )
 
     private val fallbackColors = listOf(
@@ -950,8 +970,7 @@ object StudioColors {
         0xFFEC4899L, // Pink
     )
 
-    fun forStudio(id: Int): Long =
-        studioColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
+    fun forStudio(id: Int): Long = studioColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
 }
 
 /**
@@ -960,27 +979,27 @@ object StudioColors {
 object NetworkColors {
     // Network colors mapped by TMDB network ID
     private val networkColorMap = mapOf(
-        49 to 0xFF000000L,     // HBO - Black
-        213 to 0xFFE50914L,    // Netflix - Red
-        2739 to 0xFF00A8E1L,   // Disney+ - Blue
-        1024 to 0xFFFF6600L,   // Amazon Prime - Orange
-        2552 to 0xFF6B3FA0L,   // Apple TV+ - Purple
-        67 to 0xFF68B244L,     // Showtime - Green
-        16 to 0xFF003D7CL,     // CBS - Blue
-        6 to 0xFF000000L,      // NBC - Black
-        19 to 0xFF3D3D3DL,     // FOX - Gray
-        2 to 0xFF014098L,      // ABC - Blue
-        174 to 0xFFCD1C1EL,    // AMC - Red
-        54 to 0xFFF7B32BL,     // Disney Channel - Yellow
-        88 to 0xFF019934L,     // FX - Green
-        453 to 0xFF004696L,    // Hulu - Green
-        4330 to 0xFF5C16C5L,   // Paramount+ - Purple
-        56 to 0xFFD81B60L,     // Cartoon Network - Pink
-        318 to 0xFFF5B51DL,    // Starz - Gold
-        359 to 0xFF97D700L,    // Syfy - Green
-        21 to 0xFF000000L,     // The WB - Black
-        65 to 0xFF0080FFL,     // History - Blue
-        33 to 0xFF0073D4L,     // Peacock - Blue
+        49 to 0xFF000000L, // HBO - Black
+        213 to 0xFFE50914L, // Netflix - Red
+        2739 to 0xFF00A8E1L, // Disney+ - Blue
+        1024 to 0xFFFF6600L, // Amazon Prime - Orange
+        2552 to 0xFF6B3FA0L, // Apple TV+ - Purple
+        67 to 0xFF68B244L, // Showtime - Green
+        16 to 0xFF003D7CL, // CBS - Blue
+        6 to 0xFF000000L, // NBC - Black
+        19 to 0xFF3D3D3DL, // FOX - Gray
+        2 to 0xFF014098L, // ABC - Blue
+        174 to 0xFFCD1C1EL, // AMC - Red
+        54 to 0xFFF7B32BL, // Disney Channel - Yellow
+        88 to 0xFF019934L, // FX - Green
+        453 to 0xFF004696L, // Hulu - Green
+        4330 to 0xFF5C16C5L, // Paramount+ - Purple
+        56 to 0xFFD81B60L, // Cartoon Network - Pink
+        318 to 0xFFF5B51DL, // Starz - Gold
+        359 to 0xFF97D700L, // Syfy - Green
+        21 to 0xFF000000L, // The WB - Black
+        65 to 0xFF0080FFL, // History - Blue
+        33 to 0xFF0073D4L, // Peacock - Blue
     )
 
     private val fallbackColors = listOf(
@@ -994,8 +1013,7 @@ object NetworkColors {
         0xFFEC4899L, // Pink
     )
 
-    fun forNetwork(id: Int): Long =
-        networkColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
+    fun forNetwork(id: Int): Long = networkColorMap[id] ?: fallbackColors[id.mod(fallbackColors.size)]
 }
 
 /**
@@ -1018,8 +1036,7 @@ object PopularStudios {
     )
 
     /** Build the image URL for a studio logo (white duotone for dark backgrounds) */
-    fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
+    fun getLogoUrl(logoPath: String): String = "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
 }
 
 /**
@@ -1053,8 +1070,7 @@ object PopularNetworks {
     )
 
     /** Build the image URL for a network logo (white duotone for dark backgrounds) */
-    fun getLogoUrl(logoPath: String): String =
-        "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
+    fun getLogoUrl(logoPath: String): String = "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
 }
 
 /**
@@ -1084,34 +1100,34 @@ object GenreBackdropColors {
     // Genre ID to color tone name mapping (from seerr source)
     private val genreColorMap = mapOf(
         // Movie Genres
-        28 to "red",           // Action
-        12 to "darkpurple",    // Adventure
-        16 to "blue",          // Animation
-        35 to "orange",        // Comedy
-        80 to "darkblue",      // Crime
-        99 to "lightgreen",    // Documentary
-        18 to "pink",          // Drama
-        10751 to "yellow",     // Family
-        14 to "lightblue",     // Fantasy
-        36 to "orange",        // History
-        27 to "black",         // Horror
-        10402 to "blue",       // Music
-        9648 to "purple",      // Mystery
-        10749 to "pink",       // Romance
-        878 to "lightblue",    // Science Fiction
-        10770 to "red",        // TV Movie
-        53 to "black",         // Thriller
-        10752 to "darkred",    // War
-        37 to "orange",        // Western
+        28 to "red", // Action
+        12 to "darkpurple", // Adventure
+        16 to "blue", // Animation
+        35 to "orange", // Comedy
+        80 to "darkblue", // Crime
+        99 to "lightgreen", // Documentary
+        18 to "pink", // Drama
+        10751 to "yellow", // Family
+        14 to "lightblue", // Fantasy
+        36 to "orange", // History
+        27 to "black", // Horror
+        10402 to "blue", // Music
+        9648 to "purple", // Mystery
+        10749 to "pink", // Romance
+        878 to "lightblue", // Science Fiction
+        10770 to "red", // TV Movie
+        53 to "black", // Thriller
+        10752 to "darkred", // War
+        37 to "orange", // Western
         // TV Genres
         10759 to "darkpurple", // Action & Adventure
-        10762 to "blue",       // Kids
-        10763 to "black",      // News
+        10762 to "blue", // Kids
+        10763 to "black", // News
         10764 to "darkorange", // Reality
-        10765 to "lightblue",  // Sci-Fi & Fantasy
-        10766 to "pink",       // Soap
+        10765 to "lightblue", // Sci-Fi & Fantasy
+        10766 to "pink", // Soap
         10767 to "lightgreen", // Talk
-        10768 to "darkred",    // War & Politics
+        10768 to "darkred", // War & Politics
     )
 
     /**

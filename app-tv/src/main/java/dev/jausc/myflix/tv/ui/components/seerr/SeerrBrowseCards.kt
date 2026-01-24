@@ -44,11 +44,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Clicking navigates to studio discover page.
  */
 @Composable
-fun SeerrStudioCard(
-    studio: SeerrStudio,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SeerrStudioCard(studio: SeerrStudio, onClick: () -> Unit, modifier: Modifier = Modifier,) {
     val logoUrl = studio.logoPath?.let { PopularStudios.getLogoUrl(it) }
 
     Card(
@@ -95,11 +91,7 @@ fun SeerrStudioCard(
  * Clicking navigates to network discover page.
  */
 @Composable
-fun SeerrNetworkCard(
-    network: SeerrNetwork,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SeerrNetworkCard(network: SeerrNetwork, onClick: () -> Unit, modifier: Modifier = Modifier,) {
     val logoUrl = network.logoPath?.let { PopularNetworks.getLogoUrl(it) }
 
     Card(
@@ -146,11 +138,7 @@ fun SeerrNetworkCard(
  * Clicking navigates to genre discover page.
  */
 @Composable
-fun SeerrGenreCard(
-    genre: SeerrGenre,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun SeerrGenreCard(genre: SeerrGenre, onClick: () -> Unit, modifier: Modifier = Modifier,) {
     // Get the first backdrop from the genre's backdrops list
     val backdropPath = genre.backdrops?.firstOrNull()
     val backdropUrl = backdropPath?.let { GenreBackdropColors.getBackdropUrl(it, genre.id) }

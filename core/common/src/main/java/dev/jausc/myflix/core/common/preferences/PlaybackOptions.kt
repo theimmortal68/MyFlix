@@ -5,7 +5,6 @@ package dev.jausc.myflix.core.common.preferences
  * Centralizes bitrate and refresh rate options for consistency.
  */
 object PlaybackOptions {
-
     /**
      * Streaming bitrate options (Mbps to display label).
      * 0 = no limit (direct play).

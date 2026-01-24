@@ -226,7 +226,6 @@ fun CollectionDetailScreen(
 
             // Right: Content area
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-
             // Layer 2: Backdrop image (right side, behind content)
             // Only show backdrop if available (no poster fallback for cleaner look on universe collections)
             if (displayItem != null && hasBackdrop) {
@@ -375,10 +374,7 @@ fun CollectionDetailScreen(
  * Displays Title, Year, Rating, and Overview.
  */
 @Composable
-private fun ItemHeroContent(
-    item: JellyfinItem,
-    modifier: Modifier = Modifier,
-) {
+private fun ItemHeroContent(item: JellyfinItem, modifier: Modifier = Modifier,) {
     Column(modifier = modifier.fillMaxWidth()) {
         // Title
         Text(
@@ -462,11 +458,7 @@ private fun ItemHeroContent(
  * Collection hero content showing title, overview, and item count.
  */
 @Composable
-private fun CollectionHeroContent(
-    collection: JellyfinItem,
-    itemCount: Int,
-    modifier: Modifier = Modifier,
-) {
+private fun CollectionHeroContent(collection: JellyfinItem, itemCount: Int, modifier: Modifier = Modifier,) {
     Column(modifier = modifier.fillMaxWidth()) {
         // Title
         Text(

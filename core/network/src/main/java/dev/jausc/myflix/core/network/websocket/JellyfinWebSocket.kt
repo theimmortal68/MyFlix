@@ -125,7 +125,9 @@ class JellyfinWebSocket(
             .url(wsUrl)
             .build()
 
-        webSocket = client.newWebSocket(request, object : WebSocketListener() {
+        webSocket = client.newWebSocket(
+            request,
+            object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d(TAG, "WebSocket connected")
                 currentBackoffMs = INITIAL_BACKOFF_MS // Reset backoff on successful connect
@@ -156,7 +158,8 @@ class JellyfinWebSocket(
                     scheduleReconnect()
                 }
             }
-        })
+        }
+        )
     }
 
     private fun buildWebSocketUrl(serverUrl: String, accessToken: String, deviceId: String): String {

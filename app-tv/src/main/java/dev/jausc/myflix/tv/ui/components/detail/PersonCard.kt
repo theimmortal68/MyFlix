@@ -116,10 +116,7 @@ fun PersonCard(
  * Shows name and role/type in a single line.
  */
 @Composable
-fun PersonRow(
-    person: JellyfinPerson,
-    modifier: Modifier = Modifier,
-) {
+fun PersonRow(person: JellyfinPerson, modifier: Modifier = Modifier,) {
     Column(
         modifier = modifier.padding(vertical = 4.dp),
     ) {

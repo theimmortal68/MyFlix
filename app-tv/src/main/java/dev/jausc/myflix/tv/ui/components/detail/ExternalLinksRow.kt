@@ -19,11 +19,7 @@ import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 @Composable
-fun ExternalLinksRow(
-    title: String,
-    links: List<ExternalLinkItem>,
-    modifier: Modifier = Modifier,
-) {
+fun ExternalLinksRow(title: String, links: List<ExternalLinkItem>, modifier: Modifier = Modifier,) {
     if (links.isEmpty()) return
 
     val uriHandler = LocalUriHandler.current

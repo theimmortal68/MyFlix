@@ -500,8 +500,7 @@ data class MediaSegment(
         get() = endMs - startMs
 
     /** Check if a position (in ms) is within this segment */
-    fun containsPosition(positionMs: Long): Boolean =
-        positionMs in startMs..endMs
+    fun containsPosition(positionMs: Long): Boolean = positionMs in startMs..endMs
 }
 
 /**

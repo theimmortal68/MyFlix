@@ -35,27 +35,27 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Smartphone
-import androidx.compose.material.icons.outlined.OndemandVideo
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -71,7 +71,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,18 +79,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import dev.jausc.myflix.core.common.model.AppType
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.UpdateInfo
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.core.common.model.AppType
 import dev.jausc.myflix.core.network.UpdateManager
-import dev.jausc.myflix.core.common.model.UpdateInfo
 import dev.jausc.myflix.core.player.DeviceHdrCapabilities
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.mobile.BuildConfig
 import dev.jausc.myflix.mobile.MobilePreferences
+import kotlinx.coroutines.launch
 
 /**
  * Settings screen for mobile app.
@@ -1202,11 +1202,7 @@ private fun ServerListItem(
 }
 
 @Composable
-private fun ConfirmRemoveServerDialog(
-    server: SavedServer,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun ConfirmRemoveServerDialog(server: SavedServer, onConfirm: () -> Unit, onDismiss: () -> Unit,) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1249,11 +1245,7 @@ private sealed class UpdateState {
 }
 
 @Composable
-private fun InfoSettingItem(
-    icon: ImageVector,
-    title: String,
-    value: String,
-) {
+private fun InfoSettingItem(icon: ImageVector, title: String, value: String,) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1286,11 +1278,7 @@ private fun InfoSettingItem(
 }
 
 @Composable
-private fun UpdateSettingItem(
-    state: UpdateState,
-    onCheck: () -> Unit,
-    onDownload: (UpdateInfo) -> Unit,
-) {
+private fun UpdateSettingItem(state: UpdateState, onCheck: () -> Unit, onDownload: (UpdateInfo) -> Unit,) {
     val (title, description, iconTint, isClickable) = when (state) {
         is UpdateState.Idle -> UpdateItemState(
             title = "Check for Updates",
@@ -1395,14 +1383,12 @@ private val SKIP_MODE_OPTIONS = listOf(
 /**
  * Get display name for a skip mode value.
  */
-private fun getSkipModeDisplayName(mode: String): String =
-    SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
+private fun getSkipModeDisplayName(mode: String): String = SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 
 /**
  * Get display name for a refresh rate mode value.
  */
-private fun getRefreshRateModeDisplayName(mode: String): String =
-    PlaybackOptions.getRefreshRateModeLabel(mode)
+private fun getRefreshRateModeDisplayName(mode: String): String = PlaybackOptions.getRefreshRateModeLabel(mode)
 
 @Composable
 private fun SkipModeSelectionDialog(

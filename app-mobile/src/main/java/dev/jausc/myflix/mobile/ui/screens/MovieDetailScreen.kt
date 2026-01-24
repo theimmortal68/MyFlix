@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,10 +19,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.core.common.model.DetailInfoItem
+import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.imdbId
@@ -43,18 +45,16 @@ import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.mobile.ui.components.detail.ChaptersRow
-import dev.jausc.myflix.core.common.model.DetailInfoItem
 import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
-import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.GenreText
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons
-import dev.jausc.myflix.mobile.ui.components.detail.getStudioLogoResource
 import dev.jausc.myflix.mobile.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewText
+import dev.jausc.myflix.mobile.ui.components.detail.getStudioLogoResource
 import java.util.Locale
 
 /**
@@ -95,7 +95,9 @@ fun MovieDetailScreen(
             }
             remoteTrailer != null -> {
                 extractYouTubeVideoKey(remoteTrailer.url)?.let { key ->
-                    { onTrailerClick(key, remoteTrailer.name) }
+                    {
+                        onTrailerClick(key, remoteTrailer.name)
+                    }
                 }
             }
             else -> {
@@ -547,8 +549,7 @@ private fun buildExternalLinks(movie: JellyfinItem): List<ExternalLinkItem> {
     return links
 }
 
-private fun formatCriticRating(rating: Float): String =
-    if (rating > 10f) {
+private fun formatCriticRating(rating: Float): String = if (rating > 10f) {
         "${rating.toInt()}%"
     } else {
         String.format(Locale.US, "%.1f/10", rating)

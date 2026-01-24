@@ -92,10 +92,7 @@ fun SplashScreen(
 }
 
 @Composable
-private fun SplashScreenContent(
-    config: SplashScreenConfig,
-    modifier: Modifier = Modifier,
-) {
+private fun SplashScreenContent(config: SplashScreenConfig, modifier: Modifier = Modifier,) {
     val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
 
     val animationProgress by infiniteTransition.animateFloat(

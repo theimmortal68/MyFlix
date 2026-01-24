@@ -43,13 +43,11 @@ private val studioLogoResources: Map<String, Int> = mapOf(
     "TSG Entertainment" to R.drawable.studio_tsg_entertainment,
     "Miramax" to R.drawable.studio_miramax,
     "Miramax Films" to R.drawable.studio_miramax,
-
     // DreamWorks
     "DreamWorks Pictures" to R.drawable.studio_dreamworks_pictures,
     "DreamWorks" to R.drawable.studio_dreamworks_pictures,
     "DreamWorks Animation" to R.drawable.studio_dreamworks_studios,
     "DreamWorks Studios" to R.drawable.studio_dreamworks_studios,
-
     // Animation
     "Warner Bros. Animation" to R.drawable.studio_warner_animation_group,
     "Warner Animation Group" to R.drawable.studio_warner_animation_group,
@@ -69,7 +67,6 @@ private val studioLogoResources: Map<String, Int> = mapOf(
     "Aardman Animations" to R.drawable.studio_aardman,
     "Cartoon Saloon" to R.drawable.studio_cartoon_saloon,
     "Nickelodeon Animation Studio" to R.drawable.studio_nickelodeon_animation_studio,
-
     // Other Major
     "Amblin Entertainment" to R.drawable.studio_amblin_entertainment,
     "Village Roadshow Pictures" to R.drawable.studio_village_roadshow_pictures,
@@ -152,7 +149,6 @@ private val studioLogoResources: Map<String, Int> = mapOf(
     "Canal+" to R.drawable.studio_canalplus,
     "Carnival Films" to R.drawable.studio_carnival_films,
     "Bad Wolf" to R.drawable.studio_bad_wolf,
-
     // Anime Studios
     "Studio Ghibli" to R.drawable.studio_studio_ghibli,
     "Ghibli" to R.drawable.studio_studio_ghibli,
@@ -170,7 +166,6 @@ private val studioLogoResources: Map<String, Int> = mapOf(
     "KyoAni" to R.drawable.studio_kyoto_animation,
     "Trigger" to R.drawable.studio_trigger,
     "Studio Trigger" to R.drawable.studio_trigger,
-
     // TV Studios
     "Amazon Studios" to R.drawable.studio_amazon_studios,
     "BBC Studios" to R.drawable.studio_bbc_studios,
@@ -184,8 +179,7 @@ private val studioLogoResources: Map<String, Int> = mapOf(
  * Get the drawable resource ID for a studio name.
  * Returns null if no matching logo is found.
  */
-fun getStudioLogoResource(studioName: String): Int? =
-    studioLogoResources[studioName]
+fun getStudioLogoResource(studioName: String): Int? = studioLogoResources[studioName]
 
 /**
  * Row of studio logos for movie/series detail screens.

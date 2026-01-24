@@ -74,7 +74,13 @@ fun SeerrCollectionDetailScreen(
     fun requestMedia(media: SeerrMedia) {
         scope.launch {
             requestingId = media.id
-            val mediaType = if (media.mediaType.isNotBlank()) media.mediaType else if (media.isMovie) "movie" else "tv"
+            val mediaType = if (media.mediaType.isNotBlank()) {
+                media.mediaType
+            } else if (media.isMovie) {
+                "movie"
+            } else {
+                "tv"
+            }
             val tmdbId = media.tmdbId ?: media.id
             val requestResult = if (mediaType == "movie") {
                 seerrClient.requestMovie(tmdbId)
@@ -210,11 +216,7 @@ private fun SeerrCollectionMediaRow(
 }
 
 @Composable
-private fun SeerrPosterThumbnail(
-    posterUrl: String?,
-    title: String,
-    onClick: () -> Unit,
-) {
+private fun SeerrPosterThumbnail(posterUrl: String?, title: String, onClick: () -> Unit,) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -225,10 +227,7 @@ private fun SeerrPosterThumbnail(
 }
 
 @Composable
-private fun SeerrPosterImage(
-    posterUrl: String?,
-    title: String,
-) {
+private fun SeerrPosterImage(posterUrl: String?, title: String,) {
     AsyncImage(
         model = posterUrl,
         contentDescription = title,

@@ -9,7 +9,6 @@ import dev.jausc.myflix.core.common.preferences.PreferenceKeys
  * Extends [AppPreferences] with mobile-specific preferences name.
  */
 class MobilePreferences private constructor(context: Context) : AppPreferences(context) {
-
     override val preferencesName: String = PreferenceKeys.Prefs.MOBILE_PREFS_NAME
 
     companion object {

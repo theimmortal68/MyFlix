@@ -3,11 +3,11 @@ package dev.jausc.myflix.core.common.ui
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Block
-import dev.jausc.myflix.core.seerr.SeerrMedia
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import dev.jausc.myflix.core.seerr.SeerrMedia
 
 /**
  * Semantic colors for Seerr action menu items.
@@ -58,10 +58,7 @@ data class SeerrMediaActions(
  * @param actions Callbacks for the various actions
  * @return List of SeerrActionEntry for the menu
  */
-fun buildSeerrActionItems(
-    media: SeerrMedia,
-    actions: SeerrMediaActions,
-): List<SeerrActionEntry> = buildList {
+fun buildSeerrActionItems(media: SeerrMedia, actions: SeerrMediaActions,): List<SeerrActionEntry> = buildList {
     val isAvailable = media.isAvailable
     val isPending = media.isPending
     val tmdbId = media.tmdbId ?: media.id

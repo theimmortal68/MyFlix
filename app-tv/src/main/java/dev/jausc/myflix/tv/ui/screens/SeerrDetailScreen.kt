@@ -50,10 +50,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,8 +71,8 @@ import dev.jausc.myflix.core.seerr.SeerrCrewMember
 import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
-import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
+import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrSeason
 import dev.jausc.myflix.core.seerr.SeerrStatusColors
@@ -107,6 +107,7 @@ fun SeerrDetailScreen(
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
+
     @Suppress("UNUSED_VARIABLE")
     val context = LocalContext.current
 
@@ -466,7 +467,9 @@ fun SeerrDetailScreen(
                                                     GenreChip(
                                                         name = genre.name,
                                                         onClick = onNavigateGenre?.let { navigateGenre ->
-                                                            { navigateGenre(mediaType, genre.id, genre.name) }
+                                                            {
+                                                                navigateGenre(mediaType, genre.id, genre.name)
+                                                            }
                                                         },
                                                     )
                                                 }
@@ -1013,11 +1016,7 @@ private fun TmdbRatingBadge(rating: Double) {
  * Shows RT label with fresh (green) or rotten (red) color based on score.
  */
 @Composable
-private fun RottenTomatoesBadge(
-    score: Int,
-    isFresh: Boolean,
-    label: String = "RT",
-) {
+private fun RottenTomatoesBadge(score: Int, isFresh: Boolean, label: String = "RT",) {
     // RT uses red tomato for fresh and green splat for rotten
     val color = if (isFresh) Color(0xFFFA320A) else Color(0xFF6AC238)
 
@@ -1066,11 +1065,7 @@ private fun ImdbRatingBadge(rating: Double) {
 }
 
 @Composable
-private fun CastCard(
-    member: SeerrCastMember,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit = {},
-) {
+private fun CastCard(member: SeerrCastMember, seerrClient: SeerrClient, onClick: () -> Unit = {},) {
     androidx.tv.material3.Surface(
         onClick = onClick,
         modifier = Modifier.width(120.dp),
@@ -1124,10 +1119,7 @@ private fun CastCard(
 }
 
 @Composable
-private fun CrewCard(
-    member: SeerrCrewMember,
-    seerrClient: SeerrClient,
-) {
+private fun CrewCard(member: SeerrCrewMember, seerrClient: SeerrClient,) {
     androidx.tv.material3.Surface(
         onClick = {},
         modifier = Modifier.width(120.dp),
@@ -1181,11 +1173,7 @@ private fun CrewCard(
 }
 
 @Composable
-private fun RelatedMediaCard(
-    media: SeerrMedia,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit,
-) {
+private fun RelatedMediaCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
     Surface(
         onClick = onClick,
         modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
@@ -1230,10 +1218,7 @@ private fun RelatedMediaCard(
 }
 
 @Composable
-private fun GenreChip(
-    name: String,
-    onClick: (() -> Unit)?,
-) {
+private fun GenreChip(name: String, onClick: (() -> Unit)?,) {
     if (onClick != null) {
         Surface(
             onClick = onClick,
@@ -1307,10 +1292,7 @@ private fun SeasonLegendItem(color: Color, label: String) {
 }
 
 @Composable
-private fun TvSeerrVideoCard(
-    video: SeerrVideo,
-    onClick: (videoKey: String, title: String?) -> Unit,
-) {
+private fun TvSeerrVideoCard(video: SeerrVideo, onClick: (videoKey: String, title: String?) -> Unit,) {
     Surface(
         onClick = {
             video.key?.let { key ->

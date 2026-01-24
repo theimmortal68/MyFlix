@@ -20,11 +20,7 @@ import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.ExternalLinkItem
 
 @Composable
-fun ExternalLinksRow(
-    title: String,
-    links: List<ExternalLinkItem>,
-    modifier: Modifier = Modifier,
-) {
+fun ExternalLinksRow(title: String, links: List<ExternalLinkItem>, modifier: Modifier = Modifier,) {
     if (links.isEmpty()) return
 
     val uriHandler = LocalUriHandler.current

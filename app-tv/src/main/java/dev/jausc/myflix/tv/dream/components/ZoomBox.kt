@@ -28,10 +28,7 @@ private const val MAX_SCALE = 1.1f
  * @param content The content to apply the zoom effect to
  */
 @Composable
-fun ZoomBox(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun ZoomBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit,) {
     val infiniteTransition = rememberInfiniteTransition(label = "kenBurns")
 
     val scale by infiniteTransition.animateFloat(

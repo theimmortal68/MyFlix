@@ -2,8 +2,8 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,9 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -44,15 +44,15 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.Tv
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.util.buildFeatureSections
-import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogParams
@@ -196,7 +196,6 @@ fun SeasonDetailScreen(
 
             // Right: Content area
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-
             // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
             DetailBackdropLayer(
                 item = series,
@@ -510,7 +509,6 @@ fun SeasonDetailScreen(
                     }
                 }
             }
-
             }
             }
             } // End content Box
@@ -667,11 +665,7 @@ private fun buildSeasonRatingLine(
  * Section header for the episodes list showing title and count.
  */
 @Composable
-private fun EpisodeSectionHeader(
-    episodeCount: Int,
-    isLoading: Boolean,
-    modifier: Modifier = Modifier,
-) {
+private fun EpisodeSectionHeader(episodeCount: Int, isLoading: Boolean, modifier: Modifier = Modifier,) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

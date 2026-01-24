@@ -15,7 +15,6 @@ import java.util.UUID
  * - Server switching
  */
 class ServerManager(context: Context) {
-
     private val store = SecureServerStore.getInstance(context)
 
     private val _servers = MutableStateFlow<List<SavedServer>>(emptyList())
@@ -140,8 +139,7 @@ class ServerManager(context: Context) {
     /**
      * Get a server by ID.
      */
-    fun getServer(serverId: String): SavedServer? =
-        _servers.value.find { it.serverId == serverId }
+    fun getServer(serverId: String): SavedServer? = _servers.value.find { it.serverId == serverId }
 
     /**
      * Get all servers.

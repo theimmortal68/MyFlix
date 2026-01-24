@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,8 +43,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -505,10 +505,7 @@ private fun SeerrMediaGridScreen(
 /**
  * Convert Seerr action items to TV dialog items.
  */
-private fun buildSeerrDialogItems(
-    media: SeerrMedia,
-    actions: SeerrMediaActions,
-): List<DialogItemEntry> {
+private fun buildSeerrDialogItems(media: SeerrMedia, actions: SeerrMediaActions,): List<DialogItemEntry> {
     return buildSeerrActionItems(media, actions).map { entry ->
         when (entry) {
             is SeerrActionDivider -> DialogItemDivider
@@ -1100,10 +1097,7 @@ private suspend fun loadUpcomingWithFilters(
     }
 }
 
-private fun filterByReleaseStatus(
-    items: List<SeerrMedia>,
-    releaseStatus: ReleaseStatusFilter,
-): List<SeerrMedia> {
+private fun filterByReleaseStatus(items: List<SeerrMedia>, releaseStatus: ReleaseStatusFilter,): List<SeerrMedia> {
     if (releaseStatus == ReleaseStatusFilter.ALL) return items
 
     val today = java.time.LocalDate.now()

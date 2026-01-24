@@ -32,13 +32,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.seerr.SeerrMedia
-import dev.jausc.myflix.core.seerr.SeerrRequestStatus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,16 +40,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.jausc.myflix.core.common.HeroContentBuilder
-import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.LibraryFinder
-import dev.jausc.myflix.mobile.ui.components.MobileCardSizes
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -65,12 +61,15 @@ import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
+import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrRequest
-import kotlinx.coroutines.launch
+import dev.jausc.myflix.core.seerr.SeerrRequestStatus
+import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import dev.jausc.myflix.mobile.MobilePreferences
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.HomeMenuActions
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
+import dev.jausc.myflix.mobile.ui.components.MobileCardSizes
 import dev.jausc.myflix.mobile.ui.components.MobileContentRow
 import dev.jausc.myflix.mobile.ui.components.MobileHeroSection
 import dev.jausc.myflix.mobile.ui.components.MobileNavItem
@@ -79,6 +78,7 @@ import dev.jausc.myflix.mobile.ui.components.MobileRowData
 import dev.jausc.myflix.mobile.ui.components.MobileTopBar
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.buildHomeMenuItems
+import kotlinx.coroutines.launch
 
 /**
  * Mobile home screen with Netflix-style hero section and dropdown navigation.
@@ -618,4 +618,3 @@ private fun MobileSeerrRequestCard(
         }
     }
 }
-

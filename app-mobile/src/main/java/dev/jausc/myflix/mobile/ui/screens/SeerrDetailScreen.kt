@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.util.DateFormatter
 import dev.jausc.myflix.core.seerr.SeerrCastMember
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCrewMember
@@ -83,7 +84,6 @@ import dev.jausc.myflix.core.seerr.SeerrSeasonStatus
 import dev.jausc.myflix.core.seerr.SeerrStatusColors
 import dev.jausc.myflix.core.seerr.SeerrVideo
 import dev.jausc.myflix.core.seerr.buildQuotaText
-import dev.jausc.myflix.core.common.util.DateFormatter
 import kotlinx.coroutines.launch
 
 /**
@@ -460,7 +460,9 @@ fun SeerrDetailScreen(
                                         MobileGenreChip(
                                             name = genre.name,
                                             onClick = onNavigateGenre?.let { navigate ->
-                                                { navigate(mediaType, genre.id, genre.name) }
+                                                {
+                                                    navigate(mediaType, genre.id, genre.name)
+                                                }
                                             },
                                         )
                                     }
@@ -1034,11 +1036,7 @@ private fun MobileSeerrRequestSection(
 }
 
 @Composable
-private fun MobileSeerrCastCard(
-    castMember: SeerrCastMember,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit = {},
-) {
+private fun MobileSeerrCastCard(castMember: SeerrCastMember, seerrClient: SeerrClient, onClick: () -> Unit = {},) {
     Column(
         modifier = Modifier
             .width(100.dp)
@@ -1083,10 +1081,7 @@ private fun MobileSeerrCastCard(
 }
 
 @Composable
-private fun MobileSeerrCrewCard(
-    crewMember: SeerrCrewMember,
-    seerrClient: SeerrClient,
-) {
+private fun MobileSeerrCrewCard(crewMember: SeerrCrewMember, seerrClient: SeerrClient,) {
     Column(
         modifier = Modifier.width(100.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1129,11 +1124,7 @@ private fun MobileSeerrCrewCard(
 }
 
 @Composable
-private fun MobileSeerrRelatedCard(
-    media: SeerrMedia,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit,
-) {
+private fun MobileSeerrRelatedCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
     Column(
         modifier = Modifier
             .width(120.dp)
@@ -1160,10 +1151,7 @@ private fun MobileSeerrRelatedCard(
 }
 
 @Composable
-private fun MobileSeerrVideoCard(
-    video: SeerrVideo,
-    onClick: (videoKey: String, title: String?) -> Unit,
-) {
+private fun MobileSeerrVideoCard(video: SeerrVideo, onClick: (videoKey: String, title: String?) -> Unit,) {
     Box(
         modifier = Modifier
             .width(200.dp)
@@ -1266,10 +1254,7 @@ private fun MobileTmdbRatingBadge(rating: Double) {
  * Rotten Tomatoes rating badge for mobile.
  */
 @Composable
-private fun MobileRottenTomatoesBadge(
-    score: Int,
-    isFresh: Boolean,
-) {
+private fun MobileRottenTomatoesBadge(score: Int, isFresh: Boolean,) {
     // RT uses red tomato for fresh and green splat for rotten
     val color = if (isFresh) Color(0xFFFA320A) else Color(0xFF6AC238)
 
@@ -1317,10 +1302,7 @@ private fun MobileImdbRatingBadge(rating: Double) {
 }
 
 @Composable
-private fun MobileGenreChip(
-    name: String,
-    onClick: (() -> Unit)?,
-) {
+private fun MobileGenreChip(name: String, onClick: (() -> Unit)?,) {
     val chipModifier = Modifier
         .background(
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -1345,8 +1327,7 @@ private fun MobileGenreChip(
     }
 }
 
-private fun getMobileSeasonStatusColor(status: Int?): Color =
-    Color(SeerrStatusColors.getColorForStatus(status))
+private fun getMobileSeasonStatusColor(status: Int?): Color = Color(SeerrStatusColors.getColorForStatus(status))
 
 @Composable
 private fun MobileSeasonStatusLegend() {

@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
  * Subclasses must provide the preferences name via [preferencesName].
  */
 abstract class AppPreferences(context: Context) {
-
     /**
      * The name used for SharedPreferences storage.
      * Each platform should use a unique name (e.g., "myflix_tv_prefs", "myflix_mobile_prefs").
@@ -59,18 +58,21 @@ abstract class AppPreferences(context: Context) {
     private val _maxStreamingBitrate: MutableStateFlow<Int> by lazy {
         MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.MAX_STREAMING_BITRATE, PreferenceKeys.Defaults.MAX_STREAMING_BITRATE))
     }
+
     /** Max streaming bitrate in Mbps. 0 = unlimited (direct play preferred). */
     val maxStreamingBitrate: StateFlow<Int> by lazy { _maxStreamingBitrate.asStateFlow() }
 
     private val _skipForwardSeconds: MutableStateFlow<Int> by lazy {
         MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SKIP_FORWARD_SECONDS, PreferenceKeys.Defaults.SKIP_FORWARD_SECONDS))
     }
+
     /** Skip forward duration in seconds. */
     val skipForwardSeconds: StateFlow<Int> by lazy { _skipForwardSeconds.asStateFlow() }
 
     private val _skipBackwardSeconds: MutableStateFlow<Int> by lazy {
         MutableStateFlow(prefs.getInt(PreferenceKeys.Prefs.SKIP_BACKWARD_SECONDS, PreferenceKeys.Defaults.SKIP_BACKWARD_SECONDS))
     }
+
     /** Skip backward duration in seconds. */
     val skipBackwardSeconds: StateFlow<Int> by lazy { _skipBackwardSeconds.asStateFlow() }
 
@@ -88,6 +90,7 @@ abstract class AppPreferences(context: Context) {
                 ?: PreferenceKeys.Defaults.REFRESH_RATE_MODE
         )
     }
+
     /** Refresh rate mode: OFF (no switching), AUTO (match video), 60 (force 60Hz), 120 (force 120Hz). */
     val refreshRateMode: StateFlow<String> by lazy { _refreshRateMode.asStateFlow() }
 
@@ -99,6 +102,7 @@ abstract class AppPreferences(context: Context) {
                 ?: PreferenceKeys.Defaults.SKIP_INTRO_MODE
         )
     }
+
     /** Skip intro mode: OFF (disabled), ASK (show button), AUTO (skip automatically). */
     val skipIntroMode: StateFlow<String> by lazy { _skipIntroMode.asStateFlow() }
 
@@ -108,6 +112,7 @@ abstract class AppPreferences(context: Context) {
                 ?: PreferenceKeys.Defaults.SKIP_CREDITS_MODE
         )
     }
+
     /** Skip credits mode: OFF (disabled), ASK (show button), AUTO (skip automatically). */
     val skipCreditsMode: StateFlow<String> by lazy { _skipCreditsMode.asStateFlow() }
 

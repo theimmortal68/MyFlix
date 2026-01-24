@@ -34,15 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.*
 import coil3.compose.AsyncImage
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.jausc.myflix.core.viewmodel.LoginUiState
-import dev.jausc.myflix.core.viewmodel.LoginViewModel
 import dev.jausc.myflix.core.common.ui.DiscoveredServerInfo
 import dev.jausc.myflix.core.common.ui.MyFlixLogo
 import dev.jausc.myflix.core.common.ui.PublicUserInfo
@@ -50,13 +48,15 @@ import dev.jausc.myflix.core.common.ui.ValidatedServerInfo
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.QuickConnectFlowState
+import dev.jausc.myflix.core.viewmodel.LoginUiState
+import dev.jausc.myflix.core.viewmodel.LoginViewModel
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import java.net.URLEncoder
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 /**
  * Login flow:
@@ -802,4 +802,3 @@ private fun generateQrCode(content: String, size: Int): Bitmap? = try {
     android.util.Log.e("LoginScreen", "QR code generation failed", e)
     null
 }
-

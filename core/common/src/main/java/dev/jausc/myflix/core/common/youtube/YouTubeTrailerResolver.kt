@@ -2,9 +2,7 @@ package dev.jausc.myflix.core.common.youtube
 
 import android.content.Context
 import android.util.Log
-import java.io.IOException
-import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
+import dev.jausc.myflix.core.common.potoken.PoTokenProviderImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -19,7 +17,9 @@ import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExt
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.VideoStream
-import dev.jausc.myflix.core.common.potoken.PoTokenProviderImpl
+import java.io.IOException
+import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "YouTubeTrailerResolver"
 
@@ -53,7 +53,8 @@ object YouTubeTrailerResolver {
         }
     }
 
-    suspend fun resolveTrailer(context: Context, videoKey: String): Result<YouTubeStream> = withContext(Dispatchers.IO) {
+    suspend fun resolveTrailer(context: Context, videoKey: String): Result<YouTubeStream> =
+        withContext(Dispatchers.IO) {
         try {
             initialize(context)
             val videoUrl = "https://www.youtube.com/watch?v=$videoKey"
@@ -61,12 +62,14 @@ object YouTubeTrailerResolver {
 
             val hlsUrl = info.hlsUrl?.takeIf { it.isNotBlank() }
             if (hlsUrl != null) {
-                return@withContext Result.success(YouTubeStream(
+                return@withContext Result.success(
+                    YouTubeStream(
                     url = hlsUrl,
                     title = info.name,
                     durationMs = info.duration.coerceAtLeast(0) * 1000,
                     isHls = true,
-                ))
+                )
+                )
             }
 
             val stream = selectBestStream(info)
@@ -75,12 +78,14 @@ object YouTubeTrailerResolver {
             val streamUrl = stream.content
                 ?: throw IOException("Stream URL is not available")
 
-            Result.success(YouTubeStream(
+            Result.success(
+                YouTubeStream(
                 url = streamUrl,
                 title = info.name,
                 durationMs = info.duration.coerceAtLeast(0) * 1000,
                 isHls = stream.deliveryMethod == DeliveryMethod.HLS,
-            ))
+            )
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error resolving trailer: ${e.message}", e)
             Result.failure(e)

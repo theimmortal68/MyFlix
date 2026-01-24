@@ -328,11 +328,7 @@ class MediaCodecCapabilities(@Suppress("UNUSED_PARAMETER") context: Context) {
     }
 
     /** Get maximum supported level for a profile */
-    private fun getDecoderLevel(
-        mime: String,
-        profile: Int,
-        requireHardware: Boolean = false,
-    ): Int {
+    private fun getDecoderLevel(mime: String, profile: Int, requireHardware: Boolean = false,): Int {
         var maxLevel = 0
 
         for (info in mediaCodecList.codecInfos) {

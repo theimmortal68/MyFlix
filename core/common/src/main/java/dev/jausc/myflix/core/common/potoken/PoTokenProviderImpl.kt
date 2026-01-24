@@ -135,8 +135,11 @@ object PoTokenProviderImpl : PoTokenProvider {
             }
         }
 
-        Log.d(TAG, "poToken for $videoId: playerPot=$playerPot, " +
-            "streamingPot=${state.streamingPot}, visitor_data=${state.visitorData}")
+        Log.d(
+            TAG,
+            "poToken for $videoId: playerPot=$playerPot, " +
+            "streamingPot=${state.streamingPot}, visitor_data=${state.visitorData}"
+        )
 
         return PoTokenResult(state.visitorData, playerPot, state.streamingPot)
     }

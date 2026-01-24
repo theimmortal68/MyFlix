@@ -377,11 +377,7 @@ fun MobileWideMediaCard(
  * HDR/Dolby Vision badge overlay for media cards
  */
 @Composable
-private fun HdrBadge(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
+private fun HdrBadge(text: String, color: Color, modifier: Modifier = Modifier,) {
     Box(
         modifier = modifier
             .padding(6.dp)

@@ -43,7 +43,9 @@ fun parseChallengeData(rawChallengeData: String): String {
 
     return JSONObject().apply {
         put("messageId", messageId)
-        put("interpreterJavascript", JSONObject().apply {
+        put(
+            "interpreterJavascript",
+            JSONObject().apply {
             put(
                 "privateDoNotAccessOrElseSafeScriptWrappedValue",
                 privateDoNotAccessOrElseSafeScriptWrappedValue
@@ -52,7 +54,8 @@ fun parseChallengeData(rawChallengeData: String): String {
                 "privateDoNotAccessOrElseTrustedResourceUrlWrappedValue",
                 privateDoNotAccessOrElseTrustedResourceUrlWrappedValue
             )
-        })
+        }
+        )
         put("interpreterHash", interpreterHash)
         put("program", program)
         put("globalName", globalName)

@@ -11,7 +11,6 @@ import java.util.Locale
  * Utility object for media information formatting.
  */
 object MediaInfoUtil {
-
     /**
      * Format series status into a user-friendly badge label.
      *
@@ -36,20 +35,14 @@ object MediaInfoUtil {
      * @param item The Jellyfin item with runtime information
      * @return List of runtime-related detail strings
      */
-    fun buildRuntimeDetails(
-        now: LocalDateTime,
-        item: JellyfinItem,
-    ): List<String> = buildList {
+    fun buildRuntimeDetails(now: LocalDateTime, item: JellyfinItem,): List<String> = buildList {
         addRuntimeDetails(now, item)
     }
 
     /**
      * Extension function to add runtime details to a mutable list.
      */
-    fun MutableList<String>.addRuntimeDetails(
-        now: LocalDateTime,
-        item: JellyfinItem,
-    ) {
+    fun MutableList<String>.addRuntimeDetails(now: LocalDateTime, item: JellyfinItem,) {
         val runtimeTicks = item.runTimeTicks ?: return
         val runtimeMinutes = (runtimeTicks / 600_000_000).toInt()
         if (runtimeMinutes <= 0) return

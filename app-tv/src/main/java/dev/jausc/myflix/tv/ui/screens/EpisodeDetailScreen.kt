@@ -20,6 +20,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,30 +47,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Tv
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.progressPercent
-import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
+import dev.jausc.myflix.tv.ui.components.DialogItem
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.NavigationRail
-import dev.jausc.myflix.tv.ui.components.DialogItem
-import dev.jausc.myflix.tv.ui.components.DialogParams
-import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
@@ -176,7 +176,6 @@ fun EpisodeDetailScreen(
 
             // Right: Content area
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-
             // Layer 2: Content
             Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
@@ -492,11 +491,7 @@ fun EpisodeDetailScreen(
  * Width is controlled by the modifier parameter.
  */
 @Composable
-private fun EpisodeHeroThumbnail(
-    episode: JellyfinItem,
-    imageUrl: String,
-    modifier: Modifier = Modifier,
-) {
+private fun EpisodeHeroThumbnail(episode: JellyfinItem, imageUrl: String, modifier: Modifier = Modifier,) {
     Box(
         modifier = modifier
             .aspectRatio(16f / 9f)
@@ -655,4 +650,3 @@ private fun buildSeasonEpisodeLabel(episode: JellyfinItem): String? {
         null
     }
 }
-

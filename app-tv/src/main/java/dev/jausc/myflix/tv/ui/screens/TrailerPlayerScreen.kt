@@ -1,5 +1,8 @@
 package dev.jausc.myflix.tv.ui.screens
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -36,16 +41,11 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
-import dev.jausc.myflix.core.common.youtube.YouTubeTrailerResolver
 import dev.jausc.myflix.core.common.youtube.YouTubeStream
+import dev.jausc.myflix.core.common.youtube.YouTubeTrailerResolver
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
@@ -53,11 +53,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 
 @Composable
-fun TrailerPlayerScreen(
-    videoKey: String,
-    title: String?,
-    onBack: () -> Unit,
-) {
+fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
     val context = LocalContext.current
     val playerController = remember { PlayerController(context, useMpv = false) }
     val playbackState by playerController.state.collectAsState()
@@ -156,11 +152,7 @@ fun TrailerPlayerScreen(
 }
 
 @Composable
-private fun TrailerVideoSurface(
-    playerController: PlayerController,
-    url: String,
-    modifier: Modifier = Modifier,
-) {
+private fun TrailerVideoSurface(playerController: PlayerController, url: String, modifier: Modifier = Modifier,) {
     LaunchedEffect(url) {
         playerController.play(url, startPositionMs = 0)
     }
@@ -272,11 +264,7 @@ private fun LoadingOverlay(text: String) {
 }
 
 @Composable
-private fun ErrorOverlay(
-    message: String,
-    onBack: () -> Unit,
-    onOpenYouTube: () -> Unit,
-) {
+private fun ErrorOverlay(message: String, onBack: () -> Unit, onOpenYouTube: () -> Unit,) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = message, color = Color.White)

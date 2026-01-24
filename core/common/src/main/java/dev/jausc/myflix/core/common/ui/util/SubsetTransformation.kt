@@ -19,7 +19,6 @@ class SubsetTransformation(
     private val cropWidth: Int,
     private val cropHeight: Int,
 ) : Transformation() {
-
     override val cacheKey: String = "SubsetTransformation($x,$y,$cropWidth,$cropHeight)"
 
     override suspend fun transform(input: Bitmap, size: Size): Bitmap {

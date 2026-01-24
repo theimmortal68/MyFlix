@@ -10,7 +10,6 @@ import dev.jausc.myflix.core.common.model.MediaStream
  * Utility object for building media badges from stream information.
  */
 object MediaBadgeUtil {
-
     /**
      * Build a list of media badges from video and audio stream information.
      *
@@ -101,8 +100,10 @@ object MediaBadgeUtil {
                 title.contains("dts:x") || displayTitle.contains("dts:x") ||
                     title.contains("dts-x") || displayTitle.contains("dts-x") ->
                         add(MediaBadge("DTS:X", BadgeType.AUDIO_CODEC))
-                codec.contains("DTS") && (title.contains("hd ma") || displayTitle.contains("hd ma") ||
-                    title.contains("hd-ma") || displayTitle.contains("hd-ma")) ->
+                codec.contains("DTS") && (
+                    title.contains("hd ma") || displayTitle.contains("hd ma") ||
+                    title.contains("hd-ma") || displayTitle.contains("hd-ma")
+                ) ->
                         add(MediaBadge("DTS-HD MA", BadgeType.AUDIO_CODEC))
                 codec.contains("DTS") -> add(MediaBadge("DTS", BadgeType.AUDIO_CODEC))
                 codec.contains("EAC3") || codec.contains("E-AC-3") ->
@@ -152,12 +153,10 @@ object MediaBadgeUtil {
             listOf("theatrical cut", "theatrical") to "Theatrical",
             listOf("producer's cut", "producers cut") to "Producer's Cut",
             listOf("assembly cut") to "Assembly Cut",
-
             // Extended versions
             listOf("extended edition", "extended cut", "extended version", "extended") to "Extended",
             listOf("unrated", "unrated edition", "unrated cut") to "Unrated",
             listOf("uncut", "uncut edition") to "Uncut",
-
             // Special editions
             listOf("special edition") to "Special Edition",
             listOf("collector's edition", "collectors edition") to "Collector's Edition",
@@ -165,14 +164,11 @@ object MediaBadgeUtil {
             listOf("criterion collection", "criterion") to "Criterion",
             listOf("remastered", "remaster") to "Remastered",
             listOf("restored", "4k restoration", "restoration") to "Restored",
-
             // IMAX
             listOf("imax enhanced") to "IMAX Enhanced",
             listOf("imax edition", "imax") to "IMAX",
-
             // 3D
             listOf("3d") to "3D",
-
             // Other
             listOf("black and chrome", "black & chrome") to "Black & Chrome",
             listOf("open matte") to "Open Matte",

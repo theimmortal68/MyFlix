@@ -267,11 +267,7 @@ fun SeerrSearchScreen(
 }
 
 @Composable
-private fun SeerrSearchMediaCard(
-    media: SeerrMedia,
-    seerrClient: SeerrClient,
-    onClick: () -> Unit,
-) {
+private fun SeerrSearchMediaCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
     val imageUrl = if (media.mediaType == "person") {
         seerrClient.getProfileUrl(media.profilePath)
     } else {

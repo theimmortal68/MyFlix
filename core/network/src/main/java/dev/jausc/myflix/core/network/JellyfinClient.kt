@@ -5,9 +5,7 @@ import dev.jausc.myflix.core.common.model.AllThemeMediaResult
 import dev.jausc.myflix.core.common.model.AuthResponse
 import dev.jausc.myflix.core.common.model.CodecProfile
 import dev.jausc.myflix.core.common.model.DeviceProfile
-import dev.jausc.myflix.core.common.util.MediaCodecCapabilities
 import dev.jausc.myflix.core.common.model.DirectPlayProfile
-import dev.jausc.myflix.core.common.model.ProfileCondition
 import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -16,9 +14,11 @@ import dev.jausc.myflix.core.common.model.MediaSegmentsResponse
 import dev.jausc.myflix.core.common.model.MediaSource
 import dev.jausc.myflix.core.common.model.PlaybackInfoRequest
 import dev.jausc.myflix.core.common.model.PlaybackInfoResponse
+import dev.jausc.myflix.core.common.model.ProfileCondition
 import dev.jausc.myflix.core.common.model.ServerInfo
 import dev.jausc.myflix.core.common.model.SubtitleProfile
 import dev.jausc.myflix.core.common.model.TranscodingProfile
+import dev.jausc.myflix.core.common.util.MediaCodecCapabilities
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -1387,11 +1387,7 @@ class JellyfinClient(
      * @param audioCodec Audio codec to use (default: mp3)
      * @param audioBitrate Bitrate in bits per second (default: 128kbps)
      */
-    fun getAudioStreamUrl(
-        itemId: String,
-        audioCodec: String = "mp3",
-        audioBitrate: Int = 128_000,
-    ): String {
+    fun getAudioStreamUrl(itemId: String, audioCodec: String = "mp3", audioBitrate: Int = 128_000,): String {
         return "$baseUrl/Audio/$itemId/stream?static=true" +
             "&audioCodec=$audioCodec" +
             "&audioBitrate=$audioBitrate" +

@@ -35,23 +35,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.viewmodel.SearchViewModel
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.SearchViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(
-    jellyfinClient: JellyfinClient,
-    onItemClick: (String) -> Unit,
-    onBack: () -> Unit,
-) {
+fun SearchScreen(jellyfinClient: JellyfinClient, onItemClick: (String) -> Unit, onBack: () -> Unit,) {
     // ViewModel with manual DI
     val viewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.Factory(jellyfinClient),

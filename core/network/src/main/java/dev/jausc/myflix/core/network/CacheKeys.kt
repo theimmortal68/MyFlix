@@ -9,7 +9,6 @@ package dev.jausc.myflix.core.network
  * - Document what data is cached and for how long
  */
 object CacheKeys {
-
     // ==================== Cache TTL Values ====================
 
     /**
@@ -45,8 +44,12 @@ object CacheKeys {
     const val LIBRARIES = "libraries"
 
     /** Library items with pagination */
-    fun library(libraryId: String, limit: Int, startIndex: Int, sortBy: String): String =
-        "library:$libraryId:$limit:$startIndex:$sortBy"
+    fun library(
+        libraryId: String,
+        limit: Int,
+        startIndex: Int,
+        sortBy: String
+    ): String = "library:$libraryId:$limit:$startIndex:$sortBy"
 
     /** Single item details */
     fun item(itemId: String): String = "item:$itemId"
@@ -55,8 +58,7 @@ object CacheKeys {
     fun resume(limit: Int): String = "resume:$limit"
 
     /** Next up episodes */
-    fun nextUp(limit: Int, enableRewatching: Boolean): String =
-        "nextup:$limit:$enableRewatching"
+    fun nextUp(limit: Int, enableRewatching: Boolean): String = "nextup:$limit:$enableRewatching"
 
     /** Next up episodes for a specific series */
     fun nextUpSeries(seriesId: String, limit: Int, enableRewatching: Boolean): String =
@@ -66,20 +68,16 @@ object CacheKeys {
     fun latest(libraryId: String, limit: Int): String = "latest:$libraryId:$limit"
 
     /** Latest movies */
-    fun latestMovies(libraryId: String?, limit: Int): String =
-        "latestMovies:${libraryId ?: "all"}:$limit"
+    fun latestMovies(libraryId: String?, limit: Int): String = "latestMovies:${libraryId ?: "all"}:$limit"
 
     /** Latest TV series */
-    fun latestSeries(libraryId: String?, limit: Int): String =
-        "latestSeries:${libraryId ?: "all"}:$limit"
+    fun latestSeries(libraryId: String?, limit: Int): String = "latestSeries:${libraryId ?: "all"}:$limit"
 
     /** Latest episodes */
-    fun latestEpisodes(libraryId: String?, limit: Int): String =
-        "latestEpisodes:${libraryId ?: "all"}:$limit"
+    fun latestEpisodes(libraryId: String?, limit: Int): String = "latestEpisodes:${libraryId ?: "all"}:$limit"
 
     /** Upcoming episodes (season premieres) */
-    fun upcoming(libraryId: String?, limit: Int): String =
-        "upcoming:${libraryId ?: "all"}:$limit"
+    fun upcoming(libraryId: String?, limit: Int): String = "upcoming:${libraryId ?: "all"}:$limit"
 
     /** Available genres */
     fun genres(libraryId: String?): String = "genres:${libraryId ?: "all"}"
@@ -99,22 +97,25 @@ object CacheKeys {
         sortOrder: String,
         nameStartsWith: String?,
         excludeUniverseCollections: Boolean,
-    ): String = "collectionsFiltered:$limit:$startIndex:$sortBy:$sortOrder:${nameStartsWith ?: ""}:$excludeUniverseCollections"
+    ): String =
+        "collectionsFiltered:$limit:$startIndex:$sortBy:$sortOrder:${nameStartsWith ?: ""}:$excludeUniverseCollections"
 
     /** Universe collections (tagged with "universe-collection") */
     fun universeCollections(limit: Int): String = "universeCollections:$limit"
 
     /** Items in a specific collection */
-    fun collection(collectionId: String, limit: Int, sortBy: String? = null, sortOrder: String? = null): String =
-        "collection:$collectionId:$limit:${sortBy ?: "Default"}:${sortOrder ?: "Default"}"
+    fun collection(
+        collectionId: String,
+        limit: Int,
+        sortBy: String? = null,
+        sortOrder: String? = null
+    ): String = "collection:$collectionId:$limit:${sortBy ?: "Default"}:${sortOrder ?: "Default"}"
 
     /** Special features (extras) for an item */
-    fun specialFeatures(itemId: String, limit: Int): String =
-        "specialFeatures:$itemId:$limit"
+    fun specialFeatures(itemId: String, limit: Int): String = "specialFeatures:$itemId:$limit"
 
     /** Theme media (songs and videos) for an item */
-    fun themeMedia(itemId: String, inheritFromParent: Boolean): String =
-        "themeMedia:$itemId:$inheritFromParent"
+    fun themeMedia(itemId: String, inheritFromParent: Boolean): String = "themeMedia:$itemId:$inheritFromParent"
 
     /** Ancestors for an item */
     fun ancestors(itemId: String): String = "ancestors:$itemId"
@@ -126,19 +127,16 @@ object CacheKeys {
     fun seasons(seriesId: String): String = "seasons:$seriesId"
 
     /** Episodes for a season */
-    fun episodes(seriesId: String, seasonId: String): String =
-        "episodes:$seriesId:$seasonId"
+    fun episodes(seriesId: String, seasonId: String): String = "episodes:$seriesId:$seasonId"
 
     /** Similar items */
     fun similar(itemId: String, limit: Int): String = "similar:$itemId:$limit"
 
     /** Items featuring a person */
-    fun personItems(personId: String, limit: Int): String =
-        "personItems:$personId:$limit"
+    fun personItems(personId: String, limit: Int): String = "personItems:$personId:$limit"
 
     /** Favorite items */
-    fun favorites(limit: Int, includeItemTypes: String?): String =
-        "favorites:$limit:${includeItemTypes ?: "all"}"
+    fun favorites(limit: Int, includeItemTypes: String?): String = "favorites:$limit:${includeItemTypes ?: "all"}"
 
     /** Media segments for an item (intro, outro, etc.) */
     fun mediaSegments(itemId: String): String = "segments:$itemId"

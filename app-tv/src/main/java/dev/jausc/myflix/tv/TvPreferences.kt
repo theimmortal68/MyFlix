@@ -9,7 +9,6 @@ import dev.jausc.myflix.core.common.preferences.PreferenceKeys
  * Extends [AppPreferences] with TV-specific preferences name.
  */
 class TvPreferences private constructor(context: Context) : AppPreferences(context) {
-
     override val preferencesName: String = PreferenceKeys.Prefs.TV_PREFS_NAME
 
     companion object {

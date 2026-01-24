@@ -12,10 +12,7 @@ import dev.jausc.myflix.core.common.ui.components.detail.GenreText as SharedGenr
  * Mobile wrapper with theme defaults.
  */
 @Composable
-fun GenreText(
-    genres: List<String>,
-    modifier: Modifier = Modifier,
-) {
+fun GenreText(genres: List<String>, modifier: Modifier = Modifier,) {
     SharedGenreText(
         genres = genres,
         modifier = modifier,

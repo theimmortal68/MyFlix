@@ -16,8 +16,10 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -41,48 +43,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.*
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.text.font.FontWeight
-import coil3.compose.AsyncImage
-import coil3.compose.rememberAsyncImagePainter
-import coil3.request.ImageRequest
-import coil3.request.transformations
-import dev.jausc.myflix.core.player.TrickplayProvider
-import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
-import androidx.compose.ui.geometry.Size as ComposeSize
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.AspectRatio
@@ -91,45 +58,78 @@ import androidx.compose.material.icons.outlined.ClosedCaptionOff
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.jausc.myflix.core.viewmodel.PlayerViewModel
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
 import androidx.tv.material3.Border
-import dev.jausc.myflix.core.common.ui.ActionColors
-import dev.jausc.myflix.core.common.model.JellyfinItem
+import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.request.transformations
 import dev.jausc.myflix.core.common.model.JellyfinChapter
+import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
 import dev.jausc.myflix.core.common.model.subtitleLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
+import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
+import dev.jausc.myflix.core.common.ui.ActionColors
+import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.websocket.PlaystateCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
-import kotlinx.coroutines.flow.SharedFlow
 import dev.jausc.myflix.core.player.PlayerConstants
-import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
+import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerUtils
-import dev.jausc.myflix.core.player.SubtitleStyle
-import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleColor
+import dev.jausc.myflix.core.player.SubtitleFontSize
+import dev.jausc.myflix.core.player.SubtitleStyle
+import dev.jausc.myflix.core.player.TrickplayProvider
+import dev.jausc.myflix.core.viewmodel.PlayerViewModel
+import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
+import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
+import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
 import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
 import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
-import dev.jausc.myflix.tv.ui.components.MenuAnchor
-import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
-import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
-import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
-import dev.jausc.myflix.core.common.preferences.AppPreferences
-import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.isActive
+import androidx.compose.ui.geometry.Size as ComposeSize
 
 /**
  * Types of slide-out menus in the player overlay.
@@ -214,7 +214,13 @@ fun PlayerScreen(
     val playbackState by playerController.state.collectAsState()
     var displayMode by remember(displayModeName) {
         mutableStateOf(
-            try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
+            try {
+                PlayerDisplayMode.valueOf(displayModeName)
+            } catch (
+                e: IllegalArgumentException
+            ) {
+                PlayerDisplayMode.FIT
+            }
         )
     }
 
@@ -1316,7 +1322,6 @@ private fun TvPlayerControlsOverlay(
                     },
                 )
             }
-
         }
     }
 
@@ -1889,11 +1894,7 @@ private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color =
  * Appears in the bottom-right corner when a skippable segment is detected.
  */
 @Composable
-private fun SkipSegmentButton(
-    label: String,
-    onSkip: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun SkipSegmentButton(label: String, onSkip: () -> Unit, modifier: Modifier = Modifier,) {
     val focusRequester = remember { FocusRequester() }
 
     // Request focus when button appears
@@ -2214,11 +2215,7 @@ private fun SeekPreview(
  * Time-only preview when trickplay is not available.
  */
 @Composable
-private fun TimeOnlyPreview(
-    timeLabel: String,
-    progress: Float,
-    modifier: Modifier = Modifier,
-) {
+private fun TimeOnlyPreview(timeLabel: String, progress: Float, modifier: Modifier = Modifier,) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val containerWidth = constraints.maxWidth.toFloat()
         val previewWidthDp = 80.dp

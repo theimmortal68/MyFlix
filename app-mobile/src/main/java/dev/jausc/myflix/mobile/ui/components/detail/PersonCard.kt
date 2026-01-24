@@ -2,8 +2,8 @@
 
 package dev.jausc.myflix.mobile.ui.components.detail
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -176,10 +176,7 @@ fun PersonCard(
  * Person row for credits lists in Details tab.
  */
 @Composable
-fun MobilePersonRow(
-    person: JellyfinPerson,
-    modifier: Modifier = Modifier,
-) {
+fun MobilePersonRow(person: JellyfinPerson, modifier: Modifier = Modifier,) {
     Column(
         modifier = modifier.padding(vertical = 4.dp),
     ) {

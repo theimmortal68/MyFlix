@@ -20,18 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.core.common.model.DetailInfoItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.directors
 import dev.jausc.myflix.core.common.model.writers
-import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
 import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
 import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.mobile.ui.components.detail.ChaptersRow
-import dev.jausc.myflix.core.common.model.DetailInfoItem
 import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
@@ -265,11 +265,7 @@ fun EpisodeDetailScreen(
  * Episode details header with series name, title, quick details, and overview.
  */
 @Composable
-private fun EpisodeDetailsHeader(
-    episode: JellyfinItem,
-    overviewOnClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun EpisodeDetailsHeader(episode: JellyfinItem, overviewOnClick: () -> Unit, modifier: Modifier = Modifier,) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,

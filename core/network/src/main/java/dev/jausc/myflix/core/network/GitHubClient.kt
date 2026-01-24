@@ -19,7 +19,6 @@ import java.io.FileOutputStream
  * GitHub API client for checking releases and downloading APKs.
  */
 class GitHubClient {
-
     companion object {
         private const val GITHUB_API_BASE = "https://api.github.com"
         private const val REPO_OWNER = "theimmortal68"
@@ -57,11 +56,8 @@ class GitHubClient {
      * @param destinationFile The file to write to
      * @param onProgress Callback with progress (0.0 to 1.0)
      */
-    suspend fun downloadFile(
-        url: String,
-        destinationFile: File,
-        onProgress: (Float) -> Unit,
-    ): Result<File> = runCatching {
+    suspend fun downloadFile(url: String, destinationFile: File, onProgress: (Float) -> Unit,): Result<File> =
+        runCatching {
         val response = httpClient.get(url)
         val contentLength = response.headers["Content-Length"]?.toLongOrNull() ?: 0L
         val channel = response.bodyAsChannel()

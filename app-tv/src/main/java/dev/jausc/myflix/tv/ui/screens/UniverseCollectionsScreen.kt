@@ -120,7 +120,6 @@ fun UniverseCollectionsScreen(
                     .weight(1f)
                     .fillMaxHeight(),
             ) {
-
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header with title and count
                 Row(

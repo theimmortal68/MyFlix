@@ -85,8 +85,7 @@ enum class PlaystateCommandType {
     ;
 
     companion object {
-        fun fromString(value: String): PlaystateCommandType? =
-            entries.find { it.name.equals(value, ignoreCase = true) }
+        fun fromString(value: String): PlaystateCommandType? = entries.find { it.name.equals(value, ignoreCase = true) }
     }
 }
 
@@ -102,8 +101,7 @@ enum class PlayCommandType {
     ;
 
     companion object {
-        fun fromString(value: String): PlayCommandType? =
-            entries.find { it.name.equals(value, ignoreCase = true) }
+        fun fromString(value: String): PlayCommandType? = entries.find { it.name.equals(value, ignoreCase = true) }
     }
 }
 
@@ -168,7 +166,6 @@ enum class GeneralCommandType {
     ;
 
     companion object {
-        fun fromString(value: String): GeneralCommandType? =
-            entries.find { it.name.equals(value, ignoreCase = true) }
+        fun fromString(value: String): GeneralCommandType? = entries.find { it.name.equals(value, ignoreCase = true) }
     }
 }

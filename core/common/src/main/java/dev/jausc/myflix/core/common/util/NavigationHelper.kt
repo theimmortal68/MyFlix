@@ -9,7 +9,6 @@ import java.net.URLEncoder
  * special characters in library names, item titles, etc.
  */
 object NavigationHelper {
-
     private const val CHARSET = "UTF-8"
 
     /**
@@ -18,16 +17,14 @@ object NavigationHelper {
      *
      * Example: "Sci-Fi Movies" -> "Sci-Fi+Movies"
      */
-    fun encodeNavArg(value: String): String =
-        URLEncoder.encode(value, CHARSET)
+    fun encodeNavArg(value: String): String = URLEncoder.encode(value, CHARSET)
 
     /**
      * Decodes a navigation route argument back to its original string.
      *
      * Example: "Sci-Fi+Movies" -> "Sci-Fi Movies"
      */
-    fun decodeNavArg(value: String): String =
-        URLDecoder.decode(value, CHARSET)
+    fun decodeNavArg(value: String): String = URLDecoder.decode(value, CHARSET)
 
     /**
      * Builds a library route with properly encoded arguments.
@@ -49,14 +46,12 @@ object NavigationHelper {
     /**
      * Builds a Seerr discover route for a specific category.
      */
-    fun buildSeerrDiscoverRoute(category: String): String =
-        "seerr/discover/${encodeNavArg(category)}"
+    fun buildSeerrDiscoverRoute(category: String): String = "seerr/discover/${encodeNavArg(category)}"
 
     /**
      * Builds a Seerr collection detail route.
      */
-    fun buildSeerrCollectionRoute(collectionId: Int): String =
-        "seerr/collection/$collectionId"
+    fun buildSeerrCollectionRoute(collectionId: Int): String = "seerr/collection/$collectionId"
 
     /**
      * Builds a Seerr trailer playback route.
@@ -73,8 +68,7 @@ object NavigationHelper {
     /**
      * Builds a player route with optional start position override.
      */
-    fun buildPlayerRoute(itemId: String, startPositionMs: Long? = null): String =
-        if (startPositionMs != null) {
+    fun buildPlayerRoute(itemId: String, startPositionMs: Long? = null): String = if (startPositionMs != null) {
             "player/$itemId?startPositionMs=$startPositionMs"
         } else {
             "player/$itemId"
@@ -83,6 +77,5 @@ object NavigationHelper {
     /**
      * Builds a detail route for an item.
      */
-    fun buildDetailRoute(itemId: String): String =
-        "detail/$itemId"
+    fun buildDetailRoute(itemId: String): String = "detail/$itemId"
 }

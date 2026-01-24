@@ -16,8 +16,7 @@ enum class SubtitleFontSize(val label: String, val exoPlayerSp: Int, val mpvPoin
     companion object {
         val DEFAULT = MEDIUM
 
-        fun fromName(name: String): SubtitleFontSize =
-            entries.find { it.name == name } ?: DEFAULT
+        fun fromName(name: String): SubtitleFontSize = entries.find { it.name == name } ?: DEFAULT
     }
 }
 
@@ -36,8 +35,7 @@ enum class SubtitleColor(val label: String, val argb: Int) {
     companion object {
         val DEFAULT = WHITE
 
-        fun fromName(name: String): SubtitleColor =
-            entries.find { it.name == name } ?: DEFAULT
+        fun fromName(name: String): SubtitleColor = entries.find { it.name == name } ?: DEFAULT
     }
 }
 

@@ -42,7 +42,6 @@ class DreamViewModel(
     private val context: Context,
     private val jellyfinClient: JellyfinClient,
 ) : ViewModel() {
-
     private val imageLoader = ImageLoader.Builder(context).build()
     private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 
@@ -199,8 +198,7 @@ class DreamViewModel(
         }
     }
 
-    private fun formatCurrentTime(): String =
-        LocalTime.now().format(timeFormatter)
+    private fun formatCurrentTime(): String = LocalTime.now().format(timeFormatter)
 
     override fun onCleared() {
         super.onCleared()

@@ -13,12 +13,12 @@ package dev.jausc.myflix.tv.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -381,11 +381,7 @@ fun WideMediaCard(
  * HDR/Dolby Vision badge overlay for media cards
  */
 @Composable
-private fun HdrBadge(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
+private fun HdrBadge(text: String, color: Color, modifier: Modifier = Modifier,) {
     Box(
         modifier = modifier
             .padding(6.dp)

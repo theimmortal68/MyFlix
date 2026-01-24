@@ -11,8 +11,10 @@
 
 package dev.jausc.myflix.mobile.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,14 +47,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,9 +64,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.runtime.rememberCoroutineScope
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
@@ -437,10 +437,7 @@ fun SeerrHomeScreen(
 /**
  * Convert Seerr action items to mobile menu items.
  */
-private fun buildSeerrMenuItems(
-    media: SeerrMedia,
-    actions: SeerrMediaActions,
-): List<MenuItemEntry> {
+private fun buildSeerrMenuItems(media: SeerrMedia, actions: SeerrMediaActions,): List<MenuItemEntry> {
     return buildSeerrActionItems(media, actions).mapNotNull { entry ->
         when (entry) {
             is SeerrActionDivider -> {
@@ -463,10 +460,7 @@ private fun buildSeerrMenuItems(
 }
 
 @Composable
-private fun SeerrQuickActionChip(
-    text: String,
-    onClick: () -> Unit,
-) {
+private fun SeerrQuickActionChip(text: String, onClick: () -> Unit,) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
@@ -703,11 +697,7 @@ private fun MobileViewAllCard(onClick: () -> Unit) {
  * A row of genre cards for browsing by genre.
  */
 @Composable
-private fun MobileSeerrGenreBrowseRow(
-    title: String,
-    genres: List<SeerrGenre>,
-    onGenreClick: (SeerrGenre) -> Unit,
-) {
+private fun MobileSeerrGenreBrowseRow(title: String, genres: List<SeerrGenre>, onGenreClick: (SeerrGenre) -> Unit,) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         // Row header
         Row(
@@ -748,10 +738,7 @@ private fun MobileSeerrGenreBrowseRow(
  * A card displaying a genre with duotone-filtered backdrop image.
  */
 @Composable
-private fun MobileSeerrGenreCard(
-    genre: SeerrGenre,
-    onClick: () -> Unit,
-) {
+private fun MobileSeerrGenreCard(genre: SeerrGenre, onClick: () -> Unit,) {
     // Get the first backdrop from the genre's backdrops list
     val backdropPath = genre.backdrops?.firstOrNull()
     val backdropUrl = backdropPath?.let { GenreBackdropColors.getBackdropUrl(it, genre.id) }
@@ -874,10 +861,7 @@ private fun MobileSeerrStudioBrowseRow(
  * A card displaying a studio with TMDb logo using duotone filter.
  */
 @Composable
-private fun MobileSeerrStudioCard(
-    studio: SeerrStudio,
-    onClick: () -> Unit,
-) {
+private fun MobileSeerrStudioCard(studio: SeerrStudio, onClick: () -> Unit,) {
     val logoUrl = studio.logoPath?.let { PopularStudios.getLogoUrl(it) }
 
     Card(
@@ -980,10 +964,7 @@ private fun MobileSeerrNetworkBrowseRow(
  * A card displaying a network with TMDb logo.
  */
 @Composable
-private fun MobileSeerrNetworkCard(
-    network: SeerrNetwork,
-    onClick: () -> Unit,
-) {
+private fun MobileSeerrNetworkCard(network: SeerrNetwork, onClick: () -> Unit,) {
     val logoUrl = network.logoPath?.let { PopularNetworks.getLogoUrl(it) }
 
     Card(

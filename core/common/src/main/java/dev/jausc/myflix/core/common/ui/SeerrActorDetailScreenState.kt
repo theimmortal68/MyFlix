@@ -101,8 +101,7 @@ interface SeerrPersonLoader {
         /**
          * Create a loader that delegates to the given SeerrClient.
          */
-        fun from(client: dev.jausc.myflix.core.seerr.SeerrClient): SeerrPersonLoader =
-            object : SeerrPersonLoader {
+        fun from(client: dev.jausc.myflix.core.seerr.SeerrClient): SeerrPersonLoader = object : SeerrPersonLoader {
                 override suspend fun loadPerson(personId: Int) = client.getPerson(personId)
                 override suspend fun loadCombinedCredits(personId: Int) = client.getPersonCombinedCredits(personId)
             }
@@ -117,10 +116,7 @@ interface SeerrPersonLoader {
  * @return A [SeerrActorDetailScreenState] for managing actor detail screen UI state
  */
 @Composable
-fun rememberSeerrActorDetailScreenState(
-    personId: Int,
-    loader: SeerrPersonLoader,
-): SeerrActorDetailScreenState {
+fun rememberSeerrActorDetailScreenState(personId: Int, loader: SeerrPersonLoader,): SeerrActorDetailScreenState {
     val scope = rememberCoroutineScope()
     val state = remember(personId) {
         SeerrActorDetailScreenState(personId, loader, scope)

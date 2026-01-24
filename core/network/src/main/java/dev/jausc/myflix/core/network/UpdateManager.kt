@@ -98,8 +98,7 @@ class UpdateManager(
      * Parse version string, removing 'v' prefix if present.
      * "v1.2.3" -> "1.2.3"
      */
-    private fun parseVersion(version: String): String =
-        version.removePrefix("v").removePrefix("V").trim()
+    private fun parseVersion(version: String): String = version.removePrefix("v").removePrefix("V").trim()
 
     /**
      * Compare versions to check if latest is newer than current.
@@ -126,8 +125,7 @@ class UpdateManager(
      * Find the APK asset for the given app type.
      * Looks for assets matching "app-tv" or "app-mobile" prefix.
      */
-    private fun findApkAsset(release: GitHubRelease, appType: AppType) =
-        release.assets.find { asset ->
+    private fun findApkAsset(release: GitHubRelease, appType: AppType) = release.assets.find { asset ->
             asset.name.startsWith(appType.assetPrefix) &&
                 asset.name.endsWith(".apk")
         }

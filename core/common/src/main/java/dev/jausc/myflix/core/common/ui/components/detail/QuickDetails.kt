@@ -257,12 +257,12 @@ fun SeriesQuickDetails(
  * Badge color configuration for media badges.
  */
 object MediaBadgeColors {
-    val Resolution = Color(0xFF2563EB)      // Blue
-    val VideoCodec = Color(0xFFEA580C)      // Orange
-    val Hdr = Color(0xFF9333EA)             // Purple
-    val AudioCodec = Color(0xFF0891B2)      // Cyan
-    val AudioChannels = Color(0xFF059669)   // Green
-    val Edition = Color(0xFFCA8A04)         // Gold/Yellow
+    val Resolution = Color(0xFF2563EB) // Blue
+    val VideoCodec = Color(0xFFEA580C) // Orange
+    val Hdr = Color(0xFF9333EA) // Purple
+    val AudioCodec = Color(0xFF0891B2) // Cyan
+    val AudioChannels = Color(0xFF059669) // Green
+    val Edition = Color(0xFFCA8A04) // Gold/Yellow
 
     /**
      * Get background color for a badge type.
@@ -318,11 +318,7 @@ fun ColoredMediaBadge(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MediaBadgesRow(
-    item: JellyfinItem,
-    modifier: Modifier = Modifier,
-    textStyle: TextStyle = TextStyle.Default,
-) {
+fun MediaBadgesRow(item: JellyfinItem, modifier: Modifier = Modifier, textStyle: TextStyle = TextStyle.Default,) {
     val mediaSource = item.mediaSources?.firstOrNull()
     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
     val videoStream = mediaStreams.firstOrNull { it.type == "Video" }

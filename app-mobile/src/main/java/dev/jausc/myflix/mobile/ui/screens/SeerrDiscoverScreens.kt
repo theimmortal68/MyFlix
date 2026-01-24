@@ -453,10 +453,7 @@ private fun SeerrMediaListScreen(
 /**
  * Convert Seerr action items to mobile menu items.
  */
-private fun buildSeerrMenuItems(
-    media: SeerrMedia,
-    actions: SeerrMediaActions,
-): List<MenuItemEntry> {
+private fun buildSeerrMenuItems(media: SeerrMedia, actions: SeerrMediaActions,): List<MenuItemEntry> {
     return buildSeerrActionItems(media, actions).mapNotNull { entry ->
         when (entry) {
             is SeerrActionDivider -> {
@@ -479,10 +476,7 @@ private fun buildSeerrMenuItems(
 }
 
 @Composable
-private fun SeerrMobileTopBar(
-    title: String,
-    onBack: () -> Unit,
-) {
+private fun SeerrMobileTopBar(title: String, onBack: () -> Unit,) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -507,10 +501,7 @@ private fun SeerrMobileTopBar(
 }
 
 @Composable
-private fun SeerrMobileErrorState(
-    message: String,
-    onRetry: () -> Unit,
-) {
+private fun SeerrMobileErrorState(message: String, onRetry: () -> Unit,) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

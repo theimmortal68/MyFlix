@@ -32,13 +32,13 @@ import dev.jausc.myflix.core.common.model.BadgeType
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.ui.components.detail.ColoredMediaBadge
+import dev.jausc.myflix.core.common.util.MediaBadgeUtil
+import dev.jausc.myflix.mobile.R
 import dev.jausc.myflix.core.common.ui.components.detail.Dot as SharedDot
 import dev.jausc.myflix.core.common.ui.components.detail.DotSeparatedRow as SharedDotSeparatedRow
 import dev.jausc.myflix.core.common.ui.components.detail.MovieQuickDetails as SharedMovieQuickDetails
 import dev.jausc.myflix.core.common.ui.components.detail.SeriesQuickDetails as SharedSeriesQuickDetails
 import dev.jausc.myflix.core.common.ui.components.detail.SimpleStarRating as SharedSimpleStarRating
-import dev.jausc.myflix.core.common.util.MediaBadgeUtil
-import dev.jausc.myflix.mobile.R
 
 /**
  * Star icon for ratings using Mobile Material Icon.
@@ -92,10 +92,7 @@ fun Dot(modifier: Modifier = Modifier) {
  * Simple star rating display with icon and value.
  */
 @Composable
-fun SimpleStarRating(
-    communityRating: Float,
-    modifier: Modifier = Modifier,
-) {
+fun SimpleStarRating(communityRating: Float, modifier: Modifier = Modifier,) {
     SharedSimpleStarRating(
         communityRating = communityRating,
         modifier = modifier,
@@ -154,10 +151,7 @@ fun SeriesQuickDetails(
  * Metadata badge with Mobile-specific styling.
  */
 @Composable
-private fun MetadataBadge(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
+private fun MetadataBadge(text: String, modifier: Modifier = Modifier,) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -178,10 +172,7 @@ private fun MetadataBadge(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MediaBadgesRow(
-    item: JellyfinItem,
-    modifier: Modifier = Modifier,
-) {
+fun MediaBadgesRow(item: JellyfinItem, modifier: Modifier = Modifier,) {
     val mediaSource = item.mediaSources?.firstOrNull()
     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
     val videoStream = mediaStreams.firstOrNull { it.type == "Video" }
@@ -348,11 +339,15 @@ private fun getAudioCodecImageResource(audioStream: MediaStream?): Int? {
         title.contains("dts:x") || displayTitle.contains("dts:x") ||
             title.contains("dts-x") || displayTitle.contains("dts-x") ->
                 R.drawable.badge_dtsx
-        codec.contains("DTS") && (title.contains("hd ma") || displayTitle.contains("hd ma") ||
-            title.contains("hd-ma") || displayTitle.contains("hd-ma")) ->
+        codec.contains("DTS") && (
+            title.contains("hd ma") || displayTitle.contains("hd ma") ||
+            title.contains("hd-ma") || displayTitle.contains("hd-ma")
+        ) ->
                 R.drawable.badge_dts_hdma
-        codec.contains("DTS") && (title.contains("hra") || displayTitle.contains("hra") ||
-            title.contains("hd hra") || displayTitle.contains("hd hra")) ->
+        codec.contains("DTS") && (
+            title.contains("hra") || displayTitle.contains("hra") ||
+            title.contains("hd hra") || displayTitle.contains("hd hra")
+        ) ->
                 R.drawable.badge_dts_hra
         codec.contains("DTS") -> R.drawable.badge_dts
 

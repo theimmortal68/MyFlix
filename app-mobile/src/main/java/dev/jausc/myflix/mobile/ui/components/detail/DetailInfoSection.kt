@@ -16,11 +16,7 @@ import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.DetailInfoItem
 
 @Composable
-fun DetailInfoSection(
-    title: String,
-    items: List<DetailInfoItem>,
-    modifier: Modifier = Modifier,
-) {
+fun DetailInfoSection(title: String, items: List<DetailInfoItem>, modifier: Modifier = Modifier,) {
     if (items.isEmpty()) return
 
     Column(
@@ -51,11 +47,7 @@ fun DetailInfoSection(
 }
 
 @Composable
-private fun DetailInfoRow(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
+private fun DetailInfoRow(label: String, value: String, modifier: Modifier = Modifier,) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

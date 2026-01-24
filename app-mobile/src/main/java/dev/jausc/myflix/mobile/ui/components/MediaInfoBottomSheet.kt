@@ -28,10 +28,7 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MediaInfoBottomSheet(
-    item: JellyfinItem,
-    onDismiss: () -> Unit,
-) {
+fun MediaInfoBottomSheet(item: JellyfinItem, onDismiss: () -> Unit,) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val mediaSource = item.mediaSources?.firstOrNull()
     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
@@ -106,10 +103,7 @@ fun MediaInfoBottomSheet(
 }
 
 @Composable
-private fun MediaInfoSection(
-    label: String,
-    rows: List<Pair<String, String>>,
-) {
+private fun MediaInfoSection(label: String, rows: List<Pair<String, String>>,) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
@@ -220,7 +214,7 @@ private fun formatChannels(channels: Int?): String? {
         2 -> "stereo"
         6 -> "5.1"
         8 -> "7.1"
-        else -> "${channels}.0"
+        else -> "$channels.0"
     }
 }
 

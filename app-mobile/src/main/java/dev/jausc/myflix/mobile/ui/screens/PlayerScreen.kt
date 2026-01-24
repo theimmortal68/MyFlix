@@ -11,12 +11,11 @@
 package dev.jausc.myflix.mobile.ui.screens
 
 import android.app.Activity
+import android.util.Rational
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.util.Rational
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,23 +38,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
@@ -66,20 +64,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.transformations
-import dev.jausc.myflix.core.viewmodel.PlayerViewModel
-import androidx.media3.ui.PlayerView
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
 import dev.jausc.myflix.core.common.model.subtitleLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
+import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
+import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.websocket.PlaystateCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
@@ -87,19 +89,17 @@ import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlaybackState
 import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
-import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerController
+import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerUtils
-import dev.jausc.myflix.core.player.TrickplayProvider
-import dev.jausc.myflix.core.player.SubtitleStyle
-import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleColor
-import dev.jausc.myflix.core.common.preferences.AppPreferences
-import dev.jausc.myflix.core.common.preferences.PlaybackOptions
+import dev.jausc.myflix.core.player.SubtitleFontSize
+import dev.jausc.myflix.core.player.SubtitleStyle
+import dev.jausc.myflix.core.player.TrickplayProvider
+import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
-import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.isActive
 
 @Composable
@@ -193,7 +193,13 @@ fun PlayerScreen(
     val playbackState by playerController.state.collectAsState()
     var displayMode by remember(displayModeName) {
         mutableStateOf(
-            try { PlayerDisplayMode.valueOf(displayModeName) } catch (e: IllegalArgumentException) { PlayerDisplayMode.FIT }
+            try {
+                PlayerDisplayMode.valueOf(displayModeName)
+            } catch (
+                e: IllegalArgumentException
+            ) {
+                PlayerDisplayMode.FIT
+            }
         )
     }
 
@@ -1535,11 +1541,7 @@ private fun SheetHandle() {
 }
 
 @Composable
-private fun SkipActionPill(
-    label: String,
-    accentColor: Color,
-    onClick: () -> Unit,
-) {
+private fun SkipActionPill(label: String, accentColor: Color, onClick: () -> Unit,) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
@@ -1642,10 +1644,7 @@ private fun TrickplayPreview(
 }
 
 @Composable
-private fun TimeOnlyPreview(
-    timeLabel: String,
-    progress: Float,
-) {
+private fun TimeOnlyPreview(timeLabel: String, progress: Float,) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val containerWidth = constraints.maxWidth.toFloat()
         val previewWidthDp = 72.dp
@@ -1677,11 +1676,7 @@ private fun TimeOnlyPreview(
  * Appears in the bottom-right corner when a skippable segment is detected.
  */
 @Composable
-private fun SkipSegmentButton(
-    label: String,
-    onSkip: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun SkipSegmentButton(label: String, onSkip: () -> Unit, modifier: Modifier = Modifier,) {
     Button(
         onClick = onSkip,
         colors = ButtonDefaults.buttonColors(

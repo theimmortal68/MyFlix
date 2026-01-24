@@ -15,7 +15,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
  * - Scattered magic strings throughout the codebase
  */
 object PreferenceKeys {
-
     // ==================== DataStore Keys (AppState) ====================
 
     /**
@@ -204,26 +203,36 @@ object PreferenceKeys {
     object Defaults {
         const val HIDE_WATCHED_FROM_RECENT = false
         const val USE_MPV_PLAYER = false
+
         // Default to true until PoToken implementation is verified on real device
         // WebView fallback works but doesn't support remote control (seek/pause)
         const val USE_TRAILER_FALLBACK = true
+
         /** null means use Jellyfin server's default audio track */
         val PREFERRED_AUDIO_LANGUAGE: String? = null
+
         /** null means use Jellyfin server's default subtitle track */
         val PREFERRED_SUBTITLE_LANGUAGE: String? = null
+
         /** 0 = unlimited/direct play, otherwise value in Mbps */
         const val MAX_STREAMING_BITRATE = 0
+
         /** Default skip forward duration: 10 seconds */
         const val SKIP_FORWARD_SECONDS = 10
+
         /** Default skip backward duration: 10 seconds */
         const val SKIP_BACKWARD_SECONDS = 10
+
         /** Default to FIT (letterbox/pillarbox) */
         const val PLAYER_DISPLAY_MODE = "FIT"
+
         /** Default refresh rate mode: OFF (no switching) */
         const val REFRESH_RATE_MODE = "OFF"
+
         // Media segment defaults (OFF, ASK, AUTO)
         const val SKIP_INTRO_MODE = "ASK"
         const val SKIP_CREDITS_MODE = "ASK"
+
         // Subtitle styling defaults
         const val SUBTITLE_FONT_SIZE = "MEDIUM"
         const val SUBTITLE_FONT_COLOR = "WHITE"

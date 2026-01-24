@@ -4,7 +4,6 @@ package dev.jausc.myflix.core.common.util
  * Utility functions for formatting time values.
  */
 object TimeFormatUtil {
-
     /**
      * Format Jellyfin ticks to human-readable time format (HH:MM:SS or MM:SS).
      * Jellyfin ticks are in 10-million-per-second units (10,000,000 ticks = 1 second).

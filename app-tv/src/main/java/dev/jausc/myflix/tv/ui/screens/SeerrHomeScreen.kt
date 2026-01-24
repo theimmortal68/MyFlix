@@ -38,15 +38,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
@@ -59,10 +56,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -79,11 +79,11 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
+import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.GenreBackdropColors
 import dev.jausc.myflix.core.seerr.PopularNetworks
 import dev.jausc.myflix.core.seerr.PopularStudios
@@ -95,13 +95,13 @@ import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
+import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrNetwork
 import dev.jausc.myflix.core.seerr.SeerrNetworkRow
-import dev.jausc.myflix.core.seerr.SeerrStudio
-import dev.jausc.myflix.core.seerr.SeerrStudioRow
-import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrRowType
+import dev.jausc.myflix.core.seerr.SeerrStudio
+import dev.jausc.myflix.core.seerr.SeerrStudioRow
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry
@@ -590,10 +590,7 @@ fun SeerrHomeScreen(
 /**
  * Convert Seerr action items to TV dialog items.
  */
-private fun buildSeerrDialogItems(
-    media: SeerrMedia,
-    actions: SeerrMediaActions,
-): List<DialogItemEntry> {
+private fun buildSeerrDialogItems(media: SeerrMedia, actions: SeerrMediaActions,): List<DialogItemEntry> {
     return buildSeerrActionItems(media, actions).map { entry ->
         when (entry) {
             is SeerrActionDivider -> DialogItemDivider
@@ -612,11 +609,7 @@ private fun buildSeerrDialogItems(
  * Backdrop layer for Seerr media - displays behind content with edge fading.
  */
 @Composable
-private fun SeerrBackdropLayer(
-    media: SeerrMedia?,
-    seerrClient: SeerrClient,
-    modifier: Modifier = Modifier,
-) {
+private fun SeerrBackdropLayer(media: SeerrMedia?, seerrClient: SeerrClient, modifier: Modifier = Modifier,) {
     if (media == null) return
 
     Box(modifier = modifier) {
@@ -1041,11 +1034,7 @@ private fun TvViewAllCard(onClick: () -> Unit) {
  * A row of genre cards for browsing by genre.
  */
 @Composable
-private fun SeerrGenreBrowseRow(
-    title: String,
-    genres: List<SeerrGenre>,
-    onGenreClick: (SeerrGenre) -> Unit,
-) {
+private fun SeerrGenreBrowseRow(title: String, genres: List<SeerrGenre>, onGenreClick: (SeerrGenre) -> Unit,) {
     Column(
         modifier = Modifier.padding(vertical = 8.dp),
     ) {
@@ -1088,10 +1077,7 @@ private fun SeerrGenreBrowseRow(
  * A card displaying a genre with duotone-filtered backdrop image.
  */
 @Composable
-private fun SeerrGenreCard(
-    genre: SeerrGenre,
-    onClick: () -> Unit,
-) {
+private fun SeerrGenreCard(genre: SeerrGenre, onClick: () -> Unit,) {
     // Get the first backdrop from the genre's backdrops list
     val backdropPath = genre.backdrops?.firstOrNull()
     val backdropUrl = backdropPath?.let { GenreBackdropColors.getBackdropUrl(it, genre.id) }
@@ -1179,11 +1165,7 @@ private fun SeerrGenreCard(
  * A row of studio cards for browsing by studio.
  */
 @Composable
-private fun SeerrStudioBrowseRow(
-    title: String,
-    studios: List<SeerrStudio>,
-    onStudioClick: (SeerrStudio) -> Unit,
-) {
+private fun SeerrStudioBrowseRow(title: String, studios: List<SeerrStudio>, onStudioClick: (SeerrStudio) -> Unit,) {
     Column(
         modifier = Modifier.padding(vertical = 8.dp),
     ) {
@@ -1226,10 +1208,7 @@ private fun SeerrStudioBrowseRow(
  * A card displaying a studio with TMDb logo.
  */
 @Composable
-private fun SeerrStudioCard(
-    studio: SeerrStudio,
-    onClick: () -> Unit,
-) {
+private fun SeerrStudioCard(studio: SeerrStudio, onClick: () -> Unit,) {
     val logoUrl = studio.logoPath?.let { PopularStudios.getLogoUrl(it) }
 
     Surface(
@@ -1344,10 +1323,7 @@ private fun SeerrNetworkBrowseRow(
  * A card displaying a network with TMDb logo.
  */
 @Composable
-private fun SeerrNetworkCard(
-    network: SeerrNetwork,
-    onClick: () -> Unit,
-) {
+private fun SeerrNetworkCard(network: SeerrNetwork, onClick: () -> Unit,) {
     val logoUrl = network.logoPath?.let { PopularNetworks.getLogoUrl(it) }
 
     Surface(
@@ -1410,4 +1386,3 @@ private fun SeerrNetworkCard(
         }
     }
 }
-

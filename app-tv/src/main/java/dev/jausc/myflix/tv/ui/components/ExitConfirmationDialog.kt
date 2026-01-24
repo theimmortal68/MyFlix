@@ -36,11 +36,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * @param modifier Modifier for the component
  */
 @Composable
-fun ExitConfirmationDialog(
-    onConfirmExit: () -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun ExitConfirmationDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier,) {
     val cancelFocusRequester = remember { FocusRequester() }
     val exitFocusRequester = remember { FocusRequester() }
 

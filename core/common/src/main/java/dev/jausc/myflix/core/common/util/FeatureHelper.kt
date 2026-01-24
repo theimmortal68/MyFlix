@@ -25,10 +25,7 @@ private data class FeatureCategory(
  * @param excludedIds Set of item IDs to exclude (e.g., already-displayed trailer)
  * @return List of categorized feature sections
  */
-fun buildFeatureSections(
-    features: List<JellyfinItem>,
-    excludedIds: Set<String>,
-): List<FeatureSection> {
+fun buildFeatureSections(features: List<JellyfinItem>, excludedIds: Set<String>,): List<FeatureSection> {
     if (features.isEmpty()) return emptyList()
 
     val categories = listOf(
@@ -74,8 +71,7 @@ fun buildFeatureSections(
 /**
  * Check if an item is a trailer based on its name.
  */
-fun isTrailerFeature(item: JellyfinItem): Boolean =
-    item.name.contains("trailer", ignoreCase = true)
+fun isTrailerFeature(item: JellyfinItem): Boolean = item.name.contains("trailer", ignoreCase = true)
 
 /**
  * Find the newest trailer from a list of special features.

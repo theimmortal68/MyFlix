@@ -64,10 +64,13 @@ data class PlayQueueState(
 enum class QueueSource {
     /** Normal single-item playback, no queue */
     SINGLE,
+
     /** Playing from a specific episode onwards */
     EPISODE_PLAY_ALL,
+
     /** Playing all episodes in a season */
     SEASON_PLAY_ALL,
+
     /** Playing all items in a collection/BoxSet */
     COLLECTION,
 }

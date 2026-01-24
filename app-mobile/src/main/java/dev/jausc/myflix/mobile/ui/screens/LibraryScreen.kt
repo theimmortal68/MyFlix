@@ -59,13 +59,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.viewmodel.LibraryUiState
-import dev.jausc.myflix.core.viewmodel.LibraryViewModel
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.LibraryUiState
+import dev.jausc.myflix.core.viewmodel.LibraryViewModel
 import dev.jausc.myflix.mobile.ui.components.library.LibraryFilterSheet
 import dev.jausc.myflix.mobile.ui.components.library.LibrarySortSheet
 import dev.jausc.myflix.mobile.ui.components.library.MobileLibraryFilterBar

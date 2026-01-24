@@ -41,8 +41,7 @@ abstract class DreamServiceCompat :
     LifecycleOwner,
     ViewModelStoreOwner,
     SavedStateRegistryOwner {
-
-    private val lifecycleRegistry = LifecycleRegistry(this)
+        private val lifecycleRegistry = LifecycleRegistry(this)
     private val vmStore = ViewModelStore()
     private val savedStateController = SavedStateRegistryController.create(this)
 

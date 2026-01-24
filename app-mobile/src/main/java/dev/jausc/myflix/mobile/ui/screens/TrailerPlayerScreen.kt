@@ -26,31 +26,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
-import androidx.compose.ui.platform.LocalContext
-import dev.jausc.myflix.core.common.youtube.YouTubeTrailerResolver
 import dev.jausc.myflix.core.common.youtube.YouTubeStream
+import dev.jausc.myflix.core.common.youtube.YouTubeTrailerResolver
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import kotlinx.coroutines.delay
 
 @Composable
-fun TrailerPlayerScreen(
-    videoKey: String,
-    title: String?,
-    onBack: () -> Unit,
-) {
+fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
     val context = LocalContext.current
     val playerController = remember { PlayerController(context, useMpv = false) }
     val playbackState by playerController.state.collectAsState()
@@ -211,11 +207,7 @@ fun TrailerPlayerScreen(
 }
 
 @Composable
-private fun TrailerVideoSurface(
-    playerController: PlayerController,
-    url: String,
-    modifier: Modifier = Modifier,
-) {
+private fun TrailerVideoSurface(playerController: PlayerController, url: String, modifier: Modifier = Modifier,) {
     LaunchedEffect(url) {
         playerController.play(url, startPositionMs = 0)
     }

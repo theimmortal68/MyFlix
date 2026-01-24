@@ -14,7 +14,6 @@ import androidx.security.crypto.MasterKey
  * Used for storing Jellyfin credentials needed for Seerr integration.
  */
 class SecureCredentialStore(context: Context) {
-
     private val masterKey: MasterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
@@ -59,8 +58,7 @@ class SecureCredentialStore(context: Context) {
     /**
      * Check if credentials are stored.
      */
-    fun hasCredentials(): Boolean =
-        encryptedPrefs.contains(KEY_USERNAME) && encryptedPrefs.contains(KEY_PASSWORD)
+    fun hasCredentials(): Boolean = encryptedPrefs.contains(KEY_USERNAME) && encryptedPrefs.contains(KEY_PASSWORD)
 
     /**
      * Clear all stored credentials.

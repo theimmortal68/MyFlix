@@ -6,8 +6,8 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.webkit.CookieManager
 import android.webkit.ConsoleMessage
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -31,7 +31,6 @@ class PoTokenWebView private constructor(
     context: Context,
     private val initDeferred: CompletableDeferred<PoTokenGenerator>,
 ) : PoTokenGenerator {
-
     private val webView = WebView(context)
     private val httpClient = OkHttpClient()
     private val poTokenDeferreds = mutableListOf<Pair<String, CompletableDeferred<String>>>()

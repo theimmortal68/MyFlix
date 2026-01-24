@@ -9,7 +9,6 @@ import java.util.Locale
  * Shared between TV and Mobile home screens.
  */
 object SeerrDiscoverHelper {
-
     /**
      * Load discover rows based on Seerr slider settings.
      *
@@ -80,9 +79,11 @@ object SeerrDiscoverHelper {
                 SeerrDiscoverSliderType.TMDB_SEARCH ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
                         seerrClient.search(data)
-                            .map { it.results.filter { media ->
+                            .map {
+                                it.results.filter { media ->
                                 media.mediaType == "movie" || media.mediaType == "tv"
-                            } }
+                            }
+                            }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES ->
@@ -129,9 +130,7 @@ object SeerrDiscoverHelper {
      * @param seerrClient The Seerr API client
      * @return List of default discover rows
      */
-    suspend fun loadFallbackRows(
-        seerrClient: SeerrClient,
-    ): List<SeerrDiscoverRow> {
+    suspend fun loadFallbackRows(seerrClient: SeerrClient,): List<SeerrDiscoverRow> {
         val rows = mutableListOf<SeerrDiscoverRow>()
         val trending = seerrClient.getTrending().map { it.results }.getOrDefault(emptyList())
         val popularMovies = seerrClient.getPopularMovies().map { it.results }.getOrDefault(emptyList())
@@ -233,9 +232,7 @@ object SeerrDiscoverHelper {
      * @param seerrClient The Seerr API client
      * @return List of genre rows (movie genres and TV genres)
      */
-    suspend fun loadGenreRows(
-        seerrClient: SeerrClient,
-    ): List<SeerrGenreRow> {
+    suspend fun loadGenreRows(seerrClient: SeerrClient,): List<SeerrGenreRow> {
         val rows = mutableListOf<SeerrGenreRow>()
 
         // Load movie genres

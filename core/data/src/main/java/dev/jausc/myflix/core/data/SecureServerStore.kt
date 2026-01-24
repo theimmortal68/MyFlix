@@ -15,7 +15,6 @@ import kotlinx.serialization.json.Json
  * Server credentials (including access tokens) are encrypted at rest.
  */
 class SecureServerStore(context: Context) {
-
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -81,8 +80,7 @@ class SecureServerStore(context: Context) {
     /**
      * Get the active server ID.
      */
-    fun getActiveServerId(): String? =
-        encryptedPrefs.getString(KEY_ACTIVE_SERVER_ID, null)
+    fun getActiveServerId(): String? = encryptedPrefs.getString(KEY_ACTIVE_SERVER_ID, null)
 
     /**
      * Add or update a server in the list.
@@ -115,8 +113,7 @@ class SecureServerStore(context: Context) {
     /**
      * Get a server by ID.
      */
-    fun getServer(serverId: String): SavedServer? =
-        getServers().find { it.serverId == serverId }
+    fun getServer(serverId: String): SavedServer? = getServers().find { it.serverId == serverId }
 
     /**
      * Check if any servers are saved.

@@ -13,14 +13,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircle
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.MaterialTheme
@@ -36,26 +36,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.imdbId
 import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.common.util.buildFeatureSections
-import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
+import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.mobile.ui.components.BottomSheetParams
+import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MenuItem
 import dev.jausc.myflix.mobile.ui.components.MenuItemDivider
 import dev.jausc.myflix.mobile.ui.components.MenuItemEntry
-import dev.jausc.myflix.mobile.ui.components.MediaInfoBottomSheet
 import dev.jausc.myflix.mobile.ui.components.MobileMediaCard
 import dev.jausc.myflix.mobile.ui.components.MobileWideMediaCard
 import dev.jausc.myflix.mobile.ui.components.PopupMenu
-import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
@@ -440,7 +440,6 @@ fun SeasonDetailScreen(
                 }
             }
         }
-
     }
 
     // Popup menu
@@ -606,8 +605,8 @@ private fun buildEpisodeBadges(episode: JellyfinItem?): List<String> {
     val badges = mutableListOf<String>()
     val mediaSource = episode.mediaSources?.firstOrNull()
     val video = mediaSource?.mediaStreams?.firstOrNull { it.type == "Video" }
-    val audio = mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" && it.isDefault } ?:
-        mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" }
+    val audio = mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" && it.isDefault }
+        ?: mediaSource?.mediaStreams?.firstOrNull { it.type == "Audio" }
 
     val resolution = video?.height?.let { height ->
         when {
@@ -646,7 +645,7 @@ private fun formatChannelLayout(channels: Int?): String? {
         2 -> "2.0"
         6 -> "5.1"
         8 -> "7.1"
-        else -> "${channels}.0"
+        else -> "$channels.0"
     }
 }
 

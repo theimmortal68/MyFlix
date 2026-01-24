@@ -10,7 +10,7 @@ fun MediaStream.audioLabel(): String {
         codec?.uppercase(),
         channels?.let { "${it}ch" },
     )
-    return parts.joinToString(" · ").ifBlank { "Audio ${index}" }
+    return parts.joinToString(" · ").ifBlank { "Audio $index" }
 }
 
 fun MediaStream.subtitleLabel(): String {
@@ -19,5 +19,5 @@ fun MediaStream.subtitleLabel(): String {
         language?.uppercase(),
         codec?.uppercase(),
     )
-    return parts.joinToString(" · ").ifBlank { "Subtitle ${index}" }
+    return parts.joinToString(" · ").ifBlank { "Subtitle $index" }
 }

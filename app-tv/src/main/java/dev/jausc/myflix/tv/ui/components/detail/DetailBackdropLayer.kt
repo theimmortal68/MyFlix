@@ -35,11 +35,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
  * @param modifier Modifier for positioning and sizing
  */
 @Composable
-fun DetailBackdropLayer(
-    item: JellyfinItem?,
-    jellyfinClient: JellyfinClient,
-    modifier: Modifier = Modifier,
-) {
+fun DetailBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modifier: Modifier = Modifier,) {
     if (item == null) return
 
     Box(modifier = modifier) {

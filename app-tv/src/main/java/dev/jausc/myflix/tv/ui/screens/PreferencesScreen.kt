@@ -23,29 +23,27 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.FastRewind
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
-import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +53,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Checkbox
@@ -67,13 +66,13 @@ import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.AppType
-import dev.jausc.myflix.core.common.preferences.PlaybackOptions
-import dev.jausc.myflix.core.network.UpdateManager
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.UpdateInfo
+import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.SavedServer
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.UpdateManager
 import dev.jausc.myflix.core.player.DeviceHdrCapabilities
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.tv.BuildConfig
@@ -83,6 +82,7 @@ import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.launch
 
 /**
  * Preferences/Settings screen with toggle options.
@@ -1689,11 +1689,7 @@ private fun ServerListItem(
 }
 
 @Composable
-private fun ConfirmRemoveServerDialog(
-    server: SavedServer,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun ConfirmRemoveServerDialog(server: SavedServer, onConfirm: () -> Unit, onDismiss: () -> Unit,) {
     val confirmFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -1747,11 +1743,7 @@ private fun ConfirmRemoveServerDialog(
 }
 
 @Composable
-private fun InfoPreferenceItem(
-    icon: ImageVector,
-    title: String,
-    value: String,
-) {
+private fun InfoPreferenceItem(icon: ImageVector, title: String, value: String,) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1786,11 +1778,7 @@ private fun InfoPreferenceItem(
 }
 
 @Composable
-private fun UpdatePreferenceItem(
-    state: UpdateState,
-    onCheck: () -> Unit,
-    onDownload: (UpdateInfo) -> Unit,
-) {
+private fun UpdatePreferenceItem(state: UpdateState, onCheck: () -> Unit, onDownload: (UpdateInfo) -> Unit,) {
     var isFocused by remember { mutableStateOf(false) }
 
     val (title, description, iconTint, isClickable) = when (state) {
@@ -2072,15 +2060,10 @@ private fun LanguageItem(
 /**
  * Get display name for a bitrate value.
  */
-private fun getBitrateDisplayName(bitrateMbps: Int): String =
-    PlaybackOptions.getBitrateLabel(bitrateMbps)
+private fun getBitrateDisplayName(bitrateMbps: Int): String = PlaybackOptions.getBitrateLabel(bitrateMbps)
 
 @Composable
-private fun BitrateSelectionDialog(
-    currentSelection: Int,
-    onDismiss: () -> Unit,
-    onSelect: (Int) -> Unit,
-) {
+private fun BitrateSelectionDialog(currentSelection: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit,) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -2377,14 +2360,12 @@ private val SKIP_MODE_OPTIONS = listOf(
 /**
  * Get display name for a skip mode value.
  */
-private fun getSkipModeDisplayName(mode: String): String =
-    SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
+private fun getSkipModeDisplayName(mode: String): String = SKIP_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
 
 /**
  * Get display name for a refresh rate mode value.
  */
-private fun getRefreshRateModeDisplayName(mode: String): String =
-    PlaybackOptions.getRefreshRateModeLabel(mode)
+private fun getRefreshRateModeDisplayName(mode: String): String = PlaybackOptions.getRefreshRateModeLabel(mode)
 
 @Composable
 private fun SkipModeSelectionDialog(

@@ -20,9 +20,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.CoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -40,18 +39,16 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSource
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Netflix-style dialog displaying technical media information for a video item.
  * Shows video codec, resolution, audio tracks, subtitles, and container format.
  */
 @Composable
-fun MediaInfoDialog(
-    item: JellyfinItem,
-    onDismiss: () -> Unit,
-) {
+fun MediaInfoDialog(item: JellyfinItem, onDismiss: () -> Unit,) {
     val mediaSource = item.mediaSources?.firstOrNull()
     val mediaStreams = mediaSource?.mediaStreams.orEmpty()
     val videoStream = mediaStreams.firstOrNull { it.type == "Video" }
@@ -336,7 +333,7 @@ private fun formatChannels(channels: Int?): String? {
         2 -> "stereo"
         6 -> "5.1"
         8 -> "7.1"
-        else -> "${channels}.0"
+        else -> "$channels.0"
     }
 }
 

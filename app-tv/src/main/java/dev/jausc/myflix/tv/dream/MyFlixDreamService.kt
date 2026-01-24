@@ -16,7 +16,6 @@ import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
  *    adb shell am start -n "com.android.systemui/.Somnambulator"
  */
 class MyFlixDreamService : DreamServiceCompat() {
-
     private lateinit var viewModel: DreamViewModel
 
     override fun onDreamingStarted() {

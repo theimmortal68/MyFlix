@@ -37,10 +37,10 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.R as CommonR
 import dev.jausc.myflix.tv.dream.components.ZoomBox
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import java.util.Locale
+import dev.jausc.myflix.core.common.R as CommonR
 
 private const val CROSSFADE_DURATION_MS = 1000
 

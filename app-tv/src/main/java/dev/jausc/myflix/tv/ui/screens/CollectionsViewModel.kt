@@ -45,7 +45,6 @@ class CollectionsViewModel(
     private val jellyfinClient: JellyfinClient,
     private val excludeUniverseCollections: Boolean,
 ) : ViewModel() {
-
     /**
      * Factory for creating CollectionsViewModel with manual dependency injection.
      */

@@ -605,10 +605,8 @@ class SeerrClient(
     /**
      * Discover movies with raw query parameters.
      */
-    suspend fun discoverMoviesWithParams(
-        params: Map<String, String>,
-        page: Int = 1,
-    ): Result<SeerrDiscoverResult> = runCatching {
+    suspend fun discoverMoviesWithParams(params: Map<String, String>, page: Int = 1,): Result<SeerrDiscoverResult> =
+        runCatching {
         requireBaseUrl()
         val response = httpClient.get("$baseUrl/api/v1/discover/movies") {
             parameter("page", page)
@@ -640,10 +638,8 @@ class SeerrClient(
     /**
      * Discover TV shows with raw query parameters.
      */
-    suspend fun discoverTVWithParams(
-        params: Map<String, String>,
-        page: Int = 1,
-    ): Result<SeerrDiscoverResult> = runCatching {
+    suspend fun discoverTVWithParams(params: Map<String, String>, page: Int = 1,): Result<SeerrDiscoverResult> =
+        runCatching {
         requireBaseUrl()
         val response = httpClient.get("$baseUrl/api/v1/discover/tv") {
             parameter("page", page)

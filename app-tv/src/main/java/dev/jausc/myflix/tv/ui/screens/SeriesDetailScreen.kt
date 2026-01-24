@@ -2,6 +2,8 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +20,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,38 +36,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.tv.material3.Icon
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
-import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailUiState
+import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogParams
@@ -75,14 +75,13 @@ import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
+import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
+import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
-import kotlinx.coroutines.launch
-
-import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
-import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // Row indices for focus management
 private const val HEADER_ROW = 0
@@ -207,7 +206,6 @@ fun SeriesDetailScreen(
 
             // Right: Content area
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-
             // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
             DetailBackdropLayer(
                 item = series,
@@ -321,7 +319,6 @@ fun SeriesDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(1f),
             ) {
-
             // Next Up - only show if not S1E1 (i.e., watching is in progress)
             state.nextUpEpisode?.let { nextUp ->
                 val isFirstEpisode = nextUp.parentIndexNumber == 1 && nextUp.indexNumber == 1
@@ -918,7 +915,6 @@ private val networkLogoResources = mapOf(
     "The WB" to R.drawable.network_cw,
     "UPN" to R.drawable.network_cw,
     "PBS" to R.drawable.network_pbs,
-
     // Premium Cable
     "HBO" to R.drawable.network_hbo,
     "HBO Max" to R.drawable.network_hbo_max,
@@ -928,7 +924,6 @@ private val networkLogoResources = mapOf(
     "SHOWTIME" to R.drawable.network_showtime,
     "Starz" to R.drawable.network_starz,
     "STARZ" to R.drawable.network_starz,
-
     // Cable Networks
     "AMC" to R.drawable.network_amc,
     "AMC+" to R.drawable.network_amc,
@@ -965,7 +960,6 @@ private val networkLogoResources = mapOf(
     "IFC" to R.drawable.network_ifc,
     "Sundance TV" to R.drawable.network_sundance,
     "SundanceTV" to R.drawable.network_sundance,
-
     // Kids/Animation
     "Adult Swim" to R.drawable.network_adult_swim,
     "Cartoon Network" to R.drawable.network_cartoon_network,
@@ -975,13 +969,11 @@ private val networkLogoResources = mapOf(
     "Disney XD" to R.drawable.network_disney_xd,
     "Disney Jr." to R.drawable.network_disney_channel,
     "Disney Junior" to R.drawable.network_disney_channel,
-
     // Music/Entertainment
     "MTV" to R.drawable.network_mtv,
     "VH1" to R.drawable.network_vh1,
     "BET" to R.drawable.network_bet,
     "Comedy Central" to R.drawable.network_comedy_central,
-
     // Sports
     "ESPN" to R.drawable.network_espn,
     "ESPN2" to R.drawable.network_espn2,
@@ -989,7 +981,6 @@ private val networkLogoResources = mapOf(
     "Fox Sports" to R.drawable.network_fox_sports,
     "Fox Sports 1" to R.drawable.network_fox_sports,
     "FS1" to R.drawable.network_fox_sports,
-
     // Documentary/Educational
     "National Geographic" to R.drawable.network_national_geographic,
     "Nat Geo" to R.drawable.network_national_geographic,
@@ -1002,12 +993,10 @@ private val networkLogoResources = mapOf(
     "Discovery Channel" to R.drawable.network_discovery,
     "Animal Planet" to R.drawable.network_animal_planet,
     "TLC" to R.drawable.network_tlc,
-
     // Lifestyle
     "Food Network" to R.drawable.network_food_network,
     "HGTV" to R.drawable.network_hgtv,
     "Travel Channel" to R.drawable.network_travel_channel,
-
     // Streaming Services
     "Netflix" to R.drawable.network_netflix,
     "Disney+" to R.drawable.network_disney_plus,
@@ -1031,7 +1020,6 @@ private val networkLogoResources = mapOf(
     "EPIX" to R.drawable.network_epix,
     "CBS All Access" to R.drawable.network_paramount_plus,
     "DC Universe" to R.drawable.network_max,
-
     // UK Networks
     "BBC One" to R.drawable.network_bbc_one,
     "BBC 1" to R.drawable.network_bbc_one,
@@ -1049,32 +1037,26 @@ private val networkLogoResources = mapOf(
     "Sky Showcase" to R.drawable.network_sky_showcase,
     "Channel 4" to R.drawable.network_channel_4,
     "Channel 5" to R.drawable.network_channel_5,
-
     // Canadian Networks
     "CBC" to R.drawable.network_cbc,
     "CBC Television" to R.drawable.network_cbc,
-
     // Streaming (additional)
     "YouTube Premium" to R.drawable.network_youtube,
     "IMDb TV" to R.drawable.network_amazon_prime,
     "CW seed" to R.drawable.network_cw,
     "ITVX" to R.drawable.network_itv,
-
     // US Cable (additional)
     "WGN America" to R.drawable.network_wgn_america,
     "Spike" to R.drawable.network_paramount_network,
     "Investigation Discovery" to R.drawable.network_discovery,
     "Syndication" to R.drawable.network_syndication,
     "WeTV" to R.drawable.network_wetv,
-
     // UK (additional)
     "ITV Encore" to R.drawable.network_itv_encore,
-
     // Canadian (additional)
     "Showcase" to R.drawable.network_showcase,
     "Space" to R.drawable.network_space,
     "CTV Sci-Fi Channel" to R.drawable.network_ctv,
-
     // International
     "Canal+" to R.drawable.network_canal_plus,
     "Tencent Video" to R.drawable.network_tencent_video,
@@ -1146,10 +1128,7 @@ private fun getNetworkLogoResource(name: String): Int? {
  */
 @Suppress("UnusedParameter")
 @Composable
-private fun NetworkLogo(
-    networkName: String?,
-    jellyfinClient: JellyfinClient,
-) {
+private fun NetworkLogo(networkName: String?, jellyfinClient: JellyfinClient,) {
     // Get embedded drawable resource (instant, no network request)
     val logoResource = remember(networkName) {
         networkName?.let { getNetworkLogoResource(it) }
