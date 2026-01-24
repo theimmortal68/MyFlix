@@ -54,7 +54,7 @@ import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons
 import dev.jausc.myflix.mobile.ui.components.detail.MovieQuickDetails
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.mobile.ui.components.detail.OverviewText
-import dev.jausc.myflix.mobile.ui.components.detail.getStudioLogoResource
+import dev.jausc.myflix.core.common.ui.getStudioLogoResource
 import java.util.Locale
 
 /**

@@ -1,6 +1,6 @@
 @file:Suppress("MagicNumber")
 
-package dev.jausc.myflix.mobile.ui.components.detail
+package dev.jausc.myflix.core.common.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +14,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.core.common.R
 import dev.jausc.myflix.core.common.model.JellyfinItem
-import dev.jausc.myflix.mobile.R
 
 /**
  * Studio name to drawable resource mapping.
