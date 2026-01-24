@@ -72,7 +72,7 @@ import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.components.detail.IconColors
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog

@@ -52,6 +52,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.ui.SeerrSearchFilter
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import kotlinx.coroutines.flow.collectLatest
@@ -312,16 +313,6 @@ private fun SeerrSearchMediaCard(media: SeerrMedia, seerrClient: SeerrClient, on
             }
         }
     }
-}
-
-private enum class SeerrSearchFilter(val label: String, val mediaType: String?) {
-    ALL("All", null),
-    MOVIES("Movies", "movie"),
-    TV("TV", "tv"),
-    PEOPLE("People", "person"),
-    ;
-
-    fun matches(media: SeerrMedia): Boolean = mediaType == null || media.mediaType == mediaType
 }
 
 private val allowedMediaTypes = setOf("movie", "tv", "person")

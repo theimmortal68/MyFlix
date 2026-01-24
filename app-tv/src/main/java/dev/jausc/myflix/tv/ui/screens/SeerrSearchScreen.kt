@@ -54,6 +54,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import dev.jausc.myflix.core.common.ui.SeerrSearchFilter
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
@@ -375,16 +376,6 @@ private fun SeerrSearchPosterCard(media: SeerrMedia, seerrClient: SeerrClient, o
             }
         }
     }
-}
-
-private enum class SeerrSearchFilter(val label: String, val mediaType: String?) {
-    ALL("All", null),
-    MOVIES("Movies", "movie"),
-    TV("TV", "tv"),
-    PEOPLE("People", "person"),
-    ;
-
-    fun matches(media: SeerrMedia): Boolean = mediaType == null || media.mediaType == mediaType
 }
 
 private val allowedMediaTypes = setOf("movie", "tv", "person")

@@ -55,6 +55,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.ui.SeerrAuthMode
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.TvIconButton
@@ -712,7 +713,3 @@ private fun SeerrEditText(
     }
 }
 
-private enum class SeerrAuthMode(val label: String) {
-    JELLYFIN("Jellyfin"),
-    LOCAL("Local"),
-}

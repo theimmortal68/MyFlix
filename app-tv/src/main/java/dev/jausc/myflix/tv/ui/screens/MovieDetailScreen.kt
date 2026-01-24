@@ -77,7 +77,7 @@ import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
 import dev.jausc.myflix.tv.ui.components.detail.GenreText
-import dev.jausc.myflix.tv.ui.components.detail.IconColors
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog

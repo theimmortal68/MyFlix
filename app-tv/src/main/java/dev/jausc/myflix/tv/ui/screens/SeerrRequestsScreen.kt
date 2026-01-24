@@ -49,6 +49,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.ui.SeerrRequestFilter
+import dev.jausc.myflix.core.common.ui.SeerrRequestScope
+import dev.jausc.myflix.core.common.ui.SeerrRequestSort
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRequest
@@ -701,20 +704,3 @@ private fun CompactRequestRow(
     }
 }
 
-private enum class SeerrRequestScope(val label: String) {
-    MINE("Mine"),
-    ALL("All"),
-}
-
-private enum class SeerrRequestFilter(val label: String, val filterValue: String) {
-    ALL("All", "all"),
-    PENDING("Pending", "pending"),
-    APPROVED("Approved", "approved"),
-    AVAILABLE("Available", "available"),
-    DECLINED("Declined", "declined"),
-}
-
-private enum class SeerrRequestSort(val label: String, val sortValue: String) {
-    ADDED("Added", "added"),
-    MODIFIED("Modified", "modified"),
-}

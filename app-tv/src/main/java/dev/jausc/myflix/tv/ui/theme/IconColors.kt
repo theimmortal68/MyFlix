@@ -1,24 +1,31 @@
 package dev.jausc.myflix.tv.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import dev.jausc.myflix.core.common.ui.IconColors as CoreIconColors
 
 /**
- * Shared icon colors for the application.
+ * TV-specific icon colors extending the shared core colors.
  */
 object IconColors {
-    val Play = Color(0xFF22C55E) // Green
-    val Resume = Color(0xFF3B82F6) // Blue
-    val Restart = Color(0xFFF97316) // Orange
-    val Shuffle = Color(0xFFA855F7) // Purple
-    val Watched = Color(0xFF06B6D4) // Cyan
-    val Favorite = Color(0xFF94A3B8) // Gray
-    val FavoriteFilled = Color(0xFFEF4444) // Red
-    val More = Color(0xFF94A3B8) // Gray
-    val Trailer = Color(0xFFFBBF24) // Yellow
-    val MediaInfo = Color(0xFF3B82F6) // Blue
+    // Re-export shared colors from core
+    val Play = CoreIconColors.Play
+    val Resume = CoreIconColors.Resume
+    val Restart = CoreIconColors.Restart
+    val Shuffle = CoreIconColors.Shuffle
+    val Watched = CoreIconColors.Watched
+    val Favorite = CoreIconColors.Favorite
+    val FavoriteFilled = CoreIconColors.FavoriteFilled
+    val More = CoreIconColors.More
+    val Trailer = CoreIconColors.Trailer
+    val MediaInfo = CoreIconColors.MediaInfo
+    val Navigation = CoreIconColors.Navigation
+    val Playlist = CoreIconColors.Playlist
+    val GoToSeries = CoreIconColors.GoToSeries
+
+    // TV-specific colors
     val Info = Color(0xFF60A5FA) // Light Blue (for general info buttons)
 
-    // Navigation specific colors
+    // Navigation rail colors
     val NavHome = Color(0xFF60A5FA) // Blue
     val NavSearch = Color(0xFFA78BFA) // Purple
     val NavShows = Color(0xFF34D399) // Green

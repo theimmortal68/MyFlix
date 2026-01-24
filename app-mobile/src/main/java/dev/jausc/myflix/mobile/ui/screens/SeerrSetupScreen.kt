@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.core.common.ui.SeerrAuthMode
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.mobile.MobilePreferences
 import kotlinx.coroutines.launch
@@ -582,7 +583,3 @@ private fun MobileSeerrSetupStep(icon: ImageVector, title: String, description: 
     }
 }
 
-private enum class SeerrAuthMode(val label: String) {
-    JELLYFIN("Jellyfin"),
-    LOCAL("Local"),
-}

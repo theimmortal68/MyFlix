@@ -68,7 +68,7 @@ import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
 import dev.jausc.myflix.tv.ui.components.detail.EpisodeActionButtons
-import dev.jausc.myflix.tv.ui.components.detail.IconColors
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog

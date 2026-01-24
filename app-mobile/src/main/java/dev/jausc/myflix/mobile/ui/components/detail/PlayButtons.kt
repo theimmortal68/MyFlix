@@ -29,19 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-
-/**
- * Icon colors for action buttons.
- */
-object IconColors {
-    val Play = Color(0xFF4CAF50) // Green
-    val Resume = Color(0xFF2196F3) // Blue
-    val Restart = Color(0xFFFF9800) // Orange
-    val Shuffle = Color(0xFF9C27B0) // Purple
-    val Watched = Color(0xFF4CAF50) // Green
-    val Favorite = Color(0xFFF44336) // Red
-    val Trailer = Color(0xFFF59E0B) // Amber
-}
+import dev.jausc.myflix.core.common.ui.IconColors
 
 /**
  * Play button for movies with resume/restart options.
