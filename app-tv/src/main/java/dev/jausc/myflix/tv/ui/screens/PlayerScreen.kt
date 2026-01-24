@@ -364,36 +364,46 @@ fun PlayerScreen(
     // Handle WebSocket remote control commands
     LaunchedEffect(webSocketEvents) {
         webSocketEvents?.collect { event ->
-            when (event) {
-                is WebSocketEvent.PlaystateCommand -> {
-                    android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
-                    when (event.command) {
-                        PlaystateCommandType.PlayPause -> playerController.togglePause()
-                        PlaystateCommandType.Pause -> playerController.pause()
-                        PlaystateCommandType.Unpause -> playerController.resume()
-                        PlaystateCommandType.Stop -> {
-                            viewModel.stopPlayback(playerController.state.value.position)
-                            onBack()
+            if (event is WebSocketEvent.PlaystateCommand) {
+                android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
+                when (event.command) {
+                    PlaystateCommandType.PlayPause -> {
+                        playerController.togglePause()
+                    }
+                    PlaystateCommandType.Pause -> {
+                        playerController.pause()
+                    }
+                    PlaystateCommandType.Unpause -> {
+                        playerController.resume()
+                    }
+                    PlaystateCommandType.Stop -> {
+                        viewModel.stopPlayback(playerController.state.value.position)
+                        onBack()
+                    }
+                    PlaystateCommandType.Seek -> {
+                        event.seekPositionTicks?.let { ticks ->
+                            val positionMs = PlayerUtils.ticksToMs(ticks)
+                            playerController.seekTo(positionMs)
                         }
-                        PlaystateCommandType.Seek -> {
-                            event.seekPositionTicks?.let { ticks ->
-                                val positionMs = PlayerUtils.ticksToMs(ticks)
-                                playerController.seekTo(positionMs)
-                            }
-                        }
-                        PlaystateCommandType.Rewind -> playerController.seekRelative(-skipBackwardMs)
-                        PlaystateCommandType.FastForward -> playerController.seekRelative(skipForwardMs)
-                        PlaystateCommandType.NextTrack -> viewModel.playNextNow()
-                        PlaystateCommandType.PreviousTrack -> {
-                            // Seek to beginning or previous if at start
-                            if (playerController.state.value.position > 5000) {
-                                playerController.seekTo(0)
-                            }
+                    }
+                    PlaystateCommandType.Rewind -> {
+                        playerController.seekRelative(-skipBackwardMs)
+                    }
+                    PlaystateCommandType.FastForward -> {
+                        playerController.seekRelative(skipForwardMs)
+                    }
+                    PlaystateCommandType.NextTrack -> {
+                        viewModel.playNextNow()
+                    }
+                    PlaystateCommandType.PreviousTrack -> {
+                        // Seek to beginning or previous if at start
+                        if (playerController.state.value.position > 5000) {
+                            playerController.seekTo(0)
                         }
                     }
                 }
-                else -> Unit // Other events handled by MainActivity
             }
+            // Other events handled by MainActivity
         }
     }
 
@@ -406,16 +416,15 @@ fun PlayerScreen(
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
                     if (state.showControls) {
-                        when (event.key) {
-                            Key.Back -> {
-                                if (state.showAutoPlayCountdown) {
-                                    viewModel.cancelQueue()
-                                } else {
-                                    viewModel.hideControls()
-                                }
-                                true
+                        if (event.key == Key.Back) {
+                            if (state.showAutoPlayCountdown) {
+                                viewModel.cancelQueue()
+                            } else {
+                                viewModel.hideControls()
                             }
-                            else -> false
+                            true
+                        } else {
+                            false
                         }
                     } else {
                         when (event.key) {
@@ -681,15 +690,19 @@ private fun MpvSurfaceView(
         // Calculate size maintaining aspect ratio (letterbox/pillarbox)
         val containerAspect = containerWidth / containerHeight
         val (surfaceWidth, surfaceHeight) = when (displayMode) {
-            PlayerDisplayMode.FIT -> if (videoAspect > containerAspect) {
-                containerWidth to containerWidth / videoAspect
-            } else {
-                containerHeight * videoAspect to containerHeight
+            PlayerDisplayMode.FIT -> {
+                if (videoAspect > containerAspect) {
+                    containerWidth to containerWidth / videoAspect
+                } else {
+                    containerHeight * videoAspect to containerHeight
+                }
             }
-            PlayerDisplayMode.FILL -> if (videoAspect > containerAspect) {
-                containerHeight * videoAspect to containerHeight
-            } else {
-                containerWidth to containerWidth / videoAspect
+            PlayerDisplayMode.FILL -> {
+                if (videoAspect > containerAspect) {
+                    containerHeight * videoAspect to containerHeight
+                } else {
+                    containerWidth to containerWidth / videoAspect
+                }
             }
             PlayerDisplayMode.ZOOM -> {
                 val zoomFactor = 1.1f
@@ -700,7 +713,9 @@ private fun MpvSurfaceView(
                 }
                 base.first * zoomFactor to base.second * zoomFactor
             }
-            PlayerDisplayMode.STRETCH -> containerWidth to containerHeight
+            PlayerDisplayMode.STRETCH -> {
+                containerWidth to containerHeight
+            }
         }
 
         AndroidView(
@@ -1762,8 +1777,6 @@ private fun ChapterThumbCard(
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val hasChapterImage = jellyfinClient != null && itemId != null
-    val hasPreview = trickplayProvider != null && jellyfinClient != null && itemId != null
     val label = PlayerUtils.formatTime(startMs)
 
     Surface(
@@ -1784,29 +1797,29 @@ private fun ChapterThumbCard(
             .height(90.dp),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (hasChapterImage) {
+            // Use inline null checks for smart casting
+            if (jellyfinClient != null && itemId != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
-                        .data(jellyfinClient!!.getChapterImageUrl(itemId!!, chapterIndex, maxWidth = 360))
+                        .data(jellyfinClient.getChapterImageUrl(itemId, chapterIndex, maxWidth = 360))
                         .build(),
                     contentDescription = chapter.name ?: "Chapter",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-            } else if (hasPreview) {
-                val provider = trickplayProvider!!
-                val tileIndex = provider.getTileImageIndex(startMs)
-                val (offsetX, offsetY) = provider.getTileOffset(startMs)
-                val thumbnailWidth = provider.thumbnailWidth
-                val thumbnailHeight = provider.thumbnailHeight
+            } else if (trickplayProvider != null && jellyfinClient != null && itemId != null) {
+                val tileIndex = trickplayProvider.getTileImageIndex(startMs)
+                val (offsetX, offsetY) = trickplayProvider.getTileOffset(startMs)
+                val thumbnailWidth = trickplayProvider.thumbnailWidth
+                val thumbnailHeight = trickplayProvider.thumbnailHeight
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(
-                            jellyfinClient!!.getTrickplayTileUrl(
-                                itemId = itemId!!,
+                            jellyfinClient.getTrickplayTileUrl(
+                                itemId = itemId,
                                 width = thumbnailWidth,
                                 tileIndex = tileIndex,
-                                mediaSourceId = provider.getMediaSourceId(),
+                                mediaSourceId = trickplayProvider.getMediaSourceId(),
                             ),
                         )
                         .transformations(
@@ -2027,7 +2040,9 @@ private fun InteractiveSeekBar(
                                 onSeekCancel()
                                 true
                             }
-                            else -> false
+                            else -> {
+                                false
+                            }
                         }
                     } else {
                         false

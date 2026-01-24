@@ -1845,9 +1845,10 @@ private fun UpdatePreferenceItem(
                     (event.key == Key.Enter || event.key == Key.DirectionCenter) &&
                     isClickable
                 ) {
-                    when (state) {
-                        is UpdateState.Available -> onDownload(state.info)
-                        else -> onCheck()
+                    if (state is UpdateState.Available) {
+                        onDownload(state.info)
+                    } else {
+                        onCheck()
                     }
                     true
                 } else {
