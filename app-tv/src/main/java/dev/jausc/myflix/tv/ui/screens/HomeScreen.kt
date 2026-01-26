@@ -17,7 +17,6 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +33,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -45,22 +43,15 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -105,12 +96,6 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/**
- * Position in the grid: row index + column index within that row.
- * Following Wholphin's RowColumn pattern for stable scroll behavior.
- */
-private data class RowColumn(val row: Int, val column: Int)
 
 /**
  * Home screen with left navigation rail and content rows.
@@ -241,10 +226,8 @@ fun HomeScreen(
         }
     }
 
-    // Focus requesters
+    // Focus requester for initial app launch focus
     val heroPlayFocusRequester = remember { FocusRequester() }
-    val firstRowFocusRequester = remember { FocusRequester() }
-    val homeButtonFocusRequester = remember { FocusRequester() }
 
     // Track current backdrop URL for dynamic background colors
     var currentBackdropUrl by remember { mutableStateOf<String?>(null) }
@@ -252,25 +235,35 @@ fun HomeScreen(
     // Extract gradient colors from current backdrop image
     val gradientColors = rememberGradientColors(currentBackdropUrl)
 
-    // Track if we've focused the hero
-    val contentId = state.featuredItems.firstOrNull()?.id
-    var heroFocused by remember(contentId) { mutableStateOf(false) }
+    // Saved focus state - survives back navigation
+    var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    val restoreFocusRequester = remember { FocusRequester() }
+    var focusRestored by remember { mutableStateOf(false) }
 
-    // Request focus on hero when content becomes ready (but not when exit dialog is shown)
-    LaunchedEffect(state.contentReady, showExitDialog) {
-        if (state.contentReady && !heroFocused && !showExitDialog) {
+    // Track if initial focus has been set (only once per app launch)
+    var initialFocusSet by remember { mutableStateOf(false) }
+
+    // Focus restoration: when returning from detail screen, restore focus to last item
+    LaunchedEffect(state.contentReady, savedFocusItemId) {
+        if (state.contentReady && savedFocusItemId != null && !focusRestored) {
+            delay(100)
+            try {
+                restoreFocusRequester.requestFocus()
+                focusRestored = true
+            } catch (_: Exception) {
+                // Item may not be visible, fall back to hero
+                try {
+                    heroPlayFocusRequester.requestFocus()
+                } catch (_: Exception) { }
+                focusRestored = true
+            }
+        } else if (state.contentReady && savedFocusItemId == null && !initialFocusSet) {
+            // First app launch - focus hero
             delay(100)
             try {
                 heroPlayFocusRequester.requestFocus()
-                heroFocused = true
-            } catch (_: Exception) {
-                delay(200)
-                try {
-                    heroPlayFocusRequester.requestFocus()
-                    heroFocused = true
-                } catch (_: Exception) {
-                }
-            }
+            } catch (_: Exception) { }
+            initialFocusSet = true
         }
     }
 
@@ -344,10 +337,11 @@ fun HomeScreen(
                     onSeerrMediaClick = onSeerrMediaClick,
                     hideWatchedFromRecent = hideWatchedFromRecent,
                     heroPlayFocusRequester = heroPlayFocusRequester,
-                    firstRowFocusRequester = firstRowFocusRequester,
-                    homeButtonFocusRequester = homeButtonFocusRequester,
                     onBackdropUrlChanged = { url -> currentBackdropUrl = url },
-                    onItemFocused = { },
+                    // Focus restoration
+                    savedFocusItemId = savedFocusItemId,
+                    restoreFocusRequester = restoreFocusRequester,
+                    onItemFocused = { itemId -> savedFocusItemId = itemId },
                     // Navigation rail config
                     selectedNavItem = selectedNavItem,
                     onNavItemSelected = handleNavSelection,
@@ -403,7 +397,7 @@ private data class RowData(
  * Uses Wholphin's exact pattern for stable scroll behavior.
  */
 @Suppress("UnusedParameter")
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeContent(
     featuredItems: List<JellyfinItem>,
@@ -430,10 +424,11 @@ private fun HomeContent(
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
-    firstRowFocusRequester: FocusRequester = remember { FocusRequester() },
-    homeButtonFocusRequester: FocusRequester = remember { FocusRequester() },
     onBackdropUrlChanged: (String?) -> Unit = {},
-    onItemFocused: (JellyfinItem?) -> Unit = {},
+    // Focus restoration
+    savedFocusItemId: String? = null,
+    restoreFocusRequester: FocusRequester = remember { FocusRequester() },
+    onItemFocused: (String) -> Unit = {},
     // Navigation rail
     selectedNavItem: NavItem = NavItem.HOME,
     onNavItemSelected: (NavItem) -> Unit = {},
@@ -564,64 +559,17 @@ private fun HomeContent(
         }
     }
 
-    // Position tracking (row and column)
-    var position by remember { mutableStateOf(RowColumn(0, 0)) }
-
-    // Currently focused/previewed item from content rows
+    // Currently focused/previewed item from content rows (for backdrop display)
     var previewItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
-    // Notify parent when preview item changes
-    LaunchedEffect(previewItem) {
-        onItemFocused(previewItem)
-    }
-
-    // LazyColumn state and FocusRequesters for each row (exact Wholphin pattern)
+    // LazyColumn state
     val listState = rememberLazyListState()
-    val rowFocusRequesters = remember(rows.size) { List(rows.size) { FocusRequester() } }
-
-    // Track if first focus has happened
-    var firstFocused by remember { mutableStateOf(false) }
 
     // Function to clear preview and scroll back to top
     val clearPreviewAndScrollToTop: () -> Unit = {
         previewItem = null
         coroutineScope.launch {
             listState.animateScrollToItem(0)
-        }
-    }
-
-    // Initial focus when rows first load (exact Wholphin pattern)
-    LaunchedEffect(rows) {
-        if (!firstFocused && rows.isNotEmpty()) {
-            val index = rows.indexOfFirst { it.items.isNotEmpty() }.coerceAtLeast(0)
-            try {
-                rowFocusRequesters.getOrNull(index)?.requestFocus()
-            } catch (_: Exception) {
-            }
-            delay(50)
-            listState.scrollToItem(index)
-            firstFocused = true
-        }
-    }
-
-    // KEY PATTERN: Restore focus and scroll when rows load or position changes
-    // Keys ensure this re-runs when content loads or focus state changes
-    LaunchedEffect(firstFocused, rows.size, position.row) {
-        if (firstFocused && rows.isNotEmpty()) {
-            val index = position.row.coerceIn(0, rows.size - 1)
-            try {
-                rowFocusRequesters.getOrNull(index)?.requestFocus()
-            } catch (_: Exception) {
-            }
-            delay(50)
-            listState.scrollToItem(index)
-        }
-    }
-
-    // Animate scroll when position changes (exact Wholphin pattern)
-    LaunchedEffect(position) {
-        if (position.row >= 0 && position.row < rows.size) {
-            listState.animateScrollToItem(position.row)
         }
     }
 
@@ -668,49 +616,22 @@ private fun HomeContent(
                         .fillMaxHeight(0.37f),
                     previewItem = previewItem,
                     playButtonFocusRequester = heroPlayFocusRequester,
-                    downFocusRequester = firstRowFocusRequester,
                     onCurrentItemChanged = { item, backdropUrl ->
                         heroDisplayItem = item
                         onBackdropUrlChanged(backdropUrl)
                     },
                     onPreviewClear = clearPreviewAndScrollToTop,
-                    navBarVisible = true, // Nav bar is always visible
                 )
             }
 
-            // Content rows with focusRestorer
+            // Content rows
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 300.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .focusRestorer()
-                    .onPreviewKeyEvent { keyEvent ->
-                        // Intercept UP on first row to go to hero
-                        if (keyEvent.type == KeyEventType.KeyDown &&
-                            keyEvent.key == Key.DirectionUp &&
-                            position.row == 0
-                        ) {
-                            previewItem = null
-                            coroutineScope.launch {
-                                listState.scrollToItem(0)
-                                try {
-                                    heroPlayFocusRequester.requestFocus()
-                                } catch (_: Exception) {
-                                }
-                            }
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    .focusProperties {
-                        up = heroPlayFocusRequester
-                    },
+                modifier = Modifier.fillMaxSize(),
             ) {
-                itemsIndexed(rows, key = { _, row -> row.key }) { rowIndex, rowData ->
-                    // Each row gets a focusRequester from the list (exact Wholphin pattern)
+                items(rows, key = { row -> row.key }) { rowData ->
                     ItemRow(
                         title = rowData.title,
                         items = rowData.items,
@@ -719,17 +640,14 @@ private fun HomeContent(
                         jellyfinClient = jellyfinClient,
                         onItemClick = onItemClick,
                         onItemLongClick = onItemLongClick,
-                        onCardFocused = { cardIndex, item ->
+                        onCardFocused = { item ->
                             previewItem = item
-                            position = RowColumn(rowIndex, cardIndex)
-                            // Mark as focused if this is the first card interaction
-                            if (!firstFocused) firstFocused = true
+                            onItemFocused(item.id)
                         },
-                        firstCardFocusRequester = if (rowIndex == 0) firstRowFocusRequester else null,
-                        upFocusRequester = if (rowIndex == 0) heroPlayFocusRequester else null, // First row UP -> hero
+                        savedFocusItemId = savedFocusItemId,
+                        restoreFocusRequester = restoreFocusRequester,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .focusRequester(rowFocusRequesters[rowIndex])
                             .animateItem(),
                     )
                 }
@@ -758,9 +676,7 @@ private fun HomeContent(
 
 /**
  * Single row containing header + LazyRow of cards.
- * Uses focusGroup to make LazyColumn treat this as a single focus unit.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ItemRow(
     title: String,
@@ -770,22 +686,16 @@ private fun ItemRow(
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
-    onCardFocused: (Int, JellyfinItem) -> Unit,
-    firstCardFocusRequester: FocusRequester?,
-    upFocusRequester: FocusRequester? = null, // For first row: UP goes to hero
+    onCardFocused: (JellyfinItem) -> Unit,
+    savedFocusItemId: String? = null,
+    restoreFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
-    // Single FocusRequester for focus restoration (exact Wholphin pattern)
-    val firstFocus = remember { FocusRequester() }
 
-    // focusGroup makes LazyColumn see this row as ONE focus target
-    // This prevents bring-into-view from scrolling to individual cards
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-            .padding(vertical = 8.dp)
-            .focusGroup(),
+        modifier = modifier.padding(vertical = 8.dp),
     ) {
         // Row header
         Row(
@@ -807,41 +717,27 @@ private fun ItemRow(
             )
         }
 
-        // LazyRow with focusRestorer (exact Wholphin pattern)
         LazyRow(
             state = lazyRowState,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRestorer(firstFocus),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                // First card gets focusRequester (exact Wholphin pattern)
-                val cardModifier = if (index == 0) {
+            items(items, key = { item -> item.id }) { item ->
+                // Attach restoreFocusRequester to the item that should receive focus on back navigation
+                val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
                     Modifier
-                        .focusRequester(firstFocus)
-                        .then(
-                            if (firstCardFocusRequester != null) {
-                                Modifier.focusRequester(firstCardFocusRequester)
-                            } else {
-                                Modifier
-                            },
-                        )
+                        .focusRequester(restoreFocusRequester)
+                        .onFocusChanged { state ->
+                            if (state.isFocused) {
+                                onCardFocused(item)
+                            }
+                        }
                 } else {
-                    Modifier
-                }
-
-                // Apply upFocusRequester to ALL cards in this row (for first row -> hero)
-                val focusPropertiesModifier = if (upFocusRequester != null) {
-                    cardModifier.focusProperties { up = upFocusRequester }
-                } else {
-                    cardModifier
-                }
-
-                val focusModifier = focusPropertiesModifier.onFocusChanged { state ->
-                    if (state.isFocused) {
-                        onCardFocused(index, item)
+                    Modifier.onFocusChanged { state ->
+                        if (state.isFocused) {
+                            onCardFocused(item)
+                        }
                     }
                 }
 
@@ -905,9 +801,7 @@ private fun SeerrRequestRow(
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-            .padding(vertical = 8.dp)
-            .focusGroup(),
+        modifier = modifier.padding(vertical = 8.dp),
     ) {
         // Row header
         Row(
