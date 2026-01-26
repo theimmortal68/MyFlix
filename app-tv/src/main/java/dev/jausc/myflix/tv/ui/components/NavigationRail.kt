@@ -62,11 +62,15 @@ enum class NavItem(
  * Left navigation rail with icon-only buttons.
  * Search at top, Settings at bottom, main nav items in between.
  *
+ * Focus behavior:
+ * - D-pad right navigates to the next focusable element in the content area
+ * - D-pad left is blocked to prevent focus going off-screen
+ * - D-pad up/down navigates between rail items, skipping the spacer
+ *
  * @param selectedItem Currently selected navigation item
  * @param onItemSelected Callback when a nav item is clicked
  * @param showUniverses Whether to show the Universes nav item
  * @param showDiscover Whether to show the Discover nav item
- * @param contentFocusRequester FocusRequester for the main content to the right
  * @param modifier Modifier for the rail
  */
 @Composable
@@ -75,9 +79,10 @@ fun NavigationRail(
     onItemSelected: (NavItem) -> Unit,
     showUniverses: Boolean = false,
     showDiscover: Boolean = false,
-    contentFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
+    // Right focus uses Default to find next focusable element automatically
+    val contentFocusRequester: FocusRequester? = null
     // Focus requesters for explicit navigation across the spacer
     val searchFocusRequester = remember { FocusRequester() }
     val homeFocusRequester = remember { FocusRequester() }
@@ -239,9 +244,8 @@ private fun NavRailItem(
                 isFocused = focusState.isFocused
             }
             .focusProperties {
-                if (contentFocusRequester != null) {
-                    right = contentFocusRequester
-                }
+                // Use Default to let focus system find next focusable element to the right
+                right = contentFocusRequester ?: FocusRequester.Default
                 // Explicit vertical navigation to handle Spacer
                 if (upFocusRequester != null) {
                     up = upFocusRequester

@@ -17,7 +17,6 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.ThemeMusicPlayer
 import dev.jausc.myflix.core.viewmodel.DetailViewModel
-import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
@@ -38,9 +37,6 @@ fun DetailScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
     onNavigateToPerson: (String) -> Unit = {},
-    onNavigate: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -102,9 +98,6 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
-                    onNavigate = onNavigate,
-                    showUniversesInNav = showUniversesInNav,
-                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -141,9 +134,6 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
-                    onNavigate = onNavigate,
-                    showUniversesInNav = showUniversesInNav,
-                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -184,9 +174,6 @@ fun DetailScreen(
                         viewModel.setFavorite(episodeId, favorite)
                     },
                     onRefreshEpisodes = { viewModel.refreshEpisodes() },
-                    onNavigate = onNavigate,
-                    showUniversesInNav = showUniversesInNav,
-                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -205,9 +192,6 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
-                    onNavigate = onNavigate,
-                    showUniversesInNav = showUniversesInNav,
-                    showDiscoverInNav = showDiscoverInNav,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

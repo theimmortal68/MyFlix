@@ -67,8 +67,6 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
@@ -111,9 +109,6 @@ fun SeriesDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onNavigate: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val series = state.item ?: return
@@ -194,18 +189,8 @@ fun SeriesDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left: Navigation Rail
-            NavigationRail(
-                selectedItem = NavItem.SHOWS,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = playFocusRequester,
-            )
-
-            // Right: Content area
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Content area
+            Box(modifier = Modifier.fillMaxSize()) {
             // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
             DetailBackdropLayer(
                 item = series,
@@ -576,7 +561,6 @@ fun SeriesDetailScreen(
             }
             }
             } // End Content Box
-        } // End Row
     } // End outer Box
 
     // Media info dialog

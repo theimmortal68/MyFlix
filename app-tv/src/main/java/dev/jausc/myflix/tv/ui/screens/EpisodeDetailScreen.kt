@@ -62,8 +62,6 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparatedRow
@@ -102,9 +100,6 @@ fun EpisodeDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onNavigate: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val episode = state.item ?: return
@@ -164,18 +159,8 @@ fun EpisodeDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left: Navigation Rail
-            NavigationRail(
-                selectedItem = NavItem.SHOWS,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = playFocusRequester,
-            )
-
-            // Right: Content area
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Content area
+            Box(modifier = Modifier.fillMaxSize()) {
             // Layer 2: Content
             Column(modifier = Modifier.fillMaxSize()) {
             // Fixed hero section - doesn't scroll
@@ -433,7 +418,6 @@ fun EpisodeDetailScreen(
             }
         }
             } // End content Box
-        } // End Row
     } // End outer Box
 
     // Media info dialog

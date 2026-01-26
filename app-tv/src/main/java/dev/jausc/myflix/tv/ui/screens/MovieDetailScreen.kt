@@ -69,8 +69,6 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
@@ -113,9 +111,6 @@ fun MovieDetailScreen(
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onNavigate: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val movie = state.item ?: return
@@ -197,18 +192,8 @@ fun MovieDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left: Navigation Rail
-            NavigationRail(
-                selectedItem = NavItem.MOVIES,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = focusRequesters[HEADER_ROW],
-            )
-
-            // Right: Content area
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        // Note: NavigationRail is now provided by MainActivity
+        Box(modifier = Modifier.fillMaxSize()) {
             // Layer 2: Backdrop image (right side, behind content) - matches home page positioning
             DetailBackdropLayer(
                 item = movie,
@@ -495,8 +480,7 @@ fun MovieDetailScreen(
             }
             }
         } // End Column
-            } // End Content Box
-        } // End Row
+        } // End Box
     } // End outer Box
 
     // Context menu dialog

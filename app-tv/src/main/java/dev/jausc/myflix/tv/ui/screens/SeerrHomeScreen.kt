@@ -77,13 +77,10 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
-import dev.jausc.myflix.core.common.LibraryFinder
-import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.SeerrActionDivider
 import dev.jausc.myflix.core.common.ui.SeerrActionItem
 import dev.jausc.myflix.core.common.ui.SeerrMediaActions
 import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
-import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.GenreBackdropColors
 import dev.jausc.myflix.core.seerr.PopularNetworks
 import dev.jausc.myflix.core.seerr.PopularStudios
@@ -107,8 +104,6 @@ import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -131,14 +126,6 @@ import java.util.Locale
 fun SeerrHomeScreen(
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
-    onNavigateHome: () -> Unit = {},
-    onNavigateSearch: () -> Unit = {},
-    onNavigateMovies: () -> Unit = {},
-    onNavigateShows: () -> Unit = {},
-    onNavigateSettings: () -> Unit = {},
-    jellyfinClient: JellyfinClient? = null,
-    onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
-        { _, _, _ -> },
     onNavigateSeerrSearch: () -> Unit = {},
     onNavigateSeerrRequests: () -> Unit = {},
     onNavigateDiscoverTrending: () -> Unit = {},
@@ -149,9 +136,6 @@ fun SeerrHomeScreen(
     onNavigateGenre: (mediaType: String, genreId: Int, genreName: String) -> Unit = { _, _, _ -> },
     onNavigateStudio: (studioId: Int, studioName: String) -> Unit = { _, _ -> },
     onNavigateNetwork: (networkId: Int, networkName: String) -> Unit = { _, _ -> },
-    onNavigateCollections: () -> Unit = {},
-    onNavigateUniverses: () -> Unit = {},
-    showUniversesInNav: Boolean = false,
 ) {
     // Coroutine scope for async operations
     val coroutineScope = rememberCoroutineScope()
@@ -168,7 +152,6 @@ fun SeerrHomeScreen(
     var studiosRow by remember { mutableStateOf<SeerrStudioRow?>(null) }
     var networksRow by remember { mutableStateOf<SeerrNetworkRow?>(null) }
     var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
-    var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
 
     // Preview item - shows focused card's media in hero section
     var previewItem by remember { mutableStateOf<SeerrMedia?>(null) }
@@ -208,13 +191,8 @@ fun SeerrHomeScreen(
     // Collect auth state as Compose state for proper recomposition
     val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
 
-    // Load content and libraries - key on auth status to reload if auth changes
+    // Load content - key on auth status to reload if auth changes
     LaunchedEffect(isAuthenticated) {
-        // Load libraries for navigation
-        jellyfinClient?.getLibraries()?.onSuccess { libs ->
-            libraries = libs
-        }
-
         if (!isAuthenticated) {
             errorMessage = "Not connected to Seerr"
             isLoading = false
@@ -289,49 +267,12 @@ fun SeerrHomeScreen(
         }
     }
 
-    // Handle navigation
-    val handleNavSelection: (NavItem) -> Unit = { item ->
-        when (item) {
-            NavItem.HOME -> { onNavigateHome() }
-            NavItem.SEARCH -> { onNavigateSearch() }
-            NavItem.MOVIES -> {
-                LibraryFinder.findMoviesLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name, it.collectionType)
-                } ?: onNavigateMovies()
-            }
-            NavItem.SHOWS -> {
-                LibraryFinder.findShowsLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name, it.collectionType)
-                } ?: onNavigateShows()
-            }
-            NavItem.COLLECTIONS -> { onNavigateCollections() }
-            NavItem.UNIVERSES -> { onNavigateUniverses() }
-            NavItem.DISCOVER -> { /* Already here */ }
-            NavItem.SETTINGS -> { onNavigateSettings() }
-        }
-    }
-
-    // Use Row for NavigationRail + content layout
-    Row(
+    // Main content area
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        // Navigation Rail
-        NavigationRail(
-            selectedItem = NavItem.DISCOVER,
-            onItemSelected = handleNavSelection,
-            showUniverses = showUniversesInNav,
-            showDiscover = true,
-            contentFocusRequester = contentFocusRequester,
-        )
-
-        // Main content area
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-        ) {
             // Main content
             when {
                 isLoading -> {
@@ -573,16 +514,15 @@ fun SeerrHomeScreen(
                 }
             }
 
-            // Long-press context menu dialog
-            dialogParams?.let { params ->
-                DialogPopup(
-                    params = params,
-                    onDismissRequest = {
-                        dialogParams = null
-                        dialogMedia = null
-                    },
-                )
-            }
+        // Long-press context menu dialog
+        dialogParams?.let { params ->
+            DialogPopup(
+                params = params,
+                onDismissRequest = {
+                    dialogParams = null
+                    dialogMedia = null
+                },
+            )
         }
     }
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,8 +39,6 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
@@ -61,10 +58,7 @@ private const val COLUMNS = 7
 fun CollectionsLibraryScreen(
     jellyfinClient: JellyfinClient,
     onCollectionClick: (String) -> Unit,
-    onNavigate: (NavItem) -> Unit,
     excludeUniverseCollections: Boolean = false,
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: CollectionsViewModel = viewModel(
@@ -128,22 +122,8 @@ fun CollectionsLibraryScreen(
         // Dynamic background that changes based on focused poster
         DynamicBackground(gradientColors = gradientColors)
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Navigation Rail on the left
-            NavigationRail(
-                selectedItem = NavItem.COLLECTIONS,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = firstItemFocusRequester,
-            )
-
             // Main content area
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header with title and count
                 Row(
@@ -246,7 +226,6 @@ fun CollectionsLibraryScreen(
                     }
                 }
             }
-        }
         }
     }
 }
