@@ -43,11 +43,13 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -233,18 +235,34 @@ fun HomeScreen(
     // Extract gradient colors from current backdrop image
     val gradientColors = rememberGradientColors(currentBackdropUrl)
 
+    // Saved focus state - survives back navigation
+    var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    val restoreFocusRequester = remember { FocusRequester() }
+    var focusRestored by remember { mutableStateOf(false) }
+
     // Track if initial focus has been set (only once per app launch)
     var initialFocusSet by remember { mutableStateOf(false) }
 
-    // Request focus on hero play button ONCE when content first becomes ready
-    LaunchedEffect(state.contentReady) {
-        if (state.contentReady && !initialFocusSet) {
+    // Focus restoration: when returning from detail screen, restore focus to last item
+    LaunchedEffect(state.contentReady, savedFocusItemId) {
+        if (state.contentReady && savedFocusItemId != null && !focusRestored) {
+            delay(100)
+            try {
+                restoreFocusRequester.requestFocus()
+                focusRestored = true
+            } catch (_: Exception) {
+                // Item may not be visible, fall back to hero
+                try {
+                    heroPlayFocusRequester.requestFocus()
+                } catch (_: Exception) { }
+                focusRestored = true
+            }
+        } else if (state.contentReady && savedFocusItemId == null && !initialFocusSet) {
+            // First app launch - focus hero
             delay(100)
             try {
                 heroPlayFocusRequester.requestFocus()
-            } catch (_: Exception) {
-                // Focus request failed, that's okay
-            }
+            } catch (_: Exception) { }
             initialFocusSet = true
         }
     }
@@ -320,6 +338,10 @@ fun HomeScreen(
                     hideWatchedFromRecent = hideWatchedFromRecent,
                     heroPlayFocusRequester = heroPlayFocusRequester,
                     onBackdropUrlChanged = { url -> currentBackdropUrl = url },
+                    // Focus restoration
+                    savedFocusItemId = savedFocusItemId,
+                    restoreFocusRequester = restoreFocusRequester,
+                    onItemFocused = { itemId -> savedFocusItemId = itemId },
                     // Navigation rail config
                     selectedNavItem = selectedNavItem,
                     onNavItemSelected = handleNavSelection,
@@ -403,6 +425,10 @@ private fun HomeContent(
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     onBackdropUrlChanged: (String?) -> Unit = {},
+    // Focus restoration
+    savedFocusItemId: String? = null,
+    restoreFocusRequester: FocusRequester = remember { FocusRequester() },
+    onItemFocused: (String) -> Unit = {},
     // Navigation rail
     selectedNavItem: NavItem = NavItem.HOME,
     onNavItemSelected: (NavItem) -> Unit = {},
@@ -614,7 +640,12 @@ private fun HomeContent(
                         jellyfinClient = jellyfinClient,
                         onItemClick = onItemClick,
                         onItemLongClick = onItemLongClick,
-                        onCardFocused = { item -> previewItem = item },
+                        onCardFocused = { item ->
+                            previewItem = item
+                            onItemFocused(item.id)
+                        },
+                        savedFocusItemId = savedFocusItemId,
+                        restoreFocusRequester = restoreFocusRequester,
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItem(),
@@ -656,6 +687,8 @@ private fun ItemRow(
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
     onCardFocused: (JellyfinItem) -> Unit,
+    savedFocusItemId: String? = null,
+    restoreFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
@@ -691,9 +724,20 @@ private fun ItemRow(
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(items, key = { item -> item.id }) { item ->
-                val focusModifier = Modifier.onFocusChanged { state ->
-                    if (state.isFocused) {
-                        onCardFocused(item)
+                // Attach restoreFocusRequester to the item that should receive focus on back navigation
+                val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
+                    Modifier
+                        .focusRequester(restoreFocusRequester)
+                        .onFocusChanged { state ->
+                            if (state.isFocused) {
+                                onCardFocused(item)
+                            }
+                        }
+                } else {
+                    Modifier.onFocusChanged { state ->
+                        if (state.isFocused) {
+                            onCardFocused(item)
+                        }
                     }
                 }
 
