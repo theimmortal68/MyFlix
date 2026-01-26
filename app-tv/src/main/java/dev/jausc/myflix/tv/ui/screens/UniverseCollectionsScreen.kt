@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,8 +37,6 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
@@ -56,9 +53,6 @@ private const val COLUMNS = 7
 fun UniverseCollectionsScreen(
     jellyfinClient: JellyfinClient,
     onCollectionClick: (String) -> Unit,
-    onNavigate: (NavItem) -> Unit,
-    showUniversesInNav: Boolean = true,
-    showDiscoverInNav: Boolean = false,
 ) {
     // State
     var collections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
@@ -104,22 +98,8 @@ fun UniverseCollectionsScreen(
         // Dynamic background that changes based on focused poster
         DynamicBackground(gradientColors = gradientColors)
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Navigation Rail on the left
-            NavigationRail(
-                selectedItem = NavItem.UNIVERSES,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = firstItemFocusRequester,
-            )
-
             // Main content area
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header with title and count
                 Row(
@@ -238,7 +218,6 @@ fun UniverseCollectionsScreen(
                     }
                 }
             }
-        }
         }
     }
 }

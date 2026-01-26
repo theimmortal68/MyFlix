@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,8 +62,6 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.SearchViewModel
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.VoiceSpeechHelper
@@ -75,12 +72,6 @@ fun SearchScreen(
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
-    onNavigateHome: () -> Unit,
-    onNavigateMovies: () -> Unit,
-    onNavigateShows: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: SearchViewModel = viewModel(
@@ -129,30 +120,10 @@ fun SearchScreen(
         searchFieldFocusRequester.requestFocus()
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = NavItem.SEARCH,
-            onItemSelected = { navItem ->
-                when (navItem) {
-                    NavItem.HOME -> onNavigateHome()
-                    NavItem.MOVIES -> onNavigateMovies()
-                    NavItem.SHOWS -> onNavigateShows()
-                    NavItem.SEARCH -> { /* Already here */ }
-                    NavItem.SETTINGS -> onNavigateSettings()
-                    NavItem.COLLECTIONS, NavItem.UNIVERSES, NavItem.DISCOVER -> onNavigateHome()
-                }
-            },
-            showUniverses = showUniversesInNav,
-            showDiscover = showDiscoverInNav,
-            contentFocusRequester = searchFieldFocusRequester,
-        )
-
-        // Right: Content
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
+    // Note: NavigationRail is now provided by MainActivity
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
                 .padding(horizontal = 48.dp)
                 .padding(top = 24.dp),
         ) {
@@ -324,8 +295,7 @@ fun SearchScreen(
                 }
             }
         }
-        } // End Column
-    } // End Row
+    }
 }
 
 /**

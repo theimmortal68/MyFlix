@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,8 +46,6 @@ import dev.jausc.myflix.core.viewmodel.LibraryViewModel
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MenuAnchor
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
@@ -71,9 +68,6 @@ fun LibraryScreen(
     preferences: AppPreferences,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
-    onNavigate: (NavItem) -> Unit,
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
 ) {
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
@@ -111,17 +105,6 @@ fun LibraryScreen(
     // This provides immediate responsiveness rather than waiting for slow alphabet index
     val availableLetters = remember {
         setOf('#') + ('A'..'Z').toSet()
-    }
-
-    // Determine which NavItem is selected based on library type
-    val selectedNavItem = remember(libraryName) {
-        when {
-            libraryName.contains("Movie", ignoreCase = true) -> NavItem.MOVIES
-            libraryName.contains("TV", ignoreCase = true) ||
-                libraryName.contains("Show", ignoreCase = true) -> NavItem.SHOWS
-            libraryName.contains("Collection", ignoreCase = true) -> NavItem.COLLECTIONS
-            else -> NavItem.HOME
-        }
     }
 
     // Grid columns based on view mode
@@ -177,18 +160,8 @@ fun LibraryScreen(
         // Dynamic background that changes based on focused poster
         DynamicBackground(gradientColors = gradientColors)
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left: Navigation Rail
-            NavigationRail(
-                selectedItem = selectedNavItem,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = filterBarFirstButtonFocusRequester,
-            )
-
-            // Right: Content area
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        // Note: NavigationRail is now provided by MainActivity
+        Box(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Top padding for content
                     Spacer(modifier = Modifier.height(16.dp))
@@ -302,7 +275,6 @@ fun LibraryScreen(
                     }
                 }
             }
-        }
 
         LibraryFilterMenu(
             visible = showFilterMenu,

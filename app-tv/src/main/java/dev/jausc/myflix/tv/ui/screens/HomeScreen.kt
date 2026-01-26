@@ -71,7 +71,6 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.HeroContentBuilder
-import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.PlayAllData
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -93,8 +92,6 @@ import dev.jausc.myflix.tv.ui.components.HeroSection
 import dev.jausc.myflix.tv.ui.components.HomeDialogActions
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
@@ -110,17 +107,10 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
     preferences: TvPreferences,
-    onLibraryClick: (libraryId: String, libraryName: String, collectionType: String?) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
-    onSearchClick: () -> Unit = {},
-    onDiscoverClick: () -> Unit = {},
-    onCollectionsClick: () -> Unit = {},
-    onUniversesClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
     seerrClient: SeerrClient? = null,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
-    showUniversesInNav: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -148,9 +138,6 @@ fun HomeScreen(
     val showCollections by viewModel.showCollections.collectAsState()
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val showSeerrRecentRequests by viewModel.showSeerrRecentRequests.collectAsState()
-
-    // Navigation state
-    var selectedNavItem by remember { mutableStateOf(NavItem.HOME) }
 
     // Long-press dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
@@ -209,27 +196,6 @@ fun HomeScreen(
             },
             onShowMediaInfo = { item -> mediaInfoItem = item },
         )
-    }
-
-    // Handle nav item selection
-    val handleNavSelection: (NavItem) -> Unit = { item ->
-        selectedNavItem = item
-        when (item) {
-            NavItem.HOME -> Unit // Already on home
-            NavItem.SEARCH -> onSearchClick()
-            NavItem.MOVIES ->
-                LibraryFinder.findMoviesLibrary(state.libraries)?.let {
-                    onLibraryClick(it.id, it.name, it.collectionType)
-                }
-            NavItem.SHOWS ->
-                LibraryFinder.findShowsLibrary(state.libraries)?.let {
-                    onLibraryClick(it.id, it.name, it.collectionType)
-                }
-            NavItem.DISCOVER -> onDiscoverClick()
-            NavItem.COLLECTIONS -> onCollectionsClick()
-            NavItem.UNIVERSES -> onUniversesClick()
-            NavItem.SETTINGS -> onSettingsClick()
-        }
     }
 
     // Focus requester for initial app launch focus
@@ -335,11 +301,6 @@ fun HomeScreen(
                     savedFocusItemId = savedFocusItemId,
                     restoreFocusRequester = restoreFocusRequester,
                     onItemFocused = { itemId -> savedFocusItemId = itemId },
-                    // Navigation rail config
-                    selectedNavItem = selectedNavItem,
-                    onNavItemSelected = handleNavSelection,
-                    showUniversesInNav = showUniversesInNav,
-                    showDiscoverInNav = seerrClient != null,
                 )
             }
     }
@@ -420,11 +381,6 @@ private fun HomeContent(
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester = remember { FocusRequester() },
     onItemFocused: (String) -> Unit = {},
-    // Navigation rail
-    selectedNavItem: NavItem = NavItem.HOME,
-    onNavItemSelected: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -567,24 +523,13 @@ private fun HomeContent(
     // Track the current hero display item for the backdrop layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
-    // Layout: Navigation Rail on left, content on right
     // Content layers:
     // Layer 1 (back): Hero backdrop - 90% of screen with edge fading
     // Layer 2 (front): Hero info (37%) + Content rows (63%)
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Left: Navigation Rail
-        NavigationRail(
-            selectedItem = selectedNavItem,
-            onItemSelected = onNavItemSelected,
-            showUniverses = showUniversesInNav,
-            showDiscover = showDiscoverInNav,
-            contentFocusRequester = heroPlayFocusRequester,
-        )
-
-        // Right: Content area - Overlapping layout for scroll-behind effect
-        androidx.compose.foundation.layout.BoxWithConstraints(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-        ) {
+    // Note: NavigationRail is now provided by MainActivity
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize(),
+    ) {
             val heroHeight = maxHeight * 0.37f
             val density = LocalDensity.current
             val heroHeightPx = with(density) { heroHeight.roundToPx() }
@@ -717,7 +662,6 @@ private fun HomeContent(
             }
         }
     }
-}
 
 /**
  * Single row containing header + LazyRow of cards.

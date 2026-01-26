@@ -64,7 +64,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
-import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.AppType
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.UpdateInfo
@@ -77,8 +76,6 @@ import dev.jausc.myflix.core.player.DeviceHdrCapabilities
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.tv.BuildConfig
 import dev.jausc.myflix.tv.TvPreferences
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -93,23 +90,10 @@ fun PreferencesScreen(
     preferences: TvPreferences,
     jellyfinClient: JellyfinClient,
     appState: AppState,
-    onNavigateHome: () -> Unit,
-    onNavigateSearch: () -> Unit,
-    onNavigateMovies: () -> Unit,
-    onNavigateShows: () -> Unit,
-    onNavigateDiscover: () -> Unit = {},
-    onNavigateCollections: () -> Unit = {},
-    onNavigateUniverses: () -> Unit = {},
-    onNavigateLibrary: (libraryId: String, libraryName: String, collectionType: String?) -> Unit =
-        { _, _, _ -> },
     onAddServer: () -> Unit = {},
     onNavigateSeerrSetup: () -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
     isSeerrAuthenticated: Boolean = false,
 ) {
-    var selectedNavItem by remember { mutableStateOf(NavItem.SETTINGS) }
-
     // Server state
     val servers by appState.servers.collectAsState()
     val activeServer by appState.activeServer.collectAsState()
@@ -176,50 +160,13 @@ fun PreferencesScreen(
         }
     }
 
-    val handleNavSelection: (NavItem) -> Unit = { item ->
-        selectedNavItem = item
-        when (item) {
-            NavItem.HOME -> { onNavigateHome() }
-            NavItem.SEARCH -> { onNavigateSearch() }
-            NavItem.MOVIES -> {
-                LibraryFinder.findMoviesLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name, it.collectionType)
-                } ?: onNavigateMovies()
-            }
-            NavItem.SHOWS -> {
-                LibraryFinder.findShowsLibrary(libraries)?.let {
-                    onNavigateLibrary(it.id, it.name, it.collectionType)
-                } ?: onNavigateShows()
-            }
-            NavItem.DISCOVER -> { onNavigateDiscover() }
-            NavItem.COLLECTIONS -> { onNavigateCollections() }
-            NavItem.UNIVERSES -> { onNavigateUniverses() }
-            NavItem.SETTINGS -> { /* Already here */ }
-        }
-    }
-
-    // Use Row with NavigationRail on the left
-    Row(
+    // Note: NavigationRail is now provided by MainActivity
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background),
+            .background(TvColors.Background)
+            .padding(start = 10.dp, top = 16.dp, end = 48.dp, bottom = 24.dp),
     ) {
-        // Navigation Rail (left side)
-        NavigationRail(
-            selectedItem = selectedNavItem,
-            onItemSelected = handleNavSelection,
-            showUniverses = showUniversesInNav,
-            showDiscover = showDiscoverInNav,
-            contentFocusRequester = contentFocusRequester,
-        )
-
-        // Main Content Area
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(start = 10.dp, top = 16.dp, end = 48.dp, bottom = 24.dp),
-        ) {
             PreferencesContent(
                 // Server settings
                 activeServer = activeServer,
@@ -273,7 +220,6 @@ fun PreferencesScreen(
                 onNavigateSeerrSetup = onNavigateSeerrSetup,
             )
         }
-    }
 
     // Genre Selection Dialog
     if (showGenreDialog) {

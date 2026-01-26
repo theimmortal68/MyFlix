@@ -62,8 +62,6 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -90,10 +88,6 @@ fun CollectionDetailScreen(
     onItemClick: (String) -> Unit,
     onPlayClick: (String, Long?) -> Unit,
     onBack: () -> Unit,
-    onNavigate: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
-    selectedNavItem: NavItem = NavItem.COLLECTIONS,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -214,18 +208,8 @@ fun CollectionDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left: Navigation Rail
-            NavigationRail(
-                selectedItem = selectedNavItem,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-                contentFocusRequester = shuffleFocusRequester,
-            )
-
-            // Right: Content area
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Content area
+            Box(modifier = Modifier.fillMaxSize()) {
             // Layer 2: Backdrop image (right side, behind content)
             // Only show backdrop if available (no poster fallback for cleaner look on universe collections)
             if (displayItem != null && hasBackdrop) {
@@ -365,7 +349,6 @@ fun CollectionDetailScreen(
             }
         }
             } // End content Box
-        } // End Row
     } // End outer Box
 }
 

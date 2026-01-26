@@ -20,11 +20,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.SplashScreen
@@ -225,6 +230,54 @@ fun MyFlixTvApp() {
 
     val navController = rememberNavController()
 
+    // Track current route for NavigationRail
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+
+    // Routes that should NOT show NavigationRail
+    val routesWithoutNavRail = setOf("splash", "login", "player")
+
+    // Determine if nav rail should be visible
+    val showNavRail = remember(currentRoute) {
+        currentRoute?.let { route ->
+            routesWithoutNavRail.none { route.startsWith(it) }
+        } ?: false
+    }
+
+    // Track the last "source" NavItem for detail screens
+    // When viewing detail/person screens, we want to keep the previous context highlighted
+    var lastSourceNavItem by remember { mutableStateOf(NavItem.HOME) }
+
+    // Determine current NavItem from route
+    // Note: destination.route returns the route template (e.g., "library/{libraryId}/{libraryName}/{collectionType}")
+    // so we need to use arguments to get actual values
+    val currentNavItem = remember(currentRoute, currentBackStackEntry) {
+        val isDetailScreen = currentRoute?.startsWith("detail/") == true ||
+            currentRoute?.startsWith("person/") == true
+
+        if (isDetailScreen) {
+            // For detail screens, keep the previous source context
+            lastSourceNavItem
+        } else {
+            // Determine NavItem from route
+            val navItem = when {
+                currentRoute?.startsWith("home") == true -> NavItem.HOME
+                currentRoute?.startsWith("search") == true -> NavItem.SEARCH
+                currentRoute?.startsWith("settings") == true -> NavItem.SETTINGS
+                currentRoute?.startsWith("seerr") == true -> NavItem.DISCOVER
+                currentRoute?.startsWith("library") == true -> getLibraryNavItem(currentBackStackEntry)
+                currentRoute?.startsWith("collections") == true -> NavItem.COLLECTIONS
+                currentRoute?.startsWith("collection/") == true -> NavItem.COLLECTIONS
+                currentRoute?.startsWith("universes") == true -> NavItem.UNIVERSES
+                currentRoute?.startsWith("universeCollection/") == true -> NavItem.UNIVERSES
+                else -> NavItem.HOME
+            }
+            // Update the source for future detail screens
+            lastSourceNavItem = navItem
+            navItem
+        }
+    }
+
     // Handle WebSocket remote control events
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
@@ -329,10 +382,23 @@ fun MyFlixTvApp() {
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        NavHost(
-            navController = navController,
-            startDestination = "splash",
-        ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            // NavigationRail - only show on appropriate screens
+            if (showNavRail) {
+                NavigationRail(
+                    selectedItem = currentNavItem,
+                    onItemSelected = handleNavigation,
+                    showUniverses = universesEnabled,
+                    showDiscover = isSeerrAuthenticated && showDiscoverNav,
+                )
+            }
+
+            // Main content
+            NavHost(
+                navController = navController,
+                startDestination = "splash",
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            ) {
             composable("splash") {
                 SplashScreen(
                     onFinished = { splashFinished = true },
@@ -358,36 +424,15 @@ fun MyFlixTvApp() {
                     jellyfinClient = jellyfinClient,
                     preferences = tvPreferences,
                     seerrClient = if (isSeerrAuthenticated) seerrClient else null,
-                    onLibraryClick = { libraryId, libraryName, collectionType ->
-                        navController.navigate(
-                            NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
-                        )
-                    },
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
                     },
                     onPlayClick = { itemId ->
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                     },
-                    onSearchClick = {
-                        navController.navigate("search")
-                    },
-                    onDiscoverClick = {
-                        navController.navigate("seerr")
-                    },
-                    onCollectionsClick = {
-                        navController.navigate("collections")
-                    },
-                    onUniversesClick = {
-                        navController.navigate("universes")
-                    },
-                    onSettingsClick = {
-                        navController.navigate("settings")
-                    },
                     onSeerrMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
-                    showUniversesInNav = universesEnabled,
                 )
             }
 
@@ -398,12 +443,6 @@ fun MyFlixTvApp() {
                         navController.navigate("detail/$itemId")
                     },
                     onBack = { navController.popBackStack() },
-                    onNavigateHome = { handleNavigation(NavItem.HOME) },
-                    onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
-                    onNavigateShows = { handleNavigation(NavItem.SHOWS) },
-                    onNavigateSettings = { handleNavigation(NavItem.SETTINGS) },
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -412,18 +451,6 @@ fun MyFlixTvApp() {
                     preferences = tvPreferences,
                     jellyfinClient = jellyfinClient,
                     appState = appState,
-                    onNavigateHome = { handleNavigation(NavItem.HOME) },
-                    onNavigateSearch = { handleNavigation(NavItem.SEARCH) },
-                    onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
-                    onNavigateShows = { handleNavigation(NavItem.SHOWS) },
-                    onNavigateDiscover = { handleNavigation(NavItem.DISCOVER) },
-                    onNavigateCollections = { handleNavigation(NavItem.COLLECTIONS) },
-                    onNavigateUniverses = { handleNavigation(NavItem.UNIVERSES) },
-                    onNavigateLibrary = { libraryId, libraryName, collectionType ->
-                        navController.navigate(
-                            NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
-                        )
-                    },
                     onAddServer = {
                         // Navigate to login to add a new server
                         navController.navigate("login") {
@@ -433,8 +460,6 @@ fun MyFlixTvApp() {
                     onNavigateSeerrSetup = {
                         navController.navigate("seerr/setup")
                     },
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                     isSeerrAuthenticated = isSeerrAuthenticated,
                 )
             }
@@ -461,16 +486,11 @@ fun MyFlixTvApp() {
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
-                        onNavigateHome = { handleNavigation(NavItem.HOME) },
-                        onNavigateSearch = { handleNavigation(NavItem.SEARCH) },
-                        onNavigateMovies = { handleNavigation(NavItem.MOVIES) },
-                        onNavigateShows = { handleNavigation(NavItem.SHOWS) },
-                        onNavigateSettings = { handleNavigation(NavItem.SETTINGS) },
-                        jellyfinClient = jellyfinClient,
-                        onNavigateLibrary = { libraryId, libraryName, collectionType ->
-                            navController.navigate(
-                                NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
-                            )
+                        onNavigateSeerrSearch = {
+                            navController.navigate(NavigationHelper.SEERR_SEARCH_ROUTE)
+                        },
+                        onNavigateSeerrRequests = {
+                            navController.navigate(NavigationHelper.SEERR_REQUESTS_ROUTE)
                         },
                         onNavigateDiscoverTrending = {
                             navController.navigate("seerr/trending")
@@ -487,12 +507,6 @@ fun MyFlixTvApp() {
                         onNavigateDiscoverUpcomingTv = {
                             navController.navigate("seerr/upcoming/tv")
                         },
-                        onNavigateSeerrSearch = {
-                            navController.navigate(NavigationHelper.SEERR_SEARCH_ROUTE)
-                        },
-                        onNavigateSeerrRequests = {
-                            navController.navigate(NavigationHelper.SEERR_REQUESTS_ROUTE)
-                        },
                         onNavigateGenre = { genreMediaType, genreId, genreName ->
                             val encodedName = NavigationHelper.encodeNavArg(genreName)
                             navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
@@ -505,9 +519,6 @@ fun MyFlixTvApp() {
                             val encodedName = NavigationHelper.encodeNavArg(networkName)
                             navController.navigate("seerr/network/$networkId/$encodedName")
                         },
-                        onNavigateCollections = { handleNavigation(NavItem.COLLECTIONS) },
-                        onNavigateUniverses = { handleNavigation(NavItem.UNIVERSES) },
-                        showUniversesInNav = universesEnabled,
                     )
                 }
             }
@@ -844,9 +855,6 @@ fun MyFlixTvApp() {
                     onPlayClick = { itemId ->
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                     },
-                    onNavigate = handleNavigation,
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -857,10 +865,7 @@ fun MyFlixTvApp() {
                     onCollectionClick = { collectionId ->
                         navController.navigate("collection/$collectionId")
                     },
-                    onNavigate = handleNavigation,
                     excludeUniverseCollections = universesEnabled,
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -879,9 +884,6 @@ fun MyFlixTvApp() {
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId, startPositionMs))
                     },
                     onBack = { navController.popBackStack() },
-                    onNavigate = handleNavigation,
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -892,9 +894,6 @@ fun MyFlixTvApp() {
                     onCollectionClick = { collectionId ->
                         navController.navigate("universeCollection/$collectionId")
                     },
-                    onNavigate = handleNavigation,
-                    showUniversesInNav = true,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -914,10 +913,6 @@ fun MyFlixTvApp() {
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId, startPositionMs))
                     },
                     onBack = { navController.popBackStack() },
-                    onNavigate = handleNavigation,
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
-                    selectedNavItem = NavItem.UNIVERSES,
                 )
             }
 
@@ -961,9 +956,6 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = true }
                         }
                     },
-                    onNavigate = handleNavigation,
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -979,8 +971,6 @@ fun MyFlixTvApp() {
                         navController.navigate("detail/$itemId")
                     },
                     onBack = { navController.popBackStack() },
-                    showUniversesInNav = universesEnabled,
-                    showDiscoverInNav = isSeerrAuthenticated && showDiscoverNav,
                 )
             }
 
@@ -1013,5 +1003,19 @@ fun MyFlixTvApp() {
                 )
             }
         }
+        }
+    }
+}
+
+/**
+ * Determines the NavItem for library routes based on the collection type.
+ * Uses the actual route arguments rather than parsing the route template.
+ */
+private fun getLibraryNavItem(backStackEntry: NavBackStackEntry?): NavItem {
+    val collectionType = backStackEntry?.arguments?.getString("collectionType") ?: ""
+    return when {
+        collectionType.contains("movie", ignoreCase = true) -> NavItem.MOVIES
+        collectionType.contains("tvshow", ignoreCase = true) -> NavItem.SHOWS
+        else -> NavItem.HOME
     }
 }

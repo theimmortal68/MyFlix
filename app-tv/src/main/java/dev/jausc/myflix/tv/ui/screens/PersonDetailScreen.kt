@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -29,8 +28,6 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.PersonDetailViewModel
 import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -42,9 +39,6 @@ fun PersonDetailScreen(
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onBack: () -> Unit,
-    onNavigate: (NavItem) -> Unit = {},
-    showUniversesInNav: Boolean = false,
-    showDiscoverInNav: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -70,17 +64,8 @@ fun PersonDetailScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left: Navigation Rail
-            NavigationRail(
-                selectedItem = NavItem.HOME,
-                onItemSelected = onNavigate,
-                showUniverses = showUniversesInNav,
-                showDiscover = showDiscoverInNav,
-            )
-
-            // Right: Content area
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // Content area
+            Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading -> {
                     Box(
@@ -184,6 +169,5 @@ fun PersonDetailScreen(
             }
         }
             } // End content Box
-        } // End Row
     } // End outer Box
 }
