@@ -57,6 +57,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -112,7 +114,11 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
                     fadeOut(animationSpec = tween(800))
             },
             label = "hero_backdrop_layer",
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                },
         ) { currentItem ->
             val backdropUrl = buildBackdropUrl(currentItem, jellyfinClient)
 
@@ -236,47 +242,46 @@ fun HeroSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.5f)
-                .padding(start = 10.dp, top = 16.dp, bottom = 0.dp),
-            verticalArrangement = Arrangement.Top,
+                .fillMaxHeight()
+                .padding(start = 10.dp, top = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-        // Animated text content (title, rating, description)
-        AnimatedContent(
-            targetState = displayItem,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
-                    fadeOut(animationSpec = tween(300))
-            },
-            label = "hero_text_content",
-        ) { item ->
-            Column {
-                // Title and subtitle
-                HeroTitleSection(item)
+            // Top section: Animated text content (title, rating, description)
+            AnimatedContent(
+                targetState = displayItem,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
+                        fadeOut(animationSpec = tween(300))
+                },
+                label = "hero_text_content",
+            ) { item ->
+                Column {
+                    // Title and subtitle
+                    HeroTitleSection(item)
 
-                Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                // Rating information row
-                HeroRatingRow(item)
+                    // Rating information row
+                    HeroRatingRow(item)
 
-                Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                // Description
-                HeroDescription(item, isPreviewMode)
+                    // Description
+                    HeroDescription(item, isPreviewMode)
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Action buttons OUTSIDE AnimatedContent - never recreated during transitions
-        HeroActionButtons(
-            onPlayClick = { onPlayClick(displayItem.id) },
-            onDetailsClick = { onItemClick(displayItem.id) },
-            playButtonFocusRequester = playButtonFocusRequester,
-            isPreviewMode = isPreviewMode,
-            onButtonFocused = {
-                playButtonShouldHaveFocus = true
-                onPreviewClear?.invoke()
-            },
-        )
+            // Bottom section: Action buttons - positioned at bottom of hero area
+            HeroActionButtons(
+                onPlayClick = { onPlayClick(displayItem.id) },
+                onDetailsClick = { onItemClick(displayItem.id) },
+                playButtonFocusRequester = playButtonFocusRequester,
+                isPreviewMode = isPreviewMode,
+                onButtonFocused = {
+                    playButtonShouldHaveFocus = true
+                    onPreviewClear?.invoke()
+                },
+            )
         }
     }
 }

@@ -17,8 +17,11 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,9 +36,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,13 +54,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -79,7 +87,6 @@ import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
-import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.ExitConfirmationDialog
 import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
@@ -93,7 +100,6 @@ import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -229,12 +235,6 @@ fun HomeScreen(
     // Focus requester for initial app launch focus
     val heroPlayFocusRequester = remember { FocusRequester() }
 
-    // Track current backdrop URL for dynamic background colors
-    var currentBackdropUrl by remember { mutableStateOf<String?>(null) }
-
-    // Extract gradient colors from current backdrop image
-    val gradientColors = rememberGradientColors(currentBackdropUrl)
-
     // Saved focus state - survives back navigation
     var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val restoreFocusRequester = remember { FocusRequester() }
@@ -267,18 +267,12 @@ fun HomeScreen(
         }
     }
 
-    // Use Box to layer DynamicBackground behind everything
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Dynamic gradient background (behind everything)
-        DynamicBackground(
-            gradientColors = gradientColors,
-            modifier = Modifier.fillMaxSize(),
-        )
-
-        // Main Content (full screen, nav bar overlays on top)
-        Box(
-            modifier = Modifier.fillMaxSize(),
-        ) {
+    // Main content with stable near-black background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(TvColors.Background),
+    ) {
             // Show loading until we have hero content
             if (!state.contentReady && state.error == null) {
                 TvLoadingIndicator(
@@ -337,7 +331,6 @@ fun HomeScreen(
                     onSeerrMediaClick = onSeerrMediaClick,
                     hideWatchedFromRecent = hideWatchedFromRecent,
                     heroPlayFocusRequester = heroPlayFocusRequester,
-                    onBackdropUrlChanged = { url -> currentBackdropUrl = url },
                     // Focus restoration
                     savedFocusItemId = savedFocusItemId,
                     restoreFocusRequester = restoreFocusRequester,
@@ -349,7 +342,6 @@ fun HomeScreen(
                     showDiscoverInNav = seerrClient != null,
                 )
             }
-        }
     }
 
     // Long-press context menu dialog
@@ -424,7 +416,6 @@ private fun HomeContent(
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
-    onBackdropUrlChanged: (String?) -> Unit = {},
     // Focus restoration
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester = remember { FocusRequester() },
@@ -590,93 +581,148 @@ private fun HomeContent(
             contentFocusRequester = heroPlayFocusRequester,
         )
 
-        // Right: Content area
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            // Layer 1: Hero backdrop image (90% of screen, fades at edges)
-            HeroBackdropLayer(
-                item = previewItem ?: heroDisplayItem,
-                jellyfinClient = jellyfinClient,
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.9f)
-                    .align(Alignment.TopEnd),
-            )
+        // Right: Content area - Overlapping layout for scroll-behind effect
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        ) {
+            val heroHeight = maxHeight * 0.37f
+            val density = LocalDensity.current
+            val heroHeightPx = with(density) { heroHeight.roundToPx() }
 
-        // Layer 2: Hero info + Content rows
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Hero Section - media info only (backdrop is in layer 1)
-            if (filteredFeaturedItems.isNotEmpty() || previewItem != null) {
-                HeroSection(
-                    featuredItems = filteredFeaturedItems,
-                    jellyfinClient = jellyfinClient,
-                    onItemClick = onItemClick,
-                    onPlayClick = onPlayClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.37f),
-                    previewItem = previewItem,
-                    playButtonFocusRequester = heroPlayFocusRequester,
-                    onCurrentItemChanged = { item, backdropUrl ->
-                        heroDisplayItem = item
-                        onBackdropUrlChanged(backdropUrl)
-                    },
-                    onPreviewClear = clearPreviewAndScrollToTop,
-                )
-            }
+            // Pivot BringIntoViewSpec: ensures focused row is always positioned just below the hero
+            // Tuning: 54dp buffer + 50px aggressive tolerance.
+            // The logic: Row 1 is already "close enough" (within 50px), so DO NOT MOVE IT.
+            // Row 2 is far away (>100px), so it WILL move to the pivot point.
+            val headerBufferPx = with(density) { 54.dp.toPx() }
+            val pivotBringIntoViewSpec = remember(heroHeightPx, headerBufferPx) {
+                object : BringIntoViewSpec {
+                    @ExperimentalFoundationApi
+                    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                        val target = heroHeightPx + headerBufferPx
+                        val delta = offset - target
 
-            // Content rows
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 300.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(rows, key = { row -> row.key }) { rowData ->
-                    ItemRow(
-                        title = rowData.title,
-                        items = rowData.items,
-                        isWideCard = rowData.isWideCard,
-                        accentColor = rowData.accentColor,
-                        jellyfinClient = jellyfinClient,
-                        onItemClick = onItemClick,
-                        onItemLongClick = onItemLongClick,
-                        onCardFocused = { item ->
-                            previewItem = item
-                            onItemFocused(item.id)
-                        },
-                        savedFocusItemId = savedFocusItemId,
-                        restoreFocusRequester = restoreFocusRequester,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateItem(),
-                    )
-                }
-
-                // Recent Requests row (from Seerr)
-                if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrClient != null) {
-                    item(key = "recent_requests") {
-                        SeerrRequestRow(
-                            title = "Recent Requests",
-                            requests = recentRequests,
-                            seerrClient = seerrClient,
-                            accentColor = Color(SeerrColors.GREEN),
-                            onRequestClick = { request ->
-                                request.media?.let { media ->
-                                    onSeerrMediaClick(media.mediaType ?: "movie", media.tmdbId ?: 0)
-                                }
-                            },
-                        )
+                        // Aggressive tolerance: If we are within ~20dp (50px) of the target, assume we are good.
+                        // This effectively "locks" the first row in place since it starts near the target.
+                        return if (kotlin.math.abs(delta) <= 50f) 0f else delta
                     }
                 }
             }
-        } // End Column
-        } // End Content Box
-    } // End Row
+
+            // FocusRequester to connect hero DOWN navigation to content rows
+            val contentFocusRequester = remember { FocusRequester() }
+
+            // Layer 0 (back): Content rows - full height, scrolls behind hero
+            CompositionLocalProvider(
+                LocalBringIntoViewSpec provides pivotBringIntoViewSpec
+            ) {
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 300.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(0f),
+                ) {
+                    // Spacer to push content below hero (replacing contentPadding.top)
+                    item(key = "hero_spacer") {
+                        Spacer(modifier = Modifier.height(heroHeight))
+                    }
+
+                    itemsIndexed(rows, key = { _, row -> row.key }) { index, rowData ->
+                        ItemRow(
+                            title = rowData.title,
+                            items = rowData.items,
+                            isWideCard = rowData.isWideCard,
+                            accentColor = rowData.accentColor,
+                            jellyfinClient = jellyfinClient,
+                            onItemClick = onItemClick,
+                            onItemLongClick = onItemLongClick,
+                            onCardFocused = { item ->
+                                previewItem = item
+                                onItemFocused(item.id)
+                            },
+                            onRowFocused = { _ ->
+                                // Handled by BringIntoViewSpec now
+                            },
+                            rowIndex = index,
+                            savedFocusItemId = savedFocusItemId,
+                            restoreFocusRequester = restoreFocusRequester,
+                            // First row gets the focus requester for hero DOWN navigation
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (index == 0) {
+                                        Modifier.focusRequester(contentFocusRequester)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                        )
+                    }
+
+                    // Recent Requests row (from Seerr)
+                    if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrClient != null) {
+                        item(key = "recent_requests") {
+                            SeerrRequestRow(
+                                title = "Recent Requests",
+                                requests = recentRequests,
+                                seerrClient = seerrClient,
+                                accentColor = Color(SeerrColors.GREEN),
+                                onRequestClick = { request ->
+                                    request.media?.let { media ->
+                                        onSeerrMediaClick(media.mediaType ?: "movie", media.tmdbId ?: 0)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Layer 1 (front): Hero overlay - sits on top, hides content scrolling behind
+            if (filteredFeaturedItems.isNotEmpty() || previewItem != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(heroHeight)
+                        .zIndex(1f)
+                        .background(TvColors.Background)
+                        .focusProperties { down = contentFocusRequester },
+                ) {
+                    // Backdrop image (fades at edges)
+                    HeroBackdropLayer(
+                        item = previewItem ?: heroDisplayItem,
+                        jellyfinClient = jellyfinClient,
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .fillMaxHeight()
+                            .align(Alignment.TopEnd),
+                    )
+
+                    // Hero info overlay
+                    HeroSection(
+                        featuredItems = filteredFeaturedItems,
+                        jellyfinClient = jellyfinClient,
+                        onItemClick = onItemClick,
+                        onPlayClick = onPlayClick,
+                        modifier = Modifier.fillMaxSize(),
+                        previewItem = previewItem,
+                        playButtonFocusRequester = heroPlayFocusRequester,
+                        onCurrentItemChanged = { item, _ ->
+                            heroDisplayItem = item
+                        },
+                        onPreviewClear = clearPreviewAndScrollToTop,
+                    )
+                }
+            }
+        }
+    }
 }
 
 /**
  * Single row containing header + LazyRow of cards.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ItemRow(
     title: String,
@@ -687,6 +733,8 @@ private fun ItemRow(
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
     onCardFocused: (JellyfinItem) -> Unit,
+    onRowFocused: (Int) -> Unit = {},
+    rowIndex: Int = 0,
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
@@ -717,70 +765,86 @@ private fun ItemRow(
             )
         }
 
-        LazyRow(
-            state = lazyRowState,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            items(items, key = { item -> item.id }) { item ->
-                // Attach restoreFocusRequester to the item that should receive focus on back navigation
-                val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
-                    Modifier
-                        .focusRequester(restoreFocusRequester)
-                        .onFocusChanged { state ->
-                            if (state.isFocused) {
-                                onCardFocused(item)
-                            }
-                        }
-                } else {
-                    Modifier.onFocusChanged { state ->
-                        if (state.isFocused) {
-                            onCardFocused(item)
-                        }
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides object : BringIntoViewSpec {
+                @ExperimentalFoundationApi
+                override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                    // Standard focus behavior: only scroll if item is outside bounds
+                    return when {
+                        offset < 0 -> offset
+                        offset + size > containerSize -> offset + size - containerSize
+                        else -> 0f
                     }
                 }
-
-                if (isWideCard) {
-                    val imageUrl = when {
-                        item.type == "Episode" -> {
-                            jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
-                        }
-                        !item.backdropImageTags.isNullOrEmpty() -> {
-                            jellyfinClient.getBackdropUrl(
-                                item.id,
-                                item.backdropImageTags?.firstOrNull(),
-                                maxWidth = 600,
-                            )
-                        }
-                        else -> {
-                            jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
-                        }
-                    }
-                    WideMediaCard(
-                        item = item,
-                        imageUrl = imageUrl,
-                        onClick = { onItemClick(item.id) },
-                        showLabel = false,
-                        onLongClick = { onItemLongClick(item) },
-                        modifier = focusModifier,
-                    )
-                } else {
-                    // For portrait cards: use series poster for episodes, otherwise use item poster
-                    val imageUrl = if (item.type == "Episode" && item.seriesId != null) {
-                        // Use series poster for episodes in portrait view
-                        jellyfinClient.getPrimaryImageUrl(item.seriesId!!, null)
+            }
+        ) {
+            LazyRow(
+                state = lazyRowState,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items(items, key = { item -> item.id }) { item ->
+                    // Attach restoreFocusRequester to the item that should receive focus on back navigation
+                    val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
+                        Modifier
+                            .focusRequester(restoreFocusRequester)
+                            .onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    onCardFocused(item)
+                                    onRowFocused(rowIndex)
+                                }
+                            }
                     } else {
-                        jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+                        Modifier.onFocusChanged { state ->
+                            if (state.isFocused) {
+                                onCardFocused(item)
+                                onRowFocused(rowIndex)
+                            }
+                        }
                     }
-                    MediaCard(
-                        item = item,
-                        imageUrl = imageUrl,
-                        onClick = { onItemClick(item.id) },
-                        showLabel = false,
-                        onLongClick = { onItemLongClick(item) },
-                        modifier = focusModifier,
-                    )
+
+                    if (isWideCard) {
+                        val imageUrl = when {
+                            item.type == "Episode" -> {
+                                jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
+                            }
+                            !item.backdropImageTags.isNullOrEmpty() -> {
+                                jellyfinClient.getBackdropUrl(
+                                    item.id,
+                                    item.backdropImageTags?.firstOrNull(),
+                                    maxWidth = 600,
+                                )
+                            }
+                            else -> {
+                                jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary, maxWidth = 600)
+                            }
+                        }
+                        WideMediaCard(
+                            item = item,
+                            imageUrl = imageUrl,
+                            onClick = { onItemClick(item.id) },
+                            showLabel = false,
+                            onLongClick = { onItemLongClick(item) },
+                            modifier = focusModifier,
+                        )
+                    } else {
+                        // For portrait cards: use series poster for episodes, otherwise use item poster
+                        val imageUrl = if (item.type == "Episode" && item.seriesId != null) {
+                            // Use series poster for episodes in portrait view
+                            jellyfinClient.getPrimaryImageUrl(item.seriesId!!, null)
+                        } else {
+                            jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
+                        }
+                        MediaCard(
+                            item = item,
+                            imageUrl = imageUrl,
+                            onClick = { onItemClick(item.id) },
+                            showLabel = false,
+                            onLongClick = { onItemLongClick(item) },
+                            modifier = focusModifier,
+                        )
+                    }
                 }
             }
         }
