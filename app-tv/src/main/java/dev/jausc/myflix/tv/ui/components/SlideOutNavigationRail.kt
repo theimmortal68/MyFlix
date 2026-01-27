@@ -54,20 +54,21 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  */
 object SlideOutNavRailDimensions {
     val CollapsedWidth = 48.dp
-    val ExpandedWidth = 180.dp
+    val ExpandedWidth = 200.dp
     val IconSize = 16.dp
-    val ItemHeight = 44.dp
-    val ItemHorizontalPadding = 8.dp
+    val ItemHeight = 32.dp // Match old NavRailItem size
+    val ItemSpacing = 8.dp // Vertical gap between nav items
+    val ItemHorizontalPadding = 4.dp // Reduced - was 8dp
     val IconContainerSize = 32.dp
     val HaloOuterSize = 28.dp
     val HaloInnerSize = 22.dp
     val SelectionIndicatorSize = 24.dp
-    val LabelSpacing = 12.dp
-    val VerticalPadding = 12.dp
-    val SettingsBottomPadding = 12.dp
-    val SettingsSpaceReservation = 56.dp
+    val LabelSpacing = 8.dp
+    val VerticalPadding = 0.dp // Removed - was causing bottom offset
+    val SettingsBottomPadding = 0.dp
+    val SettingsSpaceReservation = 40.dp // Reduced to match smaller items
     val ItemCornerRadius = 8.dp
-    val IconStartPadding = 4.dp
+    val IconStartPadding = 0.dp // Removed - was adding extra left padding
     val HaloOuterBlur = 6.dp
     val HaloInnerBlur = 3.dp
 }
@@ -80,14 +81,15 @@ object SlideOutNavRailAnimations {
     const val LabelFadeDelayMs = 100
     const val HaloDurationMs = 200
     const val IconScaleDurationMs = 150
-    const val FocusedBackgroundAlpha = 0.1f
-    const val ExpandedBackgroundAlpha = 0.9f
-    const val ExpandedBackgroundEdgeAlpha = 0.8f
-    const val HaloOuterAlphaMultiplier = 0.4f
-    const val HaloInnerAlphaMultiplier = 0.3f
+    const val FocusedBackgroundAlpha = 0.0f // Removed to let halo effect shine
+    const val ExpandedBackgroundAlpha = 0.88f // Slightly more transparent
+    const val ExpandedBackgroundMidAlpha = 0.65f // Mid-point for gradual fade
+    const val ExpandedBackgroundEdgeAlpha = 0.3f // Gradual fade to edge
+    const val HaloOuterAlphaMultiplier = 0.7f // Stronger outer halo
+    const val HaloInnerAlphaMultiplier = 0.5f // Stronger inner halo
     const val SelectionIndicatorAlpha = 0.2f
     const val SelectedUnfocusedAlpha = 0.9f
-    const val FocusedHaloAlpha = 0.6f
+    const val FocusedHaloAlpha = 0.8f // More visible halo
     const val FocusedIconScale = 1.15f
     const val UnfocusedHaloScale = 0.5f
 }
@@ -95,7 +97,7 @@ object SlideOutNavRailAnimations {
 /**
  * Background color for the expanded navigation rail.
  */
-private val NavRailBackgroundColor = Color(0xFF141414)
+private val NavRailBackgroundColor = Color.Black
 
 /**
  * Builds the list of visible main navigation items based on feature flags.
@@ -154,8 +156,9 @@ private fun handleNavItemKeyEvent(event: KeyEvent, onClick: () -> Unit, onRightP
             true
         }
         Key.DirectionRight -> {
+            // Call callback to collapse, but return false to let focus system handle navigation
             onRightPressed()
-            true
+            false
         }
         else -> {
             false
@@ -284,11 +287,15 @@ fun SlideOutNavigationRail(
 
 /**
  * Creates the gradient brush for the navigation rail background.
+ * Uses 4 color stops for a gradual fade from opaque to transparent.
  */
 private fun createNavRailGradient(backgroundAlpha: Float): Brush {
     return Brush.horizontalGradient(
         colors = listOf(
             NavRailBackgroundColor.copy(alpha = backgroundAlpha),
+            NavRailBackgroundColor.copy(
+                alpha = backgroundAlpha * SlideOutNavRailAnimations.ExpandedBackgroundMidAlpha
+            ),
             NavRailBackgroundColor.copy(
                 alpha = backgroundAlpha * SlideOutNavRailAnimations.ExpandedBackgroundEdgeAlpha
             ),
@@ -316,7 +323,10 @@ private fun NavRailMainItems(
         modifier = Modifier
             .fillMaxHeight()
             .padding(bottom = SlideOutNavRailDimensions.SettingsSpaceReservation),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.spacedBy(
+            SlideOutNavRailDimensions.ItemSpacing,
+            Alignment.CenterVertically,
+        ),
         horizontalAlignment = Alignment.Start,
     ) {
         mainItems.forEachIndexed { index, item ->
@@ -426,6 +436,7 @@ private fun SlideOutNavItem(
                 up = upFocusRequester
                 down = downFocusRequester
                 left = FocusRequester.Cancel
+                // right is not set - let the system handle D-pad Right naturally
             }
             .focusable()
             .onKeyEvent { event -> handleNavItemKeyEvent(event, onClick, onRightPressed) },

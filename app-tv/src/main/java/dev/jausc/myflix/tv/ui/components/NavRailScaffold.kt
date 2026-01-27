@@ -86,10 +86,9 @@ fun NavRailScaffold(
         label = "scrimAlpha",
     )
 
-    // Callback to collapse rail and return focus to content
+    // Callback to collapse rail - focus moves via system directional navigation
     val collapseAndFocusContent: () -> Unit = {
         isNavRailExpanded = false
-        // Focus will naturally return to content when NavRail loses focus
     }
 
     Box(

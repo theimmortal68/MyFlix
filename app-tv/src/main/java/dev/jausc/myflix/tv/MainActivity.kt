@@ -14,13 +14,25 @@ package dev.jausc.myflix.tv
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -40,8 +52,8 @@ import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.NavRailScaffold
 import dev.jausc.myflix.tv.ui.components.SlideOutNavRailDimensions
+import dev.jausc.myflix.tv.ui.components.SlideOutNavigationRail
 import dev.jausc.myflix.tv.ui.screens.CollectionDetailScreen
 import dev.jausc.myflix.tv.ui.screens.CollectionsLibraryScreen
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
@@ -278,6 +290,27 @@ fun MyFlixTvApp() {
         }
     }
 
+    // NavRail expansion state and focus requester
+    var isNavRailExpanded by remember { mutableStateOf(false) }
+    val navRailFocusRequester = remember { FocusRequester() }
+
+    // Auto-collapse NavRail when route changes (navigation occurred)
+    var previousRoute by remember { mutableStateOf(currentRoute) }
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != previousRoute && previousRoute != null && isNavRailExpanded) {
+            delay(400L) // Brief delay to show selection before collapsing
+            isNavRailExpanded = false
+        }
+        previousRoute = currentRoute
+    }
+
+    // Animate scrim alpha for NavRail
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (isNavRailExpanded) 0.5f else 0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "scrimAlpha",
+    )
+
     // Handle WebSocket remote control events
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
@@ -379,7 +412,9 @@ fun MyFlixTvApp() {
 
     // NavHost padding when NavRail is visible
     val navHostModifier = if (showNavRail) {
-        Modifier.fillMaxSize().padding(start = SlideOutNavRailDimensions.CollapsedWidth)
+        Modifier
+            .fillMaxSize()
+            .padding(start = SlideOutNavRailDimensions.CollapsedWidth)
     } else {
         Modifier.fillMaxSize()
     }
@@ -387,7 +422,19 @@ fun MyFlixTvApp() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background),
+            .background(TvColors.Background)
+            .onKeyEvent { event ->
+                // Handle Menu key press from anywhere to toggle NavRail
+                if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
+                    isNavRailExpanded = !isNavRailExpanded
+                    if (isNavRailExpanded) {
+                        navRailFocusRequester.requestFocus()
+                    }
+                    true
+                } else {
+                    false
+                }
+            },
     ) {
         // Main content - NavHost always rendered
         NavHost(
@@ -1000,14 +1047,29 @@ fun MyFlixTvApp() {
             }
         }
 
-        // NavRail overlay - only shown on appropriate screens
+        // Scrim layer - dims content when NavRail is expanded
+        if (showNavRail && scrimAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(0.5f)
+                    .background(Color.Black.copy(alpha = scrimAlpha)),
+            )
+        }
+
+        // NavRail - rendered in same Box as NavHost for proper focus navigation
         if (showNavRail) {
-            NavRailScaffoldOverlay(
-                currentRoute = currentRoute,
-                selectedNavItem = currentNavItem,
-                onNavItemSelected = handleNavigation,
+            SlideOutNavigationRail(
+                selectedItem = currentNavItem,
+                onItemSelected = handleNavigation,
                 showUniverses = universesEnabled,
                 showDiscover = isSeerrAuthenticated && showDiscoverNav,
+                isExpanded = isNavRailExpanded,
+                onExpandedChange = { isNavRailExpanded = it },
+                onCollapseAndFocusContent = { isNavRailExpanded = false },
+                modifier = Modifier
+                    .zIndex(1f)
+                    .focusRequester(navRailFocusRequester),
             )
         }
     }
@@ -1026,29 +1088,3 @@ private fun getLibraryNavItem(backStackEntry: NavBackStackEntry?): NavItem {
     }
 }
 
-/**
- * Overlay composable that renders the slide-out NavigationRail with scrim.
- * This is rendered on top of the NavHost content.
- */
-/**
- * Overlay composable that renders the slide-out NavigationRail with scrim.
- * This is rendered on top of the NavHost content.
- */
-@Composable
-private fun NavRailScaffoldOverlay(
-    currentRoute: String?,
-    selectedNavItem: NavItem,
-    onNavItemSelected: (NavItem) -> Unit,
-    showUniverses: Boolean,
-    showDiscover: Boolean,
-) {
-    NavRailScaffold(
-        currentRoute = currentRoute,
-        selectedNavItem = selectedNavItem,
-        onNavItemSelected = onNavItemSelected,
-        showUniverses = showUniverses,
-        showDiscover = showDiscover,
-    ) { _ ->
-        // Empty content - NavHost is rendered separately in parent Box
-    }
-}
