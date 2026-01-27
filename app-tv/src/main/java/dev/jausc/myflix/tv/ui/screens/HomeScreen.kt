@@ -45,14 +45,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -98,7 +101,9 @@ import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * Home screen with left navigation rail and content rows.
@@ -508,12 +513,33 @@ private fun HomeContent(
 
     // Currently focused/previewed item from content rows (for backdrop display)
     var previewItem by remember { mutableStateOf<JellyfinItem?>(null) }
+    var pendingPreviewItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // LazyColumn state
     val listState = rememberLazyListState()
 
+    // Debounce preview updates to smooth hero transitions while navigating rows
+    LaunchedEffect(pendingPreviewItem) {
+        val targetItem = pendingPreviewItem
+        if (targetItem == null) {
+            previewItem = null
+            return@LaunchedEffect
+        }
+
+        delay(300L)
+
+        if (listState.isScrollInProgress) {
+            snapshotFlow { listState.isScrollInProgress }.first { !it }
+        }
+
+        if (pendingPreviewItem == targetItem) {
+            previewItem = targetItem
+        }
+    }
+
     // Function to clear preview and scroll back to top
     val clearPreviewAndScrollToTop: () -> Unit = {
+        pendingPreviewItem = null
         previewItem = null
         coroutineScope.launch {
             listState.animateScrollToItem(0)
@@ -531,94 +557,91 @@ private fun HomeContent(
         modifier = Modifier.fillMaxSize(),
     ) {
             val heroHeight = maxHeight * 0.37f
-            val density = LocalDensity.current
-            val heroHeightPx = with(density) { heroHeight.roundToPx() }
-
-            // Pivot BringIntoViewSpec: ensures focused row is always positioned just below the hero
-            // Tuning: 54dp buffer + 50px aggressive tolerance.
-            // The logic: Row 1 is already "close enough" (within 50px), so DO NOT MOVE IT.
-            // Row 2 is far away (>100px), so it WILL move to the pivot point.
-            val headerBufferPx = with(density) { 54.dp.toPx() }
-            val pivotBringIntoViewSpec = remember(heroHeightPx, headerBufferPx) {
+            // Disable automatic focus scrolling; we snap rows explicitly on focus.
+            val noOpBringIntoViewSpec = remember {
                 object : BringIntoViewSpec {
                     @ExperimentalFoundationApi
-                    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
-                        val target = heroHeightPx + headerBufferPx
-                        val delta = offset - target
-
-                        // Aggressive tolerance: If we are within ~20dp (50px) of the target, assume we are good.
-                        // This effectively "locks" the first row in place since it starts near the target.
-                        return if (kotlin.math.abs(delta) <= 50f) 0f else delta
-                    }
+                    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
                 }
             }
+
+            var lastFocusedRow by remember { mutableIntStateOf(-1) }
 
             // FocusRequester to connect hero DOWN navigation to content rows
             val contentFocusRequester = remember { FocusRequester() }
 
             // Layer 0 (back): Content rows - full height, scrolls behind hero
             CompositionLocalProvider(
-                LocalBringIntoViewSpec provides pivotBringIntoViewSpec
+                LocalBringIntoViewSpec provides noOpBringIntoViewSpec
             ) {
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 300.dp),
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .padding(top = heroHeight)
+                        .clipToBounds()
                         .zIndex(0f),
                 ) {
-                    // Spacer to push content below hero (replacing contentPadding.top)
-                    item(key = "hero_spacer") {
-                        Spacer(modifier = Modifier.height(heroHeight))
-                    }
-
-                    itemsIndexed(rows, key = { _, row -> row.key }) { index, rowData ->
-                        ItemRow(
-                            title = rowData.title,
-                            items = rowData.items,
-                            isWideCard = rowData.isWideCard,
-                            accentColor = rowData.accentColor,
-                            jellyfinClient = jellyfinClient,
-                            onItemClick = onItemClick,
-                            onItemLongClick = onItemLongClick,
-                            onCardFocused = { item ->
-                                previewItem = item
-                                onItemFocused(item.id)
-                            },
-                            onRowFocused = { _ ->
-                                // Handled by BringIntoViewSpec now
-                            },
-                            rowIndex = index,
-                            savedFocusItemId = savedFocusItemId,
-                            restoreFocusRequester = restoreFocusRequester,
-                            // First row gets the focus requester for hero DOWN navigation
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (index == 0) {
-                                        Modifier.focusRequester(contentFocusRequester)
-                                    } else {
-                                        Modifier
-                                    },
-                                ),
-                        )
-                    }
-
-                    // Recent Requests row (from Seerr)
-                    if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrClient != null) {
-                        item(key = "recent_requests") {
-                            SeerrRequestRow(
-                                title = "Recent Requests",
-                                requests = recentRequests,
-                                seerrClient = seerrClient,
-                                accentColor = Color(SeerrColors.GREEN),
-                                onRequestClick = { request ->
-                                    request.media?.let { media ->
-                                        onSeerrMediaClick(media.mediaType ?: "movie", media.tmdbId ?: 0)
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 300.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        itemsIndexed(rows, key = { _, row -> row.key }) { index, rowData ->
+                            ItemRow(
+                                title = rowData.title,
+                                items = rowData.items,
+                                isWideCard = rowData.isWideCard,
+                                accentColor = rowData.accentColor,
+                                jellyfinClient = jellyfinClient,
+                                onItemClick = onItemClick,
+                                onItemLongClick = onItemLongClick,
+                                onCardFocused = { item ->
+                                    pendingPreviewItem = item
+                                    onItemFocused(item.id)
+                                },
+                                onRowFocused = { rowIndex ->
+                                    if (rowIndex == lastFocusedRow) return@ItemRow
+                                    lastFocusedRow = rowIndex
+                                    val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == rowIndex }
+                                    if (info != null && abs(info.offset) <= 2) {
+                                        return@ItemRow
+                                    }
+                                    coroutineScope.launch {
+                                        listState.scrollToItem(rowIndex, 0)
                                     }
                                 },
+                                rowIndex = index,
+                                savedFocusItemId = savedFocusItemId,
+                                restoreFocusRequester = restoreFocusRequester,
+                                // First row gets the focus requester for hero DOWN navigation
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (index == 0) {
+                                            Modifier.focusRequester(contentFocusRequester)
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
                             )
+                        }
+
+                        // Recent Requests row (from Seerr)
+                        if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrClient != null) {
+                            item(key = "recent_requests") {
+                                SeerrRequestRow(
+                                    title = "Recent Requests",
+                                    requests = recentRequests,
+                                    seerrClient = seerrClient,
+                                    accentColor = Color(SeerrColors.GREEN),
+                                    onRequestClick = { request ->
+                                        request.media?.let { media ->
+                                            onSeerrMediaClick(media.mediaType ?: "movie", media.tmdbId ?: 0)
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }

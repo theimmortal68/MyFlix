@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,6 +74,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.transitionFactory
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
 import dev.jausc.myflix.core.common.model.isEpisode
@@ -83,6 +86,7 @@ import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.math.roundToInt
 
 /**
@@ -106,74 +110,69 @@ private val HERO_HEIGHT = 220.dp
 fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modifier: Modifier = Modifier,) {
     if (item == null) return
 
-    Box(modifier = modifier) {
-        AnimatedContent(
-            targetState = item,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(800)) togetherWith
-                    fadeOut(animationSpec = tween(800))
-            },
-            label = "hero_backdrop_layer",
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    compositingStrategy = CompositingStrategy.Offscreen
-                },
-        ) { currentItem ->
-            val backdropUrl = buildBackdropUrl(currentItem, jellyfinClient)
-
-            AsyncImage(
-                model = backdropUrl,
-                contentDescription = currentItem.name,
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(0.9f)
-                    .drawWithContent {
-                        drawContent()
-                        // Left edge fade - opaque 50-100%, half at 40%, transparent at 0%
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Transparent,
-                                    0.4f to Color.Black.copy(alpha = 0.5f),
-                                    0.5f to Color.Black,
-                                    1.0f to Color.Black,
-                                ),
-                            ),
-                            blendMode = BlendMode.DstIn,
-                        )
-                        // Bottom edge fade - for content row blending
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Black,
-                                    0.5f to Color.Black.copy(alpha = 0.85f),
-                                    0.7f to Color.Black.copy(alpha = 0.4f),
-                                    0.85f to Color.Black.copy(alpha = 0.15f),
-                                    1.0f to Color.Transparent,
-                                ),
-                            ),
-                            blendMode = BlendMode.DstIn,
-                        )
-                        // Dark overlay on left side for text readability against light backgrounds
-                        // Fades with the image transparency so it blends into dynamic background
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Transparent, // Fully transparent at edge (matches image)
-                                    0.4f to Color.Black.copy(alpha = 0.15f), // Light tint where image is half visible
-                                    0.5f to Color.Black.copy(alpha = 0.25f), // Stronger where image is opaque
-                                    0.6f to Color.Transparent, // Fade out before fully visible area
-                                    1.0f to Color.Transparent,
-                                ),
-                            ),
-                        )
-                    },
-            )
-        }
+    val context = LocalContext.current
+    val backdropUrl = remember(item.id) {
+        buildBackdropUrl(item, jellyfinClient)
     }
+    val request = remember(backdropUrl) {
+        ImageRequest.Builder(context)
+            .data(backdropUrl)
+            .transitionFactory(CrossFadeFactory(800.milliseconds))
+            .build()
+    }
+
+    AsyncImage(
+        model = request,
+        contentDescription = item.name,
+        contentScale = ContentScale.Crop,
+        alignment = Alignment.Center,
+        modifier = modifier
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .alpha(0.9f)
+            .drawWithContent {
+                drawContent()
+                // Left edge fade - opaque 50-100%, half at 40%, transparent at 0%
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Transparent,
+                            0.4f to Color.Black.copy(alpha = 0.5f),
+                            0.5f to Color.Black,
+                            1.0f to Color.Black,
+                        ),
+                    ),
+                    blendMode = BlendMode.DstIn,
+                )
+                // Bottom edge fade - for content row blending
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black,
+                            0.5f to Color.Black.copy(alpha = 0.85f),
+                            0.7f to Color.Black.copy(alpha = 0.4f),
+                            0.85f to Color.Black.copy(alpha = 0.15f),
+                            1.0f to Color.Transparent,
+                        ),
+                    ),
+                    blendMode = BlendMode.DstIn,
+                )
+                // Dark overlay on left side for text readability against light backgrounds
+                // Fades with the image transparency so it blends into dynamic background
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Transparent, // Fully transparent at edge (matches image)
+                            0.4f to Color.Black.copy(alpha = 0.15f), // Light tint where image is half visible
+                            0.5f to Color.Black.copy(alpha = 0.25f), // Stronger where image is opaque
+                            0.6f to Color.Transparent, // Fade out before fully visible area
+                            1.0f to Color.Transparent,
+                        ),
+                    ),
+                )
+            },
+    )
 }
 
 /**
@@ -290,22 +289,23 @@ fun HeroSection(
  * Build the backdrop URL for an item, using series backdrop for episodes.
  */
 private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient): String {
-    // For episodes, use series backdrop if available
-    val backdropId = if (!item.backdropImageTags.isNullOrEmpty()) {
-        item.id
-    } else if (item.isEpisode && item.seriesId != null) {
-        item.seriesId!!
-    } else {
-        item.id
+    val backdropTag = item.backdropImageTags?.firstOrNull()
+    if (backdropTag != null) {
+        return jellyfinClient.getBackdropUrl(item.id, backdropTag, maxWidth = 1920)
     }
 
-    val tag = if (!item.backdropImageTags.isNullOrEmpty()) {
-        item.backdropImageTags!!.firstOrNull()
-    } else {
-        null
+    // For episodes, try series backdrop first
+    if (item.isEpisode && item.seriesId != null) {
+        return jellyfinClient.getBackdropUrl(item.seriesId!!, null, maxWidth = 1920)
     }
 
-    return jellyfinClient.getBackdropUrl(backdropId, tag, maxWidth = 1920)
+    // Fallback to thumbnail when available
+    item.imageTags?.thumb?.let { thumb ->
+        return jellyfinClient.getThumbUrl(item.id, thumb, maxWidth = 1920)
+    }
+
+    // Last resort: request backdrop without tag
+    return jellyfinClient.getBackdropUrl(item.id, null, maxWidth = 1920)
 }
 
 /**
