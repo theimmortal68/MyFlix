@@ -17,11 +17,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -29,7 +28,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import dev.jausc.myflix.tv.ui.components.NavigationRail
 import dev.jausc.myflix.core.common.LibraryFinder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.ui.SplashScreen
@@ -42,6 +40,8 @@ import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.components.NavItem
+import dev.jausc.myflix.tv.ui.components.NavRailScaffold
+import dev.jausc.myflix.tv.ui.components.SlideOutNavRailDimensions
 import dev.jausc.myflix.tv.ui.screens.CollectionDetailScreen
 import dev.jausc.myflix.tv.ui.screens.CollectionsLibraryScreen
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
@@ -377,28 +377,24 @@ fun MyFlixTvApp() {
         }
     }
 
+    // NavHost padding when NavRail is visible
+    val navHostModifier = if (showNavRail) {
+        Modifier.fillMaxSize().padding(start = SlideOutNavRailDimensions.CollapsedWidth)
+    } else {
+        Modifier.fillMaxSize()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            // NavigationRail - only show on appropriate screens
-            if (showNavRail) {
-                NavigationRail(
-                    selectedItem = currentNavItem,
-                    onItemSelected = handleNavigation,
-                    showUniverses = universesEnabled,
-                    showDiscover = isSeerrAuthenticated && showDiscoverNav,
-                )
-            }
-
-            // Main content
-            NavHost(
-                navController = navController,
-                startDestination = "splash",
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-            ) {
+        // Main content - NavHost always rendered
+        NavHost(
+            navController = navController,
+            startDestination = "splash",
+            modifier = navHostModifier,
+        ) {
             composable("splash") {
                 SplashScreen(
                     onFinished = { splashFinished = true },
@@ -1003,6 +999,16 @@ fun MyFlixTvApp() {
                 )
             }
         }
+
+        // NavRail overlay - only shown on appropriate screens
+        if (showNavRail) {
+            NavRailScaffoldOverlay(
+                currentRoute = currentRoute,
+                selectedNavItem = currentNavItem,
+                onNavItemSelected = handleNavigation,
+                showUniverses = universesEnabled,
+                showDiscover = isSeerrAuthenticated && showDiscoverNav,
+            )
         }
     }
 }
@@ -1017,5 +1023,32 @@ private fun getLibraryNavItem(backStackEntry: NavBackStackEntry?): NavItem {
         collectionType.contains("movie", ignoreCase = true) -> NavItem.MOVIES
         collectionType.contains("tvshow", ignoreCase = true) -> NavItem.SHOWS
         else -> NavItem.HOME
+    }
+}
+
+/**
+ * Overlay composable that renders the slide-out NavigationRail with scrim.
+ * This is rendered on top of the NavHost content.
+ */
+/**
+ * Overlay composable that renders the slide-out NavigationRail with scrim.
+ * This is rendered on top of the NavHost content.
+ */
+@Composable
+private fun NavRailScaffoldOverlay(
+    currentRoute: String?,
+    selectedNavItem: NavItem,
+    onNavItemSelected: (NavItem) -> Unit,
+    showUniverses: Boolean,
+    showDiscover: Boolean,
+) {
+    NavRailScaffold(
+        currentRoute = currentRoute,
+        selectedNavItem = selectedNavItem,
+        onNavItemSelected = onNavItemSelected,
+        showUniverses = showUniverses,
+        showDiscover = showDiscover,
+    ) { _ ->
+        // Empty content - NavHost is rendered separately in parent Box
     }
 }
