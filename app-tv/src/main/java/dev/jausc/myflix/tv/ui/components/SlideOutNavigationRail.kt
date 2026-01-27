@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -42,12 +44,15 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Dimension constants for the slide-out navigation rail.
@@ -56,19 +61,19 @@ object SlideOutNavRailDimensions {
     val CollapsedWidth = 48.dp
     val ExpandedWidth = 200.dp
     val IconSize = 16.dp
-    val ItemHeight = 32.dp // Match old NavRailItem size
-    val ItemSpacing = 8.dp // Vertical gap between nav items
-    val ItemHorizontalPadding = 4.dp // Reduced - was 8dp
+    val ItemHeight = 32.dp
+    val ItemSpacing = 8.dp
+    val ItemHorizontalPadding = 4.dp
     val IconContainerSize = 32.dp
     val HaloOuterSize = 28.dp
     val HaloInnerSize = 22.dp
     val SelectionIndicatorSize = 24.dp
     val LabelSpacing = 8.dp
-    val VerticalPadding = 0.dp // Removed - was causing bottom offset
+    val VerticalPadding = 0.dp
     val SettingsBottomPadding = 0.dp
-    val SettingsSpaceReservation = 40.dp // Reduced to match smaller items
+    val SettingsSpaceReservation = 40.dp
     val ItemCornerRadius = 8.dp
-    val IconStartPadding = 0.dp // Removed - was adding extra left padding
+    val IconStartPadding = 0.dp
     val HaloOuterBlur = 6.dp
     val HaloInnerBlur = 3.dp
 }
@@ -81,27 +86,22 @@ object SlideOutNavRailAnimations {
     const val LabelFadeDelayMs = 100
     const val HaloDurationMs = 200
     const val IconScaleDurationMs = 150
-    const val FocusedBackgroundAlpha = 0.0f // Removed to let halo effect shine
-    const val ExpandedBackgroundAlpha = 0.88f // Slightly more transparent
-    const val ExpandedBackgroundMidAlpha = 0.65f // Mid-point for gradual fade
-    const val ExpandedBackgroundEdgeAlpha = 0.3f // Gradual fade to edge
-    const val HaloOuterAlphaMultiplier = 0.7f // Stronger outer halo
-    const val HaloInnerAlphaMultiplier = 0.5f // Stronger inner halo
+    const val FocusedBackgroundAlpha = 0.0f
+    const val ExpandedBackgroundAlpha = 0.88f
+    const val ExpandedBackgroundMidAlpha = 0.65f
+    const val ExpandedBackgroundEdgeAlpha = 0.3f
+    const val HaloOuterAlphaMultiplier = 0.7f
+    const val HaloInnerAlphaMultiplier = 0.5f
     const val SelectionIndicatorAlpha = 0.2f
     const val SelectedUnfocusedAlpha = 0.9f
-    const val FocusedHaloAlpha = 0.8f // More visible halo
+    const val FocusedHaloAlpha = 0.8f
     const val FocusedIconScale = 1.15f
     const val UnfocusedHaloScale = 0.5f
+    const val FocusMoveDelayMs = 150L // Small delay after collapse starts - rail shrinks quickly
 }
 
-/**
- * Background color for the expanded navigation rail.
- */
 private val NavRailBackgroundColor = Color.Black
 
-/**
- * Builds the list of visible main navigation items based on feature flags.
- */
 private fun buildMainNavItems(showUniverses: Boolean, showDiscover: Boolean): List<NavItem> {
     return buildList {
         add(NavItem.SEARCH)
@@ -114,9 +114,6 @@ private fun buildMainNavItems(showUniverses: Boolean, showDiscover: Boolean): Li
     }
 }
 
-/**
- * Handles key events for the navigation rail container.
- */
 private fun handleNavRailKeyEvent(
     event: KeyEvent,
     isExpanded: Boolean,
@@ -138,16 +135,19 @@ private fun handleNavRailKeyEvent(
             onExpandedChange(!isExpanded)
             true
         }
-        else -> {
-            false
-        }
+        else -> false
     }
 }
 
 /**
  * Handles key events for individual navigation items.
+ * For Right press: collapses rail and schedules focus move after animation completes.
  */
-private fun handleNavItemKeyEvent(event: KeyEvent, onClick: () -> Unit, onRightPressed: () -> Unit): Boolean {
+private fun handleNavItemKeyEvent(
+    event: KeyEvent,
+    onClick: () -> Unit,
+    onCollapseAndMoveFocus: () -> Unit,
+): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
 
     return when (event.key) {
@@ -156,19 +156,15 @@ private fun handleNavItemKeyEvent(event: KeyEvent, onClick: () -> Unit, onRightP
             true
         }
         Key.DirectionRight -> {
-            // Call callback to collapse, but return false to let focus system handle navigation
-            onRightPressed()
-            false
+            // Collapse and schedule focus move - CONSUME the event
+            // so focus doesn't try to move immediately
+            onCollapseAndMoveFocus()
+            true
         }
-        else -> {
-            false
-        }
+        else -> false
     }
 }
 
-/**
- * Determines the icon tint color based on focus and selection state.
- */
 private fun getIconTint(item: NavItem, isFocused: Boolean, isSelected: Boolean): Color {
     return when {
         isFocused -> item.color
@@ -185,13 +181,18 @@ private fun getIconTint(item: NavItem, isFocused: Boolean, isSelected: Boolean):
  * - Expands when any item receives focus
  * - Collapses when user selects an item, presses Right, or presses Back
  *
+ * Focus behavior on Right press:
+ * 1. Collapse animation starts
+ * 2. Wait for animation to complete (350ms)
+ * 3. Use FocusManager.moveFocus(Right) to find first visible content
+ *
  * @param selectedItem Currently selected/highlighted navigation item
  * @param onItemSelected Callback when a nav item is selected (Enter pressed)
  * @param showUniverses Whether to show the Universes nav item
  * @param showDiscover Whether to show the Discover nav item
  * @param isExpanded External control for expansion state
  * @param onExpandedChange Callback when expansion state should change
- * @param onCollapseAndFocusContent Callback to collapse rail and return focus to content
+ * @param onCollapseAndFocusContent Callback to collapse rail (focus handled internally)
  * @param modifier Modifier for the rail
  */
 @Composable
@@ -215,6 +216,18 @@ fun SlideOutNavigationRail(
     val settingsFocusRequester = remember { FocusRequester() }
 
     var railHasFocus by remember { mutableStateOf(false) }
+    
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+
+    // Callback that collapses rail and moves focus after delay
+    val collapseAndMoveFocusRight: () -> Unit = {
+        onCollapseAndFocusContent()
+        scope.launch {
+            delay(SlideOutNavRailAnimations.FocusMoveDelayMs)
+            focusManager.moveFocus(FocusDirection.Right)
+        }
+    }
 
     val railWidth by animateDpAsState(
         targetValue = if (isExpanded) {
@@ -268,7 +281,7 @@ fun SlideOutNavigationRail(
             settingsFocusRequester = settingsFocusRequester,
             onItemSelected = onItemSelected,
             onExpandedChange = onExpandedChange,
-            onCollapseAndFocusContent = onCollapseAndFocusContent,
+            onCollapseAndMoveFocus = collapseAndMoveFocusRight,
         )
 
         NavRailSettingsItem(
@@ -279,16 +292,12 @@ fun SlideOutNavigationRail(
             lastMainFocusRequester = mainFocusRequesters.lastOrNull(),
             onItemSelected = onItemSelected,
             onExpandedChange = onExpandedChange,
-            onCollapseAndFocusContent = onCollapseAndFocusContent,
+            onCollapseAndMoveFocus = collapseAndMoveFocusRight,
             modifier = Modifier.align(Alignment.BottomStart),
         )
     }
 }
 
-/**
- * Creates the gradient brush for the navigation rail background.
- * Uses 4 color stops for a gradual fade from opaque to transparent.
- */
 private fun createNavRailGradient(backgroundAlpha: Float): Brush {
     return Brush.horizontalGradient(
         colors = listOf(
@@ -304,9 +313,6 @@ private fun createNavRailGradient(backgroundAlpha: Float): Brush {
     )
 }
 
-/**
- * Renders the main navigation items (vertically centered).
- */
 @Composable
 private fun NavRailMainItems(
     mainItems: List<NavItem>,
@@ -317,7 +323,7 @@ private fun NavRailMainItems(
     settingsFocusRequester: FocusRequester,
     onItemSelected: (NavItem) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
-    onCollapseAndFocusContent: () -> Unit,
+    onCollapseAndMoveFocus: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -339,7 +345,7 @@ private fun NavRailMainItems(
                     onItemSelected(item)
                     onExpandedChange(false)
                 },
-                onRightPressed = onCollapseAndFocusContent,
+                onCollapseAndMoveFocus = onCollapseAndMoveFocus,
                 modifier = Modifier.focusRequester(mainFocusRequesters[index]),
                 upFocusRequester = mainFocusRequesters.getOrNull(index - 1) ?: FocusRequester.Cancel,
                 downFocusRequester = mainFocusRequesters.getOrNull(index + 1) ?: settingsFocusRequester,
@@ -348,9 +354,6 @@ private fun NavRailMainItems(
     }
 }
 
-/**
- * Renders the Settings item pinned to the bottom.
- */
 @Composable
 private fun NavRailSettingsItem(
     selectedItem: NavItem,
@@ -360,7 +363,7 @@ private fun NavRailSettingsItem(
     lastMainFocusRequester: FocusRequester?,
     onItemSelected: (NavItem) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
-    onCollapseAndFocusContent: () -> Unit,
+    onCollapseAndMoveFocus: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -375,7 +378,7 @@ private fun NavRailSettingsItem(
                 onItemSelected(NavItem.SETTINGS)
                 onExpandedChange(false)
             },
-            onRightPressed = onCollapseAndFocusContent,
+            onCollapseAndMoveFocus = onCollapseAndMoveFocus,
             modifier = Modifier.focusRequester(settingsFocusRequester),
             upFocusRequester = lastMainFocusRequester ?: FocusRequester.Cancel,
             downFocusRequester = FocusRequester.Cancel,
@@ -383,9 +386,6 @@ private fun NavRailSettingsItem(
     }
 }
 
-/**
- * Individual navigation item with icon and optional label.
- */
 @Composable
 private fun SlideOutNavItem(
     item: NavItem,
@@ -393,7 +393,7 @@ private fun SlideOutNavItem(
     isExpanded: Boolean,
     labelAlpha: Float,
     onClick: () -> Unit,
-    onRightPressed: () -> Unit,
+    onCollapseAndMoveFocus: () -> Unit,
     modifier: Modifier = Modifier,
     upFocusRequester: FocusRequester = FocusRequester.Cancel,
     downFocusRequester: FocusRequester = FocusRequester.Cancel,
@@ -436,10 +436,12 @@ private fun SlideOutNavItem(
                 up = upFocusRequester
                 down = downFocusRequester
                 left = FocusRequester.Cancel
-                // right is not set - let the system handle D-pad Right naturally
+                // Don't set right - we handle it manually in onKeyEvent
             }
             .focusable()
-            .onKeyEvent { event -> handleNavItemKeyEvent(event, onClick, onRightPressed) },
+            .onKeyEvent { event ->
+                handleNavItemKeyEvent(event, onClick, onCollapseAndMoveFocus)
+            },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {
@@ -463,9 +465,6 @@ private fun SlideOutNavItem(
     }
 }
 
-/**
- * Icon with halo effect for a navigation item.
- */
 @Composable
 private fun NavItemIcon(
     item: NavItem,
@@ -481,7 +480,6 @@ private fun NavItemIcon(
             .padding(start = SlideOutNavRailDimensions.IconStartPadding),
         contentAlignment = Alignment.Center,
     ) {
-        // Outer halo
         Box(
             modifier = Modifier
                 .size(SlideOutNavRailDimensions.HaloOuterSize)
@@ -492,7 +490,6 @@ private fun NavItemIcon(
                 .background(item.color),
         )
 
-        // Inner glow
         Box(
             modifier = Modifier
                 .size(SlideOutNavRailDimensions.HaloInnerSize)
@@ -503,7 +500,6 @@ private fun NavItemIcon(
                 .background(item.color),
         )
 
-        // Selection indicator
         if (isSelected && !isFocused) {
             Box(
                 modifier = Modifier
@@ -524,9 +520,6 @@ private fun NavItemIcon(
     }
 }
 
-/**
- * Label text for a navigation item.
- */
 @Composable
 private fun NavItemLabel(
     item: NavItem,

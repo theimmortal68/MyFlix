@@ -114,6 +114,7 @@ fun HomeScreen(
     onPlayClick: (String) -> Unit,
     seerrClient: SeerrClient? = null,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
+    restoreFocusRequester: FocusRequester? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -206,7 +207,9 @@ fun HomeScreen(
 
     // Saved focus state - survives back navigation
     var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
-    val restoreFocusRequester = remember { FocusRequester() }
+    // Use provided focus requester (shared with NavRail) or create internal one
+    val internalFocusRequester = remember { FocusRequester() }
+    val effectiveRestoreFocusRequester = restoreFocusRequester ?: internalFocusRequester
     var focusRestored by remember { mutableStateOf(false) }
 
     // Track if initial focus has been set (only once per app launch)
@@ -217,7 +220,7 @@ fun HomeScreen(
         if (state.contentReady && savedFocusItemId != null && !focusRestored) {
             delay(100)
             try {
-                restoreFocusRequester.requestFocus()
+                effectiveRestoreFocusRequester.requestFocus()
                 focusRestored = true
             } catch (_: Exception) {
                 // Item may not be visible, fall back to hero
@@ -302,7 +305,7 @@ fun HomeScreen(
                 heroPlayFocusRequester = heroPlayFocusRequester,
                 // Focus restoration
                 savedFocusItemId = savedFocusItemId,
-                restoreFocusRequester = restoreFocusRequester,
+                restoreFocusRequester = effectiveRestoreFocusRequester,
                 onItemFocused = { itemId -> savedFocusItemId = itemId },
             )
         }
