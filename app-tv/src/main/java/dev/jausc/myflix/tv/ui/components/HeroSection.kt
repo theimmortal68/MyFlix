@@ -50,15 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -107,7 +105,12 @@ private val HERO_HEIGHT = 220.dp
  * @param modifier Modifier for positioning and sizing
  */
 @Composable
-fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modifier: Modifier = Modifier,) {
+fun HeroBackdropLayer(
+    item: JellyfinItem?,
+    jellyfinClient: JellyfinClient,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+) {
     if (item == null) return
 
     val context = LocalContext.current
@@ -121,58 +124,53 @@ fun HeroBackdropLayer(item: JellyfinItem?, jellyfinClient: JellyfinClient, modif
             .build()
     }
 
-    AsyncImage(
-        model = request,
-        contentDescription = item.name,
-        contentScale = ContentScale.Crop,
-        alignment = Alignment.Center,
-        modifier = modifier
-            .graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
-            }
-            .alpha(0.9f)
-            .drawWithContent {
-                drawContent()
-                // Left edge fade - opaque 50-100%, half at 40%, transparent at 0%
-                drawRect(
-                    brush = Brush.horizontalGradient(
+    Box(modifier = modifier.fillMaxSize()) {
+        AsyncImage(
+            model = request,
+            contentDescription = item.name,
+            contentScale = contentScale,
+            alignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val edgeBlendMask = Brush.horizontalGradient(
                         colorStops = arrayOf(
                             0.0f to Color.Transparent,
-                            0.4f to Color.Black.copy(alpha = 0.5f),
-                            0.5f to Color.Black,
+                            0.10f to Color.Black.copy(alpha = 0.5f),
+                            0.30f to Color.Black.copy(alpha = 0.8f),
+                            0.50f to Color.Black,
                             1.0f to Color.Black,
                         ),
-                    ),
-                    blendMode = BlendMode.DstIn,
-                )
-                // Bottom edge fade - for content row blending
-                drawRect(
-                    brush = Brush.verticalGradient(
+                    )
+                    val bottomFadeMask = Brush.verticalGradient(
                         colorStops = arrayOf(
                             0.0f to Color.Black,
-                            0.5f to Color.Black.copy(alpha = 0.85f),
-                            0.7f to Color.Black.copy(alpha = 0.4f),
-                            0.85f to Color.Black.copy(alpha = 0.15f),
+                            0.4f to Color.Black,
                             1.0f to Color.Transparent,
                         ),
-                    ),
-                    blendMode = BlendMode.DstIn,
-                )
-                // Dark overlay on left side for text readability against light backgrounds
-                // Fades with the image transparency so it blends into dynamic background
-                drawRect(
-                    brush = Brush.horizontalGradient(
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(edgeBlendMask, blendMode = BlendMode.DstIn)
+                        drawRect(bottomFadeMask, blendMode = BlendMode.DstIn)
+                    }
+                },
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
                         colorStops = arrayOf(
-                            0.0f to Color.Transparent, // Fully transparent at edge (matches image)
-                            0.4f to Color.Black.copy(alpha = 0.15f), // Light tint where image is half visible
-                            0.5f to Color.Black.copy(alpha = 0.25f), // Stronger where image is opaque
-                            0.6f to Color.Transparent, // Fade out before fully visible area
+                            0.0f to TvColors.Background.copy(alpha = 0.7f),
+                            0.4f to TvColors.Background.copy(alpha = 0.6f),
+                            0.7f to TvColors.Background.copy(alpha = 0.3f),
                             1.0f to Color.Transparent,
                         ),
                     ),
-                )
-            },
-    )
+                ),
+        )
+    }
 }
 
 /**
@@ -240,7 +238,7 @@ fun HeroSection(
     Box(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth()
                 .fillMaxHeight()
                 .padding(start = 10.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -255,32 +253,36 @@ fun HeroSection(
                 label = "hero_text_content",
             ) { item ->
                 Column {
-                    // Title and subtitle
+                    // Title and subtitle (full width)
                     HeroTitleSection(item)
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Rating information row
-                    HeroRatingRow(item)
+                    Column(modifier = Modifier.fillMaxWidth(0.55f)) {
+                        // Rating information row
+                        HeroRatingRow(item)
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                    // Description
-                    HeroDescription(item, isPreviewMode)
+                        // Description
+                        HeroDescription(item, isPreviewMode)
+                    }
                 }
             }
 
             // Bottom section: Action buttons - positioned at bottom of hero area
-            HeroActionButtons(
-                onPlayClick = { onPlayClick(displayItem.id) },
-                onDetailsClick = { onItemClick(displayItem.id) },
-                playButtonFocusRequester = playButtonFocusRequester,
-                isPreviewMode = isPreviewMode,
-                onButtonFocused = {
-                    playButtonShouldHaveFocus = true
-                    onPreviewClear?.invoke()
-                },
-            )
+            Box(modifier = Modifier.fillMaxWidth(0.55f)) {
+                HeroActionButtons(
+                    onPlayClick = { onPlayClick(displayItem.id) },
+                    onDetailsClick = { onItemClick(displayItem.id) },
+                    playButtonFocusRequester = playButtonFocusRequester,
+                    isPreviewMode = isPreviewMode,
+                    onButtonFocused = {
+                        playButtonShouldHaveFocus = true
+                        onPreviewClear?.invoke()
+                    },
+                )
+            }
         }
     }
 }

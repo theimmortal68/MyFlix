@@ -570,7 +570,28 @@ private fun HomeContent(
             // FocusRequester to connect hero DOWN navigation to content rows
             val contentFocusRequester = remember { FocusRequester() }
 
-            // Layer 0 (back): Content rows - full height, scrolls behind hero
+            val heroImageWidth = maxWidth * 0.8f
+            val heroImageHeight = maxHeight * 0.8f
+
+            if (filteredFeaturedItems.isNotEmpty() || previewItem != null) {
+                // Layer 0 (back): Hero image anchored top-right at 60% of screen
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(0f),
+                ) {
+                    HeroBackdropLayer(
+                        item = previewItem ?: heroDisplayItem,
+                        jellyfinClient = jellyfinClient,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .size(heroImageWidth, heroImageHeight)
+                            .align(Alignment.TopEnd),
+                    )
+                }
+            }
+
+            // Layer 1: Content rows - clipped below hero
             CompositionLocalProvider(
                 LocalBringIntoViewSpec provides noOpBringIntoViewSpec
             ) {
@@ -579,7 +600,7 @@ private fun HomeContent(
                         .fillMaxSize()
                         .padding(top = heroHeight)
                         .clipToBounds()
-                        .zIndex(0f),
+                        .zIndex(1f),
                 ) {
                     LazyColumn(
                         state = listState,
@@ -647,26 +668,15 @@ private fun HomeContent(
                 }
             }
 
-            // Layer 1 (front): Hero overlay - sits on top, hides content scrolling behind
+            // Layer 2 (front): Hero info overlay
             if (filteredFeaturedItems.isNotEmpty() || previewItem != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(heroHeight)
-                        .zIndex(1f)
-                        .background(TvColors.Background)
+                        .zIndex(2f)
                         .focusProperties { down = contentFocusRequester },
                 ) {
-                    // Backdrop image (fades at edges)
-                    HeroBackdropLayer(
-                        item = previewItem ?: heroDisplayItem,
-                        jellyfinClient = jellyfinClient,
-                        modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .fillMaxHeight()
-                            .align(Alignment.TopEnd),
-                    )
-
                     // Hero info overlay
                     HeroSection(
                         featuredItems = filteredFeaturedItems,
