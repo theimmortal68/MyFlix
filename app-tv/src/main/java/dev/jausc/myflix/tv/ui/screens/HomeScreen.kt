@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,7 +62,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -244,70 +242,70 @@ fun HomeScreen(
             .fillMaxSize()
             .background(TvColors.Background),
     ) {
-            // Show loading until we have hero content
-            if (!state.contentReady && state.error == null) {
-                TvLoadingIndicator(
-                    modifier = Modifier.align(Alignment.Center),
+        // Show loading until we have hero content
+        if (!state.contentReady && state.error == null) {
+            TvLoadingIndicator(
+                modifier = Modifier.align(Alignment.Center),
+            )
+        } else if (state.error != null && state.featuredItems.isEmpty()) {
+            // Error state with retry
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+            ) {
+                Text(
+                    text = state.error ?: "Something went wrong",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TvColors.Error,
                 )
-            } else if (state.error != null && state.featuredItems.isEmpty()) {
-                // Error state with retry
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                ) {
-                    Text(
-                        text = state.error ?: "Something went wrong",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TvColors.Error,
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    TvTextButton(
-                        text = "Retry",
-                        onClick = { viewModel.refresh() },
-                    )
-                }
-            } else {
-                // Key forces complete recomposition when content changes
-                HomeContent(
-                    featuredItems = state.featuredItems,
-                    nextUp = state.nextUp,
-                    continueWatching = state.continueWatching,
-                    recentEpisodes = state.recentEpisodes,
-                    recentShows = state.recentShows,
-                    recentMovies = state.recentMovies,
-                    seasonPremieres = state.seasonPremieres,
-                    pinnedCollectionData = state.pinnedCollectionsData,
-                    suggestions = state.suggestions,
-                    genreRowsData = state.genreRowsData,
-                    recentRequests = state.recentRequests,
-                    showSeasonPremieres = showSeasonPremieres,
-                    showGenreRows = showGenreRows,
-                    showCollections = showCollections,
-                    showSuggestions = showSuggestions,
-                    showSeerrRecentRequests = showSeerrRecentRequests,
-                    jellyfinClient = jellyfinClient,
-                    seerrClient = seerrClient,
-                    onItemClick = onItemClick,
-                    onPlayClick = onPlayClick,
-                    onItemLongClick = { item ->
-                        dialogParams = DialogParams(
-                            title = item.name,
-                            items = buildHomeDialogItems(item, dialogActions),
-                            fromLongClick = true,
-                        )
-                    },
-                    onSeerrMediaClick = onSeerrMediaClick,
-                    hideWatchedFromRecent = hideWatchedFromRecent,
-                    heroPlayFocusRequester = heroPlayFocusRequester,
-                    // Focus restoration
-                    savedFocusItemId = savedFocusItemId,
-                    restoreFocusRequester = restoreFocusRequester,
-                    onItemFocused = { itemId -> savedFocusItemId = itemId },
+                Spacer(modifier = Modifier.height(16.dp))
+                TvTextButton(
+                    text = "Retry",
+                    onClick = { viewModel.refresh() },
                 )
             }
+        } else {
+            // Key forces complete recomposition when content changes
+            HomeContent(
+                featuredItems = state.featuredItems,
+                nextUp = state.nextUp,
+                continueWatching = state.continueWatching,
+                recentEpisodes = state.recentEpisodes,
+                recentShows = state.recentShows,
+                recentMovies = state.recentMovies,
+                seasonPremieres = state.seasonPremieres,
+                pinnedCollectionData = state.pinnedCollectionsData,
+                suggestions = state.suggestions,
+                genreRowsData = state.genreRowsData,
+                recentRequests = state.recentRequests,
+                showSeasonPremieres = showSeasonPremieres,
+                showGenreRows = showGenreRows,
+                showCollections = showCollections,
+                showSuggestions = showSuggestions,
+                showSeerrRecentRequests = showSeerrRecentRequests,
+                jellyfinClient = jellyfinClient,
+                seerrClient = seerrClient,
+                onItemClick = onItemClick,
+                onPlayClick = onPlayClick,
+                onItemLongClick = { item ->
+                    dialogParams = DialogParams(
+                        title = item.name,
+                        items = buildHomeDialogItems(item, dialogActions),
+                        fromLongClick = true,
+                    )
+                },
+                onSeerrMediaClick = onSeerrMediaClick,
+                hideWatchedFromRecent = hideWatchedFromRecent,
+                heroPlayFocusRequester = heroPlayFocusRequester,
+                // Focus restoration
+                savedFocusItemId = savedFocusItemId,
+                restoreFocusRequester = restoreFocusRequester,
+                onItemFocused = { itemId -> savedFocusItemId = itemId },
+            )
+        }
     }
 
     // Long-press context menu dialog
