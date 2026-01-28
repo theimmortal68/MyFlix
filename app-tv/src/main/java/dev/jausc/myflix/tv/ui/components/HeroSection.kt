@@ -81,6 +81,7 @@ import dev.jausc.myflix.core.common.model.isMovie
 import dev.jausc.myflix.core.common.model.isSeries
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.R
+import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
@@ -240,7 +241,7 @@ fun HeroSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .padding(start = 10.dp, top = 16.dp, bottom = 16.dp),
+                .padding(top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             // Top section: Animated text content (title, rating, description)
@@ -272,11 +273,17 @@ fun HeroSection(
 
             // Bottom section: Action buttons - positioned at bottom of hero area
             Box(modifier = Modifier.fillMaxWidth(0.55f)) {
+                val (playButtonText, playButtonIconColor) = buildHeroPlayButtonText(
+                    resumePositionTicks = displayItem.userData?.playbackPositionTicks ?: 0L,
+                    runTimeTicks = displayItem.runTimeTicks ?: 0L,
+                )
                 HeroActionButtons(
                     onPlayClick = { onPlayClick(displayItem.id) },
                     onDetailsClick = { onItemClick(displayItem.id) },
                     playButtonFocusRequester = playButtonFocusRequester,
                     isPreviewMode = isPreviewMode,
+                    playButtonText = playButtonText,
+                    playButtonIconColor = playButtonIconColor,
                     onButtonFocused = {
                         playButtonShouldHaveFocus = true
                         onPreviewClear?.invoke()
@@ -590,6 +597,8 @@ private fun HeroActionButtons(
     onDetailsClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
     isPreviewMode: Boolean = false,
+    playButtonText: String = "Play",
+    playButtonIconColor: Color = IconColors.Play,
     onButtonFocused: (() -> Unit)? = null,
 ) {
     // Alpha is 0 in preview mode (invisible but focusable)
@@ -600,10 +609,10 @@ private fun HeroActionButtons(
         modifier = Modifier.alpha(buttonsAlpha),
     ) {
         // Play button - receives initial focus on app launch
-        ExpandableHeroButton(
-            text = "Play",
+        ExpandablePlayButton(
+            title = playButtonText,
             icon = Icons.Outlined.PlayArrow,
-            iconTint = IconColors.Play,
+            iconColor = playButtonIconColor,
             onClick = onPlayClick,
             modifier = Modifier
                 .focusRequester(playButtonFocusRequester)
@@ -615,10 +624,10 @@ private fun HeroActionButtons(
         )
 
         // More Info button
-        ExpandableHeroButton(
-            text = "More Info",
+        ExpandablePlayButton(
+            title = "More Info",
             icon = Icons.Outlined.Info,
-            iconTint = IconColors.Info,
+            iconColor = IconColors.Info,
             onClick = onDetailsClick,
             modifier = Modifier
                 .onFocusChanged { state ->
@@ -630,53 +639,25 @@ private fun HeroActionButtons(
     }
 }
 
-@Composable
-private fun ExpandableHeroButton(
-    text: String,
-    icon: ImageVector,
-    iconTint: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(24.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-        interactionSource = interactionSource,
-        scale = ButtonDefaults.scale(focusedScale = 1f),
-        glow = ButtonDefaults.glow(
-            focusedGlow = Glow(
-                elevation = 10.dp,
-                elevationColor = TvColors.BluePrimary.copy(alpha = 0.5f)
-            )
-        ),
-        colors = ButtonDefaults.colors(
-            containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-            contentColor = TvColors.TextPrimary,
-            focusedContainerColor = TvColors.BluePrimary,
-            focusedContentColor = Color.White,
-        ),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = if (isFocused) Color.White else iconTint
-        )
-        AnimatedVisibility(visible = isFocused) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-            }
+/**
+ * Builds the play button text and icon color based on resume state.
+ * Returns Pair of (text, iconColor).
+ */
+private fun buildHeroPlayButtonText(
+    resumePositionTicks: Long,
+    runTimeTicks: Long,
+): Pair<String, Color> {
+    return if (resumePositionTicks > 0L && runTimeTicks > 0L) {
+        val remainingTicks = runTimeTicks - resumePositionTicks
+        val remainingMinutes = (remainingTicks / 600_000_000L).toInt()
+        val text = if (remainingMinutes > 0) {
+            "Resume · ${remainingMinutes}m left"
+        } else {
+            "Resume"
         }
+        text to IconColors.Resume
+    } else {
+        "Play" to IconColors.Play
     }
 }
 
@@ -830,7 +811,7 @@ fun HeroSectionShimmer(modifier: Modifier = Modifier,) {
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(0.5f)
-                .padding(start = 10.dp, top = 32.dp, bottom = 16.dp),
+                .padding(top = 32.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.Top,
         ) {
             // Title placeholder

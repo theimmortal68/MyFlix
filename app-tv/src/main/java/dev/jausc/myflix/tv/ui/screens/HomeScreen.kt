@@ -727,7 +727,7 @@ private fun ItemRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(start = 10.dp, end = 32.dp),
+            modifier = Modifier.padding(end = 32.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -759,7 +759,7 @@ private fun ItemRow(
             LazyRow(
                 state = lazyRowState,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 items(items, key = { item -> item.id }) { item ->
@@ -849,7 +849,7 @@ private fun SeerrRequestRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(start = 10.dp, end = 32.dp),
+            modifier = Modifier.padding(end = 32.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -868,7 +868,7 @@ private fun SeerrRequestRow(
         // LazyRow of request cards
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(requests, key = { it.id }) { request ->

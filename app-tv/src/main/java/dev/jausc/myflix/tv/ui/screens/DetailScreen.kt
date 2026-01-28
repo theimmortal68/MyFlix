@@ -104,36 +104,36 @@ fun DetailScreen(
 
             state.isSeries -> {
                 // Series detail screen
-                SeriesDetailScreen(
+                UnifiedSeriesScreen(
                     state = state,
                     jellyfinClient = jellyfinClient,
                     onPlayClick = {
-                        // Play next episode
-                        val nextUpEpisode = state.nextUpEpisode ?: state.episodes.firstOrNull()
-                        if (nextUpEpisode != null) {
-                            onEpisodeClick(nextUpEpisode.id)
+                        // Play next up episode or first episode
+                        val nextUp = state.nextUpEpisode
+                        val firstEpisode = state.episodes.firstOrNull()
+                        val episodeToPlay = nextUp ?: firstEpisode
+                        if (episodeToPlay != null) {
+                            val startPosition = episodeToPlay.userData?.playbackPositionTicks
+                                ?.let { it / 10_000 } ?: 0L
+                            onPlayClick(episodeToPlay.id, startPosition)
                         }
                     },
                     onShuffleClick = {
-                        // Shuffle play - pick random episode
+                        // Play random episode from all episodes
                         val episodes = state.episodes
                         if (episodes.isNotEmpty()) {
                             val randomEpisode = episodes.random()
-                            onEpisodeClick(randomEpisode.id)
+                            onPlayClick(randomEpisode.id, 0L)
                         }
                     },
-                    onPlayItemClick = onPlayItemClick,
-                    onSeasonClick = { season ->
-                        onNavigateToDetail(season.id)
-                    },
-                    onTrailerClick = onTrailerClick,
-                    onNavigateToDetail = onNavigateToDetail,
-                    onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {
                         val played = state.item?.userData?.played == true
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    onSeasonClick = { season -> onNavigateToDetail(season.id) },
+                    onNavigateToDetail = onNavigateToDetail,
+                    onNavigateToPerson = onNavigateToPerson,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

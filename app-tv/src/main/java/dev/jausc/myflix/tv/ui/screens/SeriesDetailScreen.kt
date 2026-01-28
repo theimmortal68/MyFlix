@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,14 +47,18 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Tab
+import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.JellyfinPerson
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.util.buildFeatureSections
@@ -61,6 +68,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.components.AddToPlaylistDialog
+import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
@@ -68,14 +76,14 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
-import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
-import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
+import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.components.detail.SeriesActionButtons
+import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
@@ -90,6 +98,16 @@ private const val CREW_ROW = CAST_ROW + 1
 private const val EXTRAS_ROW = CREW_ROW + 1
 private const val COLLECTIONS_ROW = EXTRAS_ROW + 1
 private const val SIMILAR_ROW = COLLECTIONS_ROW + 1
+
+/**
+ * Tab options for the series detail screen.
+ */
+private enum class SeriesDetailTab {
+    Seasons,
+    CastCrew,
+    Details,
+    Related,
+}
 
 /**
  * Plex-style series detail screen with backdrop hero and season tabs.
@@ -128,6 +146,9 @@ fun SeriesDetailScreen(
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var focusedSeason by remember { mutableStateOf<JellyfinItem?>(null) }
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+
+    // Tab state
+    var selectedTab by rememberSaveable { mutableStateOf(SeriesDetailTab.Seasons) }
 
     // Focus play button on load
     LaunchedEffect(Unit) {
@@ -349,92 +370,69 @@ fun SeriesDetailScreen(
                 }
             }
 
-            // Seasons
-            if (state.seasons.isNotEmpty()) {
-                item(key = "seasons") {
-                    ItemRow(
-                        title = "Seasons (${state.seasons.size})",
-                        items = state.seasons,
-                        onItemClick = { _, season ->
-                            position = SEASONS_ROW
-                            onSeasonClick(season)
-                        },
-                        onItemLongClick = { _, _ ->
-                            position = SEASONS_ROW
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        cardOnFocus = { isFocused, index ->
-                            if (isFocused) {
-                                focusedSeason = state.seasons.getOrNull(index)
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[SEASONS_ROW]),
-                    )
+            // Tab row for content sections
+            item(key = "tabs") {
+                TabRow(
+                    selectedTabIndex = selectedTab.ordinal,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                ) {
+                    SeriesDetailTab.entries.forEach { tab ->
+                        Tab(
+                            selected = selectedTab == tab,
+                            onFocus = { selectedTab = tab },
+                            onClick = { selectedTab = tab },
+                        ) {
+                            Text(
+                                text = when (tab) {
+                                    SeriesDetailTab.Seasons -> "Seasons"
+                                    SeriesDetailTab.CastCrew -> "Cast & Crew"
+                                    SeriesDetailTab.Details -> "Details"
+                                    SeriesDetailTab.Related -> "Related"
+                                },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
                 }
             }
 
-            // Cast
-            if (cast.isNotEmpty()) {
-                item(key = "people") {
-                    CastCrewSection(
-                        title = "Cast",
-                        people = cast,
-                        jellyfinClient = jellyfinClient,
-                        onPersonClick = { person ->
-                            position = CAST_ROW
-                            onNavigateToPerson(person.id)
-                        },
-                        onPersonLongClick = { _, _ ->
-                            position = CAST_ROW
-                            // TODO: Show person context menu
-                        },
-                        cardOnFocus = { isFocused, _ ->
-                            if (isFocused) focusedSeason = null
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[CAST_ROW]),
-                    )
-                }
-            }
-
-            // Crew
-            if (crew.isNotEmpty()) {
-                item(key = "crew") {
-                    CastCrewSection(
-                        title = "Crew",
-                        people = crew,
-                        jellyfinClient = jellyfinClient,
-                        onPersonClick = { person ->
-                            position = CREW_ROW
-                            onNavigateToPerson(person.id)
-                        },
-                        onPersonLongClick = { _, _ ->
-                            position = CREW_ROW
-                            // TODO: Show person context menu
-                        },
-                        cardOnFocus = { isFocused, _ ->
-                            if (isFocused) focusedSeason = null
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[CREW_ROW]),
-                    )
+            // Tab content
+            item(key = "tab_content") {
+                when (selectedTab) {
+                    SeriesDetailTab.Seasons -> {
+                        SeasonsTabContent(
+                            seasons = state.seasons,
+                            jellyfinClient = jellyfinClient,
+                            onSeasonClick = onSeasonClick,
+                            onSeasonFocus = { season -> focusedSeason = season },
+                            modifier = Modifier.focusRequester(focusRequesters[SEASONS_ROW]),
+                        )
+                    }
+                    SeriesDetailTab.CastCrew -> {
+                        CastCrewTabContent(
+                            cast = cast,
+                            crew = crew,
+                            jellyfinClient = jellyfinClient,
+                            onPersonClick = onNavigateToPerson,
+                            modifier = Modifier.focusRequester(focusRequesters[CAST_ROW]),
+                        )
+                    }
+                    SeriesDetailTab.Details -> {
+                        DetailsTabContent(
+                            series = series,
+                        )
+                    }
+                    SeriesDetailTab.Related -> {
+                        val similarWithEpisodes = state.similarItems.filter {
+                            (it.recursiveItemCount ?: 0) > 0
+                        }
+                        RelatedTabContent(
+                            similarItems = similarWithEpisodes,
+                            jellyfinClient = jellyfinClient,
+                            onItemClick = onNavigateToDetail,
+                            modifier = Modifier.focusRequester(focusRequesters[SIMILAR_ROW]),
+                        )
+                    }
                 }
             }
 
@@ -515,47 +513,6 @@ fun SeriesDetailScreen(
                             )
                         }
                     }
-                }
-            }
-
-            // Similar Items (More Like This) - filter out series with no episodes
-            val similarWithEpisodes = state.similarItems.filter {
-                (it.recursiveItemCount ?: 0) > 0
-            }
-            if (similarWithEpisodes.isNotEmpty()) {
-                item(key = "similar") {
-                    ItemRow(
-                        title = "More Like This",
-                        items = similarWithEpisodes,
-                        onItemClick = { _, item ->
-                            position = SIMILAR_ROW
-                            onNavigateToDetail(item.id)
-                        },
-                        onItemLongClick = { _, item ->
-                            position = SIMILAR_ROW
-                            // TODO: Show item context menu
-                        },
-                        cardContent = { _, item, cardModifier, onClick, onLongClick ->
-                            if (item != null) {
-                                MediaCard(
-                                    item = item,
-                                    imageUrl = jellyfinClient.getPrimaryImageUrl(
-                                        item.id,
-                                        item.imageTags?.primary,
-                                    ),
-                                    onClick = onClick,
-                                    onLongClick = onLongClick,
-                                    modifier = cardModifier,
-                                )
-                            }
-                        },
-                        cardOnFocus = { isFocused, _ ->
-                            if (isFocused) focusedSeason = null
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequesters[SIMILAR_ROW]),
-                    )
                 }
             }
             }
@@ -1138,6 +1095,245 @@ private fun NetworkLogo(networkName: String?, jellyfinClient: JellyfinClient,) {
                 text = networkName,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
+            )
+        }
+    }
+}
+
+// =============================================================================
+// Tab Content Composables
+// =============================================================================
+
+/**
+ * Seasons tab content - shows season posters in a horizontal row.
+ * Uses smaller poster size (80×112dp) for navigational use.
+ */
+@Composable
+private fun SeasonsTabContent(
+    seasons: List<JellyfinItem>,
+    jellyfinClient: JellyfinClient,
+    onSeasonClick: (JellyfinItem) -> Unit,
+    onSeasonFocus: (JellyfinItem?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (seasons.isEmpty()) {
+        Text(
+            text = "No seasons available",
+            style = MaterialTheme.typography.bodySmall,
+            color = TvColors.TextSecondary,
+            modifier = Modifier.padding(16.dp),
+        )
+        return
+    }
+
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp),
+    ) {
+        items(seasons, key = { it.id }) { season ->
+            MediaCard(
+                item = season,
+                imageUrl = jellyfinClient.getPrimaryImageUrl(season.id, season.imageTags?.primary),
+                onClick = { onSeasonClick(season) },
+                onItemFocused = { onSeasonFocus(it) },
+                modifier = Modifier.size(
+                    width = CardSizes.SeasonPosterWidth,
+                    height = CardSizes.SeasonPosterHeight,
+                ),
+            )
+        }
+    }
+}
+
+/**
+ * Cast & Crew tab content - shows cast followed by crew in horizontal rows.
+ */
+@Composable
+private fun CastCrewTabContent(
+    cast: List<JellyfinPerson>,
+    crew: List<JellyfinPerson>,
+    jellyfinClient: JellyfinClient,
+    onPersonClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (cast.isEmpty() && crew.isEmpty()) {
+        Text(
+            text = "No cast or crew information available",
+            style = MaterialTheme.typography.bodySmall,
+            color = TvColors.TextSecondary,
+            modifier = Modifier.padding(16.dp),
+        )
+        return
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Cast section
+        if (cast.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Cast",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TvColors.TextPrimary,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                ) {
+                    items(cast, key = { it.id ?: it.name.orEmpty() }) { person ->
+                        PersonCard(
+                            person = person,
+                            jellyfinClient = jellyfinClient,
+                            onClick = { person.id?.let { onPersonClick(it) } },
+                        )
+                    }
+                }
+            }
+        }
+
+        // Crew section
+        if (crew.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Crew",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TvColors.TextPrimary,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                ) {
+                    items(crew, key = { it.id ?: it.name.orEmpty() }) { person ->
+                        PersonCard(
+                            person = person,
+                            jellyfinClient = jellyfinClient,
+                            onClick = { person.id?.let { onPersonClick(it) } },
+                            showRole = false,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Details tab content - shows metadata about the series.
+ */
+@Composable
+private fun DetailsTabContent(series: JellyfinItem, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(horizontal = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(48.dp),
+        ) {
+            // Column 1
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DetailItem("Genres", series.genres?.joinToString(", ") ?: "—")
+                DetailItem("First Aired", series.premiereDate?.let { formatDate(it) } ?: "—")
+                DetailItem("Runtime", series.runTimeTicks?.let { "${it / 600_000_000}m" } ?: "—")
+            }
+            // Column 2
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DetailItem("Network", series.studios?.firstOrNull()?.name ?: "—")
+                DetailItem("Status", series.status?.replaceFirstChar { it.uppercase() } ?: "—")
+                DetailItem("Seasons", "${series.childCount ?: 0} seasons")
+            }
+            // Column 3
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DetailItem("Rating", series.officialRating ?: "—")
+                DetailItem(
+                    "Community",
+                    series.communityRating?.let { "★ ${"%.1f".format(java.util.Locale.US, it)}" } ?: "—",
+                )
+            }
+        }
+
+        // Tagline
+        series.taglines?.firstOrNull()?.let { tagline ->
+            Text(
+                text = "\"$tagline\"",
+                style = MaterialTheme.typography.bodySmall,
+                fontStyle = FontStyle.Italic,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Single detail item with label and value.
+ */
+@Composable
+private fun DetailItem(label: String, value: String) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TvColors.TextSecondary,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = TvColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * Format a date string for display.
+ */
+private fun formatDate(dateString: String): String {
+    return try {
+        val instant = java.time.Instant.parse(dateString)
+        val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", java.util.Locale.US)
+            .format(localDate)
+    } catch (_: Exception) {
+        dateString.take(10) // Fallback to YYYY-MM-DD portion
+    }
+}
+
+/**
+ * Related tab content - shows similar/recommended series.
+ */
+@Composable
+private fun RelatedTabContent(
+    similarItems: List<JellyfinItem>,
+    jellyfinClient: JellyfinClient,
+    onItemClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (similarItems.isEmpty()) {
+        Text(
+            text = "No related shows found",
+            style = MaterialTheme.typography.bodySmall,
+            color = TvColors.TextSecondary,
+            modifier = Modifier.padding(16.dp),
+        )
+        return
+    }
+
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp),
+    ) {
+        items(similarItems, key = { it.id }) { item ->
+            MediaCard(
+                item = item,
+                imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
+                onClick = { onItemClick(item.id) },
             )
         }
     }

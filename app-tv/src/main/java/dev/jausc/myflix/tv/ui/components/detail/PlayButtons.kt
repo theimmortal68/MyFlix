@@ -2,7 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.components.detail
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -11,10 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -47,9 +48,11 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.ui.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
-val MinButtonSize = 24.dp
+val MinButtonSize = 20.dp
 
-private val DefaultButtonPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+private val DefaultButtonPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+
+private val ButtonShape = RoundedCornerShape(6.dp)
 
 /**
  * Standard row of expandable play buttons for movies.
@@ -452,7 +455,7 @@ fun EpisodeActionButtons(
 
 /**
  * An icon button that expands to show text when focused.
- * 24dp minimum size, icon only when unfocused, icon + text when focused.
+ * 20dp square when unfocused (icon only), expands when focused (icon + text).
  */
 @Composable
 fun ExpandablePlayButton(
@@ -468,46 +471,56 @@ fun ExpandablePlayButton(
 
     Button(
         onClick = onClick,
-        modifier = modifier.requiredSizeIn(
-            minWidth = MinButtonSize,
-            minHeight = MinButtonSize,
-            maxHeight = MinButtonSize,
+        modifier = modifier.then(
+            if (isFocused) {
+                Modifier.requiredSizeIn(
+                    minWidth = MinButtonSize,
+                    minHeight = MinButtonSize,
+                    maxHeight = MinButtonSize,
+                )
+            } else {
+                Modifier.size(MinButtonSize)
+            }
+        ).border(
+            width = if (isFocused) 0.dp else 1.dp,
+            color = Color.White.copy(alpha = 0.2f),
+            shape = ButtonShape,
         ),
-        contentPadding = DefaultButtonPadding,
+        contentPadding = if (isFocused) {
+            PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+        } else {
+            PaddingValues(0.dp)
+        },
         interactionSource = interactionSource,
+        shape = ButtonDefaults.shape(shape = ButtonShape),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         colors = ButtonDefaults.colors(
-            containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+            containerColor = Color.White.copy(alpha = 0.1f),
             contentColor = TvColors.TextPrimary,
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
         ),
     ) {
-        Box(
-            modifier = Modifier.height(MinButtonSize),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isFocused) Color.White else iconColor,
-                modifier = Modifier
-                    .size(14.dp)
-                    .then(
-                        if (mirrorIcon) {
-                            Modifier.graphicsLayer { scaleX = -1f }
-                        } else {
-                            Modifier
-                        }
-                    ),
-            )
-        }
-        AnimatedVisibility(isFocused) {
-            Spacer(Modifier.size(4.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isFocused) Color.White else iconColor,
+            modifier = Modifier
+                .size(12.dp)
+                .then(
+                    if (mirrorIcon) {
+                        Modifier.graphicsLayer { scaleX = -1f }
+                    } else {
+                        Modifier
+                    }
+                ),
+        )
+        if (isFocused) {
+            Spacer(Modifier.width(4.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(end = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
             )
         }
     }
