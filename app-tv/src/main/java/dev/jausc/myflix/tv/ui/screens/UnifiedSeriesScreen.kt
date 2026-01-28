@@ -208,7 +208,7 @@ fun UnifiedSeriesScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(end = 24.dp, top = 24.dp),
+                .padding(top = 24.dp),
         ) {
             // Hero content (left side) - matches home screen positioning
             SeriesHeroContent(
@@ -757,7 +757,7 @@ private fun SeasonsTabContent(
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(start = 4.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         items(seasons, key = { it.id }) { season ->
             SeasonCard(
@@ -836,7 +836,7 @@ private fun CastCrewTabContent(
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(start = 4.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         items(people, key = { it.id ?: "${it.name}_${it.role}".hashCode() }) { person ->
             PersonCard(
@@ -1000,7 +1000,7 @@ private fun TrailersTabContent(
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(start = 4.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         items(trailers, key = { it.id }) { trailer ->
             ExtraVideoCard(
@@ -1025,7 +1025,7 @@ private fun ExtrasTabContent(
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(start = 4.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         items(extras, key = { it.id }) { extra ->
             ExtraVideoCard(
@@ -1162,7 +1162,7 @@ private fun RelatedTabContent(
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(start = 4.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         items(similarItems, key = { it.id }) { item ->
             RelatedItemCard(
