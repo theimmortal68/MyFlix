@@ -35,6 +35,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -172,8 +173,9 @@ fun UnifiedSeriesScreen(
 
     // Build dynamic play button text based on next up episode
     val nextUp = state.nextUpEpisode
-    val playButtonText = buildPlayButtonText(nextUp)
-    val isResume = nextUp?.userData?.playbackPositionTicks?.let { it > 0L } == true
+    val hasProgress = (nextUp?.userData?.playbackPositionTicks ?: 0L) > 0L
+    val playButtonText = buildPlayButtonText(hasProgress)
+    val isResume = hasProgress
 
     // Request initial focus on play button
     LaunchedEffect(Unit) {
@@ -217,10 +219,17 @@ fun UnifiedSeriesScreen(
                 isFavorite = isFavorite,
                 playButtonText = playButtonText,
                 isResume = isResume,
+                nextUpEpisode = state.nextUpEpisode,
+                firstEpisode = state.episodes.firstOrNull(),
+                jellyfinClient = jellyfinClient,
                 onPlayClick = onPlayClick,
                 onShuffleClick = onShuffleClick,
                 onWatchedClick = onWatchedClick,
                 onFavoriteClick = onFavoriteClick,
+                onEpisodeClick = { episode ->
+                    val startPosition = episode.userData?.playbackPositionTicks?.let { it / 10_000 } ?: 0L
+                    onPlayClick()
+                },
                 playButtonFocusRequester = playButtonFocusRequester,
                 modifier = Modifier.fillMaxWidth(0.55f),
             )
@@ -474,10 +483,14 @@ private fun SeriesHeroContent(
     isFavorite: Boolean,
     playButtonText: String,
     isResume: Boolean,
+    nextUpEpisode: JellyfinItem?,
+    firstEpisode: JellyfinItem?,
+    jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onEpisodeClick: (JellyfinItem) -> Unit,
     playButtonFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -529,6 +542,118 @@ private fun SeriesHeroContent(
             onFavoriteClick = onFavoriteClick,
             playButtonFocusRequester = playButtonFocusRequester,
         )
+
+        // Next Up card (show if has progress, otherwise show S1 E1)
+        val displayEpisode = nextUpEpisode ?: firstEpisode
+
+        displayEpisode?.let { episode ->
+            val hasProgress = (episode.userData?.playbackPositionTicks ?: 0L) > 0L
+
+            Column(
+                modifier = Modifier.padding(top = 16.dp),
+            ) {
+                // "Continue Watching" or "Next Up" label
+                Text(
+                    text = if (hasProgress) "Continue Watching" else "Next Up",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TvColors.TextSecondary,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
+                // Card with thumbnail
+                Card(
+                    onClick = { onEpisodeClick(episode) },
+                    modifier = Modifier.width(200.dp),
+                    scale = CardDefaults.scale(focusedScale = 1.03f),
+                    border = CardDefaults.border(
+                        focusedBorder = Border(
+                            border = BorderStroke(2.dp, TvColors.BluePrimary),
+                            shape = RoundedCornerShape(8.dp),
+                        ),
+                    ),
+                    shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                ) {
+                    Box {
+                        // Thumbnail
+                        AsyncImage(
+                            model = jellyfinClient.getBackdropUrl(episode.id, episode.imageTags?.primary, 400),
+                            contentDescription = episode.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f),
+                        )
+
+                        // Play icon overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.PlayArrow,
+                                contentDescription = "Play",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    .padding(6.dp),
+                            )
+                        }
+
+                        // Progress bar (if has progress)
+                        if (hasProgress) {
+                            val positionTicks = episode.userData?.playbackPositionTicks ?: 0L
+                            val totalTicks = episode.runTimeTicks ?: 1L
+                            val progress = (positionTicks.toFloat() / totalTicks.toFloat()).coerceIn(0f, 1f)
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .fillMaxWidth()
+                                    .height(3.dp)
+                                    .background(Color.Black.copy(alpha = 0.5f)),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(progress)
+                                        .background(TvColors.BluePrimary),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Episode title below thumbnail
+                Text(
+                    text = "S${episode.parentIndexNumber ?: 1} E${episode.indexNumber ?: 1} · ${episode.name ?: ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .width(200.dp)
+                        .padding(top = 8.dp),
+                )
+
+                // Time remaining or runtime
+                val timeText = if (hasProgress) {
+                    val remainingTicks = (episode.runTimeTicks ?: 0L) - (episode.userData?.playbackPositionTicks ?: 0L)
+                    val remainingMinutes = remainingTicks / 600_000_000
+                    "${remainingMinutes}m remaining"
+                } else {
+                    val runtimeMinutes = (episode.runTimeTicks ?: 0L) / 600_000_000
+                    "${runtimeMinutes}m"
+                }
+                Text(
+                    text = timeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TvColors.TextSecondary,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
     }
 }
 
@@ -705,29 +830,11 @@ private fun StarRating(rating: Float) {
 }
 
 /**
- * Builds the play button text based on next up episode state.
- * Shows "Play S1 E1" or "Resume S2 E5 · 23m left" based on progress.
+ * Builds the play button text based on progress state.
+ * Shows "Resume" if has progress, "Play" otherwise.
  */
-private fun buildPlayButtonText(nextUpEpisode: JellyfinItem?): String {
-    if (nextUpEpisode == null) return "Play"
-
-    val seasonNum = nextUpEpisode.parentIndexNumber ?: 1
-    val episodeNum = nextUpEpisode.indexNumber ?: 1
-    val episodeId = "S$seasonNum E$episodeNum"
-
-    val resumePositionTicks = nextUpEpisode.userData?.playbackPositionTicks ?: 0L
-    return if (resumePositionTicks > 0L) {
-        val totalTicks = nextUpEpisode.runTimeTicks ?: 0L
-        val remainingTicks = totalTicks - resumePositionTicks
-        val remainingMinutes = (remainingTicks / 600_000_000L).toInt() // ticks to minutes
-        if (remainingMinutes > 0) {
-            "Resume $episodeId · ${remainingMinutes}m left"
-        } else {
-            "Resume $episodeId"
-        }
-    } else {
-        "Play $episodeId"
-    }
+private fun buildPlayButtonText(hasProgress: Boolean): String {
+    return if (hasProgress) "Resume" else "Play"
 }
 
 // =============================================================================
