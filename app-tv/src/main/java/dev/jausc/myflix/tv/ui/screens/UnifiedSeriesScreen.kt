@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
@@ -130,6 +131,7 @@ fun UnifiedSeriesScreen(
     val isWatched = series.userData?.played == true
     val isFavorite = series.userData?.isFavorite == true
     val playButtonFocusRequester = remember { FocusRequester() }
+    val seasonsTabFocusRequester = remember { FocusRequester() }
 
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
@@ -210,7 +212,7 @@ fun UnifiedSeriesScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 24.dp),
+                .padding(top = 16.dp),
         ) {
             // Hero content (left side) - matches home screen positioning
             SeriesHeroContent(
@@ -231,6 +233,7 @@ fun UnifiedSeriesScreen(
                     onPlayClick()
                 },
                 playButtonFocusRequester = playButtonFocusRequester,
+                seasonsTabFocusRequester = seasonsTabFocusRequester,
                 modifier = Modifier.fillMaxWidth(0.55f),
             )
 
@@ -254,7 +257,7 @@ fun UnifiedSeriesScreen(
                             ),
                         ),
                     )
-                    .padding(top = 16.dp),
+                    .padding(top = 12.dp),
             ) {
                 Column {
                     // Tab row with debounced focus change - only show available tabs
@@ -268,8 +271,15 @@ fun UnifiedSeriesScreen(
                             val isSelected = selectedTab == tab
                             var isFocused by remember { mutableStateOf(false) }
 
+                            // Apply focusRequester to Seasons tab for navigation from Next Up
+                            val tabModifier = if (tab == UnifiedSeriesTab.Seasons) {
+                                Modifier.focusRequester(seasonsTabFocusRequester)
+                            } else {
+                                Modifier
+                            }
+
                             Column(
-                                modifier = Modifier
+                                modifier = tabModifier
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
@@ -492,6 +502,7 @@ private fun SeriesHeroContent(
     onFavoriteClick: () -> Unit,
     onEpisodeClick: (JellyfinItem) -> Unit,
     playButtonFocusRequester: FocusRequester,
+    seasonsTabFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
 
@@ -550,7 +561,7 @@ private fun SeriesHeroContent(
             val hasProgress = (episode.userData?.playbackPositionTicks ?: 0L) > 0L
 
             Column(
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 14.dp),
             ) {
                 // "Continue Watching" or "Next Up" label
                 Text(
@@ -560,10 +571,12 @@ private fun SeriesHeroContent(
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
 
-                // Card with thumbnail
+                // Card with thumbnail - explicit 16:9 dimensions
                 Card(
                     onClick = { onEpisodeClick(episode) },
-                    modifier = Modifier.width(200.dp),
+                    modifier = Modifier
+                        .size(width = 200.dp, height = 112.dp)
+                        .focusProperties { down = seasonsTabFocusRequester },
                     scale = CardDefaults.scale(focusedScale = 1.03f),
                     border = CardDefaults.border(
                         focusedBorder = Border(
@@ -573,34 +586,14 @@ private fun SeriesHeroContent(
                     ),
                     shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
                 ) {
-                    Box {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         // Thumbnail
                         AsyncImage(
-                            model = jellyfinClient.getBackdropUrl(episode.id, episode.imageTags?.primary, 400),
+                            model = jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary, 400),
                             contentDescription = episode.name,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f),
+                            modifier = Modifier.fillMaxSize(),
                         )
-
-                        // Play icon overlay
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.PlayArrow,
-                                contentDescription = "Play",
-                                tint = Color.White,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                                    .padding(6.dp),
-                            )
-                        }
 
                         // Progress bar (if has progress)
                         if (hasProgress) {
@@ -650,7 +643,6 @@ private fun SeriesHeroContent(
                     text = timeText,
                     style = MaterialTheme.typography.labelSmall,
                     color = TvColors.TextSecondary,
-                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }

@@ -34,12 +34,15 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.BlendMode
@@ -110,30 +113,67 @@ fun EpisodesScreen(
         }
     }
 
-    // Get the currently selected episode - by ID if provided, otherwise first episode
-    // IMPORTANT: Don't fallback to firstOrNull() when we have a specific episodeId
-    // but haven't found it yet - that means wrong season's episodes are loaded
-    val selectedEpisode = if (selectedEpisodeId != null) {
+    // Get episode from the list
+    val episodeFromList = if (selectedEpisodeId != null) {
         episodes.find { it.id == selectedEpisodeId }
-        // Returns null if not found - hero won't render until correct season loads
     } else {
         episodes.firstOrNull()
     }
 
+    // Stable episode state - survives recomposition and prevents null flicker
+    var stableEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+    var directlyFetchedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+
+    // Fetch episode directly if not in list (handles wrong season loaded case)
+    LaunchedEffect(selectedEpisodeId) {
+        if (selectedEpisodeId != null && stableEpisode?.id != selectedEpisodeId) {
+            jellyfinClient.getItem(selectedEpisodeId)
+                .onSuccess { episode ->
+                    directlyFetchedEpisode = episode
+                }
+        }
+    }
+
+    // Update stableEpisode only when we have a valid new episode
+    // This prevents null flicker during state transitions
+    LaunchedEffect(episodeFromList, directlyFetchedEpisode, selectedEpisodeId) {
+        val newEpisode = when {
+            selectedEpisodeId != null && directlyFetchedEpisode?.id == selectedEpisodeId -> directlyFetchedEpisode
+            episodeFromList != null -> episodeFromList
+            directlyFetchedEpisode != null -> directlyFetchedEpisode
+            else -> null
+        }
+        // Only update if we have a valid episode - never set back to null
+        if (newEpisode != null) {
+            stableEpisode = newEpisode
+        }
+    }
+
+    val selectedEpisode = stableEpisode
+
     // Focus requester for play button (default focus)
     val playButtonFocusRequester = remember { FocusRequester() }
 
-    // Request initial focus on play button
+    // Track if initial focus has been set (to avoid repeated focus stealing)
+    var initialFocusSet by remember { mutableStateOf(false) }
+
+    // Request initial focus on play button once episode data is available
     LaunchedEffect(selectedEpisode) {
-        if (selectedEpisode != null) {
+        if (selectedEpisode != null && !initialFocusSet) {
             playButtonFocusRequester.requestFocus()
+            initialFocusSet = true
         }
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(TvColors.Background),
+            .background(TvColors.Background)
+            .focusGroup()
+            .focusProperties {
+                // Block left escape to NavRail during loading/transitions
+                left = FocusRequester.Cancel
+            },
     ) {
         // Ken Burns animated backdrop (top-right, same as UnifiedSeriesScreen)
         KenBurnsBackdrop(
@@ -177,7 +217,16 @@ private fun EpisodeHeroText(
 ) {
     val isWatched = episode.userData?.played == true
     val isFavorite = episode.userData?.isFavorite == true
-    val hasProgress = (episode.userData?.playbackPositionTicks ?: 0L) > 0L
+    val positionTicks = episode.userData?.playbackPositionTicks ?: 0L
+    val hasProgress = positionTicks > 0L
+
+    // Calculate remaining time for Resume button
+    val remainingMinutes = if (hasProgress && episode.runTimeTicks != null) {
+        val remainingTicks = episode.runTimeTicks!! - positionTicks
+        (remainingTicks / 600_000_000L).toInt().coerceAtLeast(0)
+    } else {
+        0
+    }
 
     Column(modifier = modifier) {
         // Title section - Series name large, episode name as subtitle
@@ -235,6 +284,7 @@ private fun EpisodeHeroText(
                 isWatched = isWatched,
                 isFavorite = isFavorite,
                 hasProgress = hasProgress,
+                remainingMinutes = remainingMinutes,
                 onPlayClick = onPlayClick,
                 onWatchedClick = onWatchedClick,
                 onFavoriteClick = onFavoriteClick,
@@ -252,11 +302,19 @@ private fun EpisodeActionButtonsRow(
     isWatched: Boolean,
     isFavorite: Boolean,
     hasProgress: Boolean,
+    remainingMinutes: Int,
     onPlayClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
 ) {
+    // Build play button text with remaining time
+    val playButtonText = when {
+        hasProgress && remainingMinutes > 0 -> "Resume · ${remainingMinutes}m left"
+        hasProgress -> "Resume"
+        else -> "Play"
+    }
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(vertical = 4.dp),
@@ -267,7 +325,7 @@ private fun EpisodeActionButtonsRow(
         // Play/Resume button
         item("play") {
             ExpandablePlayButton(
-                title = if (hasProgress) "Resume" else "Play",
+                title = playButtonText,
                 icon = Icons.Outlined.PlayArrow,
                 iconColor = if (hasProgress) IconColors.Resume else IconColors.Play,
                 onClick = onPlayClick,

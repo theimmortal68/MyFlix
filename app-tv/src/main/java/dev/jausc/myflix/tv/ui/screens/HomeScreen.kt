@@ -116,6 +116,7 @@ fun HomeScreen(
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
     restoreFocusRequester: FocusRequester? = null,
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
+    onSeriesMoreInfoClick: (seriesId: String) -> Unit = { seriesId -> onItemClick(seriesId) },
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -303,6 +304,7 @@ fun HomeScreen(
                 },
                 onSeerrMediaClick = onSeerrMediaClick,
                 onEpisodeClick = onEpisodeClick,
+                onSeriesMoreInfoClick = onSeriesMoreInfoClick,
                 hideWatchedFromRecent = hideWatchedFromRecent,
                 heroPlayFocusRequester = heroPlayFocusRequester,
                 // Focus restoration
@@ -384,6 +386,7 @@ private fun HomeContent(
     onItemLongClick: (JellyfinItem) -> Unit,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit,
+    onSeriesMoreInfoClick: (seriesId: String) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     // Focus restoration
@@ -640,7 +643,9 @@ private fun HomeContent(
                                 rowIndex = index,
                                 savedFocusItemId = savedFocusItemId,
                                 restoreFocusRequester = restoreFocusRequester,
-                                // First row gets the focus requester for hero DOWN navigation
+                                // First row: UP navigates to hero Play button
+                                upFocusTarget = if (index == 0) heroPlayFocusRequester else null,
+                                // First row gets focus requester for hero DOWN navigation
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .then(
@@ -686,7 +691,23 @@ private fun HomeContent(
                     HeroSection(
                         featuredItems = filteredFeaturedItems,
                         jellyfinClient = jellyfinClient,
-                        onItemClick = onItemClick,
+                        onMoreInfoClick = { item ->
+                            // Series and Episodes go to EpisodesScreen, others go to DetailScreen
+                            when (item.type) {
+                                "Series" -> onSeriesMoreInfoClick(item.id)
+                                "Episode" -> {
+                                    // For episodes, navigate to EpisodesScreen with the parent series
+                                    val seriesId = item.seriesId
+                                    val seasonNumber = item.parentIndexNumber ?: 1
+                                    if (seriesId != null) {
+                                        onEpisodeClick(seriesId, seasonNumber, item.id)
+                                    } else {
+                                        onItemClick(item.id)
+                                    }
+                                }
+                                else -> onItemClick(item.id)
+                            }
+                        },
                         onPlayClick = onPlayClick,
                         modifier = Modifier.fillMaxSize(),
                         previewItem = previewItem,
@@ -720,6 +741,7 @@ private fun ItemRow(
     rowIndex: Int = 0,
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester? = null,
+    upFocusTarget: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
@@ -787,6 +809,14 @@ private fun ItemRow(
                         }
                     }
 
+                    val focusAndNavModifier = focusModifier.then(
+                        if (upFocusTarget != null) {
+                            Modifier.focusProperties { up = upFocusTarget }
+                        } else {
+                            Modifier
+                        },
+                    )
+
                     // Handle click: episodes go to episodes screen, others go to detail
                     val handleClick: () -> Unit = {
                         if (item.type == "Episode" && item.seriesId != null) {
@@ -821,7 +851,7 @@ private fun ItemRow(
                             onClick = handleClick,
                             showLabel = false,
                             onLongClick = { onItemLongClick(item) },
-                            modifier = focusModifier,
+                            modifier = focusAndNavModifier,
                         )
                     } else {
                         // For portrait cards: use series poster for episodes, otherwise use item poster
@@ -837,7 +867,7 @@ private fun ItemRow(
                             onClick = handleClick,
                             showLabel = false,
                             onLongClick = { onItemLongClick(item) },
-                            modifier = focusModifier,
+                            modifier = focusAndNavModifier,
                         )
                     }
                 }

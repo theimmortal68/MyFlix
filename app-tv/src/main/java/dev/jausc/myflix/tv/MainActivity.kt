@@ -17,6 +17,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -286,6 +287,7 @@ fun MyFlixTvApp() {
                 currentRoute?.startsWith("collection/") == true -> NavItem.COLLECTIONS
                 currentRoute?.startsWith("universes") == true -> NavItem.UNIVERSES
                 currentRoute?.startsWith("universeCollection/") == true -> NavItem.UNIVERSES
+                currentRoute?.startsWith("episodes") == true -> NavItem.SHOWS
                 else -> NavItem.HOME
             }
             // Update the source for future detail screens
@@ -297,10 +299,6 @@ fun MyFlixTvApp() {
     // NavRail expansion state and focus requester
     var isNavRailExpanded by remember { mutableStateOf(false) }
     val navRailFocusRequester = remember { FocusRequester() }
-    
-    // Track when Left key was last pressed - used to determine if NavRail focus
-    // was from intentional user navigation (should expand) vs accidental focus (should not)
-    var lastLeftKeyPressTime by remember { mutableStateOf(0L) }
 
     // Auto-collapse NavRail when route changes (navigation occurred)
     var previousRoute by remember { mutableStateOf(currentRoute) }
@@ -318,6 +316,7 @@ fun MyFlixTvApp() {
         animationSpec = tween(durationMillis = 300),
         label = "scrimAlpha",
     )
+
 
     // Handle WebSocket remote control events
     LaunchedEffect(isLoggedIn) {
@@ -432,28 +431,13 @@ fun MyFlixTvApp() {
             .fillMaxSize()
             .background(TvColors.Background)
             .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown) {
-                    when (event.key) {
-                        Key.Menu -> {
-                            // Menu key toggles NavRail from anywhere
-                            if (showNavRail) {
-                                isNavRailExpanded = !isNavRailExpanded
-                                if (isNavRailExpanded) {
-                                    navRailFocusRequester.requestFocus()
-                                }
-                                true
-                            } else {
-                                false
-                            }
-                        }
-                        Key.DirectionLeft -> {
-                            // Track Left key press time - used to allow NavRail expansion
-                            // only when focus gain was from intentional Left press
-                            lastLeftKeyPressTime = System.currentTimeMillis()
-                            false // Don't consume - let focus move naturally
-                        }
-                        else -> false
+                // Handle Menu key press from anywhere to toggle NavRail
+                if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
+                    isNavRailExpanded = !isNavRailExpanded
+                    if (isNavRailExpanded) {
+                        navRailFocusRequester.requestFocus()
                     }
+                    true
                 } else {
                     false
                 }
@@ -501,6 +485,10 @@ fun MyFlixTvApp() {
                     },
                     onEpisodeClick = { seriesId, seasonNumber, episodeId ->
                         navController.navigate("episodes/$seriesId?seasonNumber=$seasonNumber&episodeId=$episodeId")
+                    },
+                    onSeriesMoreInfoClick = { seriesId ->
+                        // Navigate to EpisodesScreen for series, starting at season 1
+                        navController.navigate("episodes/$seriesId?seasonNumber=1")
                     },
                 )
             }
@@ -1025,8 +1013,16 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = true }
                         }
                     },
-                    onNavigateToEpisodes = { seriesId, seasonNumber ->
-                        navController.navigate("episodes/$seriesId?seasonNumber=$seasonNumber")
+                    onNavigateToEpisodes = { seriesId, seasonNumber, episodeId ->
+                        val route = if (episodeId != null) {
+                            "episodes/$seriesId?seasonNumber=$seasonNumber&episodeId=$episodeId"
+                        } else {
+                            "episodes/$seriesId?seasonNumber=$seasonNumber"
+                        }
+                        // Replace current screen to avoid back-navigating to loading state
+                        navController.navigate(route) {
+                            popUpTo("detail/$itemId") { inclusive = true }
+                        }
                     },
                 )
             }
@@ -1103,19 +1099,18 @@ fun MyFlixTvApp() {
                 }
 
                 // Show loading or episodes screen
-                // Episodes are ready when:
-                // 1. Initial season is resolved
-                // 2. Selected season matches what's loaded in state
-                // 3. Episodes list contains our target episode (or we don't have a target)
-                val expectedSeason = state.seasons.getOrNull(selectedSeasonIndex)
-                val episodesReady = initialSeasonResolved &&
-                    expectedSeason != null &&
-                    state.selectedSeason?.id == expectedSeason.id &&
-                    (episodeId == null || state.episodes.any { it.id == episodeId })
-
-                if (state.isLoading || state.item == null || !episodesReady) {
+                if (state.isLoading || state.item == null) {
+                    // Focusable loading state to capture focus and prevent NavRail auto-expand
+                    val loadingFocusRequester = remember { FocusRequester() }
+                    LaunchedEffect(Unit) {
+                        loadingFocusRequester.requestFocus()
+                    }
                     Box(
-                        modifier = Modifier.fillMaxSize().background(TvColors.Background),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(TvColors.Background)
+                            .focusRequester(loadingFocusRequester)
+                            .focusable(),
                         contentAlignment = Alignment.Center,
                     ) {
                         androidx.tv.material3.Text(
@@ -1196,20 +1191,7 @@ fun MyFlixTvApp() {
                 showUniverses = universesEnabled,
                 showDiscover = isSeerrAuthenticated && showDiscoverNav,
                 isExpanded = isNavRailExpanded,
-                onExpandedChange = { expand ->
-                    if (!expand) {
-                        // Always allow collapse
-                        isNavRailExpanded = false
-                    } else {
-                        // Only expand if Left key was pressed recently (within 300ms)
-                        // This prevents auto-expand during screen transitions when focus
-                        // accidentally lands on NavRail
-                        val timeSinceLeftPress = System.currentTimeMillis() - lastLeftKeyPressTime
-                        if (timeSinceLeftPress < 300L) {
-                            isNavRailExpanded = true
-                        }
-                    }
-                },
+                onExpandedChange = { isNavRailExpanded = it },
                 onCollapseAndFocusContent = { isNavRailExpanded = false },
                 modifier = Modifier
                     .zIndex(1f)

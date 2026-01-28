@@ -195,7 +195,7 @@ fun HeroBackdropLayer(
 fun HeroSection(
     featuredItems: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
-    onItemClick: (String) -> Unit,
+    onMoreInfoClick: (JellyfinItem) -> Unit,
     onPlayClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     previewItem: JellyfinItem? = null,
@@ -279,7 +279,7 @@ fun HeroSection(
                 )
                 HeroActionButtons(
                     onPlayClick = { onPlayClick(displayItem.id) },
-                    onDetailsClick = { onItemClick(displayItem.id) },
+                    onDetailsClick = { onMoreInfoClick(displayItem) },
                     playButtonFocusRequester = playButtonFocusRequester,
                     isPreviewMode = isPreviewMode,
                     playButtonText = playButtonText,
