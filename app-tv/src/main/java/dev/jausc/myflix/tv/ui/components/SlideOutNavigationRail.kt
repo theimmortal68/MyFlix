@@ -141,11 +141,15 @@ private fun handleNavRailKeyEvent(
 
 /**
  * Handles key events for individual navigation items.
- * For Right press: collapses rail and schedules focus move after animation completes.
+ * - Left: Expands the rail (user explicitly opening the menu)
+ * - Right: Collapses rail and moves focus to content
+ * - Enter/Center: Selects the item
  */
 private fun handleNavItemKeyEvent(
     event: KeyEvent,
+    isExpanded: Boolean,
     onClick: () -> Unit,
+    onExpandRail: () -> Unit,
     onCollapseAndMoveFocus: () -> Unit,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
@@ -154,6 +158,13 @@ private fun handleNavItemKeyEvent(
         Key.Enter, Key.DirectionCenter -> {
             onClick()
             true
+        }
+        Key.DirectionLeft -> {
+            // User explicitly pressed Left while on NavRail - expand it
+            if (!isExpanded) {
+                onExpandRail()
+            }
+            true // Consume to prevent focus leaving rail
         }
         Key.DirectionRight -> {
             // Collapse and schedule focus move - CONSUME the event
@@ -178,21 +189,22 @@ private fun getIconTint(item: NavItem, isFocused: Boolean, isSelected: Boolean):
  *
  * - Collapsed: Shows only icons, fully transparent background
  * - Expanded: Shows icons + labels, semi-transparent gradient background
- * - Expands when any item receives focus
  * - Collapses when user selects an item, presses Right, or presses Back
  *
- * Focus behavior on Right press:
- * 1. Collapse animation starts
- * 2. Wait for animation to complete (350ms)
- * 3. Use FocusManager.moveFocus(Right) to find first visible content
+ * Focus behavior:
+ * - Parent controls when to request focus via firstItemFocusRequester
+ * - On Right press: collapse and return focus to content
+ * - On item selection: collapse and navigate
  *
  * @param selectedItem Currently selected/highlighted navigation item
  * @param onItemSelected Callback when a nav item is selected (Enter pressed)
  * @param showUniverses Whether to show the Universes nav item
  * @param showDiscover Whether to show the Discover nav item
  * @param isExpanded External control for expansion state
+ * @param firstItemFocusRequester FocusRequester attached to the first nav item for direct focus
  * @param onExpandedChange Callback when expansion state should change
- * @param onCollapseAndFocusContent Callback to collapse rail (focus handled internally)
+ * @param onCollapseAndFocusContent Callback to collapse rail and return focus to content
+ * @param onFocusChanged Callback when NavRail focus state changes
  * @param modifier Modifier for the rail
  */
 @Composable
@@ -202,8 +214,10 @@ fun SlideOutNavigationRail(
     showUniverses: Boolean = false,
     showDiscover: Boolean = false,
     isExpanded: Boolean = false,
+    firstItemFocusRequester: FocusRequester = remember { FocusRequester() },
     onExpandedChange: (Boolean) -> Unit = {},
     onCollapseAndFocusContent: () -> Unit = {},
+    onFocusChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val mainItems = remember(showUniverses, showDiscover) {
@@ -264,7 +278,10 @@ fun SlideOutNavigationRail(
             .onFocusChanged { focusState ->
                 val hadFocus = railHasFocus
                 railHasFocus = focusState.hasFocus
-                if (!hadFocus && railHasFocus) {
+                onFocusChanged(railHasFocus)
+                // Auto-expand when rail gains focus (user pressed Left from content)
+                // Parent can suppress this via onExpandedChange callback
+                if (!hadFocus && railHasFocus && !isExpanded) {
                     onExpandedChange(true)
                 }
             }
@@ -279,6 +296,7 @@ fun SlideOutNavigationRail(
             labelAlpha = labelAlpha,
             mainFocusRequesters = mainFocusRequesters,
             settingsFocusRequester = settingsFocusRequester,
+            firstItemFocusRequester = firstItemFocusRequester,
             onItemSelected = onItemSelected,
             onExpandedChange = onExpandedChange,
             onCollapseAndMoveFocus = collapseAndMoveFocusRight,
@@ -321,6 +339,7 @@ private fun NavRailMainItems(
     labelAlpha: Float,
     mainFocusRequesters: List<FocusRequester>,
     settingsFocusRequester: FocusRequester,
+    firstItemFocusRequester: FocusRequester,
     onItemSelected: (NavItem) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     onCollapseAndMoveFocus: () -> Unit,
@@ -336,6 +355,15 @@ private fun NavRailMainItems(
         horizontalAlignment = Alignment.Start,
     ) {
         mainItems.forEachIndexed { index, item ->
+            // First item gets the external focus requester for direct focus from parent
+            val itemModifier = if (index == 0) {
+                Modifier
+                    .focusRequester(firstItemFocusRequester)
+                    .focusRequester(mainFocusRequesters[index])
+            } else {
+                Modifier.focusRequester(mainFocusRequesters[index])
+            }
+
             SlideOutNavItem(
                 item = item,
                 isSelected = selectedItem == item,
@@ -346,7 +374,8 @@ private fun NavRailMainItems(
                     onExpandedChange(false)
                 },
                 onCollapseAndMoveFocus = onCollapseAndMoveFocus,
-                modifier = Modifier.focusRequester(mainFocusRequesters[index]),
+                onExpandRail = { onExpandedChange(true) },
+                modifier = itemModifier,
                 upFocusRequester = mainFocusRequesters.getOrNull(index - 1) ?: FocusRequester.Cancel,
                 downFocusRequester = mainFocusRequesters.getOrNull(index + 1) ?: settingsFocusRequester,
             )
@@ -379,6 +408,7 @@ private fun NavRailSettingsItem(
                 onExpandedChange(false)
             },
             onCollapseAndMoveFocus = onCollapseAndMoveFocus,
+            onExpandRail = { onExpandedChange(true) },
             modifier = Modifier.focusRequester(settingsFocusRequester),
             upFocusRequester = lastMainFocusRequester ?: FocusRequester.Cancel,
             downFocusRequester = FocusRequester.Cancel,
@@ -394,6 +424,7 @@ private fun SlideOutNavItem(
     labelAlpha: Float,
     onClick: () -> Unit,
     onCollapseAndMoveFocus: () -> Unit,
+    onExpandRail: () -> Unit,
     modifier: Modifier = Modifier,
     upFocusRequester: FocusRequester = FocusRequester.Cancel,
     downFocusRequester: FocusRequester = FocusRequester.Cancel,
@@ -440,7 +471,7 @@ private fun SlideOutNavItem(
             }
             .focusable()
             .onKeyEvent { event ->
-                handleNavItemKeyEvent(event, onClick, onCollapseAndMoveFocus)
+                handleNavItemKeyEvent(event, isExpanded, onClick, onExpandRail, onCollapseAndMoveFocus)
             },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,

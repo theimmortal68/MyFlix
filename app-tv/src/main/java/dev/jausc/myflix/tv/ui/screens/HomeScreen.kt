@@ -115,6 +115,7 @@ fun HomeScreen(
     seerrClient: SeerrClient? = null,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
     restoreFocusRequester: FocusRequester? = null,
+    onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -301,6 +302,7 @@ fun HomeScreen(
                     )
                 },
                 onSeerrMediaClick = onSeerrMediaClick,
+                onEpisodeClick = onEpisodeClick,
                 hideWatchedFromRecent = hideWatchedFromRecent,
                 heroPlayFocusRequester = heroPlayFocusRequester,
                 // Focus restoration
@@ -381,6 +383,7 @@ private fun HomeContent(
     onPlayClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     // Focus restoration
@@ -622,6 +625,7 @@ private fun HomeContent(
                                     pendingPreviewItem = item
                                     onItemFocused(item.id)
                                 },
+                                onEpisodeClick = onEpisodeClick,
                                 onRowFocused = { rowIndex ->
                                     if (rowIndex == lastFocusedRow) return@ItemRow
                                     lastFocusedRow = rowIndex
@@ -711,6 +715,7 @@ private fun ItemRow(
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
     onCardFocused: (JellyfinItem) -> Unit,
+    onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit,
     onRowFocused: (Int) -> Unit = {},
     rowIndex: Int = 0,
     savedFocusItemId: String? = null,
@@ -782,6 +787,18 @@ private fun ItemRow(
                         }
                     }
 
+                    // Handle click: episodes go to episodes screen, others go to detail
+                    val handleClick: () -> Unit = {
+                        if (item.type == "Episode" && item.seriesId != null) {
+                            // Navigate to episodes screen for the series
+                            // Pass season number (parentIndexNumber) - will be resolved to index later
+                            val seasonNumber = item.parentIndexNumber ?: 1
+                            onEpisodeClick(item.seriesId!!, seasonNumber, item.id)
+                        } else {
+                            onItemClick(item.id)
+                        }
+                    }
+
                     if (isWideCard) {
                         val imageUrl = when {
                             item.type == "Episode" -> {
@@ -801,7 +818,7 @@ private fun ItemRow(
                         WideMediaCard(
                             item = item,
                             imageUrl = imageUrl,
-                            onClick = { onItemClick(item.id) },
+                            onClick = handleClick,
                             showLabel = false,
                             onLongClick = { onItemLongClick(item) },
                             modifier = focusModifier,
@@ -817,7 +834,7 @@ private fun ItemRow(
                         MediaCard(
                             item = item,
                             imageUrl = imageUrl,
-                            onClick = { onItemClick(item.id) },
+                            onClick = handleClick,
                             showLabel = false,
                             onLongClick = { onItemLongClick(item) },
                             modifier = focusModifier,

@@ -31,6 +31,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import androidx.navigation.NavBackStackEntry
@@ -48,6 +49,8 @@ import dev.jausc.myflix.core.common.util.NavigationHelper
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
@@ -57,6 +60,7 @@ import dev.jausc.myflix.tv.ui.components.SlideOutNavigationRail
 import dev.jausc.myflix.tv.ui.screens.CollectionDetailScreen
 import dev.jausc.myflix.tv.ui.screens.CollectionsLibraryScreen
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
+import dev.jausc.myflix.tv.ui.screens.EpisodesScreen
 import dev.jausc.myflix.tv.ui.screens.HomeScreen
 import dev.jausc.myflix.tv.ui.screens.LibraryScreen
 import dev.jausc.myflix.tv.ui.screens.LoginScreen
@@ -293,6 +297,10 @@ fun MyFlixTvApp() {
     // NavRail expansion state and focus requester
     var isNavRailExpanded by remember { mutableStateOf(false) }
     val navRailFocusRequester = remember { FocusRequester() }
+    
+    // Track when Left key was last pressed - used to determine if NavRail focus
+    // was from intentional user navigation (should expand) vs accidental focus (should not)
+    var lastLeftKeyPressTime by remember { mutableStateOf(0L) }
 
     // Auto-collapse NavRail when route changes (navigation occurred)
     var previousRoute by remember { mutableStateOf(currentRoute) }
@@ -424,13 +432,28 @@ fun MyFlixTvApp() {
             .fillMaxSize()
             .background(TvColors.Background)
             .onKeyEvent { event ->
-                // Handle Menu key press from anywhere to toggle NavRail
-                if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
-                    isNavRailExpanded = !isNavRailExpanded
-                    if (isNavRailExpanded) {
-                        navRailFocusRequester.requestFocus()
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.Menu -> {
+                            // Menu key toggles NavRail from anywhere
+                            if (showNavRail) {
+                                isNavRailExpanded = !isNavRailExpanded
+                                if (isNavRailExpanded) {
+                                    navRailFocusRequester.requestFocus()
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.DirectionLeft -> {
+                            // Track Left key press time - used to allow NavRail expansion
+                            // only when focus gain was from intentional Left press
+                            lastLeftKeyPressTime = System.currentTimeMillis()
+                            false // Don't consume - let focus move naturally
+                        }
+                        else -> false
                     }
-                    true
                 } else {
                     false
                 }
@@ -475,6 +498,9 @@ fun MyFlixTvApp() {
                     },
                     onSeerrMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onEpisodeClick = { seriesId, seasonNumber, episodeId ->
+                        navController.navigate("episodes/$seriesId?seasonNumber=$seasonNumber&episodeId=$episodeId")
                     },
                 )
             }
@@ -999,6 +1025,9 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = true }
                         }
                     },
+                    onNavigateToEpisodes = { seriesId, seasonNumber ->
+                        navController.navigate("episodes/$seriesId?seasonNumber=$seasonNumber")
+                    },
                 )
             }
 
@@ -1015,6 +1044,108 @@ fun MyFlixTvApp() {
                     },
                     onBack = { navController.popBackStack() },
                 )
+            }
+
+            // Episodes screen for series/season/episode browsing
+            composable(
+                route = "episodes/{seriesId}?seasonNumber={seasonNumber}&episodeId={episodeId}",
+                arguments = listOf(
+                    navArgument("seriesId") { type = NavType.StringType },
+                    navArgument("seasonNumber") {
+                        type = NavType.IntType
+                        defaultValue = -1
+                    },
+                    navArgument("episodeId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { backStackEntry ->
+                val seriesId = backStackEntry.arguments?.getString("seriesId") ?: return@composable
+                val seasonNumber = backStackEntry.arguments?.getInt("seasonNumber") ?: -1
+                val episodeId = backStackEntry.arguments?.getString("episodeId")
+
+                // Use DetailViewModel to load series data
+                val viewModel: DetailViewModel = viewModel(
+                    key = seriesId,
+                    factory = DetailViewModel.Factory(seriesId, jellyfinClient),
+                )
+                val state by viewModel.uiState.collectAsState()
+
+                // Determine initial season index based on season number
+                var selectedSeasonIndex by remember { mutableStateOf(0) }
+                var initialSeasonResolved by remember { mutableStateOf(false) }
+
+                // Resolve the initial season index once data is loaded
+                // Find season by indexNumber (season number) instead of list position
+                LaunchedEffect(state.seasons, seasonNumber) {
+                    if (state.seasons.isNotEmpty() && !initialSeasonResolved) {
+                        selectedSeasonIndex = if (seasonNumber >= 0) {
+                            // Find the season with matching indexNumber
+                            state.seasons.indexOfFirst { it.indexNumber == seasonNumber }
+                                .takeIf { it >= 0 } ?: 0
+                        } else {
+                            0
+                        }
+                        initialSeasonResolved = true
+                    }
+                }
+
+                // When a different season is selected, load its episodes
+                LaunchedEffect(selectedSeasonIndex, state.seasons, initialSeasonResolved) {
+                    if (initialSeasonResolved) {
+                        val season = state.seasons.getOrNull(selectedSeasonIndex)
+                        if (season != null && season.id != state.selectedSeason?.id) {
+                            viewModel.selectSeason(season)
+                        }
+                    }
+                }
+
+                // Show loading or episodes screen
+                // Episodes are ready when:
+                // 1. Initial season is resolved
+                // 2. Selected season matches what's loaded in state
+                // 3. Episodes list contains our target episode (or we don't have a target)
+                val expectedSeason = state.seasons.getOrNull(selectedSeasonIndex)
+                val episodesReady = initialSeasonResolved &&
+                    expectedSeason != null &&
+                    state.selectedSeason?.id == expectedSeason.id &&
+                    (episodeId == null || state.episodes.any { it.id == episodeId })
+
+                if (state.isLoading || state.item == null || !episodesReady) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(TvColors.Background),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.tv.material3.Text(
+                            text = "Loading...",
+                            color = TvColors.TextPrimary,
+                        )
+                    }
+                } else {
+                    EpisodesScreen(
+                        seriesName = state.item?.name ?: "",
+                        seasons = state.seasons,
+                        episodes = state.episodes,
+                        selectedSeasonIndex = selectedSeasonIndex,
+                        selectedEpisodeId = episodeId,
+                        jellyfinClient = jellyfinClient,
+                        onSeasonSelected = { index ->
+                            selectedSeasonIndex = index
+                        },
+                        onEpisodeClick = { episode ->
+                            // Navigate to player with selected episode
+                            val startPosition = episode.userData?.playbackPositionTicks
+                                ?.let { it / 10_000 } ?: 0L
+                            navController.navigate(NavigationHelper.buildPlayerRoute(episode.id, startPosition))
+                        },
+                        onPersonClick = { personId ->
+                            navController.navigate("person/$personId")
+                        },
+                        onBackClick = { navController.popBackStack() },
+                    )
+                }
             }
 
             composable(
@@ -1065,7 +1196,20 @@ fun MyFlixTvApp() {
                 showUniverses = universesEnabled,
                 showDiscover = isSeerrAuthenticated && showDiscoverNav,
                 isExpanded = isNavRailExpanded,
-                onExpandedChange = { isNavRailExpanded = it },
+                onExpandedChange = { expand ->
+                    if (!expand) {
+                        // Always allow collapse
+                        isNavRailExpanded = false
+                    } else {
+                        // Only expand if Left key was pressed recently (within 300ms)
+                        // This prevents auto-expand during screen transitions when focus
+                        // accidentally lands on NavRail
+                        val timeSinceLeftPress = System.currentTimeMillis() - lastLeftKeyPressTime
+                        if (timeSinceLeftPress < 300L) {
+                            isNavRailExpanded = true
+                        }
+                    }
+                },
                 onCollapseAndFocusContent = { isNavRailExpanded = false },
                 modifier = Modifier
                     .zIndex(1f)

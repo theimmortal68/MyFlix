@@ -3,6 +3,7 @@ package dev.jausc.myflix.tv.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,11 +16,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
@@ -44,12 +46,16 @@ object NavRailScaffoldConfig {
  *
  * When the NavRail expands, a semi-transparent scrim dims the content behind it.
  *
+ * **Focus Behavior:**
+ * - NavRail is only accessible via left D-pad or Menu key
+ * - Normal D-pad navigation from content won't enter the NavRail
+ * - Right D-pad or Back from NavRail returns focus to content and collapses
+ *
  * @param currentRoute The current navigation route (used to auto-collapse after navigation)
  * @param selectedNavItem Currently selected navigation item
  * @param onNavItemSelected Callback when user selects a nav item
  * @param showUniverses Whether to show Universes in nav
  * @param showDiscover Whether to show Discover in nav
- * @param navRailFocusRequester FocusRequester to request focus on the NavRail
  * @param modifier Modifier for the scaffold
  * @param content The screen content. Receives a Modifier with appropriate left padding.
  */
@@ -60,11 +66,22 @@ fun NavRailScaffold(
     onNavItemSelected: (NavItem) -> Unit,
     showUniverses: Boolean = false,
     showDiscover: Boolean = false,
-    navRailFocusRequester: FocusRequester = remember { FocusRequester() },
     modifier: Modifier = Modifier,
     content: @Composable (contentPadding: Modifier) -> Unit,
 ) {
     var isNavRailExpanded by remember { mutableStateOf(false) }
+
+    // Tracks whether NavRail access was explicitly requested (left D-pad or Menu)
+    var navRailAccessRequested by remember { mutableStateOf(false) }
+
+    // Track if NavRail currently has focus
+    var navRailHasFocus by remember { mutableStateOf(false) }
+
+    // FocusRequester for the first nav item (to request focus on it directly)
+    val firstNavItemFocusRequester = remember { FocusRequester() }
+
+    // FocusRequester for content (to return focus when exiting NavRail)
+    val contentFocusRequester = remember { FocusRequester() }
 
     // Track route changes to auto-collapse after navigation
     var previousRoute by remember { mutableStateOf(currentRoute) }
@@ -75,8 +92,18 @@ fun NavRailScaffold(
             // Brief delay to show the selection before collapsing
             delay(NavRailScaffoldConfig.CollapseDelayAfterNavigationMs)
             isNavRailExpanded = false
+            navRailAccessRequested = false
         }
         previousRoute = currentRoute
+    }
+
+    // If NavRail gets focus but access wasn't requested, kick focus back to content
+    // This prevents accidental navigation into the NavRail
+    LaunchedEffect(navRailHasFocus, navRailAccessRequested) {
+        if (navRailHasFocus && !navRailAccessRequested) {
+            // Focus entered NavRail unexpectedly - redirect to content
+            contentFocusRequester.requestFocus()
+        }
     }
 
     // Animate scrim alpha
@@ -86,31 +113,77 @@ fun NavRailScaffold(
         label = "scrimAlpha",
     )
 
-    // Callback to collapse rail - focus moves via system directional navigation
+    // Callback to collapse rail and return focus to content
     val collapseAndFocusContent: () -> Unit = {
         isNavRailExpanded = false
+        navRailAccessRequested = false
+        contentFocusRequester.requestFocus()
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .onKeyEvent { event ->
-                // Handle Menu key press from anywhere to toggle NavRail
-                if (event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
-                    isNavRailExpanded = !isNavRailExpanded
-                    if (isNavRailExpanded) {
-                        navRailFocusRequester.requestFocus()
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.DirectionLeft -> {
+                            // Only open NavRail when access not already granted
+                            if (!navRailAccessRequested) {
+                                navRailAccessRequested = true
+                                isNavRailExpanded = true
+                                firstNavItemFocusRequester.requestFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.DirectionRight -> {
+                            // When in NavRail, exit back to content
+                            if (navRailAccessRequested && navRailHasFocus) {
+                                collapseAndFocusContent()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.Back -> {
+                            // Back also exits NavRail
+                            if (navRailAccessRequested && navRailHasFocus) {
+                                collapseAndFocusContent()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.Menu -> {
+                            // Toggle NavRail from anywhere
+                            if (navRailAccessRequested) {
+                                collapseAndFocusContent()
+                            } else {
+                                navRailAccessRequested = true
+                                isNavRailExpanded = true
+                                firstNavItemFocusRequester.requestFocus()
+                            }
+                            true
+                        }
+                        else -> false
                     }
-                    true
                 } else {
                     false
                 }
             },
     ) {
         // Content layer (behind NavRail and scrim)
-        content(
-            Modifier.padding(start = SlideOutNavRailDimensions.CollapsedWidth)
-        )
+        // Wrapped in a focusable Box to catch focus even when content is empty/loading
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = SlideOutNavRailDimensions.CollapsedWidth)
+                .focusRequester(contentFocusRequester)
+                .focusable(),
+        ) {
+            content(Modifier)
+        }
 
         // Scrim layer (between content and NavRail) - only render when visible
         if (scrimAlpha > 0f) {
@@ -129,11 +202,18 @@ fun NavRailScaffold(
             showUniverses = showUniverses,
             showDiscover = showDiscover,
             isExpanded = isNavRailExpanded,
-            onExpandedChange = { isNavRailExpanded = it },
+            firstItemFocusRequester = firstNavItemFocusRequester,
+            onExpandedChange = { expanded ->
+                isNavRailExpanded = expanded
+                if (!expanded) {
+                    navRailAccessRequested = false
+                }
+            },
             onCollapseAndFocusContent = collapseAndFocusContent,
-            modifier = Modifier
-                .zIndex(NavRailScaffoldConfig.NavRailZIndex)
-                .focusRequester(navRailFocusRequester),
+            onFocusChanged = { hasFocus ->
+                navRailHasFocus = hasFocus
+            },
+            modifier = Modifier.zIndex(NavRailScaffoldConfig.NavRailZIndex),
         )
     }
 }

@@ -37,6 +37,7 @@ fun DetailScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
     onNavigateToPerson: (String) -> Unit = {},
+    onNavigateToEpisodes: (seriesId: String, seasonIndex: Int) -> Unit = { _, _ -> },
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -131,7 +132,11 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
-                    onSeasonClick = { season -> onNavigateToDetail(season.id) },
+                    onSeasonClick = { season ->
+                        // Navigate to episodes screen with the selected season number
+                        val seasonNumber = season.indexNumber ?: 1
+                        onNavigateToEpisodes(state.item?.id ?: itemId, seasonNumber)
+                    },
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     modifier = Modifier.fillMaxSize(),
