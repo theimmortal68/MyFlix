@@ -566,7 +566,7 @@ private fun SeriesHeroContent(
                 // "Continue Watching" or "Next Up" label
                 Text(
                     text = if (hasProgress) "Continue Watching" else "Next Up",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = TvColors.TextSecondary,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
