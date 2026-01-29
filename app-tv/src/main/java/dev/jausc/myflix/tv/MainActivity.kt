@@ -1047,6 +1047,7 @@ fun MyFlixTvApp() {
                             popUpTo("detail/$itemId") { inclusive = true }
                         }
                     },
+                    leftEdgeFocusRequester = sentinelFocusRequester,
                 )
             }
 
@@ -1162,6 +1163,7 @@ fun MyFlixTvApp() {
                             navController.navigate("person/$personId")
                         },
                         onBackClick = { navController.popBackStack() },
+                        leftEdgeFocusRequester = sentinelFocusRequester,
                     )
                 }
             }

@@ -127,6 +127,7 @@ fun EpisodesScreen(
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
@@ -137,6 +138,9 @@ fun EpisodesScreen(
     val firstTabFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
     val tabContentFocusRequester = remember { FocusRequester() }
+
+    // Track what was last focused for NavRail exit restoration
+    var lastFocusedSection by remember { mutableStateOf("episodes") } // "action", "episodes", "tabs"
 
     // Episode focus requesters - keyed by episode ID
     val episodeFocusRequesters = remember(episodes) {
@@ -167,15 +171,11 @@ fun EpisodesScreen(
         }
     }
 
-    // Build backdrop URL from focused episode
-    val backdropUrl = remember(focusedEpisode?.id) {
+    // Build thumbnail URL from focused episode (primary image, not backdrop)
+    val thumbnailUrl = remember(focusedEpisode?.id) {
         focusedEpisode?.let { episode ->
-            val backdropTag = episode.backdropImageTags?.firstOrNull()
-            when {
-                backdropTag != null -> jellyfinClient.getBackdropUrl(episode.id, backdropTag, maxWidth = 1920)
-                episode.seriesId != null -> jellyfinClient.getBackdropUrl(episode.seriesId!!, null, maxWidth = 1920)
-                else -> jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary, maxWidth = 1920)
-            }
+            // Use episode thumbnail (primary image) for the backdrop display
+            jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary, maxWidth = 800)
         }
     }
 
@@ -207,20 +207,25 @@ fun EpisodesScreen(
     }
 
     // focusRestorer saves/restores focus when NavRail is entered/exited
-    // Fallback to episode row (not play button) so initial focus goes to episode thumbnails
+    // Use the appropriate requester based on what was last focused
+    val focusRestorerTarget = when (lastFocusedSection) {
+        "action" -> playFocusRequester
+        "tabs" -> firstTabFocusRequester
+        else -> episodeRowFocusRequester
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
             .focusGroup()
-            .focusRestorer(episodeRowFocusRequester),
+            .focusRestorer(focusRestorerTarget),
     ) {
-        // Ken Burns animated backdrop (top-right)
+        // Episode thumbnail backdrop (top-right) - 40% of screen
         KenBurnsBackdrop(
-            imageUrl = backdropUrl,
+            imageUrl = thumbnailUrl,
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.85f)
+                .fillMaxWidth(0.4f)
+                .fillMaxHeight(0.4f)
                 .align(Alignment.TopEnd),
         )
 
@@ -241,6 +246,8 @@ fun EpisodesScreen(
                     playFocusRequester = playFocusRequester,
                     episodeRowFocusRequester = episodeRowFocusRequester,
                     modifier = Modifier.fillMaxWidth(0.55f),
+                    leftEdgeFocusRequester = leftEdgeFocusRequester,
+                    onActionFocused = { lastFocusedSection = "action" },
                 )
             } ?: run {
                 // Placeholder while loading
@@ -261,6 +268,8 @@ fun EpisodesScreen(
                 upFocusRequester = playFocusRequester,
                 downFocusRequester = firstTabFocusRequester,
                 modifier = Modifier.fillMaxWidth(),
+                leftEdgeFocusRequester = leftEdgeFocusRequester,
+                onRowFocused = { lastFocusedSection = "episodes" },
             )
 
             // Spacer pushes tabs to bottom
@@ -308,6 +317,7 @@ fun EpisodesScreen(
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
+                                            lastFocusedSection = "tabs"
                                             tabChangeJob?.cancel()
                                             tabChangeJob = coroutineScope.launch {
                                                 delay(150)
@@ -318,7 +328,11 @@ fun EpisodesScreen(
                                     .focusProperties {
                                         up = episodeRowFocusRequester
                                         down = tabContentFocusRequester
-                                        left = if (index == 0) FocusRequester.Cancel else FocusRequester.Default
+                                        left = when {
+                                            index == 0 && leftEdgeFocusRequester != null -> leftEdgeFocusRequester
+                                            index == 0 -> FocusRequester.Cancel
+                                            else -> FocusRequester.Default
+                                        }
                                     }
                                     .focusable()
                                     .selectable(
@@ -367,13 +381,19 @@ fun EpisodesScreen(
                         when (selectedTab) {
                             EpisodeTab.Details -> {
                                 focusedEpisode?.let { episode ->
-                                    DetailsTabContent(episode = episode)
+                                    DetailsTabContent(
+                                        episode = episode,
+                                        firstItemFocusRequester = tabContentFocusRequester,
+                                        tabFocusRequester = firstTabFocusRequester,
+                                    )
                                 }
                             }
                             EpisodeTab.MediaInfo -> {
                                 focusedEpisode?.let { episode ->
                                     MediaInfoTabContent(
                                         mediaStreams = episode.mediaSources?.firstOrNull()?.mediaStreams ?: emptyList(),
+                                        firstItemFocusRequester = tabContentFocusRequester,
+                                        tabFocusRequester = firstTabFocusRequester,
                                     )
                                 }
                             }
@@ -455,6 +475,8 @@ private fun EpisodeHeroContent(
     playFocusRequester: FocusRequester,
     episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    leftEdgeFocusRequester: FocusRequester? = null,
+    onActionFocused: () -> Unit = {},
 ) {
     val isWatched = episode.userData?.played == true
     val isFavorite = episode.userData?.isFavorite == true
@@ -527,6 +549,8 @@ private fun EpisodeHeroContent(
             onFavoriteClick = onFavoriteClick,
             focusRequester = playFocusRequester,
             downFocusRequester = episodeRowFocusRequester,
+            leftEdgeFocusRequester = leftEdgeFocusRequester,
+            onButtonFocused = onActionFocused,
         )
     }
 }
@@ -648,6 +672,8 @@ private fun EpisodeActionButtons(
     onFavoriteClick: () -> Unit,
     focusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
+    leftEdgeFocusRequester: FocusRequester? = null,
+    onButtonFocused: () -> Unit = {},
 ) {
     val playButtonText = when {
         hasProgress && remainingMinutes > 0 -> "Resume · ${remainingMinutes}m left"
@@ -673,7 +699,13 @@ private fun EpisodeActionButtons(
                 onClick = onPlayClick,
                 modifier = Modifier
                     .focusRequester(playFocusRequester)
-                    .focusProperties { down = downFocusRequester },
+                    .focusProperties {
+                        down = downFocusRequester
+                        if (leftEdgeFocusRequester != null) {
+                            left = leftEdgeFocusRequester
+                        }
+                    }
+                    .onFocusChanged { if (it.isFocused) onButtonFocused() },
             )
         }
 
@@ -718,6 +750,8 @@ private fun EpisodeCardRow(
     upFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    leftEdgeFocusRequester: FocusRequester? = null,
+    onRowFocused: () -> Unit = {},
 ) {
     val lazyListState = rememberLazyListState()
 
@@ -774,13 +808,18 @@ private fun EpisodeCardRow(
                         episode = episode,
                         jellyfinClient = jellyfinClient,
                         onClick = { onEpisodeClick(episode) },
-                        onFocused = { onEpisodeFocused(episode) },
+                        onFocused = {
+                            onEpisodeFocused(episode)
+                            onRowFocused()
+                        },
                         modifier = Modifier
                             .focusRequester(cardFocusRequester)
                             .focusProperties {
                                 up = upFocusRequester
                                 down = downFocusRequester
-                                if (index == 0) {
+                                if (index == 0 && leftEdgeFocusRequester != null) {
+                                    left = leftEdgeFocusRequester
+                                } else if (index == 0) {
                                     left = FocusRequester.Cancel
                                 }
                             },
@@ -884,49 +923,94 @@ private fun EpisodeCard(
 
 /**
  * Details tab - shows episode overview, directors, writers, etc.
+ * Made focusable for D-pad navigation from tab headers.
  */
 @Composable
-private fun DetailsTabContent(episode: JellyfinItem) {
+private fun DetailsTabContent(
+    episode: JellyfinItem,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
+) {
     val directors = episode.people?.filter { it.type == "Director" } ?: emptyList()
     val writers = episode.people?.filter { it.type == "Writer" } ?: emptyList()
+    val internalFirstFocusRequester = remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
     ) {
         // Overview section - wider with auto-scroll for long text
         episode.overview?.let { overview ->
             item("overview") {
-                OverviewSection(overview = overview)
+                Box(
+                    modifier = Modifier
+                        .then(
+                            if (firstItemFocusRequester != null) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier.focusRequester(internalFirstFocusRequester)
+                            },
+                        )
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
+                        }
+                        .focusable(),
+                ) {
+                    OverviewSection(overview = overview)
+                }
             }
         }
 
         // Details section
         item("details") {
-            Column(
-                modifier = Modifier.width(200.dp),
+            Box(
+                modifier = Modifier
+                    .then(
+                        // If no overview, this becomes first focusable item
+                        if (episode.overview == null && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else if (episode.overview == null) {
+                            Modifier.focusRequester(internalFirstFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    }
+                    .focusable(),
             ) {
-                Text(
-                    text = "Details",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = TvColors.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.width(200.dp),
+                ) {
+                    Text(
+                        text = "Details",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TvColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                episode.premiereDate?.let {
-                    DetailItem("Air Date", episode.formattedFullPremiereDate ?: "Unknown")
-                }
-                episode.runTimeTicks?.let { ticks ->
-                    val minutes = (ticks / 600_000_000).toInt()
-                    DetailItem("Runtime", "${minutes}m")
-                }
-                episode.officialRating?.let {
-                    DetailItem("Rating", it)
-                }
-                episode.communityRating?.let {
-                    DetailItem("Score", String.format(Locale.US, "%.1f", it))
+                    episode.premiereDate?.let {
+                        DetailItem("Air Date", episode.formattedFullPremiereDate ?: "Unknown")
+                    }
+                    episode.runTimeTicks?.let { ticks ->
+                        val minutes = (ticks / 600_000_000).toInt()
+                        DetailItem("Runtime", "${minutes}m")
+                    }
+                    episode.officialRating?.let {
+                        DetailItem("Rating", it)
+                    }
+                    episode.communityRating?.let {
+                        DetailItem("Score", String.format(Locale.US, "%.1f", it))
+                    }
                 }
             }
         }
@@ -934,44 +1018,54 @@ private fun DetailsTabContent(episode: JellyfinItem) {
         // Directors & Writers combined into one column
         if (directors.isNotEmpty() || writers.isNotEmpty()) {
             item("crew") {
-                Column(
-                    modifier = Modifier.width(200.dp),
-                ) {
-                    if (directors.isNotEmpty()) {
-                        Text(
-                            text = "Director${if (directors.size > 1) "s" else ""}",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = TvColors.TextPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        directors.forEach { director ->
-                            Text(
-                                text = director.name ?: "Unknown",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TvColors.TextSecondary,
-                            )
+                Box(
+                    modifier = Modifier
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
                         }
-                    }
-
-                    if (directors.isNotEmpty() && writers.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    if (writers.isNotEmpty()) {
-                        Text(
-                            text = "Writer${if (writers.size > 1) "s" else ""}",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = TvColors.TextPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        writers.forEach { writer ->
+                        .focusable(),
+                ) {
+                    Column(
+                        modifier = Modifier.width(200.dp),
+                    ) {
+                        if (directors.isNotEmpty()) {
                             Text(
-                                text = writer.name ?: "Unknown",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TvColors.TextSecondary,
+                                text = "Director${if (directors.size > 1) "s" else ""}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TvColors.TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            directors.forEach { director ->
+                                Text(
+                                    text = director.name ?: "Unknown",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TvColors.TextSecondary,
+                                )
+                            }
+                        }
+
+                        if (directors.isNotEmpty() && writers.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        if (writers.isNotEmpty()) {
+                            Text(
+                                text = "Writer${if (writers.size > 1) "s" else ""}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TvColors.TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            writers.forEach { writer ->
+                                Text(
+                                    text = writer.name ?: "Unknown",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TvColors.TextSecondary,
+                                )
+                            }
                         }
                     }
                 }
@@ -1066,37 +1160,72 @@ private fun OverviewSection(overview: String) {
 
 /**
  * Media Info tab - shows video/audio/subtitle streams.
+ * Made focusable for D-pad navigation from tab headers.
  */
 @Composable
-private fun MediaInfoTabContent(mediaStreams: List<MediaStream>) {
+private fun MediaInfoTabContent(
+    mediaStreams: List<MediaStream>,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
+) {
     val videoStreams = mediaStreams.filter { it.type == "Video" }
     val audioStreams = mediaStreams.filter { it.type == "Audio" }
     val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
+    // Track which item should get the first focus requester
+    val firstSection = when {
+        videoStreams.isNotEmpty() -> "video"
+        audioStreams.isNotEmpty() -> "audio"
+        subtitleStreams.isNotEmpty() -> "subtitles"
+        else -> null
+    }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
     ) {
         // Video info
         if (videoStreams.isNotEmpty()) {
             item("video") {
-                Column(modifier = Modifier.width(200.dp)) {
-                    Text(
-                        text = "Video",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    videoStreams.firstOrNull()?.let { stream ->
-                        stream.codec?.let { DetailItem("Codec", it.uppercase()) }
-                        if (stream.width != null && stream.height != null) {
-                            DetailItem("Resolution", "${stream.width}x${stream.height}")
+                Box(
+                    modifier = Modifier
+                        .then(
+                            if (firstSection == "video" && firstItemFocusRequester != null) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else if (firstSection == "video") {
+                                Modifier.focusRequester(internalFirstFocusRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
                         }
-                        stream.aspectRatio?.let { DetailItem("Aspect", it) }
-                        stream.bitRate?.let {
-                            DetailItem("Bitrate", "${it / 1_000_000} Mbps")
+                        .focusable(),
+                ) {
+                    Column(modifier = Modifier.width(200.dp)) {
+                        Text(
+                            text = "Video",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        videoStreams.firstOrNull()?.let { stream ->
+                            stream.codec?.let { DetailItem("Codec", it.uppercase()) }
+                            if (stream.width != null && stream.height != null) {
+                                DetailItem("Resolution", "${stream.width}x${stream.height}")
+                            }
+                            stream.aspectRatio?.let { DetailItem("Aspect", it) }
+                            stream.bitRate?.let {
+                                DetailItem("Bitrate", "${it / 1_000_000} Mbps")
+                            }
                         }
                     }
                 }
@@ -1106,32 +1235,51 @@ private fun MediaInfoTabContent(mediaStreams: List<MediaStream>) {
         // Audio info
         if (audioStreams.isNotEmpty()) {
             item("audio") {
-                Column(modifier = Modifier.width(250.dp)) {
-                    Text(
-                        text = "Audio (${audioStreams.size} tracks)",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    audioStreams.take(4).forEach { stream ->
-                        val info = buildString {
-                            append(stream.language?.uppercase() ?: "UND")
-                            stream.codec?.let { append(" - ${it.uppercase()}") }
-                            stream.channels?.let { append(" ${it}ch") }
+                Box(
+                    modifier = Modifier
+                        .then(
+                            if (firstSection == "audio" && firstItemFocusRequester != null) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else if (firstSection == "audio") {
+                                Modifier.focusRequester(internalFirstFocusRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
                         }
+                        .focusable(),
+                ) {
+                    Column(modifier = Modifier.width(250.dp)) {
                         Text(
-                            text = info,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary,
+                            text = "Audio (${audioStreams.size} tracks)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
                         )
-                    }
-                    if (audioStreams.size > 4) {
-                        Text(
-                            text = "+${audioStreams.size - 4} more",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary.copy(alpha = 0.7f),
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        audioStreams.take(4).forEach { stream ->
+                            val info = buildString {
+                                append(stream.language?.uppercase() ?: "UND")
+                                stream.codec?.let { append(" - ${it.uppercase()}") }
+                                stream.channels?.let { append(" ${it}ch") }
+                            }
+                            Text(
+                                text = info,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextSecondary,
+                            )
+                        }
+                        if (audioStreams.size > 4) {
+                            Text(
+                                text = "+${audioStreams.size - 4} more",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextSecondary.copy(alpha = 0.7f),
+                            )
+                        }
                     }
                 }
             }
@@ -1140,29 +1288,48 @@ private fun MediaInfoTabContent(mediaStreams: List<MediaStream>) {
         // Subtitle info
         if (subtitleStreams.isNotEmpty()) {
             item("subtitles") {
-                Column(modifier = Modifier.width(200.dp)) {
-                    Text(
-                        text = "Subtitles (${subtitleStreams.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    subtitleStreams.take(6).forEach { stream ->
-                        Text(
-                            text = stream.displayTitle ?: stream.language?.uppercase() ?: "Unknown",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                Box(
+                    modifier = Modifier
+                        .then(
+                            if (firstSection == "subtitles" && firstItemFocusRequester != null) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else if (firstSection == "subtitles") {
+                                Modifier.focusRequester(internalFirstFocusRequester)
+                            } else {
+                                Modifier
+                            },
                         )
-                    }
-                    if (subtitleStreams.size > 6) {
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
+                        }
+                        .focusable(),
+                ) {
+                    Column(modifier = Modifier.width(200.dp)) {
                         Text(
-                            text = "+${subtitleStreams.size - 6} more",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary.copy(alpha = 0.7f),
+                            text = "Subtitles (${subtitleStreams.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        subtitleStreams.take(6).forEach { stream ->
+                            Text(
+                                text = stream.displayTitle ?: stream.language?.uppercase() ?: "Unknown",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (subtitleStreams.size > 6) {
+                            Text(
+                                text = "+${subtitleStreams.size - 6} more",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextSecondary.copy(alpha = 0.7f),
+                            )
+                        }
                     }
                 }
             }

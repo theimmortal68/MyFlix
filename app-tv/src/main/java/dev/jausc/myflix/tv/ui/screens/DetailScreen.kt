@@ -42,6 +42,7 @@ fun DetailScreen(
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
     onNavigateToPerson: (String) -> Unit = {},
     onNavigateToEpisodes: (seriesId: String, seasonNumber: Int, episodeId: String?) -> Unit = { _, _, _ -> },
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -153,6 +154,7 @@ fun DetailScreen(
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     modifier = Modifier.fillMaxSize(),
+                    leftEdgeFocusRequester = leftEdgeFocusRequester,
                 )
             }
 

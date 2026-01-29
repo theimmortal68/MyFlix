@@ -127,6 +127,7 @@ fun UnifiedSeriesScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     modifier: Modifier = Modifier,
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     val series = state.item ?: return
     val isWatched = series.userData?.played == true
@@ -134,6 +135,10 @@ fun UnifiedSeriesScreen(
     val playButtonFocusRequester = remember { FocusRequester() }
     val seasonsTabFocusRequester = remember { FocusRequester() }
     val tabContentFocusRequester = remember { FocusRequester() }
+
+    // Track what was last focused for NavRail exit restoration
+    var lastFocusedSection by remember { mutableStateOf("action") } // "action", "nextup", "tabs"
+    val nextUpFocusRequester = remember { FocusRequester() }
 
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
@@ -197,12 +202,18 @@ fun UnifiedSeriesScreen(
     }
 
     // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+    // Use the appropriate requester based on what was last focused
+    val focusRestorerTarget = when (lastFocusedSection) {
+        "nextup" -> nextUpFocusRequester
+        "tabs" -> seasonsTabFocusRequester
+        else -> playButtonFocusRequester
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
             .focusGroup()
-            .focusRestorer(playButtonFocusRequester),
+            .focusRestorer(focusRestorerTarget),
     ) {
         // Layer 1: Ken Burns animated backdrop (top-right)
         KenBurnsBackdrop(
@@ -240,6 +251,10 @@ fun UnifiedSeriesScreen(
                 playButtonFocusRequester = playButtonFocusRequester,
                 seasonsTabFocusRequester = seasonsTabFocusRequester,
                 modifier = Modifier.fillMaxWidth(0.55f),
+                leftEdgeFocusRequester = leftEdgeFocusRequester,
+                nextUpFocusRequester = nextUpFocusRequester,
+                onActionFocused = { lastFocusedSection = "action" },
+                onNextUpFocused = { lastFocusedSection = "nextup" },
             )
 
             // Spacer pushes tabs to bottom
@@ -272,9 +287,10 @@ fun UnifiedSeriesScreen(
                             .padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
-                        availableTabs.forEach { tab ->
+                        availableTabs.forEachIndexed { index, tab ->
                             val isSelected = selectedTab == tab
                             var isFocused by remember { mutableStateOf(false) }
+                            val isFirstTab = index == 0
 
                             // Apply focusRequester to Seasons tab for navigation from Next Up
                             val tabModifier = if (tab == UnifiedSeriesTab.Seasons) {
@@ -288,6 +304,7 @@ fun UnifiedSeriesScreen(
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
+                                            lastFocusedSection = "tabs"
                                             // Cancel any pending tab change
                                             tabChangeJob?.cancel()
                                             // Start new debounced change
@@ -300,6 +317,10 @@ fun UnifiedSeriesScreen(
                                     .focusProperties {
                                         // Navigate down into tab content
                                         down = tabContentFocusRequester
+                                        // First tab: left goes to NavRail sentinel
+                                        if (isFirstTab && leftEdgeFocusRequester != null) {
+                                            left = leftEdgeFocusRequester
+                                        }
                                     }
                                     .focusable()
                                     .selectable(
@@ -358,7 +379,11 @@ fun UnifiedSeriesScreen(
                                 )
                             }
                             UnifiedSeriesTab.Details -> {
-                                DetailsTabContent(series = series)
+                                DetailsTabContent(
+                                    series = series,
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = seasonsTabFocusRequester,
+                                )
                             }
                             UnifiedSeriesTab.CastCrew -> {
                                 CastCrewTabContent(
@@ -523,6 +548,10 @@ private fun SeriesHeroContent(
     playButtonFocusRequester: FocusRequester,
     seasonsTabFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    leftEdgeFocusRequester: FocusRequester? = null,
+    nextUpFocusRequester: FocusRequester? = null,
+    onActionFocused: () -> Unit = {},
+    onNextUpFocused: () -> Unit = {},
 ) {
 
     Column(modifier = modifier) {
@@ -571,6 +600,8 @@ private fun SeriesHeroContent(
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
             playButtonFocusRequester = playButtonFocusRequester,
+            leftEdgeFocusRequester = leftEdgeFocusRequester,
+            onButtonFocused = onActionFocused,
         )
 
         // Next Up card (show if has progress, otherwise show S1 E1)
@@ -595,7 +626,20 @@ private fun SeriesHeroContent(
                     onClick = { onEpisodeClick(episode) },
                     modifier = Modifier
                         .size(width = 200.dp, height = 112.dp)
-                        .focusProperties { down = seasonsTabFocusRequester },
+                        .then(
+                            if (nextUpFocusRequester != null) {
+                                Modifier.focusRequester(nextUpFocusRequester)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .focusProperties {
+                            down = seasonsTabFocusRequester
+                            if (leftEdgeFocusRequester != null) {
+                                left = leftEdgeFocusRequester
+                            }
+                        }
+                        .onFocusChanged { if (it.isFocused) onNextUpFocused() },
                     scale = CardDefaults.scale(focusedScale = 1.03f),
                     border = CardDefaults.border(
                         focusedBorder = Border(
@@ -682,6 +726,8 @@ private fun SeriesActionButtonsRow(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     playButtonFocusRequester: FocusRequester,
+    leftEdgeFocusRequester: FocusRequester? = null,
+    onButtonFocused: () -> Unit = {},
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -691,13 +737,23 @@ private fun SeriesActionButtonsRow(
             .focusRestorer(playButtonFocusRequester),
     ) {
         // Play button - dynamic text based on next up episode
+        // Left navigation goes to NavRail sentinel
         item("play") {
             ExpandablePlayButton(
                 title = playButtonText,
                 icon = Icons.Outlined.PlayArrow,
                 iconColor = if (isResume) IconColors.Resume else IconColors.Play,
                 onClick = onPlayClick,
-                modifier = Modifier.focusRequester(playButtonFocusRequester),
+                modifier = Modifier
+                    .focusRequester(playButtonFocusRequester)
+                    .then(
+                        if (leftEdgeFocusRequester != null) {
+                            Modifier.focusProperties { left = leftEdgeFocusRequester }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .onFocusChanged { if (it.isFocused) onButtonFocused() },
             )
         }
 
@@ -1072,34 +1128,88 @@ private fun PersonCard(
 
 /**
  * Details tab content - shows metadata in a 3-column grid layout.
+ * Made focusable for D-pad navigation from tab headers.
  */
 @Composable
-private fun DetailsTabContent(series: JellyfinItem, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
+private fun DetailsTabContent(
+    series: JellyfinItem,
+    modifier: Modifier = Modifier,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
+) {
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
+    LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
         horizontalArrangement = Arrangement.spacedBy(48.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         // Column 1
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DetailItem("Genres", series.genres?.joinToString(", ") ?: "—")
-            DetailItem("First Aired", series.premiereDate?.let { formatDate(it) } ?: "—")
-            DetailItem("Runtime", series.runTimeTicks?.let { "${it / 600_000_000} min" } ?: "—")
+        item("column1") {
+            Box(
+                modifier = Modifier
+                    .then(
+                        if (firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier.focusRequester(internalFirstFocusRequester)
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    }
+                    .focusable(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetailItem("Genres", series.genres?.joinToString(", ") ?: "—")
+                    DetailItem("First Aired", series.premiereDate?.let { formatDate(it) } ?: "—")
+                    DetailItem("Runtime", series.runTimeTicks?.let { "${it / 600_000_000} min" } ?: "—")
+                }
+            }
         }
         // Column 2
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DetailItem("Network", series.studios?.firstOrNull()?.name ?: "—")
-            DetailItem("Status", series.status?.replaceFirstChar { it.uppercase() } ?: "—")
-            DetailItem("Seasons", "${series.childCount ?: 0}")
+        item("column2") {
+            Box(
+                modifier = Modifier
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    }
+                    .focusable(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetailItem("Network", series.studios?.firstOrNull()?.name ?: "—")
+                    DetailItem("Status", series.status?.replaceFirstChar { it.uppercase() } ?: "—")
+                    DetailItem("Seasons", "${series.childCount ?: 0}")
+                }
+            }
         }
         // Column 3
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DetailItem("Rating", series.officialRating ?: "—")
-            DetailItem(
-                "Score",
-                series.communityRating?.let { "★ ${"%.1f".format(Locale.US, it)}" } ?: "—",
-            )
-            series.taglines?.firstOrNull()?.let { tagline ->
-                DetailItem("Tagline", "\"$tagline\"")
+        item("column3") {
+            Box(
+                modifier = Modifier
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    }
+                    .focusable(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetailItem("Rating", series.officialRating ?: "—")
+                    DetailItem(
+                        "Score",
+                        series.communityRating?.let { "★ ${"%.1f".format(Locale.US, it)}" } ?: "—",
+                    )
+                    series.taglines?.firstOrNull()?.let { tagline ->
+                        DetailItem("Tagline", "\"$tagline\"")
+                    }
+                }
             }
         }
     }
