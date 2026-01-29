@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -37,11 +38,20 @@ import kotlinx.coroutines.delay
  * @param railFocusRequester FocusRequester to transfer focus to rail
  * @param modifier Modifier for the sentinel
  */
+/**
+ * @param isEnabled When false, sentinel cannot receive focus (rail is already active)
+ * @param onActivate Called when focus lands on sentinel (activates rail)
+ * @param railFocusRequester FocusRequester to transfer focus to rail
+ * @param sentinelFocusRequester FocusRequester for the sentinel itself, allowing content to
+ *                              explicitly navigate left to it
+ * @param modifier Modifier for the sentinel
+ */
 @Composable
 fun FocusSentinel(
     isEnabled: Boolean,
     onActivate: () -> Unit,
     railFocusRequester: FocusRequester,
+    sentinelFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -70,6 +80,7 @@ fun FocusSentinel(
         modifier = modifier
             .width(1.dp)
             .fillMaxHeight()
+            .focusRequester(sentinelFocusRequester)
             .focusProperties {
                 // Block left navigation - nothing to the left of sentinel
                 left = FocusRequester.Cancel

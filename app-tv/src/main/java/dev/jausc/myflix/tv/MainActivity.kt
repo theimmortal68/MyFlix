@@ -302,6 +302,8 @@ fun MyFlixTvApp() {
     var isNavRailActive by remember { mutableStateOf(false) }
     var isNavRailExpanded by remember { mutableStateOf(false) }
     val navRailFocusRequester = remember { FocusRequester() }
+    // Sentinel focus requester - passed to content screens for explicit left navigation
+    val sentinelFocusRequester = remember { FocusRequester() }
 
     // Sentinel enabled state - delayed after navigation to prevent focus stealing
     var sentinelEnabled by remember { mutableStateOf(false) }
@@ -510,6 +512,7 @@ fun MyFlixTvApp() {
                         // Navigate to EpisodesScreen for series, starting at season 1
                         navController.navigate("episodes/$seriesId?seasonNumber=1")
                     },
+                    leftEdgeFocusRequester = sentinelFocusRequester,
                 )
             }
 
@@ -1205,7 +1208,7 @@ fun MyFlixTvApp() {
 
         // Focus sentinel - detects left-edge navigation and activates rail
         // Positioned at x=0 (behind collapsed rail) so it's to the LEFT of content
-        // This allows Compose focus search to find it when navigating left
+        // Content screens use sentinelFocusRequester for explicit left navigation
         if (showNavRail) {
             FocusSentinel(
                 isEnabled = !isNavRailActive && sentinelEnabled,
@@ -1214,6 +1217,7 @@ fun MyFlixTvApp() {
                     isNavRailExpanded = true
                 },
                 railFocusRequester = navRailFocusRequester,
+                sentinelFocusRequester = sentinelFocusRequester,
                 modifier = Modifier.zIndex(0.25f),
             )
         }

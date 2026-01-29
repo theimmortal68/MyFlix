@@ -13,18 +13,14 @@
 package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -52,12 +48,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -65,9 +61,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -203,6 +196,7 @@ fun HeroSection(
     playButtonFocusRequester: FocusRequester = remember { FocusRequester() },
     onCurrentItemChanged: ((JellyfinItem, String?) -> Unit)? = null,
     onPreviewClear: (() -> Unit)? = null,
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     if (featuredItems.isEmpty() && previewItem == null) return
 
@@ -288,6 +282,7 @@ fun HeroSection(
                         playButtonShouldHaveFocus = true
                         onPreviewClear?.invoke()
                     },
+                    leftEdgeFocusRequester = leftEdgeFocusRequester,
                 )
             }
         }
@@ -600,6 +595,7 @@ private fun HeroActionButtons(
     playButtonText: String = "Play",
     playButtonIconColor: Color = IconColors.Play,
     onButtonFocused: (() -> Unit)? = null,
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     // Alpha is 0 in preview mode (invisible but focusable)
     val buttonsAlpha = if (isPreviewMode) 0f else 1f
@@ -609,6 +605,7 @@ private fun HeroActionButtons(
         modifier = Modifier.alpha(buttonsAlpha),
     ) {
         // Play button - receives initial focus on app launch
+        // Left navigation goes to NavRail sentinel
         ExpandablePlayButton(
             title = playButtonText,
             icon = Icons.Outlined.PlayArrow,
@@ -616,6 +613,13 @@ private fun HeroActionButtons(
             onClick = onPlayClick,
             modifier = Modifier
                 .focusRequester(playButtonFocusRequester)
+                .then(
+                    if (leftEdgeFocusRequester != null) {
+                        Modifier.focusProperties { left = leftEdgeFocusRequester }
+                    } else {
+                        Modifier
+                    }
+                )
                 .onFocusChanged { state ->
                     if (state.isFocused) {
                         onButtonFocused?.invoke()

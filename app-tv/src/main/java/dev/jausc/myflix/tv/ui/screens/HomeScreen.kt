@@ -53,6 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -119,6 +120,7 @@ fun HomeScreen(
     restoreFocusRequester: FocusRequester? = null,
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
     onSeriesMoreInfoClick: (seriesId: String) -> Unit = { seriesId -> onItemClick(seriesId) },
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -313,6 +315,7 @@ fun HomeScreen(
                 savedFocusItemId = savedFocusItemId,
                 restoreFocusRequester = effectiveRestoreFocusRequester,
                 onItemFocused = { itemId -> savedFocusItemId = itemId },
+                leftEdgeFocusRequester = leftEdgeFocusRequester,
             )
         }
     }
@@ -362,7 +365,7 @@ private data class RowData(
  * Uses Wholphin's exact pattern for stable scroll behavior.
  */
 @Suppress("UnusedParameter")
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun HomeContent(
     featuredItems: List<JellyfinItem>,
@@ -395,6 +398,8 @@ private fun HomeContent(
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester = remember { FocusRequester() },
     onItemFocused: (String) -> Unit = {},
+    // Left edge navigation - for activating NavRail
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -559,7 +564,6 @@ private fun HomeContent(
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // FocusRequester to connect hero DOWN navigation to content rows
-    // Defined here so it can be used in focusRestorer
     val contentFocusRequester = remember { FocusRequester() }
 
     // Content layers:
@@ -567,12 +571,12 @@ private fun HomeContent(
     // Layer 2 (front): Hero info (37%) + Content rows (63%)
     // Note: NavigationRail is now provided by MainActivity
     // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
-    // Using contentFocusRequester (first row) as fallback so content rows are preferred over hero
+    // Explicit left focusProperties on items ensure left navigation still reaches sentinel
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .focusGroup()
-            .focusRestorer(contentFocusRequester),
+            .focusRestorer(restoreFocusRequester),
     ) {
             val heroHeight = maxHeight * 0.37f
             // Disable automatic focus scrolling; we snap rows explicitly on focus.
@@ -653,6 +657,8 @@ private fun HomeContent(
                                 restoreFocusRequester = restoreFocusRequester,
                                 // First row: UP navigates to hero Play button
                                 upFocusTarget = if (index == 0) heroPlayFocusRequester else null,
+                                // Left edge navigation to NavRail sentinel
+                                leftEdgeFocusRequester = leftEdgeFocusRequester,
                                 // First row gets focus requester for hero DOWN navigation
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -724,6 +730,7 @@ private fun HomeContent(
                             heroDisplayItem = item
                         },
                         onPreviewClear = clearPreviewAndScrollToTop,
+                        leftEdgeFocusRequester = leftEdgeFocusRequester,
                     )
                 }
             }
@@ -750,6 +757,7 @@ private fun ItemRow(
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester? = null,
     upFocusTarget: FocusRequester? = null,
+    leftEdgeFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
@@ -797,7 +805,7 @@ private fun ItemRow(
                 contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                items(items, key = { item -> item.id }) { item ->
+                itemsIndexed(items, key = { _, item -> item.id }) { itemIndex, item ->
                     // Attach restoreFocusRequester to the item that should receive focus on back navigation
                     val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
                         Modifier
@@ -817,11 +825,18 @@ private fun ItemRow(
                         }
                     }
 
+                    // Build navigation focus properties
+                    // - First item: left goes to sentinel (NavRail), up goes to hero (if first row)
+                    // - Other items: only up navigation override (if first row)
+                    val isFirstItem = itemIndex == 0
                     val focusAndNavModifier = focusModifier.then(
-                        if (upFocusTarget != null) {
-                            Modifier.focusProperties { up = upFocusTarget }
-                        } else {
-                            Modifier
+                        Modifier.focusProperties {
+                            if (upFocusTarget != null) {
+                                up = upFocusTarget
+                            }
+                            if (isFirstItem && leftEdgeFocusRequester != null) {
+                                left = leftEdgeFocusRequester
+                            }
                         },
                     )
 
