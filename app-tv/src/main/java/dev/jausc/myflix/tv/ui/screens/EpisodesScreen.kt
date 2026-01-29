@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
@@ -96,6 +95,7 @@ private enum class EpisodeTab {
     Details,
     MediaInfo,
     CastCrew,
+    GuestStars,
     Seasons,
 }
 
@@ -104,9 +104,10 @@ private enum class EpisodeTab {
  *
  * Layout (top to bottom):
  * 1. Hero section with Ken Burns backdrop and episode details
- * 2. Tab section with gradient background [Details, Media Info, Cast & Crew, Guest Stars, Seasons]
+ * 2. Episode card row directly below action buttons
+ * 3. Tab section at bottom [Details, Media Info, Cast & Crew, Guest Stars, Seasons]
  *
- * The hero content updates based on which episode card is focused in the Seasons tab.
+ * The hero content updates based on which episode card is focused.
  */
 @Composable
 fun EpisodesScreen(
@@ -132,7 +133,7 @@ fun EpisodesScreen(
 
     // Focus requesters for navigation flow
     val actionButtonsFocusRequester = remember { FocusRequester() }
-    val tabRowFocusRequester = remember { FocusRequester() }
+    val episodeRowFocusRequester = remember { FocusRequester() }
     val firstTabFocusRequester = remember { FocusRequester() }
 
     // Episode focus requesters - keyed by episode ID
@@ -173,13 +174,19 @@ fun EpisodesScreen(
         }
     }
 
-    // Tab state
+    // Tab state - default to Seasons
     var selectedTab by rememberSaveable { mutableStateOf(EpisodeTab.Seasons) }
 
+    // Get guest stars from focused episode
+    val guestStars = remember(focusedEpisode) {
+        focusedEpisode?.people?.filter { it.type == "GuestStar" } ?: emptyList()
+    }
+
     // Filter tabs based on available data
-    val availableTabs = remember(focusedEpisode) {
+    val availableTabs = remember(focusedEpisode, guestStars) {
         EpisodeTab.entries.filter { tab ->
             when (tab) {
+                EpisodeTab.GuestStars -> guestStars.isNotEmpty()
                 EpisodeTab.CastCrew -> focusedEpisode?.people?.isNotEmpty() == true
                 EpisodeTab.MediaInfo -> focusedEpisode?.mediaSources?.firstOrNull()?.mediaStreams?.isNotEmpty() == true
                 else -> true
@@ -220,18 +227,33 @@ fun EpisodesScreen(
                 EpisodeHeroContent(
                     episode = episode,
                     seriesName = seriesName,
-                    jellyfinClient = jellyfinClient,
                     onPlayClick = { onEpisodeClick(episode) },
                     onWatchedClick = { onWatchedClick(episode) },
                     onFavoriteClick = { onFavoriteClick(episode) },
                     actionButtonsFocusRequester = actionButtonsFocusRequester,
-                    tabRowFocusRequester = firstTabFocusRequester,
+                    episodeRowFocusRequester = episodeRowFocusRequester,
                     modifier = Modifier.fillMaxWidth(0.55f),
                 )
             } ?: run {
                 // Placeholder while loading
-                Spacer(modifier = Modifier.height(200.dp))
+                Spacer(modifier = Modifier.height(150.dp))
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Episode row directly in hero area
+            EpisodeCardRow(
+                episodes = episodes,
+                jellyfinClient = jellyfinClient,
+                selectedEpisodeId = targetEpisode?.id,
+                episodeFocusRequesters = episodeFocusRequesters,
+                onEpisodeClick = onEpisodeClick,
+                onEpisodeFocused = { episode -> focusedEpisode = episode },
+                focusRequester = episodeRowFocusRequester,
+                upFocusRequester = actionButtonsFocusRequester,
+                downFocusRequester = firstTabFocusRequester,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             // Spacer pushes tabs to bottom
             Spacer(modifier = Modifier.weight(1f))
@@ -260,8 +282,7 @@ fun EpisodesScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                            .focusRequester(tabRowFocusRequester),
+                            .padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         availableTabs.forEachIndexed { index, tab ->
@@ -287,7 +308,7 @@ fun EpisodesScreen(
                                         }
                                     }
                                     .focusProperties {
-                                        up = actionButtonsFocusRequester
+                                        up = episodeRowFocusRequester
                                     }
                                     .focusable()
                                     .selectable(
@@ -301,6 +322,7 @@ fun EpisodesScreen(
                                         EpisodeTab.Details -> "Details"
                                         EpisodeTab.MediaInfo -> "Media Info"
                                         EpisodeTab.CastCrew -> "Cast & Crew"
+                                        EpisodeTab.GuestStars -> "Guest Stars"
                                         EpisodeTab.Seasons -> "Seasons"
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
@@ -329,7 +351,7 @@ fun EpisodesScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp)
+                            .height(180.dp)
                             .padding(start = 2.dp),
                     ) {
                         when (selectedTab) {
@@ -348,24 +370,25 @@ fun EpisodesScreen(
                             EpisodeTab.CastCrew -> {
                                 focusedEpisode?.let { episode ->
                                     CastCrewTabContent(
-                                        people = episode.people ?: emptyList(),
+                                        people = episode.people?.filter { it.type != "GuestStar" } ?: emptyList(),
                                         jellyfinClient = jellyfinClient,
                                         onPersonClick = onPersonClick,
                                     )
                                 }
                             }
+                            EpisodeTab.GuestStars -> {
+                                GuestStarsTabContent(
+                                    guestStars = guestStars,
+                                    jellyfinClient = jellyfinClient,
+                                    onPersonClick = onPersonClick,
+                                )
+                            }
                             EpisodeTab.Seasons -> {
                                 SeasonsTabContent(
                                     seasons = seasons,
-                                    episodes = episodes,
                                     selectedSeasonIndex = selectedSeasonIndex,
-                                    targetEpisodeId = targetEpisode?.id,
                                     jellyfinClient = jellyfinClient,
-                                    episodeFocusRequesters = episodeFocusRequesters,
                                     onSeasonSelected = onSeasonSelected,
-                                    onEpisodeClick = onEpisodeClick,
-                                    onEpisodeFocused = { episode -> focusedEpisode = episode },
-                                    upFocusRequester = firstTabFocusRequester,
                                 )
                             }
                         }
@@ -404,18 +427,17 @@ private fun findTargetEpisode(
 // region Hero Content
 
 /**
- * Hero content section showing focused episode details with thumbnail card.
+ * Hero content section showing focused episode details.
  */
 @Composable
 private fun EpisodeHeroContent(
     episode: JellyfinItem,
     seriesName: String,
-    jellyfinClient: JellyfinClient,
     onPlayClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     actionButtonsFocusRequester: FocusRequester,
-    tabRowFocusRequester: FocusRequester,
+    episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val isWatched = episode.userData?.played == true
@@ -443,6 +465,19 @@ private fun EpisodeHeroContent(
             overflow = TextOverflow.Ellipsis,
         )
 
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Episode name
+        Text(
+            text = episode.name,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Medium,
+            ),
+            color = TvColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+
         Spacer(modifier = Modifier.height(6.dp))
 
         // Metadata row
@@ -459,7 +494,7 @@ private fun EpisodeHeroContent(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
-                modifier = Modifier.fillMaxWidth(0.8f),
+                modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
 
@@ -475,92 +510,8 @@ private fun EpisodeHeroContent(
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
             focusRequester = actionButtonsFocusRequester,
-            downFocusRequester = tabRowFocusRequester,
+            downFocusRequester = episodeRowFocusRequester,
         )
-
-        // Episode thumbnail card (like Next Up on series screen)
-        Column(
-            modifier = Modifier.padding(top = 14.dp),
-        ) {
-            // Episode label
-            Text(
-                text = if (hasProgress) "Continue Watching" else "Now Playing",
-                style = MaterialTheme.typography.labelMedium,
-                color = TvColors.TextSecondary,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-
-            // Card with thumbnail - explicit 16:9 dimensions
-            Card(
-                onClick = onPlayClick,
-                modifier = Modifier
-                    .size(width = 200.dp, height = 112.dp)
-                    .focusProperties { down = tabRowFocusRequester },
-                scale = CardDefaults.scale(focusedScale = 1.03f),
-                border = CardDefaults.border(
-                    focusedBorder = Border(
-                        border = BorderStroke(2.dp, TvColors.BluePrimary),
-                        shape = RoundedCornerShape(8.dp),
-                    ),
-                ),
-                shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
-            ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Thumbnail
-                    AsyncImage(
-                        model = jellyfinClient.getPrimaryImageUrl(episode.id, episode.imageTags?.primary, 400),
-                        contentDescription = episode.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-
-                    // Progress bar (if has progress)
-                    if (hasProgress) {
-                        val totalTicks = episode.runTimeTicks ?: 1L
-                        val progress = (positionTicks.toFloat() / totalTicks.toFloat()).coerceIn(0f, 1f)
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .fillMaxWidth()
-                                .height(3.dp)
-                                .background(Color.Black.copy(alpha = 0.5f)),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(progress)
-                                    .background(TvColors.BluePrimary),
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Episode title below thumbnail
-            Text(
-                text = "S${episode.parentIndexNumber ?: 1} E${episode.indexNumber ?: 1} · ${episode.name ?: ""}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .width(200.dp)
-                    .padding(top = 8.dp),
-            )
-
-            // Time remaining or runtime
-            val timeText = if (hasProgress) {
-                "${remainingMinutes}m remaining"
-            } else {
-                val runtimeMinutes = (episode.runTimeTicks ?: 0L) / 600_000_000
-                "${runtimeMinutes}m"
-            }
-            Text(
-                text = timeText,
-                style = MaterialTheme.typography.labelSmall,
-                color = TvColors.TextSecondary,
-            )
-        }
     }
 }
 
@@ -570,8 +521,6 @@ private fun EpisodeMetadataRow(episode: JellyfinItem) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        var needsDot = false
-
         // Season and Episode number
         val season = episode.parentIndexNumber
         val episodeNum = episode.indexNumber
@@ -581,62 +530,40 @@ private fun EpisodeMetadataRow(episode: JellyfinItem) {
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                 color = TvColors.TextPrimary.copy(alpha = 0.9f),
             )
-            needsDot = true
         }
-
-        // Episode name
-        Text(
-            text = episode.name,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-            color = TvColors.TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
-        )
-        needsDot = true
 
         // Air date
         episode.formattedFullPremiereDate?.let { date ->
-            if (needsDot) MetadataDot()
+            MetadataDot()
             Text(
                 text = date,
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextPrimary.copy(alpha = 0.9f),
             )
-            needsDot = true
         }
 
         // Runtime
         episode.runTimeTicks?.let { ticks ->
             val minutes = (ticks / 600_000_000).toInt()
             if (minutes > 0) {
-                if (needsDot) MetadataDot()
-                val hours = minutes / 60
-                val mins = minutes % 60
-                val text = when {
-                    hours > 0 && mins > 0 -> "${hours}h ${mins}m"
-                    hours > 0 -> "${hours}h"
-                    else -> "${mins}m"
-                }
+                MetadataDot()
                 Text(
-                    text = text,
+                    text = "${minutes}m",
                     style = MaterialTheme.typography.bodySmall,
                     color = TvColors.TextPrimary.copy(alpha = 0.9f),
                 )
-                needsDot = true
             }
         }
 
         // Official rating
         episode.officialRating?.let { rating ->
-            if (needsDot) MetadataDot()
+            MetadataDot()
             RatingBadge(rating)
-            needsDot = true
         }
 
         // Community rating
         episode.communityRating?.let { rating ->
-            if (needsDot) MetadataDot()
+            MetadataDot()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -758,13 +685,195 @@ private fun EpisodeActionButtons(
 
 // endregion
 
+// region Episode Row
+
+/**
+ * Horizontal row of episode cards with focus handling.
+ */
+@Composable
+private fun EpisodeCardRow(
+    episodes: List<JellyfinItem>,
+    jellyfinClient: JellyfinClient,
+    selectedEpisodeId: String?,
+    episodeFocusRequesters: Map<String, FocusRequester>,
+    onEpisodeClick: (JellyfinItem) -> Unit,
+    onEpisodeFocused: (JellyfinItem) -> Unit,
+    focusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val lazyListState = rememberLazyListState()
+
+    // Find index of selected episode for initial scroll
+    val selectedIndex = remember(episodes, selectedEpisodeId) {
+        episodes.indexOfFirst { it.id == selectedEpisodeId }.takeIf { it >= 0 } ?: 0
+    }
+
+    // Scroll to selected episode
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex > 0) {
+            lazyListState.scrollToItem(selectedIndex)
+        }
+    }
+
+    val firstCardFocusRequester = remember { FocusRequester() }
+
+    Column(modifier = modifier) {
+        // Section label with episode count
+        Text(
+            text = "Episodes (${episodes.size})",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = TvColors.TextSecondary,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+
+        if (episodes.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "No episodes available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TvColors.TextSecondary,
+                )
+            }
+        } else {
+            LazyRow(
+                state = lazyListState,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                modifier = Modifier
+                    .focusRequester(focusRequester)
+                    .focusRestorer(firstCardFocusRequester),
+            ) {
+                itemsIndexed(episodes, key = { _, episode -> episode.id }) { index, episode ->
+                    val cardFocusRequester = episodeFocusRequesters[episode.id]
+                        ?: (if (index == 0) firstCardFocusRequester else remember { FocusRequester() })
+
+                    EpisodeCard(
+                        episode = episode,
+                        jellyfinClient = jellyfinClient,
+                        onClick = { onEpisodeClick(episode) },
+                        onFocused = { onEpisodeFocused(episode) },
+                        modifier = Modifier
+                            .focusRequester(cardFocusRequester)
+                            .focusProperties {
+                                up = upFocusRequester
+                                down = downFocusRequester
+                                if (index == 0) {
+                                    left = FocusRequester.Cancel
+                                }
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EpisodeCard(
+    episode: JellyfinItem,
+    jellyfinClient: JellyfinClient,
+    onClick: () -> Unit,
+    onFocused: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val imageUrl = jellyfinClient.getPrimaryImageUrl(
+        episode.id,
+        episode.imageTags?.primary,
+        maxWidth = 400,
+    )
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.onFocusChanged { if (it.isFocused) onFocused() },
+    ) {
+        // 16:9 thumbnail card
+        Card(
+            onClick = onClick,
+            modifier = Modifier.size(width = 200.dp, height = 112.dp),
+            scale = CardDefaults.scale(focusedScale = 1.03f),
+            border = CardDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = RoundedCornerShape(8.dp),
+                ),
+            ),
+            shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = episode.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                // Progress bar
+                val positionTicks = episode.userData?.playbackPositionTicks ?: 0L
+                if (positionTicks > 0L) {
+                    val totalTicks = episode.runTimeTicks ?: 1L
+                    val progress = (positionTicks.toFloat() / totalTicks.toFloat()).coerceIn(0f, 1f)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(progress)
+                                .background(TvColors.BluePrimary),
+                        )
+                    }
+                }
+            }
+        }
+
+        // Episode info below card
+        Column(modifier = Modifier.width(200.dp)) {
+            Text(
+                text = buildString {
+                    episode.indexNumber?.let { append("$it. ") }
+                    append(episode.name)
+                },
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                color = TvColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            episode.runTimeTicks?.let { ticks ->
+                val minutes = (ticks / 600_000_000L).toInt()
+                Text(
+                    text = "${minutes}m",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TvColors.TextSecondary,
+                )
+            }
+        }
+    }
+}
+
+// endregion
+
 // region Tab Content
 
 /**
- * Details tab - shows episode overview and additional info.
+ * Details tab - shows episode overview, directors, writers, etc.
  */
 @Composable
 private fun DetailsTabContent(episode: JellyfinItem) {
+    val directors = episode.people?.filter { it.type == "Director" } ?: emptyList()
+    val writers = episode.people?.filter { it.type == "Writer" } ?: emptyList()
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
@@ -818,6 +927,54 @@ private fun DetailsTabContent(episode: JellyfinItem) {
                 }
                 episode.communityRating?.let {
                     DetailItem("Score", String.format(Locale.US, "%.1f", it))
+                }
+            }
+        }
+
+        // Directors
+        if (directors.isNotEmpty()) {
+            item("directors") {
+                Column(
+                    modifier = Modifier.width(200.dp),
+                ) {
+                    Text(
+                        text = "Director${if (directors.size > 1) "s" else ""}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TvColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    directors.forEach { director ->
+                        Text(
+                            text = director.name ?: "Unknown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TvColors.TextSecondary,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Writers
+        if (writers.isNotEmpty()) {
+            item("writers") {
+                Column(
+                    modifier = Modifier.width(200.dp),
+                ) {
+                    Text(
+                        text = "Writer${if (writers.size > 1) "s" else ""}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TvColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    writers.forEach { writer ->
+                        Text(
+                            text = writer.name ?: "Unknown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TvColors.TextSecondary,
+                        )
+                    }
                 }
             }
         }
@@ -949,7 +1106,7 @@ private fun MediaInfoTabContent(mediaStreams: List<MediaStream>) {
 }
 
 /**
- * Cast & Crew tab - shows people involved in the episode.
+ * Cast & Crew tab - shows main series cast (excludes guest stars).
  */
 @Composable
 private fun CastCrewTabContent(
@@ -982,300 +1139,117 @@ private fun CastCrewTabContent(
 }
 
 /**
- * Seasons tab - shows season pills and episode cards.
+ * Guest Stars tab - shows episode-specific guests.
+ */
+@Composable
+private fun GuestStarsTabContent(
+    guestStars: List<JellyfinPerson>,
+    jellyfinClient: JellyfinClient,
+    onPersonClick: (String) -> Unit,
+) {
+    val firstCardFocusRequester = remember { FocusRequester() }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(firstCardFocusRequester),
+    ) {
+        itemsIndexed(guestStars, key = { _, person -> person.id }) { index, person ->
+            PersonCard(
+                person = person,
+                jellyfinClient = jellyfinClient,
+                onClick = { onPersonClick(person.id) },
+                modifier = if (index == 0) {
+                    Modifier.focusRequester(firstCardFocusRequester)
+                } else {
+                    Modifier
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Seasons tab - shows season poster cards to switch seasons.
  */
 @Composable
 private fun SeasonsTabContent(
     seasons: List<JellyfinItem>,
-    episodes: List<JellyfinItem>,
     selectedSeasonIndex: Int,
-    targetEpisodeId: String?,
     jellyfinClient: JellyfinClient,
-    episodeFocusRequesters: Map<String, FocusRequester>,
     onSeasonSelected: (Int) -> Unit,
-    onEpisodeClick: (JellyfinItem) -> Unit,
-    onEpisodeFocused: (JellyfinItem) -> Unit,
-    upFocusRequester: FocusRequester,
-) {
-    val seasonRowFocusRequester = remember { FocusRequester() }
-    val episodeRowFocusRequester = remember { FocusRequester() }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Season pill row
-        if (seasons.size > 1) {
-            SeasonPillRow(
-                seasons = seasons,
-                selectedIndex = selectedSeasonIndex,
-                onSeasonSelected = onSeasonSelected,
-                focusRequester = seasonRowFocusRequester,
-                upFocusRequester = upFocusRequester,
-                downFocusRequester = episodeRowFocusRequester,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        // Episode row
-        EpisodeCardRow(
-            episodes = episodes,
-            jellyfinClient = jellyfinClient,
-            selectedEpisodeId = targetEpisodeId,
-            episodeFocusRequesters = episodeFocusRequesters,
-            onEpisodeClick = onEpisodeClick,
-            onEpisodeFocused = onEpisodeFocused,
-            focusRequester = episodeRowFocusRequester,
-            upFocusRequester = if (seasons.size > 1) seasonRowFocusRequester else upFocusRequester,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-// endregion
-
-// region Season Pills
-
-/**
- * Horizontal row of season pill chips.
- */
-@Composable
-private fun SeasonPillRow(
-    seasons: List<JellyfinItem>,
-    selectedIndex: Int,
-    onSeasonSelected: (Int) -> Unit,
-    focusRequester: FocusRequester,
-    upFocusRequester: FocusRequester,
-    downFocusRequester: FocusRequester,
-    modifier: Modifier = Modifier,
 ) {
     val lazyListState = rememberLazyListState()
-    val firstPillFocusRequester = remember { FocusRequester() }
-
-    // Scroll to selected season when it changes
-    LaunchedEffect(selectedIndex) {
-        lazyListState.animateScrollToItem(selectedIndex.coerceIn(0, seasons.lastIndex.coerceAtLeast(0)))
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier,
-    ) {
-        // Section label
-        Text(
-            text = "Seasons",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = TvColors.TextSecondary,
-        )
-
-        LazyRow(
-            state = lazyListState,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            modifier = Modifier
-                .focusRequester(focusRequester)
-                .focusRestorer(firstPillFocusRequester),
-        ) {
-            itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
-                val isSelected = index == selectedIndex
-                val pillFocusRequester = if (index == 0) firstPillFocusRequester else remember { FocusRequester() }
-
-                SeasonPill(
-                    season = season,
-                    index = index,
-                    isSelected = isSelected,
-                    onClick = { onSeasonSelected(index) },
-                    modifier = Modifier
-                        .focusRequester(pillFocusRequester)
-                        .focusProperties {
-                            up = upFocusRequester
-                            down = downFocusRequester
-                            // Block left navigation on first pill to prevent going to action buttons
-                            if (index == 0) {
-                                left = FocusRequester.Cancel
-                            }
-                        },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SeasonPill(
-    season: JellyfinItem,
-    index: Int,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var isFocused by remember { mutableStateOf(false) }
-
-    // Display just the season number
-    val displayNumber = remember(season.indexNumber, index) {
-        (season.indexNumber ?: (index + 1)).toString()
-    }
-
-    // Match action button styling
-    val backgroundColor = when {
-        isFocused -> TvColors.BluePrimary
-        isSelected -> TvColors.BluePrimary.copy(alpha = 0.3f)
-        else -> Color.White.copy(alpha = 0.1f)
-    }
-
-    val borderColor = when {
-        isFocused -> Color.Transparent
-        isSelected -> TvColors.BluePrimary.copy(alpha = 0.5f)
-        else -> Color.White.copy(alpha = 0.2f)
-    }
-
-    val textColor = when {
-        isFocused -> Color.White
-        isSelected -> TvColors.TextPrimary
-        else -> TvColors.TextPrimary
-    }
-
-    androidx.tv.material3.Surface(
-        onClick = onClick,
-        modifier = modifier
-            .onFocusChanged { isFocused = it.isFocused },
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = backgroundColor,
-            focusedContainerColor = TvColors.BluePrimary,
-        ),
-        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(1.dp, borderColor),
-                shape = RoundedCornerShape(6.dp),
-            ),
-            focusedBorder = Border(
-                border = BorderStroke(0.dp, Color.Transparent),
-                shape = RoundedCornerShape(6.dp),
-            ),
-        ),
-        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(24.dp),
-        ) {
-            Text(
-                text = displayNumber,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = textColor,
-            )
-        }
-    }
-}
-
-// endregion
-
-// region Episode Row
-
-/**
- * Horizontal row of episode cards with focus handling.
- */
-@Composable
-private fun EpisodeCardRow(
-    episodes: List<JellyfinItem>,
-    jellyfinClient: JellyfinClient,
-    selectedEpisodeId: String?,
-    episodeFocusRequesters: Map<String, FocusRequester>,
-    onEpisodeClick: (JellyfinItem) -> Unit,
-    onEpisodeFocused: (JellyfinItem) -> Unit,
-    focusRequester: FocusRequester,
-    upFocusRequester: FocusRequester,
-    modifier: Modifier = Modifier,
-) {
-    val lazyListState = rememberLazyListState()
-
-    // Find index of selected episode for initial scroll
-    val selectedIndex = remember(episodes, selectedEpisodeId) {
-        episodes.indexOfFirst { it.id == selectedEpisodeId }.takeIf { it >= 0 } ?: 0
-    }
-
-    // Scroll to selected episode
-    LaunchedEffect(selectedIndex) {
-        if (selectedIndex > 0) {
-            lazyListState.scrollToItem(selectedIndex)
-        }
-    }
-
     val firstCardFocusRequester = remember { FocusRequester() }
 
-    if (episodes.isEmpty()) {
-        Box(
-            modifier = modifier.height(80.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "No episodes available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TvColors.TextSecondary,
-            )
+    // Scroll to selected season
+    LaunchedEffect(selectedSeasonIndex) {
+        if (selectedSeasonIndex > 0) {
+            lazyListState.scrollToItem(selectedSeasonIndex)
         }
-    } else {
-        LazyRow(
-            state = lazyListState,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            modifier = modifier
-                .focusRequester(focusRequester)
-                .focusRestorer(firstCardFocusRequester),
-        ) {
-            itemsIndexed(episodes, key = { _, episode -> episode.id }) { index, episode ->
-                val cardFocusRequester = episodeFocusRequesters[episode.id]
-                    ?: (if (index == 0) firstCardFocusRequester else remember { FocusRequester() })
+    }
 
-                EpisodeCard(
-                    episode = episode,
-                    jellyfinClient = jellyfinClient,
-                    onClick = { onEpisodeClick(episode) },
-                    onFocused = { onEpisodeFocused(episode) },
-                    modifier = Modifier
-                        .focusRequester(cardFocusRequester)
-                        .focusProperties {
-                            up = upFocusRequester
-                            // Block left navigation on first card
-                            if (index == 0) {
-                                left = FocusRequester.Cancel
-                            }
-                        },
-                )
-            }
+    LazyRow(
+        state = lazyListState,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(firstCardFocusRequester),
+    ) {
+        itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
+            val isSelected = index == selectedSeasonIndex
+
+            SeasonPosterCard(
+                season = season,
+                isSelected = isSelected,
+                jellyfinClient = jellyfinClient,
+                onClick = { onSeasonSelected(index) },
+                modifier = if (index == 0) {
+                    Modifier.focusRequester(firstCardFocusRequester)
+                } else {
+                    Modifier
+                },
+            )
         }
     }
 }
 
 @Composable
-private fun EpisodeCard(
-    episode: JellyfinItem,
+private fun SeasonPosterCard(
+    season: JellyfinItem,
+    isSelected: Boolean,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
-    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val imageUrl = jellyfinClient.getPrimaryImageUrl(
-        episode.id,
-        episode.imageTags?.primary,
-        maxWidth = 400,
+        season.id,
+        season.imageTags?.primary,
+        maxWidth = 300,
     )
 
-    var isFocused by remember { mutableStateOf(false) }
-
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier.onFocusChanged {
-            isFocused = it.isFocused
-            if (it.isFocused) onFocused()
-        },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier,
     ) {
-        // 16:9 thumbnail card matching Next Up size
+        // Season poster card (2:3 aspect ratio, 110dp x 165dp)
         Card(
             onClick = onClick,
-            modifier = Modifier.size(width = 200.dp, height = 112.dp),
-            scale = CardDefaults.scale(focusedScale = 1.03f),
+            modifier = Modifier.size(width = CardSizes.MediaCardWidth, height = 165.dp),
+            scale = CardDefaults.scale(focusedScale = 1.05f),
             border = CardDefaults.border(
+                border = if (isSelected) {
+                    Border(
+                        border = BorderStroke(2.dp, TvColors.BluePrimary.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                } else {
+                    Border.None
+                },
                 focusedBorder = Border(
                     border = BorderStroke(2.dp, TvColors.BluePrimary),
                     shape = RoundedCornerShape(8.dp),
@@ -1283,59 +1257,25 @@ private fun EpisodeCard(
             ),
             shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = episode.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-
-                // Progress bar
-                val positionTicks = episode.userData?.playbackPositionTicks ?: 0L
-                if (positionTicks > 0L) {
-                    val totalTicks = episode.runTimeTicks ?: 1L
-                    val progress = (positionTicks.toFloat() / totalTicks.toFloat()).coerceIn(0f, 1f)
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .height(3.dp)
-                            .background(Color.Black.copy(alpha = 0.5f)),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progress)
-                                .background(TvColors.BluePrimary),
-                        )
-                    }
-                }
-            }
-        }
-
-        // Episode info below card
-        Column(modifier = Modifier.width(200.dp)) {
-            Text(
-                text = buildString {
-                    episode.indexNumber?.let { append("$it. ") }
-                    append(episode.name)
-                },
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                color = TvColors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = season.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
             )
-
-            episode.runTimeTicks?.let { ticks ->
-                val minutes = (ticks / 600_000_000L).toInt()
-                Text(
-                    text = "${minutes}m",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TvColors.TextSecondary,
-                )
-            }
         }
+
+        // Season label
+        Text(
+            text = season.name.ifEmpty { "Season ${season.indexNumber ?: 0}" },
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            ),
+            color = if (isSelected) TvColors.TextPrimary else TvColors.TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(CardSizes.MediaCardWidth),
+        )
     }
 }
 
