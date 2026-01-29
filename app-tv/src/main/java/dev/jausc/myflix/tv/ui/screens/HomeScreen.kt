@@ -563,6 +563,9 @@ private fun HomeContent(
     // Track the current hero display item for the backdrop layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
+    // Track whether hero buttons or content was last focused (for NavRail exit restoration)
+    var heroWasLastFocused by remember { mutableStateOf(false) }
+
     // FocusRequester to connect hero DOWN navigation to content rows
     val contentFocusRequester = remember { FocusRequester() }
 
@@ -572,11 +575,13 @@ private fun HomeContent(
     // Note: NavigationRail is now provided by MainActivity
     // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
     // Explicit left focusProperties on items ensure left navigation still reaches sentinel
+    // Use hero or content requester based on what was last focused
+    val focusRestorerTarget = if (heroWasLastFocused) heroPlayFocusRequester else restoreFocusRequester
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .focusGroup()
-            .focusRestorer(restoreFocusRequester),
+            .focusRestorer(focusRestorerTarget),
     ) {
             val heroHeight = maxHeight * 0.37f
             // Disable automatic focus scrolling; we snap rows explicitly on focus.
@@ -637,6 +642,7 @@ private fun HomeContent(
                                 onItemClick = onItemClick,
                                 onItemLongClick = onItemLongClick,
                                 onCardFocused = { item ->
+                                    heroWasLastFocused = false
                                     pendingPreviewItem = item
                                     onItemFocused(item.id)
                                 },
@@ -729,7 +735,10 @@ private fun HomeContent(
                         onCurrentItemChanged = { item, _ ->
                             heroDisplayItem = item
                         },
-                        onPreviewClear = clearPreviewAndScrollToTop,
+                        onPreviewClear = {
+                            heroWasLastFocused = true
+                            clearPreviewAndScrollToTop()
+                        },
                         leftEdgeFocusRequester = leftEdgeFocusRequester,
                     )
                 }
