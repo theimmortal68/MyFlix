@@ -56,8 +56,10 @@ import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.SlideOutNavRailDimensions
-import dev.jausc.myflix.tv.ui.components.SlideOutNavigationRail
+import dev.jausc.myflix.tv.ui.components.navrail.FocusSentinel
+import dev.jausc.myflix.tv.ui.components.navrail.NavRailAnimations
+import dev.jausc.myflix.tv.ui.components.navrail.NavRailDimensions
+import dev.jausc.myflix.tv.ui.components.navrail.NavigationRail
 import dev.jausc.myflix.tv.ui.screens.CollectionDetailScreen
 import dev.jausc.myflix.tv.ui.screens.CollectionsLibraryScreen
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
@@ -296,23 +298,35 @@ fun MyFlixTvApp() {
         }
     }
 
-    // NavRail expansion state and focus requester
+    // NavRail state - explicit activation model prevents focus stealing
+    var isNavRailActive by remember { mutableStateOf(false) }
     var isNavRailExpanded by remember { mutableStateOf(false) }
     val navRailFocusRequester = remember { FocusRequester() }
 
-    // Auto-collapse NavRail when route changes (navigation occurred)
+    // Sentinel enabled state - delayed after navigation to prevent focus stealing
+    var sentinelEnabled by remember { mutableStateOf(false) }
+
+    // Auto-collapse and deactivate NavRail when route changes (navigation occurred)
     var previousRoute by remember { mutableStateOf(currentRoute) }
     LaunchedEffect(currentRoute) {
-        if (currentRoute != previousRoute && previousRoute != null && isNavRailExpanded) {
-            delay(400L) // Brief delay to show selection before collapsing
-            isNavRailExpanded = false
+        if (currentRoute != previousRoute && previousRoute != null) {
+            // Disable sentinel during navigation
+            sentinelEnabled = false
+            if (isNavRailExpanded) {
+                delay(400L) // Brief delay to show selection before collapsing
+                isNavRailExpanded = false
+                isNavRailActive = false
+            }
         }
         previousRoute = currentRoute
+        // Re-enable sentinel after delay to let screen content establish focus
+        delay(NavRailAnimations.SentinelStartupDelayMs)
+        sentinelEnabled = true
     }
 
-    // Animate scrim alpha for NavRail
+    // Animate scrim alpha for NavRail (only show when active AND expanded)
     val scrimAlpha by animateFloatAsState(
-        targetValue = if (isNavRailExpanded) 0.5f else 0f,
+        targetValue = if (isNavRailActive && isNavRailExpanded) 0.5f else 0f,
         animationSpec = tween(durationMillis = 300),
         label = "scrimAlpha",
     )
@@ -421,7 +435,7 @@ fun MyFlixTvApp() {
     val navHostModifier = if (showNavRail) {
         Modifier
             .fillMaxSize()
-            .padding(start = SlideOutNavRailDimensions.CollapsedWidth)
+            .padding(start = NavRailDimensions.CollapsedWidth)
     } else {
         Modifier.fillMaxSize()
     }
@@ -433,8 +447,14 @@ fun MyFlixTvApp() {
             .onKeyEvent { event ->
                 // Handle Menu key press from anywhere to toggle NavRail
                 if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
-                    isNavRailExpanded = !isNavRailExpanded
-                    if (isNavRailExpanded) {
+                    if (isNavRailActive) {
+                        // Deactivate and collapse
+                        isNavRailActive = false
+                        isNavRailExpanded = false
+                    } else {
+                        // Activate and expand
+                        isNavRailActive = true
+                        isNavRailExpanded = true
                         navRailFocusRequester.requestFocus()
                     }
                     true
@@ -1183,19 +1203,35 @@ fun MyFlixTvApp() {
             )
         }
 
-        // NavRail - rendered in same Box as NavHost for proper focus navigation
+        // Focus sentinel - detects left-edge navigation and activates rail
+        // Always present but only focusable when rail is inactive AND after startup delay
         if (showNavRail) {
-            SlideOutNavigationRail(
+            FocusSentinel(
+                isEnabled = !isNavRailActive && sentinelEnabled,
+                onActivate = {
+                    isNavRailActive = true
+                    isNavRailExpanded = true
+                },
+                railFocusRequester = navRailFocusRequester,
+                modifier = Modifier
+                    .padding(start = NavRailDimensions.CollapsedWidth)
+                    .zIndex(0.25f),
+            )
+        }
+
+        // NavRail - uses explicit activation model to prevent focus stealing
+        if (showNavRail) {
+            NavigationRail(
                 selectedItem = currentNavItem,
                 onItemSelected = handleNavigation,
-                showUniverses = universesEnabled,
-                showDiscover = isSeerrAuthenticated && showDiscoverNav,
+                isActive = isNavRailActive,
                 isExpanded = isNavRailExpanded,
                 onExpandedChange = { isNavRailExpanded = it },
-                onCollapseAndFocusContent = { isNavRailExpanded = false },
-                modifier = Modifier
-                    .zIndex(1f)
-                    .focusRequester(navRailFocusRequester),
+                onDeactivate = { isNavRailActive = false },
+                showUniverses = universesEnabled,
+                showDiscover = isSeerrAuthenticated && showDiscoverNav,
+                firstItemFocusRequester = navRailFocusRequester,
+                modifier = Modifier.zIndex(1f),
             )
         }
     }
