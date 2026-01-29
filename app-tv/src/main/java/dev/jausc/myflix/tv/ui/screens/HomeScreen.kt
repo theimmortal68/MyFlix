@@ -244,13 +244,10 @@ fun HomeScreen(
     }
 
     // Main content with stable near-black background
-    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background)
-            .focusGroup()
-            .focusRestorer(heroPlayFocusRequester),
+            .background(TvColors.Background),
     ) {
         // Show loading until we have hero content
         if (!state.contentReady && state.error == null) {
@@ -561,12 +558,21 @@ private fun HomeContent(
     // Track the current hero display item for the backdrop layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
+    // FocusRequester to connect hero DOWN navigation to content rows
+    // Defined here so it can be used in focusRestorer
+    val contentFocusRequester = remember { FocusRequester() }
+
     // Content layers:
     // Layer 1 (back): Hero backdrop - 90% of screen with edge fading
     // Layer 2 (front): Hero info (37%) + Content rows (63%)
     // Note: NavigationRail is now provided by MainActivity
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+    // Using contentFocusRequester (first row) as fallback so content rows are preferred over hero
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRestorer(contentFocusRequester),
     ) {
             val heroHeight = maxHeight * 0.37f
             // Disable automatic focus scrolling; we snap rows explicitly on focus.
@@ -578,9 +584,6 @@ private fun HomeContent(
             }
 
             var lastFocusedRow by remember { mutableIntStateOf(-1) }
-
-            // FocusRequester to connect hero DOWN navigation to content rows
-            val contentFocusRequester = remember { FocusRequester() }
 
             val heroImageWidth = maxWidth * 0.8f
             val heroImageHeight = maxHeight * 0.8f
@@ -603,11 +606,7 @@ private fun HomeContent(
                 }
             }
 
-            // FocusRequester for the first row item (fallback for content area)
-            val firstRowItemFocusRequester = remember { FocusRequester() }
-
             // Layer 1: Content rows - clipped below hero
-            // focusGroup + focusRestorer enables return-to-last-focused when exiting NavRail
             CompositionLocalProvider(
                 LocalBringIntoViewSpec provides noOpBringIntoViewSpec
             ) {
@@ -616,9 +615,7 @@ private fun HomeContent(
                         .fillMaxSize()
                         .padding(top = heroHeight)
                         .clipToBounds()
-                        .zIndex(1f)
-                        .focusGroup()
-                        .focusRestorer(firstRowItemFocusRequester),
+                        .zIndex(1f),
                 ) {
                     LazyColumn(
                         state = listState,
@@ -656,8 +653,6 @@ private fun HomeContent(
                                 restoreFocusRequester = restoreFocusRequester,
                                 // First row: UP navigates to hero Play button
                                 upFocusTarget = if (index == 0) heroPlayFocusRequester else null,
-                                // First row gets fallback focus requester for NavRail exit
-                                firstItemFallbackFocusRequester = if (index == 0) firstRowItemFocusRequester else null,
                                 // First row gets focus requester for hero DOWN navigation
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -755,7 +750,6 @@ private fun ItemRow(
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester? = null,
     upFocusTarget: FocusRequester? = null,
-    firstItemFallbackFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
@@ -803,18 +797,11 @@ private fun ItemRow(
                 contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                itemsIndexed(items, key = { _, item -> item.id }) { itemIndex, item ->
-                    // Determine which focus requester to attach (if any)
-                    // Priority: savedFocusItemId match > first item fallback
-                    val focusRequesterToAttach = when {
-                        savedFocusItemId == item.id && restoreFocusRequester != null -> restoreFocusRequester
-                        itemIndex == 0 && firstItemFallbackFocusRequester != null -> firstItemFallbackFocusRequester
-                        else -> null
-                    }
-
-                    val focusModifier = if (focusRequesterToAttach != null) {
+                items(items, key = { item -> item.id }) { item ->
+                    // Attach restoreFocusRequester to the item that should receive focus on back navigation
+                    val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
                         Modifier
-                            .focusRequester(focusRequesterToAttach)
+                            .focusRequester(restoreFocusRequester)
                             .onFocusChanged { state ->
                                 if (state.isFocused) {
                                     onCardFocused(item)
