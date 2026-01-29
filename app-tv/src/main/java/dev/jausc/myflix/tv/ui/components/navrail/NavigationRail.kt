@@ -65,12 +65,20 @@ fun NavigationRail(
         buildMainNavItems(showUniverses, showDiscover)
     }
 
-    val mainFocusRequesters = remember(mainItems.size) {
+    // Find the index of the selected item to assign firstItemFocusRequester
+    val selectedIndex = mainItems.indexOf(selectedItem)
+    val isSettingsSelected = selectedItem == NavItem.SETTINGS
+
+    // Assign firstItemFocusRequester to the selected item so it gets focus when rail activates
+    val mainFocusRequesters = remember(mainItems.size, selectedIndex) {
         List(mainItems.size) { index ->
-            if (index == 0) firstItemFocusRequester else FocusRequester()
+            if (index == selectedIndex) firstItemFocusRequester else FocusRequester()
         }
     }
-    val settingsFocusRequester = remember { FocusRequester() }
+    // Settings gets firstItemFocusRequester if it's the selected item
+    val settingsFocusRequester = remember(isSettingsSelected) {
+        if (isSettingsSelected) firstItemFocusRequester else FocusRequester()
+    }
 
     val railWidth by animateDpAsState(
         targetValue = if (isExpanded) {
