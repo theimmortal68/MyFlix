@@ -1,4 +1,5 @@
 @file:Suppress("MagicNumber")
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 
 package dev.jausc.myflix.tv.ui.screens
 
@@ -206,6 +207,7 @@ fun UnifiedSeriesScreen(
     val focusRestorerTarget = when (lastFocusedSection) {
         "nextup" -> nextUpFocusRequester
         "tabs" -> seasonsTabFocusRequester
+        "tabcontent" -> tabContentFocusRequester
         else -> playButtonFocusRequester
     }
     Box(
@@ -213,7 +215,7 @@ fun UnifiedSeriesScreen(
             .fillMaxSize()
             .background(TvColors.Background)
             .focusGroup()
-            .focusRestorer(focusRestorerTarget),
+            .focusRestorer { focusRestorerTarget },
     ) {
         // Layer 1: Ken Burns animated backdrop (top-right)
         KenBurnsBackdrop(
@@ -362,11 +364,22 @@ fun UnifiedSeriesScreen(
 
                     // Tab content - single row needs less height
                     // Left padding prevents focused cards from expanding off-screen
+                    // focusGroup + focusRestorer allows the container to receive focus
+                    // from tab headers and delegate to first focusable child
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
-                            .padding(start = 2.dp),
+                            .padding(start = 2.dp)
+                            .focusRequester(tabContentFocusRequester)
+                            .focusProperties {
+                                up = seasonsTabFocusRequester
+                            }
+                            .focusGroup()
+                            .focusRestorer()
+                            .onFocusChanged {
+                                if (it.hasFocus) lastFocusedSection = "tabcontent"
+                            },
                     ) {
                         when (selectedTab) {
                             UnifiedSeriesTab.Seasons -> {

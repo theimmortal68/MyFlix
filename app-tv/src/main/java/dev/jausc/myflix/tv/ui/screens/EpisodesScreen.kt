@@ -1,4 +1,5 @@
 @file:Suppress("MagicNumber")
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 
 package dev.jausc.myflix.tv.ui.screens
 
@@ -208,9 +209,11 @@ fun EpisodesScreen(
 
     // focusRestorer saves/restores focus when NavRail is entered/exited
     // Use the appropriate requester based on what was last focused
+    // Lambda form evaluates target at restore time, not composition time
     val focusRestorerTarget = when (lastFocusedSection) {
         "action" -> playFocusRequester
         "tabs" -> firstTabFocusRequester
+        "tabcontent" -> tabContentFocusRequester
         else -> episodeRowFocusRequester
     }
     Box(
@@ -218,7 +221,7 @@ fun EpisodesScreen(
             .fillMaxSize()
             .background(TvColors.Background)
             .focusGroup()
-            .focusRestorer(focusRestorerTarget),
+            .focusRestorer { focusRestorerTarget },
     ) {
         // Episode thumbnail backdrop (top-right) - 40% of screen
         KenBurnsBackdrop(
@@ -372,11 +375,22 @@ fun EpisodesScreen(
                     }
 
                     // Tab content
+                    // focusGroup + focusRestorer allows the container to receive focus
+                    // from tab headers and delegate to first focusable child
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
-                            .padding(start = 2.dp),
+                            .padding(start = 2.dp)
+                            .focusRequester(tabContentFocusRequester)
+                            .focusProperties {
+                                up = firstTabFocusRequester
+                            }
+                            .focusGroup()
+                            .focusRestorer()
+                            .onFocusChanged {
+                                if (it.hasFocus) lastFocusedSection = "tabcontent"
+                            },
                     ) {
                         when (selectedTab) {
                             EpisodeTab.Details -> {
