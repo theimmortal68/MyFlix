@@ -112,13 +112,18 @@ fun MovieDetailScreen(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
+    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val movie = state.item ?: return
     val scope = rememberCoroutineScope()
 
-    // Focus management
+    // Focus management - use external requester for header row (for NavRail exit)
     var position by remember { mutableIntStateOf(0) }
-    val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
+    val focusRequesters = remember(actionButtonsFocusRequester) {
+        List(SIMILAR_ROW + 1) { index ->
+            if (index == HEADER_ROW) actionButtonsFocusRequester else FocusRequester()
+        }
+    }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     // Dialog state

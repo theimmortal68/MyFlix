@@ -42,6 +42,7 @@ fun DetailScreen(
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
     onNavigateToPerson: (String) -> Unit = {},
     onNavigateToEpisodes: (seriesId: String, seasonNumber: Int, episodeId: String?) -> Unit = { _, _, _ -> },
+    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     // ViewModel with manual DI
     val viewModel: DetailViewModel = viewModel(
@@ -113,6 +114,7 @@ fun DetailScreen(
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
                     modifier = Modifier.fillMaxSize(),
+                    actionButtonsFocusRequester = actionButtonsFocusRequester,
                 )
             }
 
@@ -153,6 +155,7 @@ fun DetailScreen(
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     modifier = Modifier.fillMaxSize(),
+                    actionButtonsFocusRequester = actionButtonsFocusRequester,
                 )
             }
 

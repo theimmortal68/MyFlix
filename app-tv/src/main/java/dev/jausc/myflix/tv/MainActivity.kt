@@ -935,6 +935,7 @@ fun MyFlixTvApp() {
                     onPlayClick = { itemId ->
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                     },
+                    actionButtonsFocusRequester = contentActionsFocusRequester,
                 )
             }
 
@@ -1047,6 +1048,7 @@ fun MyFlixTvApp() {
                             popUpTo("detail/$itemId") { inclusive = true }
                         }
                     },
+                    actionButtonsFocusRequester = contentActionsFocusRequester,
                 )
             }
 

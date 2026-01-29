@@ -68,6 +68,7 @@ fun LibraryScreen(
     preferences: AppPreferences,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
+    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
@@ -84,8 +85,8 @@ fun LibraryScreen(
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Focus management
-    val firstItemFocusRequester = remember { FocusRequester() }
+    // Focus management - use external requester for NavRail exit
+    val firstItemFocusRequester = actionButtonsFocusRequester
     val filterBarFocusRequester = remember { FocusRequester() }
     val filterBarFirstButtonFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }

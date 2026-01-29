@@ -126,11 +126,13 @@ fun UnifiedSeriesScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     modifier: Modifier = Modifier,
+    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val series = state.item ?: return
     val isWatched = series.userData?.played == true
     val isFavorite = series.userData?.isFavorite == true
-    val playButtonFocusRequester = remember { FocusRequester() }
+    // Use external focus requester for NavRail exit
+    val playButtonFocusRequester = actionButtonsFocusRequester
     val seasonsTabFocusRequester = remember { FocusRequester() }
 
     // Tab state

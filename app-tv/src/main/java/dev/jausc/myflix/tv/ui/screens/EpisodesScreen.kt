@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
@@ -154,15 +156,9 @@ fun EpisodesScreen(
             // Delay to ensure UI is composed
             delay(100L)
             try {
-                // Focus the target episode card when switching seasons
+                // Always focus the target episode card (initial load or season switch)
                 val targetFocusRequester = episodeFocusRequesters[targetEpisode.id]
-                if (targetFocusRequester != null && focusSetForSeason >= 0) {
-                    // Switching seasons - focus the episode card
-                    targetFocusRequester.requestFocus()
-                } else {
-                    // Initial load - focus the play button
-                    actionButtonsFocusRequester.requestFocus()
-                }
+                targetFocusRequester?.requestFocus()
             } catch (_: IllegalStateException) {
                 // FocusRequester not yet attached, ignore
             }
@@ -888,26 +884,10 @@ private fun DetailsTabContent(episode: JellyfinItem) {
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Overview section - wider for better readability
+        // Overview section - wider with auto-scroll for long text
         episode.overview?.let { overview ->
             item("overview") {
-                Column(
-                    modifier = Modifier.width(500.dp),
-                ) {
-                    Text(
-                        text = "Overview",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = overview,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TvColors.TextSecondary,
-                        lineHeight = 20.sp,
-                    )
-                }
+                OverviewSection(overview = overview)
             }
         }
 
@@ -1004,6 +984,70 @@ private fun DetailItem(label: String, value: String) {
             style = MaterialTheme.typography.bodySmall,
             color = TvColors.TextPrimary,
         )
+    }
+}
+
+/**
+ * Overview section with auto-scroll for long text.
+ * Scrolls automatically when text overflows the visible area.
+ */
+@Composable
+private fun OverviewSection(overview: String) {
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Auto-scroll animation for long content
+    LaunchedEffect(overview) {
+        // Wait for layout to complete
+        delay(500)
+        val maxScroll = scrollState.maxValue
+        if (maxScroll > 0) {
+            // Scroll down slowly
+            while (true) {
+                delay(3000) // Pause at top
+                coroutineScope.launch {
+                    // Scroll to bottom over 8 seconds
+                    val steps = 100
+                    val stepDelay = 8000L / steps
+                    for (i in 1..steps) {
+                        scrollState.scrollTo((maxScroll * i) / steps)
+                        delay(stepDelay)
+                    }
+                }
+                delay(8000 + 2000) // Wait for scroll + pause at bottom
+                coroutineScope.launch {
+                    // Scroll back to top
+                    scrollState.scrollTo(0)
+                }
+                delay(500)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .width(650.dp)
+            .fillMaxHeight(),
+    ) {
+        Text(
+            text = "Overview",
+            style = MaterialTheme.typography.titleSmall,
+            color = TvColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState),
+        ) {
+            Text(
+                text = overview,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                lineHeight = 20.sp,
+            )
+        }
     }
 }
 
