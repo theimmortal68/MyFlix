@@ -172,7 +172,7 @@ fun EpisodesScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 48.dp, end = 24.dp),
+                .padding(top = 16.dp),
         ) {
             // Hero section with episode details
             focusedEpisode?.let { episode ->
@@ -184,9 +184,7 @@ fun EpisodesScreen(
                     onFavoriteClick = { onFavoriteClick(episode) },
                     actionButtonsFocusRequester = actionButtonsFocusRequester,
                     downFocusRequester = seasonRowFocusRequester,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 24.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             } ?: run {
                 // Placeholder while loading
