@@ -45,6 +45,7 @@ import dev.jausc.myflix.tv.ui.components.NavItem
  * @param showDiscover Whether to show Discover nav item
  * @param modifier Modifier for the rail
  * @param firstItemFocusRequester FocusRequester for the first focusable item (for focus transfer)
+ * @param exitFocusRequester FocusRequester to focus when exiting rail to the right
  */
 @Composable
 fun NavigationRail(
@@ -58,6 +59,7 @@ fun NavigationRail(
     showDiscover: Boolean = false,
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester = remember { FocusRequester() },
+    exitFocusRequester: FocusRequester = FocusRequester.Default,
 ) {
     val mainItems = remember(showUniverses, showDiscover) {
         buildMainNavItems(showUniverses, showDiscover)
@@ -159,6 +161,7 @@ fun NavigationRail(
                         ?: FocusRequester.Cancel,
                     downFocusRequester = mainFocusRequesters.getOrNull(index + 1)
                         ?: settingsFocusRequester,
+                    rightFocusRequester = exitFocusRequester,
                 )
             }
         }
@@ -187,6 +190,7 @@ fun NavigationRail(
                 focusRequester = settingsFocusRequester,
                 upFocusRequester = mainFocusRequesters.lastOrNull() ?: FocusRequester.Cancel,
                 downFocusRequester = FocusRequester.Cancel,
+                rightFocusRequester = exitFocusRequester,
             )
         }
     }

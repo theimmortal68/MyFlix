@@ -45,11 +45,15 @@ fun FocusSentinel(
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    // Track if we're in the process of transferring focus to prevent canFocus from
+    // becoming false during the transfer (which could cause Compose to move focus elsewhere)
+    var isTransferring by remember { mutableStateOf(false) }
 
     // Transfer focus to rail when sentinel gains focus
     // This effect survives even if isEnabled changes, ensuring focus transfer completes
     LaunchedEffect(isFocused) {
         if (isFocused) {
+            isTransferring = true
             onActivate()
             // Small delay to ensure rail is activated and focusable
             delay(NavRailAnimations.FocusTransferDelayMs)
@@ -58,6 +62,7 @@ fun FocusSentinel(
             } catch (_: IllegalStateException) {
                 // Focus requester not attached yet, ignore
             }
+            isTransferring = false
         }
     }
 
@@ -68,8 +73,8 @@ fun FocusSentinel(
             .focusProperties {
                 // Block left navigation - nothing to the left of sentinel
                 left = FocusRequester.Cancel
-                // Only accept focus when enabled (rail is inactive)
-                canFocus = isEnabled
+                // Keep focusable during transfer, otherwise only when enabled
+                canFocus = isEnabled || isTransferring
             }
             .onFocusChanged { focusState ->
                 isFocused = focusState.isFocused

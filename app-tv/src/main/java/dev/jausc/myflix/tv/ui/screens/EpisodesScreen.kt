@@ -1089,6 +1089,10 @@ private fun SeasonPillRow(
                         .focusProperties {
                             up = upFocusRequester
                             down = downFocusRequester
+                            // Block left navigation on first pill to prevent going to action buttons
+                            if (index == 0) {
+                                left = FocusRequester.Cancel
+                            }
                         },
                 )
             }
@@ -1230,7 +1234,13 @@ private fun EpisodeCardRow(
                     onFocused = { onEpisodeFocused(episode) },
                     modifier = Modifier
                         .focusRequester(cardFocusRequester)
-                        .focusProperties { up = upFocusRequester },
+                        .focusProperties {
+                            up = upFocusRequester
+                            // Block left navigation on first card
+                            if (index == 0) {
+                                left = FocusRequester.Cancel
+                            }
+                        },
                 )
             }
         }

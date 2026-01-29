@@ -57,6 +57,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * @param focusRequester FocusRequester for this item
  * @param upFocusRequester Target for Up navigation
  * @param downFocusRequester Target for Down navigation
+ * @param rightFocusRequester Target for Right navigation (exit rail)
  */
 @Composable
 fun NavRailItem(
@@ -71,8 +72,11 @@ fun NavRailItem(
     focusRequester: FocusRequester = remember { FocusRequester() },
     upFocusRequester: FocusRequester = FocusRequester.Cancel,
     downFocusRequester: FocusRequester = FocusRequester.Cancel,
+    rightFocusRequester: FocusRequester = FocusRequester.Default,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    // Track if we're exiting right (to call onExitRight after focus moves)
+    var exitingRight by remember { mutableStateOf(false) }
 
     val haloAlpha by animateFloatAsState(
         targetValue = if (isFocused) NavRailAlpha.FocusedHalo else 0f,
@@ -100,11 +104,20 @@ fun NavRailItem(
             .clip(RoundedCornerShape(NavRailDimensions.ItemCornerRadius))
             .background(Color.Transparent)
             .focusRequester(focusRequester)
-            .onFocusChanged { isFocused = it.isFocused }
+            .onFocusChanged { focusState ->
+                val wasFocused = isFocused
+                isFocused = focusState.isFocused
+                // If we were exiting right and focus just left, collapse the rail
+                if (wasFocused && !focusState.isFocused && exitingRight) {
+                    exitingRight = false
+                    onExitRight()
+                }
+            }
             .focusProperties {
                 up = upFocusRequester
                 down = downFocusRequester
                 left = FocusRequester.Cancel
+                right = rightFocusRequester
                 canFocus = isActive
             }
             .focusable()
@@ -116,9 +129,9 @@ fun NavRailItem(
                         true
                     }
                     Key.DirectionRight -> {
-                        // Call deactivate but DON'T consume event - let Compose move focus right
-                        onExitRight()
-                        false
+                        // Mark that we're exiting right - rail will collapse after focus moves
+                        exitingRight = true
+                        false // Let Compose move focus via focusProperties.right
                     }
                     else -> false
                 }
