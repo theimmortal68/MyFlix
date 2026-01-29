@@ -126,13 +126,11 @@ fun UnifiedSeriesScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     modifier: Modifier = Modifier,
-    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val series = state.item ?: return
     val isWatched = series.userData?.played == true
     val isFavorite = series.userData?.isFavorite == true
-    // Use external focus requester for NavRail exit
-    val playButtonFocusRequester = actionButtonsFocusRequester
+    val playButtonFocusRequester = remember { FocusRequester() }
     val seasonsTabFocusRequester = remember { FocusRequester() }
 
     // Tab state
@@ -196,10 +194,12 @@ fun UnifiedSeriesScreen(
         }
     }
 
+    // focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(TvColors.Background),
+            .background(TvColors.Background)
+            .focusRestorer(playButtonFocusRequester),
     ) {
         // Layer 1: Ken Burns animated backdrop (top-right)
         KenBurnsBackdrop(

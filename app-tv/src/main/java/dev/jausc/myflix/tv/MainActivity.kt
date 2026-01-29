@@ -302,8 +302,6 @@ fun MyFlixTvApp() {
     var isNavRailActive by remember { mutableStateOf(false) }
     var isNavRailExpanded by remember { mutableStateOf(false) }
     val navRailFocusRequester = remember { FocusRequester() }
-    // Focus requester for content action buttons - screens attach this to their primary action
-    val contentActionsFocusRequester = remember { FocusRequester() }
 
     // Sentinel enabled state - delayed after navigation to prevent focus stealing
     var sentinelEnabled by remember { mutableStateOf(false) }
@@ -508,7 +506,6 @@ fun MyFlixTvApp() {
                     onEpisodeClick = { seriesId, seasonNumber, episodeId ->
                         navController.navigate("episodes/$seriesId?seasonNumber=$seasonNumber&episodeId=$episodeId")
                     },
-                    actionButtonsFocusRequester = contentActionsFocusRequester,
                     onSeriesMoreInfoClick = { seriesId ->
                         // Navigate to EpisodesScreen for series, starting at season 1
                         navController.navigate("episodes/$seriesId?seasonNumber=1")
@@ -935,7 +932,6 @@ fun MyFlixTvApp() {
                     onPlayClick = { itemId ->
                         navController.navigate(NavigationHelper.buildPlayerRoute(itemId))
                     },
-                    actionButtonsFocusRequester = contentActionsFocusRequester,
                 )
             }
 
@@ -1048,7 +1044,6 @@ fun MyFlixTvApp() {
                             popUpTo("detail/$itemId") { inclusive = true }
                         }
                     },
-                    actionButtonsFocusRequester = contentActionsFocusRequester,
                 )
             }
 
@@ -1164,7 +1159,6 @@ fun MyFlixTvApp() {
                             navController.navigate("person/$personId")
                         },
                         onBackClick = { navController.popBackStack() },
-                        actionButtonsFocusRequester = contentActionsFocusRequester,
                     )
                 }
             }
@@ -1236,7 +1230,8 @@ fun MyFlixTvApp() {
                 showUniverses = universesEnabled,
                 showDiscover = isSeerrAuthenticated && showDiscoverNav,
                 firstItemFocusRequester = navRailFocusRequester,
-                exitFocusRequester = contentActionsFocusRequester,
+                // Use Default to let Compose focus system handle right navigation naturally
+                // Screens use focusRestorer() to return focus to where it was
                 modifier = Modifier.zIndex(1f),
             )
         }

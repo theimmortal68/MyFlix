@@ -112,17 +112,14 @@ fun MovieDetailScreen(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
-    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val movie = state.item ?: return
     val scope = rememberCoroutineScope()
 
-    // Focus management - use external requester for header row (for NavRail exit)
+    // Focus management
     var position by remember { mutableIntStateOf(0) }
-    val focusRequesters = remember(actionButtonsFocusRequester) {
-        List(SIMILAR_ROW + 1) { index ->
-            if (index == HEADER_ROW) actionButtonsFocusRequester else FocusRequester()
-        }
+    val focusRequesters = remember {
+        List(SIMILAR_ROW + 1) { FocusRequester() }
     }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
@@ -190,7 +187,12 @@ fun MovieDetailScreen(
     }
 
     // Layered UI: DynamicBackground → NavigationRail + Content (DetailBackdropLayer → Content)
-    Box(modifier = modifier.fillMaxSize()) {
+    // focusRestorer saves/restores focus when NavRail is entered/exited
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .focusRestorer(playFocusRequester),
+    ) {
         // Layer 1: Dynamic gradient background (covers full screen including nav rail)
         DynamicBackground(
             gradientColors = gradientColors,

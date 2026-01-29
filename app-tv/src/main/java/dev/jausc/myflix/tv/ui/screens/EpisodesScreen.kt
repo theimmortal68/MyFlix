@@ -127,7 +127,6 @@ fun EpisodesScreen(
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
-    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
@@ -136,6 +135,7 @@ fun EpisodesScreen(
     var focusSetForSeason by remember { mutableStateOf(-1) }
     val episodeRowFocusRequester = remember { FocusRequester() }
     val firstTabFocusRequester = remember { FocusRequester() }
+    val playFocusRequester = remember { FocusRequester() }
 
     // Episode focus requesters - keyed by episode ID
     val episodeFocusRequesters = remember(episodes) {
@@ -205,11 +205,13 @@ fun EpisodesScreen(
         }
     }
 
+    // focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .focusGroup(),
+            .focusGroup()
+            .focusRestorer(playFocusRequester),
     ) {
         // Ken Burns animated backdrop (top-right)
         KenBurnsBackdrop(
@@ -234,7 +236,7 @@ fun EpisodesScreen(
                     onPlayClick = { onEpisodeClick(episode) },
                     onWatchedClick = { onWatchedClick(episode) },
                     onFavoriteClick = { onFavoriteClick(episode) },
-                    actionButtonsFocusRequester = actionButtonsFocusRequester,
+                    playFocusRequester = playFocusRequester,
                     episodeRowFocusRequester = episodeRowFocusRequester,
                     modifier = Modifier.fillMaxWidth(0.55f),
                 )
@@ -254,7 +256,7 @@ fun EpisodesScreen(
                 onEpisodeClick = onEpisodeClick,
                 onEpisodeFocused = { episode -> focusedEpisode = episode },
                 focusRequester = episodeRowFocusRequester,
-                upFocusRequester = actionButtonsFocusRequester,
+                upFocusRequester = playFocusRequester,
                 downFocusRequester = firstTabFocusRequester,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -441,7 +443,7 @@ private fun EpisodeHeroContent(
     onPlayClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    actionButtonsFocusRequester: FocusRequester,
+    playFocusRequester: FocusRequester,
     episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -514,7 +516,7 @@ private fun EpisodeHeroContent(
             onPlayClick = onPlayClick,
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
-            focusRequester = actionButtonsFocusRequester,
+            focusRequester = playFocusRequester,
             downFocusRequester = episodeRowFocusRequester,
         )
     }
@@ -1026,7 +1028,7 @@ private fun OverviewSection(overview: String) {
 
     Column(
         modifier = Modifier
-            .width(650.dp)
+            .width(500.dp)
             .fillMaxHeight(),
     ) {
         Text(

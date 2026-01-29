@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -117,7 +118,6 @@ fun HomeScreen(
     restoreFocusRequester: FocusRequester? = null,
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
     onSeriesMoreInfoClick: (seriesId: String) -> Unit = { seriesId -> onItemClick(seriesId) },
-    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -205,8 +205,8 @@ fun HomeScreen(
         )
     }
 
-    // Focus requester for hero play button - use external one if provided (for NavRail exit)
-    val heroPlayFocusRequester = actionButtonsFocusRequester
+    // Focus requester for hero play button
+    val heroPlayFocusRequester = remember { FocusRequester() }
 
     // Saved focus state - survives back navigation
     var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -243,10 +243,12 @@ fun HomeScreen(
     }
 
     // Main content with stable near-black background
+    // focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TvColors.Background),
+            .background(TvColors.Background)
+            .focusRestorer(heroPlayFocusRequester),
     ) {
         // Show loading until we have hero content
         if (!state.contentReady && state.error == null) {

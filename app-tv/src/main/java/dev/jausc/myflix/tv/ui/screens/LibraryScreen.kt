@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
@@ -68,7 +69,6 @@ fun LibraryScreen(
     preferences: AppPreferences,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
-    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     // ViewModel with manual DI
     val viewModel: LibraryViewModel = viewModel(
@@ -85,8 +85,8 @@ fun LibraryScreen(
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Focus management - use external requester for NavRail exit
-    val firstItemFocusRequester = actionButtonsFocusRequester
+    // Focus management
+    val firstItemFocusRequester = remember { FocusRequester() }
     val filterBarFocusRequester = remember { FocusRequester() }
     val filterBarFirstButtonFocusRequester = remember { FocusRequester() }
     val alphabetFocusRequester = remember { FocusRequester() }
@@ -157,7 +157,12 @@ fun LibraryScreen(
             }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // focusRestorer saves/restores focus when NavRail is entered/exited
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(firstItemFocusRequester),
+    ) {
         // Dynamic background that changes based on focused poster
         DynamicBackground(gradientColors = gradientColors)
 
