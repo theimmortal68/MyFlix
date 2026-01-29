@@ -17,6 +17,7 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
@@ -243,11 +244,12 @@ fun HomeScreen(
     }
 
     // Main content with stable near-black background
-    // focusRestorer saves/restores focus when NavRail is entered/exited
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(TvColors.Background)
+            .focusGroup()
             .focusRestorer(heroPlayFocusRequester),
     ) {
         // Show loading until we have hero content
@@ -601,7 +603,11 @@ private fun HomeContent(
                 }
             }
 
+            // FocusRequester for the first row item (fallback for content area)
+            val firstRowItemFocusRequester = remember { FocusRequester() }
+
             // Layer 1: Content rows - clipped below hero
+            // focusGroup + focusRestorer enables return-to-last-focused when exiting NavRail
             CompositionLocalProvider(
                 LocalBringIntoViewSpec provides noOpBringIntoViewSpec
             ) {
@@ -610,7 +616,9 @@ private fun HomeContent(
                         .fillMaxSize()
                         .padding(top = heroHeight)
                         .clipToBounds()
-                        .zIndex(1f),
+                        .zIndex(1f)
+                        .focusGroup()
+                        .focusRestorer(firstRowItemFocusRequester),
                 ) {
                     LazyColumn(
                         state = listState,
@@ -648,6 +656,8 @@ private fun HomeContent(
                                 restoreFocusRequester = restoreFocusRequester,
                                 // First row: UP navigates to hero Play button
                                 upFocusTarget = if (index == 0) heroPlayFocusRequester else null,
+                                // First row gets fallback focus requester for NavRail exit
+                                firstItemFallbackFocusRequester = if (index == 0) firstRowItemFocusRequester else null,
                                 // First row gets focus requester for hero DOWN navigation
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -745,6 +755,7 @@ private fun ItemRow(
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester? = null,
     upFocusTarget: FocusRequester? = null,
+    firstItemFallbackFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
@@ -792,11 +803,18 @@ private fun ItemRow(
                 contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                items(items, key = { item -> item.id }) { item ->
-                    // Attach restoreFocusRequester to the item that should receive focus on back navigation
-                    val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
+                itemsIndexed(items, key = { _, item -> item.id }) { itemIndex, item ->
+                    // Determine which focus requester to attach (if any)
+                    // Priority: savedFocusItemId match > first item fallback
+                    val focusRequesterToAttach = when {
+                        savedFocusItemId == item.id && restoreFocusRequester != null -> restoreFocusRequester
+                        itemIndex == 0 && firstItemFallbackFocusRequester != null -> firstItemFallbackFocusRequester
+                        else -> null
+                    }
+
+                    val focusModifier = if (focusRequesterToAttach != null) {
                         Modifier
-                            .focusRequester(restoreFocusRequester)
+                            .focusRequester(focusRequesterToAttach)
                             .onFocusChanged { state ->
                                 if (state.isFocused) {
                                     onCardFocused(item)

@@ -136,6 +136,7 @@ fun EpisodesScreen(
     val episodeRowFocusRequester = remember { FocusRequester() }
     val firstTabFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
+    val tabContentFocusRequester = remember { FocusRequester() }
 
     // Episode focus requesters - keyed by episode ID
     val episodeFocusRequesters = remember(episodes) {
@@ -206,12 +207,13 @@ fun EpisodesScreen(
     }
 
     // focusRestorer saves/restores focus when NavRail is entered/exited
+    // Fallback to episode row (not play button) so initial focus goes to episode thumbnails
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
             .focusGroup()
-            .focusRestorer(playFocusRequester),
+            .focusRestorer(episodeRowFocusRequester),
     ) {
         // Ken Burns animated backdrop (top-right)
         KenBurnsBackdrop(
@@ -315,6 +317,7 @@ fun EpisodesScreen(
                                     }
                                     .focusProperties {
                                         up = episodeRowFocusRequester
+                                        down = tabContentFocusRequester
                                         left = if (index == 0) FocusRequester.Cancel else FocusRequester.Default
                                     }
                                     .focusable()
@@ -380,6 +383,8 @@ fun EpisodesScreen(
                                         people = episode.people?.filter { it.type != "GuestStar" } ?: emptyList(),
                                         jellyfinClient = jellyfinClient,
                                         onPersonClick = onPersonClick,
+                                        firstItemFocusRequester = tabContentFocusRequester,
+                                        tabFocusRequester = firstTabFocusRequester,
                                     )
                                 }
                             }
@@ -388,6 +393,8 @@ fun EpisodesScreen(
                                     guestStars = guestStars,
                                     jellyfinClient = jellyfinClient,
                                     onPersonClick = onPersonClick,
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
                             EpisodeTab.Seasons -> {
@@ -396,6 +403,8 @@ fun EpisodesScreen(
                                     selectedSeasonIndex = selectedSeasonIndex,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
                         }
@@ -1048,6 +1057,8 @@ private fun OverviewSection(overview: String) {
                 style = MaterialTheme.typography.bodySmall,
                 color = TvColors.TextSecondary,
                 lineHeight = 20.sp,
+                // Bottom padding ensures last line is fully visible when scrolled
+                modifier = Modifier.padding(bottom = 16.dp),
             )
         }
     }
@@ -1167,26 +1178,38 @@ private fun CastCrewTabContent(
     people: List<JellyfinPerson>,
     jellyfinClient: JellyfinClient,
     onPersonClick: (String) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
 ) {
-    val firstCardFocusRequester = remember { FocusRequester() }
+    val internalFirstFocusRequester = remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier
             .fillMaxSize()
-            .focusRestorer(firstCardFocusRequester),
+            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
     ) {
         itemsIndexed(people, key = { _, person -> person.id }) { index, person ->
             PersonCard(
                 person = person,
                 jellyfinClient = jellyfinClient,
                 onClick = { onPersonClick(person.id) },
-                modifier = if (index == 0) {
-                    Modifier.focusRequester(firstCardFocusRequester)
-                } else {
-                    Modifier
-                },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else if (index == 0) {
+                            Modifier.focusRequester(internalFirstFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -1200,26 +1223,38 @@ private fun GuestStarsTabContent(
     guestStars: List<JellyfinPerson>,
     jellyfinClient: JellyfinClient,
     onPersonClick: (String) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
 ) {
-    val firstCardFocusRequester = remember { FocusRequester() }
+    val internalFirstFocusRequester = remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier
             .fillMaxSize()
-            .focusRestorer(firstCardFocusRequester),
+            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
     ) {
         itemsIndexed(guestStars, key = { _, person -> person.id }) { index, person ->
             PersonCard(
                 person = person,
                 jellyfinClient = jellyfinClient,
                 onClick = { onPersonClick(person.id) },
-                modifier = if (index == 0) {
-                    Modifier.focusRequester(firstCardFocusRequester)
-                } else {
-                    Modifier
-                },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else if (index == 0) {
+                            Modifier.focusRequester(internalFirstFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -1234,9 +1269,11 @@ private fun SeasonsTabContent(
     selectedSeasonIndex: Int,
     jellyfinClient: JellyfinClient,
     onSeasonSelected: (Int) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
 ) {
     val lazyListState = rememberLazyListState()
-    val firstCardFocusRequester = remember { FocusRequester() }
+    val internalFirstFocusRequester = remember { FocusRequester() }
 
     // Scroll to selected season
     LaunchedEffect(selectedSeasonIndex) {
@@ -1251,7 +1288,7 @@ private fun SeasonsTabContent(
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier
             .fillMaxSize()
-            .focusRestorer(firstCardFocusRequester),
+            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
     ) {
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
             val isSelected = index == selectedSeasonIndex
@@ -1261,11 +1298,21 @@ private fun SeasonsTabContent(
                 isSelected = isSelected,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonSelected(index) },
-                modifier = if (index == 0) {
-                    Modifier.focusRequester(firstCardFocusRequester)
-                } else {
-                    Modifier
-                },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else if (index == 0) {
+                            Modifier.focusRequester(internalFirstFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -1288,12 +1335,11 @@ private fun SeasonPosterCard(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier,
     ) {
         // Season poster card (80x112dp to match Series screen)
         Card(
             onClick = onClick,
-            modifier = Modifier.size(width = CardSizes.SeasonPosterWidth, height = CardSizes.SeasonPosterHeight),
+            modifier = modifier.size(width = CardSizes.SeasonPosterWidth, height = CardSizes.SeasonPosterHeight),
             scale = CardDefaults.scale(focusedScale = 1.05f),
             border = CardDefaults.border(
                 border = if (isSelected) {

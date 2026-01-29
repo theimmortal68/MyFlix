@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -132,6 +133,7 @@ fun UnifiedSeriesScreen(
     val isFavorite = series.userData?.isFavorite == true
     val playButtonFocusRequester = remember { FocusRequester() }
     val seasonsTabFocusRequester = remember { FocusRequester() }
+    val tabContentFocusRequester = remember { FocusRequester() }
 
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
@@ -194,11 +196,12 @@ fun UnifiedSeriesScreen(
         }
     }
 
-    // focusRestorer saves/restores focus when NavRail is entered/exited
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
+            .focusGroup()
             .focusRestorer(playButtonFocusRequester),
     ) {
         // Layer 1: Ken Burns animated backdrop (top-right)
@@ -294,6 +297,10 @@ fun UnifiedSeriesScreen(
                                             }
                                         }
                                     }
+                                    .focusProperties {
+                                        // Navigate down into tab content
+                                        down = tabContentFocusRequester
+                                    }
                                     .focusable()
                                     .selectable(
                                         selected = isSelected,
@@ -346,6 +353,8 @@ fun UnifiedSeriesScreen(
                                     seasons = state.seasons,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonClick = onSeasonClick,
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = seasonsTabFocusRequester,
                                 )
                             }
                             UnifiedSeriesTab.Details -> {
@@ -356,6 +365,8 @@ fun UnifiedSeriesScreen(
                                     people = people,
                                     jellyfinClient = jellyfinClient,
                                     onPersonClick = onNavigateToPerson,
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = seasonsTabFocusRequester,
                                 )
                             }
                             UnifiedSeriesTab.Trailers -> {
@@ -363,6 +374,8 @@ fun UnifiedSeriesScreen(
                                     trailers = trailers,
                                     jellyfinClient = jellyfinClient,
                                     onTrailerClick = { /* TODO: Handle trailer click */ },
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = seasonsTabFocusRequester,
                                 )
                             }
                             UnifiedSeriesTab.Extras -> {
@@ -370,6 +383,8 @@ fun UnifiedSeriesScreen(
                                     extras = extras,
                                     jellyfinClient = jellyfinClient,
                                     onExtraClick = { /* TODO: Handle extra click */ },
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = seasonsTabFocusRequester,
                                 )
                             }
                             UnifiedSeriesTab.Related -> {
@@ -380,6 +395,8 @@ fun UnifiedSeriesScreen(
                                     similarItems = similarWithEpisodes,
                                     jellyfinClient = jellyfinClient,
                                     onItemClick = onNavigateToDetail,
+                                    firstItemFocusRequester = tabContentFocusRequester,
+                                    tabFocusRequester = seasonsTabFocusRequester,
                                 )
                             }
                         }
@@ -844,6 +861,8 @@ private fun SeasonsTabContent(
     seasons: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onSeasonClick: (JellyfinItem) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     if (seasons.isEmpty()) {
@@ -855,16 +874,31 @@ private fun SeasonsTabContent(
         return
     }
 
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        items(seasons, key = { it.id }) { season ->
+        itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
             SeasonCard(
                 season = season,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonClick(season) },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -882,10 +916,10 @@ private fun SeasonCard(
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.width(80.dp)) {
+    Column(modifier = Modifier.width(80.dp)) {
         Card(
             onClick = onClick,
-            modifier = Modifier
+            modifier = modifier
                 .size(width = 80.dp, height = 112.dp)
                 .onFocusChanged { isFocused = it.isFocused },
             scale = CardDefaults.scale(focusedScale = 1.05f),
@@ -923,6 +957,8 @@ private fun CastCrewTabContent(
     people: List<JellyfinPerson>,
     jellyfinClient: JellyfinClient,
     onPersonClick: (String) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     if (people.isEmpty()) {
@@ -934,16 +970,31 @@ private fun CastCrewTabContent(
         return
     }
 
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        items(people, key = { it.id ?: "${it.name}_${it.role}".hashCode() }) { person ->
+        itemsIndexed(people, key = { _, person -> person.id ?: "${person.name}_${person.role}".hashCode() }) { index, person ->
             PersonCard(
                 person = person,
                 jellyfinClient = jellyfinClient,
                 onClick = { person.id?.let { onPersonClick(it) } },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -962,12 +1013,12 @@ private fun PersonCard(
     var isFocused by remember { mutableStateOf(false) }
 
     Column(
-        modifier = modifier.width(80.dp),
+        modifier = Modifier.width(80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Card(
             onClick = onClick,
-            modifier = Modifier
+            modifier = modifier
                 .size(72.dp) // Larger photo
                 .onFocusChanged { isFocused = it.isFocused },
             shape = CardDefaults.shape(CircleShape),
@@ -1096,18 +1147,35 @@ private fun TrailersTabContent(
     trailers: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onTrailerClick: (JellyfinItem) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        items(trailers, key = { it.id }) { trailer ->
+        itemsIndexed(trailers, key = { _, trailer -> trailer.id }) { index, trailer ->
             ExtraVideoCard(
                 item = trailer,
                 jellyfinClient = jellyfinClient,
                 onClick = { onTrailerClick(trailer) },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -1121,18 +1189,35 @@ private fun ExtrasTabContent(
     extras: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onExtraClick: (JellyfinItem) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        items(extras, key = { it.id }) { extra ->
+        itemsIndexed(extras, key = { _, extra -> extra.id }) { index, extra ->
             ExtraVideoCard(
                 item = extra,
                 jellyfinClient = jellyfinClient,
                 onClick = { onExtraClick(extra) },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -1150,10 +1235,10 @@ private fun ExtraVideoCard(
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.width(160.dp)) {
+    Column(modifier = Modifier.width(160.dp)) {
         Card(
             onClick = onClick,
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .onFocusChanged { isFocused = it.isFocused },
@@ -1249,6 +1334,8 @@ private fun RelatedTabContent(
     similarItems: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     if (similarItems.isEmpty()) {
@@ -1260,16 +1347,31 @@ private fun RelatedTabContent(
         return
     }
 
+    val internalFirstFocusRequester = remember { FocusRequester() }
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        items(similarItems, key = { it.id }) { item ->
+        itemsIndexed(similarItems, key = { _, item -> item.id }) { index, item ->
             RelatedItemCard(
                 item = item,
                 jellyfinClient = jellyfinClient,
                 onClick = { onItemClick(item.id) },
+                modifier = Modifier
+                    .then(
+                        if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
@@ -1287,10 +1389,10 @@ private fun RelatedItemCard(
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.width(80.dp)) {
+    Column(modifier = Modifier.width(80.dp)) {
         Card(
             onClick = onClick,
-            modifier = Modifier
+            modifier = modifier
                 .size(width = 80.dp, height = 112.dp)
                 .onFocusChanged { isFocused = it.isFocused },
             scale = CardDefaults.scale(focusedScale = 1.05f),

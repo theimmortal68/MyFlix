@@ -187,10 +187,11 @@ fun MovieDetailScreen(
     }
 
     // Layered UI: DynamicBackground → NavigationRail + Content (DetailBackdropLayer → Content)
-    // focusRestorer saves/restores focus when NavRail is entered/exited
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = modifier
             .fillMaxSize()
+            .focusGroup()
             .focusRestorer(playFocusRequester),
     ) {
         // Layer 1: Dynamic gradient background (covers full screen including nav rail)

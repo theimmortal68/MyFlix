@@ -5,6 +5,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,10 +158,11 @@ fun LibraryScreen(
             }
     }
 
-    // focusRestorer saves/restores focus when NavRail is entered/exited
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .focusGroup()
             .focusRestorer(firstItemFocusRequester),
     ) {
         // Dynamic background that changes based on focused poster
