@@ -1204,7 +1204,8 @@ fun MyFlixTvApp() {
         }
 
         // Focus sentinel - detects left-edge navigation and activates rail
-        // Always present but only focusable when rail is inactive AND after startup delay
+        // Positioned at x=0 (behind collapsed rail) so it's to the LEFT of content
+        // This allows Compose focus search to find it when navigating left
         if (showNavRail) {
             FocusSentinel(
                 isEnabled = !isNavRailActive && sentinelEnabled,
@@ -1213,9 +1214,7 @@ fun MyFlixTvApp() {
                     isNavRailExpanded = true
                 },
                 railFocusRequester = navRailFocusRequester,
-                modifier = Modifier
-                    .padding(start = NavRailDimensions.CollapsedWidth)
-                    .zIndex(0.25f),
+                modifier = Modifier.zIndex(0.25f),
             )
         }
 
