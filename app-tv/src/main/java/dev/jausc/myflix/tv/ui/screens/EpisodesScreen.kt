@@ -90,13 +90,14 @@ import java.util.Locale
 
 /**
  * Tab options for the episode detail screen.
+ * Order matters - Seasons first for quick season switching.
  */
 private enum class EpisodeTab {
+    Seasons,
     Details,
     MediaInfo,
     CastCrew,
     GuestStars,
-    Seasons,
 }
 
 /**
@@ -124,15 +125,13 @@ fun EpisodesScreen(
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
 
-    // Track initial focus setup
-    var initialFocusSet by remember { mutableStateOf(false) }
-
-    // Focus requesters for navigation flow
-    val actionButtonsFocusRequester = remember { FocusRequester() }
+    // Track focus setup - reset when season changes
+    var focusSetForSeason by remember { mutableStateOf(-1) }
     val episodeRowFocusRequester = remember { FocusRequester() }
     val firstTabFocusRequester = remember { FocusRequester() }
 
@@ -141,24 +140,33 @@ fun EpisodesScreen(
         episodes.associate { it.id to FocusRequester() }
     }
 
-    // Find target episode for initial focus
+    // Find target episode for focus
+    // When switching seasons, selectedEpisodeId won't be in new episodes list,
+    // so it falls through to find in-progress > first unwatched > first episode
     val targetEpisode = remember(episodes, selectedEpisodeId) {
         findTargetEpisode(episodes, selectedEpisodeId)
     }
 
-    // Set initial focused episode
-    LaunchedEffect(targetEpisode, initialFocusSet) {
-        if (targetEpisode != null && !initialFocusSet) {
+    // Set focused episode and request focus when season changes or on initial load
+    LaunchedEffect(targetEpisode, selectedSeasonIndex) {
+        if (targetEpisode != null && focusSetForSeason != selectedSeasonIndex) {
             focusedEpisode = targetEpisode
             // Delay to ensure UI is composed
             delay(100L)
             try {
-                // Focus the play button initially
-                actionButtonsFocusRequester.requestFocus()
+                // Focus the target episode card when switching seasons
+                val targetFocusRequester = episodeFocusRequesters[targetEpisode.id]
+                if (targetFocusRequester != null && focusSetForSeason >= 0) {
+                    // Switching seasons - focus the episode card
+                    targetFocusRequester.requestFocus()
+                } else {
+                    // Initial load - focus the play button
+                    actionButtonsFocusRequester.requestFocus()
+                }
             } catch (_: IllegalStateException) {
                 // FocusRequester not yet attached, ignore
             }
-            initialFocusSet = true
+            focusSetForSeason = selectedSeasonIndex
         }
     }
 
@@ -309,6 +317,7 @@ fun EpisodesScreen(
                                     }
                                     .focusProperties {
                                         up = episodeRowFocusRequester
+                                        left = if (index == 0) FocusRequester.Cancel else FocusRequester.Default
                                     }
                                     .focusable()
                                     .selectable(
@@ -879,11 +888,11 @@ private fun DetailsTabContent(episode: JellyfinItem) {
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Overview section
+        // Overview section - wider for better readability
         episode.overview?.let { overview ->
             item("overview") {
                 Column(
-                    modifier = Modifier.width(400.dp),
+                    modifier = Modifier.width(500.dp),
                 ) {
                     Text(
                         text = "Overview",
@@ -931,49 +940,48 @@ private fun DetailsTabContent(episode: JellyfinItem) {
             }
         }
 
-        // Directors
-        if (directors.isNotEmpty()) {
-            item("directors") {
+        // Directors & Writers combined into one column
+        if (directors.isNotEmpty() || writers.isNotEmpty()) {
+            item("crew") {
                 Column(
                     modifier = Modifier.width(200.dp),
                 ) {
-                    Text(
-                        text = "Director${if (directors.size > 1) "s" else ""}",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    directors.forEach { director ->
+                    if (directors.isNotEmpty()) {
                         Text(
-                            text = director.name ?: "Unknown",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary,
+                            text = "Director${if (directors.size > 1) "s" else ""}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        directors.forEach { director ->
+                            Text(
+                                text = director.name ?: "Unknown",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextSecondary,
+                            )
+                        }
                     }
-                }
-            }
-        }
 
-        // Writers
-        if (writers.isNotEmpty()) {
-            item("writers") {
-                Column(
-                    modifier = Modifier.width(200.dp),
-                ) {
-                    Text(
-                        text = "Writer${if (writers.size > 1) "s" else ""}",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TvColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    writers.forEach { writer ->
+                    if (directors.isNotEmpty() && writers.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    if (writers.isNotEmpty()) {
                         Text(
-                            text = writer.name ?: "Unknown",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextSecondary,
+                            text = "Writer${if (writers.size > 1) "s" else ""}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        writers.forEach { writer ->
+                            Text(
+                                text = writer.name ?: "Unknown",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextSecondary,
+                            )
+                        }
                     }
                 }
             }
@@ -1236,10 +1244,10 @@ private fun SeasonPosterCard(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier,
     ) {
-        // Season poster card (2:3 aspect ratio, 110dp x 165dp)
+        // Season poster card (80x112dp to match Series screen)
         Card(
             onClick = onClick,
-            modifier = Modifier.size(width = CardSizes.MediaCardWidth, height = 165.dp),
+            modifier = Modifier.size(width = CardSizes.SeasonPosterWidth, height = CardSizes.SeasonPosterHeight),
             scale = CardDefaults.scale(focusedScale = 1.05f),
             border = CardDefaults.border(
                 border = if (isSelected) {
@@ -1274,7 +1282,7 @@ private fun SeasonPosterCard(
             color = if (isSelected) TvColors.TextPrimary else TvColors.TextSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(CardSizes.MediaCardWidth),
+            modifier = Modifier.width(CardSizes.SeasonPosterWidth),
         )
     }
 }

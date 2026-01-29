@@ -117,6 +117,7 @@ fun HomeScreen(
     restoreFocusRequester: FocusRequester? = null,
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
     onSeriesMoreInfoClick: (seriesId: String) -> Unit = { seriesId -> onItemClick(seriesId) },
+    actionButtonsFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -204,8 +205,8 @@ fun HomeScreen(
         )
     }
 
-    // Focus requester for initial app launch focus
-    val heroPlayFocusRequester = remember { FocusRequester() }
+    // Focus requester for hero play button - use external one if provided (for NavRail exit)
+    val heroPlayFocusRequester = actionButtonsFocusRequester
 
     // Saved focus state - survives back navigation
     var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
