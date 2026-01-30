@@ -308,6 +308,7 @@ fun HomeScreen(
                         title = item.name,
                         items = buildHomeDialogItems(item, dialogActions),
                         fromLongClick = true,
+                        restoreFocusRequester = effectiveRestoreFocusRequester,
                     )
                 },
                 onSeerrMediaClick = onSeerrMediaClick,
