@@ -40,7 +40,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Shuffle
@@ -96,7 +95,6 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.SeasonOptionsDialog
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -129,7 +127,6 @@ fun UnifiedSeriesScreen(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onSeasonClick: (JellyfinItem) -> Unit,
-    onSeasonSetPlayed: (JellyfinItem, Boolean) -> Unit = { _, _ -> },
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -147,17 +144,8 @@ fun UnifiedSeriesScreen(
     // Item-level focus tracking for NavRail exit restoration
     val updateExitFocus = rememberExitFocusRegistry(playButtonFocusRequester)
 
-
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
-
-    // Season selected for options dialog (shown on long press)
-    var seasonForOptionsDialog by remember { mutableStateOf<JellyfinItem?>(null) }
-
-    // Focus requesters for each season (for restoring focus after dialog)
-    val seasonFocusRequesters = remember(state.seasons) {
-        state.seasons.associate { it.id to FocusRequester() }
-    }
 
     // Split special features into trailers and other extras
     val trailers = remember(state.specialFeatures) {
@@ -382,8 +370,6 @@ fun UnifiedSeriesScreen(
                                     seasons = state.seasons,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonClick = onSeasonClick,
-                                    onSeasonLongClick = { season -> seasonForOptionsDialog = season },
-                                    seasonFocusRequesters = seasonFocusRequesters,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -433,21 +419,6 @@ fun UnifiedSeriesScreen(
                 }
             }
         }
-    }
-
-    // Season options dialog (shown on long press)
-    seasonForOptionsDialog?.let { season ->
-        SeasonOptionsDialog(
-            season = season,
-            onMarkWatched = { onSeasonSetPlayed(season, true) },
-            onMarkUnwatched = { onSeasonSetPlayed(season, false) },
-            onDismiss = {
-                // Restore focus to the season poster
-                val focusRequester = seasonFocusRequesters[season.id]
-                seasonForOptionsDialog = null
-                focusRequester?.requestFocus()
-            },
-        )
     }
 }
 
@@ -968,8 +939,6 @@ private fun SeasonsTabContent(
     seasons: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onSeasonClick: (JellyfinItem) -> Unit,
-    onSeasonLongClick: (JellyfinItem) -> Unit = {},
-    seasonFocusRequesters: Map<String, FocusRequester> = emptyMap(),
     tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -988,25 +957,15 @@ private fun SeasonsTabContent(
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
-            val seasonFocusRequester = seasonFocusRequesters[season.id]
             SeasonCard(
                 season = season,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonClick(season) },
-                onLongClick = { onSeasonLongClick(season) },
-                modifier = Modifier
-                    .then(
-                        if (seasonFocusRequester != null) {
-                            Modifier.focusRequester(seasonFocusRequester)
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .focusProperties {
-                        if (tabFocusRequester != null) {
-                            up = tabFocusRequester
-                        }
-                    },
+                modifier = Modifier.focusProperties {
+                    if (tabFocusRequester != null) {
+                        up = tabFocusRequester
+                    }
+                },
             )
         }
     }
@@ -1020,26 +979,16 @@ private fun SeasonCard(
     season: JellyfinItem,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
-    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    // Calculate watched status
+    // Only show indicator when season is completely watched
     val isFullyWatched = season.userData?.played == true
-    val totalEpisodes = season.childCount ?: 0
-    val unplayedCount = season.userData?.unplayedItemCount ?: 0
-    val watchedCount = totalEpisodes - unplayedCount
-    val watchProgress = if (totalEpisodes > 0 && !isFullyWatched && watchedCount > 0) {
-        watchedCount.toFloat() / totalEpisodes.toFloat()
-    } else {
-        null
-    }
 
     Column(modifier = Modifier.width(80.dp)) {
         Card(
             onClick = onClick,
-            onLongClick = onLongClick,
             modifier = modifier
                 .size(width = 80.dp, height = 112.dp)
                 .onFocusChanged { isFocused = it.isFocused },
@@ -1059,7 +1008,7 @@ private fun SeasonCard(
                     modifier = Modifier.fillMaxSize(),
                 )
 
-                // Fully watched indicator (checkmark)
+                // Watched indicator (checkmark) - only shown when fully watched
                 if (isFullyWatched) {
                     Box(
                         modifier = Modifier
@@ -1075,27 +1024,6 @@ private fun SeasonCard(
                             contentDescription = "Fully watched",
                             tint = Color(0xFF4CAF50),
                             modifier = Modifier.size(12.dp),
-                        )
-                    }
-                }
-
-                // Partial progress indicator (circular gauge)
-                if (watchProgress != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(2.dp)
-                            .size(18.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(Color.Black.copy(alpha = 0.7f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            progress = { watchProgress },
-                            modifier = Modifier.size(14.dp),
-                            color = TvColors.BluePrimary,
-                            trackColor = Color.White.copy(alpha = 0.3f),
-                            strokeWidth = 2.dp,
                         )
                     }
                 }

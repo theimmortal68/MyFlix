@@ -76,7 +76,6 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -86,7 +85,6 @@ import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
 import dev.jausc.myflix.core.common.ui.IconColors
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.CardSizes
-import dev.jausc.myflix.tv.ui.components.SeasonOptionsDialog
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -130,7 +128,6 @@ fun EpisodesScreen(
     onEpisodeClick: (JellyfinItem) -> Unit,
     onWatchedClick: (JellyfinItem) -> Unit = {},
     onFavoriteClick: (JellyfinItem) -> Unit = {},
-    onSeasonSetPlayed: (JellyfinItem, Boolean) -> Unit = { _, _ -> },
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -138,14 +135,6 @@ fun EpisodesScreen(
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
-
-    // Season selected for options dialog (shown on long press)
-    var seasonForOptionsDialog by remember { mutableStateOf<JellyfinItem?>(null) }
-
-    // Focus requesters for each season (for restoring focus after dialog)
-    val seasonFocusRequesters = remember(seasons) {
-        seasons.associate { it.id to FocusRequester() }
-    }
 
     // Sync focusedEpisode with updated episodes list (for optimistic updates)
     // When episodes list changes, find the same episode by ID and update reference
@@ -169,33 +158,49 @@ fun EpisodesScreen(
     // Item-level focus tracking for NavRail exit restoration
     val updateExitFocus = rememberExitFocusRegistry(episodeRowFocusRequester)
 
-    // Episode focus requesters - keyed by episode ID for restoring to specific episode
-    val episodeFocusRequesters = remember(episodes) {
-        episodes.associate { it.id to FocusRequester() }
-    }
-
+    // Stable map of episode FocusRequesters - lazily create and reuse
+    val episodeFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
 
     // Find target episode for focus
     // When switching seasons, selectedEpisodeId won't be in new episodes list,
     // so it falls through to find in-progress > first unwatched > first episode
-    val targetEpisode = remember(episodes, selectedEpisodeId) {
+    val targetEpisode = remember(episodes, selectedEpisodeId, selectedSeasonIndex) {
         findTargetEpisode(episodes, selectedEpisodeId)
     }
 
-    // Set focused episode and request focus when season changes or on initial load
-    LaunchedEffect(targetEpisode, selectedSeasonIndex) {
-        if (targetEpisode != null && focusSetForSeason != selectedSeasonIndex) {
+    // Track the target episode index for coordinated scroll and focus
+    val targetEpisodeIndex = remember(episodes, targetEpisode) {
+        if (targetEpisode != null) {
+            episodes.indexOfFirst { it.id == targetEpisode.id }.takeIf { it >= 0 } ?: 0
+        } else {
+            0
+        }
+    }
+
+    // Track which season and episode set we've focused (using first episode ID as stable identifier)
+    var lastFocusedKey by remember { mutableStateOf("") }
+
+    // Set focused episode when episodes change (season switch or initial load)
+    // Focus request is now handled by EpisodeCardRow's focusRestorer
+    LaunchedEffect(episodes, selectedSeasonIndex) {
+        // Create a unique key for this season's episode set
+        val currentKey = "${selectedSeasonIndex}_${episodes.firstOrNull()?.id ?: ""}"
+
+        if (targetEpisode != null && episodes.isNotEmpty() && currentKey != lastFocusedKey) {
             focusedEpisode = targetEpisode
-            // Delay to ensure UI is composed
-            delay(100L)
+            lastFocusedKey = currentKey
+
+            // Small delay to ensure composition is complete
+            delay(50L)
+
+            // Focus the row container - this captures focus during transition
+            // and prevents it from escaping to NavRail
+            // The row's focusRestorer will then delegate to the target episode
             try {
-                // Always focus the target episode card (initial load or season switch)
-                val targetFocusRequester = episodeFocusRequesters[targetEpisode.id]
-                targetFocusRequester?.requestFocus()
+                episodeRowFocusRequester.requestFocus()
             } catch (_: IllegalStateException) {
-                // FocusRequester not yet attached, ignore
+                // Row not ready yet
             }
-            focusSetForSeason = selectedSeasonIndex
         }
     }
 
@@ -280,7 +285,7 @@ fun EpisodesScreen(
             EpisodeCardRow(
                 episodes = episodes,
                 jellyfinClient = jellyfinClient,
-                selectedEpisodeId = targetEpisode?.id,
+                targetEpisodeIndex = targetEpisodeIndex,
                 episodeFocusRequesters = episodeFocusRequesters,
                 onEpisodeClick = onEpisodeClick,
                 onEpisodeFocused = { episode -> focusedEpisode = episode },
@@ -445,8 +450,6 @@ fun EpisodesScreen(
                                     selectedSeasonIndex = selectedSeasonIndex,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
-                                    onSeasonLongClick = { season -> seasonForOptionsDialog = season },
-                                    seasonFocusRequesters = seasonFocusRequesters,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -455,21 +458,6 @@ fun EpisodesScreen(
                 }
             }
         }
-    }
-
-    // Season options dialog (shown on long press)
-    seasonForOptionsDialog?.let { season ->
-        SeasonOptionsDialog(
-            season = season,
-            onMarkWatched = { onSeasonSetPlayed(season, true) },
-            onMarkUnwatched = { onSeasonSetPlayed(season, false) },
-            onDismiss = {
-                // Restore focus to the season poster
-                val focusRequester = seasonFocusRequesters[season.id]
-                seasonForOptionsDialog = null
-                focusRequester?.requestFocus()
-            },
-        )
     }
 }
 
@@ -789,8 +777,8 @@ private fun EpisodeActionButtons(
 private fun EpisodeCardRow(
     episodes: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
-    selectedEpisodeId: String?,
-    episodeFocusRequesters: Map<String, FocusRequester>,
+    targetEpisodeIndex: Int,
+    episodeFocusRequesters: MutableMap<String, FocusRequester>,
     onEpisodeClick: (JellyfinItem) -> Unit,
     onEpisodeFocused: (JellyfinItem) -> Unit,
     focusRequester: FocusRequester,
@@ -802,19 +790,22 @@ private fun EpisodeCardRow(
 ) {
     val lazyListState = rememberLazyListState()
 
-    // Find index of selected episode for initial scroll
-    val selectedIndex = remember(episodes, selectedEpisodeId) {
-        episodes.indexOfFirst { it.id == selectedEpisodeId }.takeIf { it >= 0 } ?: 0
-    }
-
-    // Scroll to selected episode
-    LaunchedEffect(selectedIndex) {
-        if (selectedIndex > 0) {
-            lazyListState.scrollToItem(selectedIndex)
+    // Scroll to target episode when it changes
+    LaunchedEffect(targetEpisodeIndex, episodes) {
+        if (episodes.isNotEmpty()) {
+            lazyListState.scrollToItem(targetEpisodeIndex.coerceIn(0, episodes.lastIndex))
         }
     }
 
-    val firstCardFocusRequester = remember { FocusRequester() }
+    // Get FocusRequester for target episode (for focusRestorer)
+    val targetEpisodeId = episodes.getOrNull(targetEpisodeIndex)?.id
+    val targetCardFocusRequester = remember(targetEpisodeId) {
+        if (targetEpisodeId != null) {
+            episodeFocusRequesters.getOrPut(targetEpisodeId) { FocusRequester() }
+        } else {
+            FocusRequester()
+        }
+    }
 
     Column(modifier = modifier) {
         // Section label with episode count
@@ -845,11 +836,13 @@ private fun EpisodeCardRow(
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier
                     .focusRequester(focusRequester)
-                    .focusRestorer(firstCardFocusRequester),
+                    .focusRestorer(targetCardFocusRequester),
             ) {
                 itemsIndexed(episodes, key = { _, episode -> episode.id }) { index, episode ->
-                    val cardFocusRequester = episodeFocusRequesters[episode.id]
-                        ?: (if (index == 0) firstCardFocusRequester else remember { FocusRequester() })
+                    // Get or create FocusRequester for this episode
+                    val cardFocusRequester = episodeFocusRequesters.getOrPut(episode.id) {
+                        FocusRequester()
+                    }
 
                     EpisodeCard(
                         episode = episode,
@@ -1435,11 +1428,12 @@ private fun SeasonsTabContent(
     selectedSeasonIndex: Int,
     jellyfinClient: JellyfinClient,
     onSeasonSelected: (Int) -> Unit,
-    onSeasonLongClick: (JellyfinItem) -> Unit = {},
-    seasonFocusRequesters: Map<String, FocusRequester> = emptyMap(),
     tabFocusRequester: FocusRequester? = null,
 ) {
     val lazyListState = rememberLazyListState()
+
+    // FocusRequester for the selected season (for focusRestorer)
+    val selectedSeasonFocusRequester = remember { FocusRequester() }
 
     // Scroll to selected season
     LaunchedEffect(selectedSeasonIndex) {
@@ -1452,22 +1446,22 @@ private fun SeasonsTabContent(
         state = lazyListState,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(selectedSeasonFocusRequester),
     ) {
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
             val isSelected = index == selectedSeasonIndex
 
-            val seasonFocusRequester = seasonFocusRequesters[season.id]
             SeasonPosterCard(
                 season = season,
                 isSelected = isSelected,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonSelected(index) },
-                onLongClick = { onSeasonLongClick(season) },
                 modifier = Modifier
                     .then(
-                        if (seasonFocusRequester != null) {
-                            Modifier.focusRequester(seasonFocusRequester)
+                        if (isSelected) {
+                            Modifier.focusRequester(selectedSeasonFocusRequester)
                         } else {
                             Modifier
                         }
@@ -1488,7 +1482,6 @@ private fun SeasonPosterCard(
     isSelected: Boolean,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
-    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val imageUrl = jellyfinClient.getPrimaryImageUrl(
@@ -1497,16 +1490,8 @@ private fun SeasonPosterCard(
         maxWidth = 300,
     )
 
-    // Calculate watched status
+    // Only show indicator when season is completely watched
     val isFullyWatched = season.userData?.played == true
-    val totalEpisodes = season.childCount ?: 0
-    val unplayedCount = season.userData?.unplayedItemCount ?: 0
-    val watchedCount = totalEpisodes - unplayedCount
-    val watchProgress = if (totalEpisodes > 0 && !isFullyWatched && watchedCount > 0) {
-        watchedCount.toFloat() / totalEpisodes.toFloat()
-    } else {
-        null
-    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1515,7 +1500,6 @@ private fun SeasonPosterCard(
         // Season poster card (80x112dp to match Series screen)
         Card(
             onClick = onClick,
-            onLongClick = onLongClick,
             modifier = modifier.size(width = CardSizes.SeasonPosterWidth, height = CardSizes.SeasonPosterHeight),
             scale = CardDefaults.scale(focusedScale = 1.05f),
             border = CardDefaults.border(
@@ -1542,7 +1526,7 @@ private fun SeasonPosterCard(
                     modifier = Modifier.fillMaxSize(),
                 )
 
-                // Fully watched indicator (checkmark)
+                // Watched indicator (checkmark) - only shown when fully watched
                 if (isFullyWatched) {
                     Box(
                         modifier = Modifier
@@ -1558,27 +1542,6 @@ private fun SeasonPosterCard(
                             contentDescription = "Fully watched",
                             tint = Color(0xFF4CAF50),
                             modifier = Modifier.size(12.dp),
-                        )
-                    }
-                }
-
-                // Partial progress indicator (circular gauge)
-                if (watchProgress != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(2.dp)
-                            .size(18.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(Color.Black.copy(alpha = 0.7f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            progress = { watchProgress },
-                            modifier = Modifier.size(14.dp),
-                            color = TvColors.BluePrimary,
-                            trackColor = Color.White.copy(alpha = 0.3f),
-                            strokeWidth = 2.dp,
                         )
                     }
                 }

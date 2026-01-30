@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -1100,6 +1101,7 @@ fun MyFlixTvApp() {
                 // Determine initial season index based on season number
                 var selectedSeasonIndex by remember { mutableStateOf(0) }
                 var initialSeasonResolved by remember { mutableStateOf(false) }
+                val seasonChangeScope = rememberCoroutineScope()
 
                 // Resolve the initial season index once data is loaded
                 // Find season by indexNumber (season number) instead of list position
@@ -1155,7 +1157,14 @@ fun MyFlixTvApp() {
                         selectedEpisodeId = episodeId,
                         jellyfinClient = jellyfinClient,
                         onSeasonSelected = { index ->
+                            // Temporarily disable sentinel to prevent focus theft during season change
+                            sentinelEnabled = false
                             selectedSeasonIndex = index
+                            // Re-enable sentinel after content has time to establish focus
+                            seasonChangeScope.launch {
+                                delay(NavRailAnimations.SentinelStartupDelayMs)
+                                sentinelEnabled = true
+                            }
                         },
                         onEpisodeClick = { episode ->
                             // Navigate to player with selected episode
@@ -1170,9 +1179,6 @@ fun MyFlixTvApp() {
                         onFavoriteClick = { episode ->
                             val isCurrentlyFavorite = episode.userData?.isFavorite == true
                             viewModel.setFavorite(episode.id, !isCurrentlyFavorite)
-                        },
-                        onSeasonSetPlayed = { season, played ->
-                            viewModel.setSeasonPlayed(season.id, played)
                         },
                         onPersonClick = { personId ->
                             navController.navigate("person/$personId")

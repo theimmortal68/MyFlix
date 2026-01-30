@@ -151,9 +151,6 @@ fun DetailScreen(
                         val seasonNumber = season.indexNumber ?: 1
                         onNavigateToEpisodes(state.item?.id ?: itemId, seasonNumber, null)
                     },
-                    onSeasonSetPlayed = { season, played ->
-                        viewModel.setSeasonPlayed(season.id, played)
-                    },
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     modifier = Modifier.fillMaxSize(),
