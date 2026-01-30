@@ -1171,6 +1171,10 @@ fun MyFlixTvApp() {
                             val isCurrentlyFavorite = episode.userData?.isFavorite == true
                             viewModel.setFavorite(episode.id, !isCurrentlyFavorite)
                         },
+                        onSeasonLongClick = { season ->
+                            val isCurrentlyWatched = season.userData?.played == true
+                            viewModel.setSeasonPlayed(season.id, !isCurrentlyWatched)
+                        },
                         onPersonClick = { personId ->
                             navController.navigate("person/$personId")
                         },

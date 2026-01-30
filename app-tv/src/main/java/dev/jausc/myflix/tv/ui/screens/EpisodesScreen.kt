@@ -76,6 +76,7 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -128,6 +129,7 @@ fun EpisodesScreen(
     onEpisodeClick: (JellyfinItem) -> Unit,
     onWatchedClick: (JellyfinItem) -> Unit = {},
     onFavoriteClick: (JellyfinItem) -> Unit = {},
+    onSeasonLongClick: (JellyfinItem) -> Unit = {},
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -434,6 +436,7 @@ fun EpisodesScreen(
                                     selectedSeasonIndex = selectedSeasonIndex,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
+                                    onSeasonLongClick = onSeasonLongClick,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -1407,6 +1410,7 @@ private fun SeasonsTabContent(
     selectedSeasonIndex: Int,
     jellyfinClient: JellyfinClient,
     onSeasonSelected: (Int) -> Unit,
+    onSeasonLongClick: (JellyfinItem) -> Unit = {},
     tabFocusRequester: FocusRequester? = null,
 ) {
     val lazyListState = rememberLazyListState()
@@ -1432,6 +1436,7 @@ private fun SeasonsTabContent(
                 isSelected = isSelected,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonSelected(index) },
+                onLongClick = { onSeasonLongClick(season) },
                 modifier = Modifier.focusProperties {
                     if (tabFocusRequester != null) {
                         up = tabFocusRequester
@@ -1448,6 +1453,7 @@ private fun SeasonPosterCard(
     isSelected: Boolean,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val imageUrl = jellyfinClient.getPrimaryImageUrl(
@@ -1456,6 +1462,17 @@ private fun SeasonPosterCard(
         maxWidth = 300,
     )
 
+    // Calculate watched status
+    val isFullyWatched = season.userData?.played == true
+    val totalEpisodes = season.childCount ?: 0
+    val unplayedCount = season.userData?.unplayedItemCount ?: 0
+    val watchedCount = totalEpisodes - unplayedCount
+    val watchProgress = if (totalEpisodes > 0 && !isFullyWatched && watchedCount > 0) {
+        watchedCount.toFloat() / totalEpisodes.toFloat()
+    } else {
+        null
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1463,6 +1480,7 @@ private fun SeasonPosterCard(
         // Season poster card (80x112dp to match Series screen)
         Card(
             onClick = onClick,
+            onLongClick = onLongClick,
             modifier = modifier.size(width = CardSizes.SeasonPosterWidth, height = CardSizes.SeasonPosterHeight),
             scale = CardDefaults.scale(focusedScale = 1.05f),
             border = CardDefaults.border(
@@ -1481,12 +1499,55 @@ private fun SeasonPosterCard(
             ),
             shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = season.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = season.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                // Fully watched indicator (checkmark)
+                if (isFullyWatched) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Fully watched",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
+
+                // Partial progress indicator (circular gauge)
+                if (watchProgress != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            progress = { watchProgress },
+                            modifier = Modifier.size(14.dp),
+                            color = TvColors.BluePrimary,
+                            trackColor = Color.White.copy(alpha = 0.3f),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
+            }
         }
 
         // Season label

@@ -37,8 +37,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Shuffle
@@ -126,6 +128,7 @@ fun UnifiedSeriesScreen(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onSeasonClick: (JellyfinItem) -> Unit,
+    onSeasonLongClick: (JellyfinItem) -> Unit = {},
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -370,6 +373,7 @@ fun UnifiedSeriesScreen(
                                     seasons = state.seasons,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonClick = onSeasonClick,
+                                    onSeasonLongClick = onSeasonLongClick,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -939,6 +943,7 @@ private fun SeasonsTabContent(
     seasons: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onSeasonClick: (JellyfinItem) -> Unit,
+    onSeasonLongClick: (JellyfinItem) -> Unit = {},
     tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -961,6 +966,7 @@ private fun SeasonsTabContent(
                 season = season,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonClick(season) },
+                onLongClick = { onSeasonLongClick(season) },
                 modifier = Modifier.focusProperties {
                     if (tabFocusRequester != null) {
                         up = tabFocusRequester
@@ -979,13 +985,26 @@ private fun SeasonCard(
     season: JellyfinItem,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
+    // Calculate watched status
+    val isFullyWatched = season.userData?.played == true
+    val totalEpisodes = season.childCount ?: 0
+    val unplayedCount = season.userData?.unplayedItemCount ?: 0
+    val watchedCount = totalEpisodes - unplayedCount
+    val watchProgress = if (totalEpisodes > 0 && !isFullyWatched && watchedCount > 0) {
+        watchedCount.toFloat() / totalEpisodes.toFloat()
+    } else {
+        null
+    }
+
     Column(modifier = Modifier.width(80.dp)) {
         Card(
             onClick = onClick,
+            onLongClick = onLongClick,
             modifier = modifier
                 .size(width = 80.dp, height = 112.dp)
                 .onFocusChanged { isFocused = it.isFocused },
@@ -997,12 +1016,55 @@ private fun SeasonCard(
                 ),
             ),
         ) {
-            AsyncImage(
-                model = jellyfinClient.getPrimaryImageUrl(season.id, season.imageTags?.primary),
-                contentDescription = season.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = jellyfinClient.getPrimaryImageUrl(season.id, season.imageTags?.primary),
+                    contentDescription = season.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                // Fully watched indicator (checkmark)
+                if (isFullyWatched) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Fully watched",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
+
+                // Partial progress indicator (circular gauge)
+                if (watchProgress != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            progress = { watchProgress },
+                            modifier = Modifier.size(14.dp),
+                            color = TvColors.BluePrimary,
+                            trackColor = Color.White.copy(alpha = 0.3f),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
+            }
         }
 
         Text(

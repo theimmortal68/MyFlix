@@ -106,6 +106,8 @@ data class UserData(
     @SerialName("PlayCount") val playCount: Int = 0,
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
     @SerialName("Played") val played: Boolean = false,
+    // For folders/seasons: number of unwatched child items
+    @SerialName("UnplayedItemCount") val unplayedItemCount: Int? = null,
 )
 
 @Serializable

@@ -270,6 +270,36 @@ class DetailViewModel(
     }
 
     /**
+     * Mark a season as watched/unwatched.
+     * Uses optimistic update for immediate UI feedback.
+     */
+    fun setSeasonPlayed(seasonId: String, played: Boolean) {
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.copy(
+                seasons = state.seasons.map { season ->
+                    if (season.id == seasonId) {
+                        val currentUserData = season.userData ?: UserData()
+                        season.copy(userData = currentUserData.copy(
+                            played = played,
+                            unplayedItemCount = if (played) 0 else null
+                        ))
+                    } else {
+                        season
+                    }
+                }
+            )
+        }
+
+        // Sync with server in background
+        viewModelScope.launch {
+            jellyfinClient.setPlayed(seasonId, played)
+            // Refresh seasons to get accurate unplayed counts
+            refreshSeasons()
+        }
+    }
+
+    /**
      * Toggle the main item's favorite status.
      */
     /**
@@ -324,6 +354,21 @@ class DetailViewModel(
             jellyfinClient.getItem(itemId)
                 .onSuccess { item ->
                     _uiState.update { it.copy(item = item) }
+                }
+        }
+    }
+
+    /**
+     * Refresh seasons to get accurate unplayed counts.
+     */
+    private fun refreshSeasons() {
+        val currentItem = _uiState.value.item ?: return
+        val seriesId = currentItem.seriesId ?: currentItem.id
+
+        viewModelScope.launch {
+            jellyfinClient.getSeasons(seriesId)
+                .onSuccess { seasons ->
+                    _uiState.update { it.copy(seasons = seasons) }
                 }
         }
     }
