@@ -142,6 +142,11 @@ fun EpisodesScreen(
     // Season selected for options dialog (shown on long press)
     var seasonForOptionsDialog by remember { mutableStateOf<JellyfinItem?>(null) }
 
+    // Focus requesters for each season (for restoring focus after dialog)
+    val seasonFocusRequesters = remember(seasons) {
+        seasons.associate { it.id to FocusRequester() }
+    }
+
     // Sync focusedEpisode with updated episodes list (for optimistic updates)
     // When episodes list changes, find the same episode by ID and update reference
     LaunchedEffect(episodes) {
@@ -441,6 +446,7 @@ fun EpisodesScreen(
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
                                     onSeasonLongClick = { season -> seasonForOptionsDialog = season },
+                                    seasonFocusRequesters = seasonFocusRequesters,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -457,7 +463,12 @@ fun EpisodesScreen(
             season = season,
             onMarkWatched = { onSeasonSetPlayed(season, true) },
             onMarkUnwatched = { onSeasonSetPlayed(season, false) },
-            onDismiss = { seasonForOptionsDialog = null },
+            onDismiss = {
+                // Restore focus to the season poster
+                val focusRequester = seasonFocusRequesters[season.id]
+                seasonForOptionsDialog = null
+                focusRequester?.requestFocus()
+            },
         )
     }
 }
@@ -1425,6 +1436,7 @@ private fun SeasonsTabContent(
     jellyfinClient: JellyfinClient,
     onSeasonSelected: (Int) -> Unit,
     onSeasonLongClick: (JellyfinItem) -> Unit = {},
+    seasonFocusRequesters: Map<String, FocusRequester> = emptyMap(),
     tabFocusRequester: FocusRequester? = null,
 ) {
     val lazyListState = rememberLazyListState()
@@ -1445,17 +1457,26 @@ private fun SeasonsTabContent(
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
             val isSelected = index == selectedSeasonIndex
 
+            val seasonFocusRequester = seasonFocusRequesters[season.id]
             SeasonPosterCard(
                 season = season,
                 isSelected = isSelected,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonSelected(index) },
                 onLongClick = { onSeasonLongClick(season) },
-                modifier = Modifier.focusProperties {
-                    if (tabFocusRequester != null) {
-                        up = tabFocusRequester
-                    }
-                },
+                modifier = Modifier
+                    .then(
+                        if (seasonFocusRequester != null) {
+                            Modifier.focusRequester(seasonFocusRequester)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }

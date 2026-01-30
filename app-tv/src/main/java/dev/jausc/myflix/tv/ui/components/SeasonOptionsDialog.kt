@@ -4,37 +4,42 @@ package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.delay
 
 /**
  * Dialog for season options when long-pressing a season poster.
- * Shows options to mark the season as watched or unwatched.
+ * Shows option to mark the season as watched or unwatched.
+ * Styled to match LibrarySortDialog.
  *
  * @param season The season item to show options for
  * @param onMarkWatched Callback when user selects "Mark as Watched"
@@ -50,106 +55,108 @@ fun SeasonOptionsDialog(
     modifier: Modifier = Modifier,
 ) {
     val isWatched = season.userData?.played == true
-    val primaryFocusRequester = remember { FocusRequester() }
+    val focusRequester = remember { FocusRequester() }
 
-    // Focus the primary action button
+    // Prevent immediate clicks from long press event propagation
+    var isClickEnabled by remember { mutableStateOf(false) }
+
+    // Delay focus and enable clicks after a short delay to prevent
+    // the long press event from being interpreted as a click
     LaunchedEffect(Unit) {
-        primaryFocusRequester.requestFocus()
+        delay(200) // Wait for long press event to complete
+        focusRequester.requestFocus()
+        isClickEnabled = true
     }
 
     TvCenteredPopup(
         visible = true,
         onDismiss = onDismiss,
-        minWidth = 300.dp,
-        maxWidth = 350.dp,
+        minWidth = 280.dp,
+        maxWidth = 320.dp,
         modifier = modifier,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        Column {
             Text(
                 text = season.name,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = Color.White,
-                textAlign = TextAlign.Center,
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Show appropriate option based on current state
             if (isWatched) {
                 // Season is watched - show option to mark as unwatched
-                Button(
+                Surface(
                     onClick = {
-                        onMarkUnwatched()
-                        onDismiss()
+                        if (isClickEnabled) {
+                            onMarkUnwatched()
+                            onDismiss()
+                        }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(primaryFocusRequester)
-                        .focusProperties {
-                            up = FocusRequester.Cancel
-                            down = FocusRequester.Cancel
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
-                        },
-                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.1f),
-                        contentColor = Color.White,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
+                    modifier = Modifier.focusRequester(focusRequester),
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        focusedContainerColor = Color.White.copy(alpha = 0.15f),
                     ),
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.VisibilityOff,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text(
-                        text = "Mark as Unwatched",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.VisibilityOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.White.copy(alpha = 0.9f),
+                        )
+                        Text(
+                            text = "Mark as Unwatched",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.9f),
+                        )
+                    }
                 }
             } else {
                 // Season is not watched - show option to mark as watched
-                Button(
+                Surface(
                     onClick = {
-                        onMarkWatched()
-                        onDismiss()
+                        if (isClickEnabled) {
+                            onMarkWatched()
+                            onDismiss()
+                        }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(primaryFocusRequester)
-                        .focusProperties {
-                            up = FocusRequester.Cancel
-                            down = FocusRequester.Cancel
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
-                        },
-                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color.White.copy(alpha = 0.1f),
-                        contentColor = Color.White,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
+                    modifier = Modifier.focusRequester(focusRequester),
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        focusedContainerColor = Color.White.copy(alpha = 0.15f),
                     ),
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Visibility,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text(
-                        text = "Mark as Watched",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Visibility,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.White.copy(alpha = 0.9f),
+                        )
+                        Text(
+                            text = "Mark as Watched",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.9f),
+                        )
+                    }
                 }
             }
         }

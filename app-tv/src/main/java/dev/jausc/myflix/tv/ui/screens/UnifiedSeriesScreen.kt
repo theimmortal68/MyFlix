@@ -154,6 +154,11 @@ fun UnifiedSeriesScreen(
     // Season selected for options dialog (shown on long press)
     var seasonForOptionsDialog by remember { mutableStateOf<JellyfinItem?>(null) }
 
+    // Focus requesters for each season (for restoring focus after dialog)
+    val seasonFocusRequesters = remember(state.seasons) {
+        state.seasons.associate { it.id to FocusRequester() }
+    }
+
     // Split special features into trailers and other extras
     val trailers = remember(state.specialFeatures) {
         state.specialFeatures.filter {
@@ -378,6 +383,7 @@ fun UnifiedSeriesScreen(
                                     jellyfinClient = jellyfinClient,
                                     onSeasonClick = onSeasonClick,
                                     onSeasonLongClick = { season -> seasonForOptionsDialog = season },
+                                    seasonFocusRequesters = seasonFocusRequesters,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -435,7 +441,12 @@ fun UnifiedSeriesScreen(
             season = season,
             onMarkWatched = { onSeasonSetPlayed(season, true) },
             onMarkUnwatched = { onSeasonSetPlayed(season, false) },
-            onDismiss = { seasonForOptionsDialog = null },
+            onDismiss = {
+                // Restore focus to the season poster
+                val focusRequester = seasonFocusRequesters[season.id]
+                seasonForOptionsDialog = null
+                focusRequester?.requestFocus()
+            },
         )
     }
 }
@@ -958,6 +969,7 @@ private fun SeasonsTabContent(
     jellyfinClient: JellyfinClient,
     onSeasonClick: (JellyfinItem) -> Unit,
     onSeasonLongClick: (JellyfinItem) -> Unit = {},
+    seasonFocusRequesters: Map<String, FocusRequester> = emptyMap(),
     tabFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -976,16 +988,25 @@ private fun SeasonsTabContent(
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
+            val seasonFocusRequester = seasonFocusRequesters[season.id]
             SeasonCard(
                 season = season,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonClick(season) },
                 onLongClick = { onSeasonLongClick(season) },
-                modifier = Modifier.focusProperties {
-                    if (tabFocusRequester != null) {
-                        up = tabFocusRequester
-                    }
-                },
+                modifier = Modifier
+                    .then(
+                        if (seasonFocusRequester != null) {
+                            Modifier.focusRequester(seasonFocusRequester)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
             )
         }
     }
