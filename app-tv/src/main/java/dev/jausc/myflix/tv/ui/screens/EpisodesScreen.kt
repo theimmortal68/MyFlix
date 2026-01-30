@@ -135,17 +135,25 @@ fun EpisodesScreen(
 
     // Track focus setup - reset when season changes
     var focusSetForSeason by remember { mutableStateOf(-1) }
+    // Focus requesters for NavRail restoration
     val episodeRowFocusRequester = remember { FocusRequester() }
     val firstTabFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
-    val tabContentFocusRequester = remember { FocusRequester() }
 
-    // Track what was last focused for NavRail exit restoration
-    var lastFocusedSection by remember { mutableStateOf("episodes") } // "action", "episodes", "tabs"
+    // Track last focused section for NavRail exit restoration: "action", "episodes", "tabs"
+    var lastFocusedSection by remember { mutableStateOf("episodes") }
 
-    // Episode focus requesters - keyed by episode ID
+    // Episode focus requesters - keyed by episode ID for restoring to specific episode
     val episodeFocusRequesters = remember(episodes) {
         episodes.associate { it.id to FocusRequester() }
+    }
+
+    // Compute focus restoration target based on last focused section
+    val focusRestorerTarget = when (lastFocusedSection) {
+        "action" -> playFocusRequester
+        "tabs" -> firstTabFocusRequester
+        "episodes" -> focusedEpisode?.id?.let { episodeFocusRequesters[it] } ?: episodeRowFocusRequester
+        else -> episodeRowFocusRequester
     }
 
     // Find target episode for focus
@@ -207,21 +215,12 @@ fun EpisodesScreen(
         }
     }
 
-    // focusRestorer saves/restores focus when NavRail is entered/exited
-    // Use the appropriate requester based on what was last focused
-    // Lambda form evaluates target at restore time, not composition time
-    val focusRestorerTarget = when (lastFocusedSection) {
-        "action" -> playFocusRequester
-        "tabs" -> firstTabFocusRequester
-        "tabcontent" -> tabContentFocusRequester
-        else -> episodeRowFocusRequester
-    }
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
             .focusGroup()
-            .focusRestorer { focusRestorerTarget },
+            .focusRestorer(focusRestorerTarget),
     ) {
         // Episode thumbnail backdrop (top-right) - 40% of screen
         KenBurnsBackdrop(
@@ -308,15 +307,17 @@ fun EpisodesScreen(
                         availableTabs.forEachIndexed { index, tab ->
                             val isSelected = selectedTab == tab
                             var isFocused by remember { mutableStateOf(false) }
-
-                            val tabModifier = if (index == 0) {
-                                Modifier.focusRequester(firstTabFocusRequester)
-                            } else {
-                                Modifier
-                            }
+                            val isFirstTab = index == 0
 
                             Column(
-                                modifier = tabModifier
+                                modifier = Modifier
+                                    .then(
+                                        if (isFirstTab) {
+                                            Modifier.focusRequester(firstTabFocusRequester)
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
@@ -330,10 +331,9 @@ fun EpisodesScreen(
                                     }
                                     .focusProperties {
                                         up = episodeRowFocusRequester
-                                        down = tabContentFocusRequester
                                         left = when {
-                                            index == 0 && leftEdgeFocusRequester != null -> leftEdgeFocusRequester
-                                            index == 0 -> FocusRequester.Cancel
+                                            isFirstTab && leftEdgeFocusRequester != null -> leftEdgeFocusRequester
+                                            isFirstTab -> FocusRequester.Cancel
                                             else -> FocusRequester.Default
                                         }
                                     }
@@ -377,19 +377,14 @@ fun EpisodesScreen(
                     // Tab content
                     // focusGroup + focusRestorer allows the container to receive focus
                     // from tab headers and delegate to first focusable child
+                    // Tab content area
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp)
+                            .height(160.dp)
                             .padding(start = 2.dp)
-                            .focusRequester(tabContentFocusRequester)
                             .focusProperties {
                                 up = firstTabFocusRequester
-                            }
-                            .focusGroup()
-                            .focusRestorer()
-                            .onFocusChanged {
-                                if (it.hasFocus) lastFocusedSection = "tabcontent"
                             },
                     ) {
                         when (selectedTab) {
@@ -397,7 +392,6 @@ fun EpisodesScreen(
                                 focusedEpisode?.let { episode ->
                                     DetailsTabContent(
                                         episode = episode,
-                                        firstItemFocusRequester = tabContentFocusRequester,
                                         tabFocusRequester = firstTabFocusRequester,
                                     )
                                 }
@@ -406,7 +400,6 @@ fun EpisodesScreen(
                                 focusedEpisode?.let { episode ->
                                     MediaInfoTabContent(
                                         mediaStreams = episode.mediaSources?.firstOrNull()?.mediaStreams ?: emptyList(),
-                                        firstItemFocusRequester = tabContentFocusRequester,
                                         tabFocusRequester = firstTabFocusRequester,
                                     )
                                 }
@@ -417,7 +410,6 @@ fun EpisodesScreen(
                                         people = episode.people?.filter { it.type != "GuestStar" } ?: emptyList(),
                                         jellyfinClient = jellyfinClient,
                                         onPersonClick = onPersonClick,
-                                        firstItemFocusRequester = tabContentFocusRequester,
                                         tabFocusRequester = firstTabFocusRequester,
                                     )
                                 }
@@ -427,7 +419,6 @@ fun EpisodesScreen(
                                     guestStars = guestStars,
                                     jellyfinClient = jellyfinClient,
                                     onPersonClick = onPersonClick,
-                                    firstItemFocusRequester = tabContentFocusRequester,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -437,7 +428,6 @@ fun EpisodesScreen(
                                     selectedSeasonIndex = selectedSeasonIndex,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
-                                    firstItemFocusRequester = tabContentFocusRequester,
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -719,7 +709,7 @@ private fun EpisodeActionButtons(
                             left = leftEdgeFocusRequester
                         }
                     }
-                    .onFocusChanged { if (it.isFocused) onButtonFocused() },
+                    .onFocusChanged { if (it.hasFocus) onButtonFocused() },
             )
         }
 
@@ -860,7 +850,7 @@ private fun EpisodeCard(
 
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier.onFocusChanged { if (it.isFocused) onFocused() },
+        modifier = modifier.onFocusChanged { if (it.hasFocus) onFocused() },
     ) {
         // 16:9 thumbnail card
         Card(
@@ -942,32 +932,21 @@ private fun EpisodeCard(
 @Composable
 private fun DetailsTabContent(
     episode: JellyfinItem,
-    firstItemFocusRequester: FocusRequester? = null,
     tabFocusRequester: FocusRequester? = null,
 ) {
     val directors = episode.people?.filter { it.type == "Director" } ?: emptyList()
     val writers = episode.people?.filter { it.type == "Writer" } ?: emptyList()
-    val internalFirstFocusRequester = remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
+        modifier = Modifier.fillMaxSize(),
     ) {
-        // Overview section - wider with auto-scroll for long text
+        // Overview section
         episode.overview?.let { overview ->
             item("overview") {
                 Box(
                     modifier = Modifier
-                        .then(
-                            if (firstItemFocusRequester != null) {
-                                Modifier.focusRequester(firstItemFocusRequester)
-                            } else {
-                                Modifier.focusRequester(internalFirstFocusRequester)
-                            },
-                        )
                         .focusProperties {
                             if (tabFocusRequester != null) {
                                 up = tabFocusRequester
@@ -984,16 +963,6 @@ private fun DetailsTabContent(
         item("details") {
             Box(
                 modifier = Modifier
-                    .then(
-                        // If no overview, this becomes first focusable item
-                        if (episode.overview == null && firstItemFocusRequester != null) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else if (episode.overview == null) {
-                            Modifier.focusRequester(internalFirstFocusRequester)
-                        } else {
-                            Modifier
-                        },
-                    )
                     .focusProperties {
                         if (tabFocusRequester != null) {
                             up = tabFocusRequester
@@ -1179,43 +1148,22 @@ private fun OverviewSection(overview: String) {
 @Composable
 private fun MediaInfoTabContent(
     mediaStreams: List<MediaStream>,
-    firstItemFocusRequester: FocusRequester? = null,
     tabFocusRequester: FocusRequester? = null,
 ) {
     val videoStreams = mediaStreams.filter { it.type == "Video" }
     val audioStreams = mediaStreams.filter { it.type == "Audio" }
     val subtitleStreams = mediaStreams.filter { it.type == "Subtitle" }
-    val internalFirstFocusRequester = remember { FocusRequester() }
-
-    // Track which item should get the first focus requester
-    val firstSection = when {
-        videoStreams.isNotEmpty() -> "video"
-        audioStreams.isNotEmpty() -> "audio"
-        subtitleStreams.isNotEmpty() -> "subtitles"
-        else -> null
-    }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
+        modifier = Modifier.fillMaxSize(),
     ) {
         // Video info
         if (videoStreams.isNotEmpty()) {
             item("video") {
                 Box(
                     modifier = Modifier
-                        .then(
-                            if (firstSection == "video" && firstItemFocusRequester != null) {
-                                Modifier.focusRequester(firstItemFocusRequester)
-                            } else if (firstSection == "video") {
-                                Modifier.focusRequester(internalFirstFocusRequester)
-                            } else {
-                                Modifier
-                            },
-                        )
                         .focusProperties {
                             if (tabFocusRequester != null) {
                                 up = tabFocusRequester
@@ -1251,15 +1199,6 @@ private fun MediaInfoTabContent(
             item("audio") {
                 Box(
                     modifier = Modifier
-                        .then(
-                            if (firstSection == "audio" && firstItemFocusRequester != null) {
-                                Modifier.focusRequester(firstItemFocusRequester)
-                            } else if (firstSection == "audio") {
-                                Modifier.focusRequester(internalFirstFocusRequester)
-                            } else {
-                                Modifier
-                            },
-                        )
                         .focusProperties {
                             if (tabFocusRequester != null) {
                                 up = tabFocusRequester
@@ -1304,15 +1243,6 @@ private fun MediaInfoTabContent(
             item("subtitles") {
                 Box(
                     modifier = Modifier
-                        .then(
-                            if (firstSection == "subtitles" && firstItemFocusRequester != null) {
-                                Modifier.focusRequester(firstItemFocusRequester)
-                            } else if (firstSection == "subtitles") {
-                                Modifier.focusRequester(internalFirstFocusRequester)
-                            } else {
-                                Modifier
-                            },
-                        )
                         .focusProperties {
                             if (tabFocusRequester != null) {
                                 up = tabFocusRequester
@@ -1359,38 +1289,23 @@ private fun CastCrewTabContent(
     people: List<JellyfinPerson>,
     jellyfinClient: JellyfinClient,
     onPersonClick: (String) -> Unit,
-    firstItemFocusRequester: FocusRequester? = null,
     tabFocusRequester: FocusRequester? = null,
 ) {
-    val internalFirstFocusRequester = remember { FocusRequester() }
-
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
+        modifier = Modifier.fillMaxSize(),
     ) {
         itemsIndexed(people, key = { _, person -> person.id }) { index, person ->
             PersonCard(
                 person = person,
                 jellyfinClient = jellyfinClient,
                 onClick = { onPersonClick(person.id) },
-                modifier = Modifier
-                    .then(
-                        if (index == 0 && firstItemFocusRequester != null) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else if (index == 0) {
-                            Modifier.focusRequester(internalFirstFocusRequester)
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .focusProperties {
-                        if (tabFocusRequester != null) {
-                            up = tabFocusRequester
-                        }
-                    },
+                modifier = Modifier.focusProperties {
+                    if (tabFocusRequester != null) {
+                        up = tabFocusRequester
+                    }
+                },
             )
         }
     }
@@ -1404,38 +1319,23 @@ private fun GuestStarsTabContent(
     guestStars: List<JellyfinPerson>,
     jellyfinClient: JellyfinClient,
     onPersonClick: (String) -> Unit,
-    firstItemFocusRequester: FocusRequester? = null,
     tabFocusRequester: FocusRequester? = null,
 ) {
-    val internalFirstFocusRequester = remember { FocusRequester() }
-
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
+        modifier = Modifier.fillMaxSize(),
     ) {
         itemsIndexed(guestStars, key = { _, person -> person.id }) { index, person ->
             PersonCard(
                 person = person,
                 jellyfinClient = jellyfinClient,
                 onClick = { onPersonClick(person.id) },
-                modifier = Modifier
-                    .then(
-                        if (index == 0 && firstItemFocusRequester != null) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else if (index == 0) {
-                            Modifier.focusRequester(internalFirstFocusRequester)
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .focusProperties {
-                        if (tabFocusRequester != null) {
-                            up = tabFocusRequester
-                        }
-                    },
+                modifier = Modifier.focusProperties {
+                    if (tabFocusRequester != null) {
+                        up = tabFocusRequester
+                    }
+                },
             )
         }
     }
@@ -1450,11 +1350,9 @@ private fun SeasonsTabContent(
     selectedSeasonIndex: Int,
     jellyfinClient: JellyfinClient,
     onSeasonSelected: (Int) -> Unit,
-    firstItemFocusRequester: FocusRequester? = null,
     tabFocusRequester: FocusRequester? = null,
 ) {
     val lazyListState = rememberLazyListState()
-    val internalFirstFocusRequester = remember { FocusRequester() }
 
     // Scroll to selected season
     LaunchedEffect(selectedSeasonIndex) {
@@ -1467,9 +1365,7 @@ private fun SeasonsTabContent(
         state = lazyListState,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .focusRestorer(firstItemFocusRequester ?: internalFirstFocusRequester),
+        modifier = Modifier.fillMaxSize(),
     ) {
         itemsIndexed(seasons, key = { _, season -> season.id }) { index, season ->
             val isSelected = index == selectedSeasonIndex
@@ -1479,21 +1375,11 @@ private fun SeasonsTabContent(
                 isSelected = isSelected,
                 jellyfinClient = jellyfinClient,
                 onClick = { onSeasonSelected(index) },
-                modifier = Modifier
-                    .then(
-                        if (index == 0 && firstItemFocusRequester != null) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else if (index == 0) {
-                            Modifier.focusRequester(internalFirstFocusRequester)
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .focusProperties {
-                        if (tabFocusRequester != null) {
-                            up = tabFocusRequester
-                        }
-                    },
+                modifier = Modifier.focusProperties {
+                    if (tabFocusRequester != null) {
+                        up = tabFocusRequester
+                    }
+                },
             )
         }
     }
