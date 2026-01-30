@@ -1,0 +1,148 @@
+# Claude Code Project Configuration
+
+## Multi-Model Orchestration
+
+This project supports collaborative problem-solving using multiple AI models. Claude acts as the orchestrator, coordinating with Codex and Gemini for complex implementations.
+
+### Available Models
+
+| Model | CLI Command | Strengths |
+|-------|-------------|-----------|
+| **Claude** | (orchestrator) | Context synthesis, state management, edge cases, integration |
+| **Codex** | `codex exec "prompt"` | Compose implementation, API patterns, code generation |
+| **Gemini** | `gemini -p "prompt"` | Architecture trade-offs, performance analysis, alternatives |
+
+### Collaboration Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. PROBLEM DEFINITION (Claude)                                 │
+│     - Analyze codebase context                                  │
+│     - Break problem into focused sub-questions                  │
+│     - Include relevant code snippets in prompts                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ CODEX           │  │ GEMINI          │  │ CLAUDE          │
+│ - Compose code  │  │ - Trade-offs    │  │ - Edge cases    │
+│ - Syntax        │  │ - Performance   │  │ - State mgmt    │
+│ - TV focus      │  │ - Alternatives  │  │ - Error paths   │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+              │               │               │
+              └───────────────┼───────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. SYNTHESIS (Claude)                                          │
+│     - Merge perspectives                                        │
+│     - Resolve conflicts                                         │
+│     - Generate final implementation                             │
+│     - Iterate with follow-up prompts if needed                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### When to Use Multi-Model Collaboration
+
+**Good candidates:**
+- Complex TV focus management (D-pad navigation, focus restoration)
+- Architecture decisions with multiple valid approaches
+- Performance-sensitive features requiring trade-off analysis
+- Cross-cutting concerns (state sync, offline support, caching)
+
+**Not needed for:**
+- Simple bug fixes
+- Straightforward CRUD operations
+- Well-documented API integrations
+
+### Prompt Guidelines
+
+When formulating prompts for other models, include:
+
+1. **Relevant code context** - Data models, interfaces, existing patterns
+2. **Constraints** - Platform (Android TV/Mobile), API limitations
+3. **Specific question** - Avoid open-ended "how should I..."
+4. **Expected output format** - Code, analysis, comparison table
+
+Example prompt structure:
+```
+Given this data model:
+[code snippet]
+
+And this existing pattern:
+[code snippet]
+
+[Specific question about implementation/trade-off/approach]
+
+Constraints:
+- Android TV with D-pad navigation
+- Jellyfin API backend
+- Jetpack Compose UI
+```
+
+### Execution Examples
+
+**Parallel execution for independent questions:**
+```bash
+# Claude orchestrates these simultaneously
+codex exec "Write a Compose BitrateSelectionSheet with TV focus handling given: [MediaSource model]"
+gemini -p "Compare client-side vs server-side bitrate limiting for streaming apps - latency, bandwidth, UX trade-offs"
+```
+
+**Sequential execution for dependent questions:**
+```bash
+# First: architecture decision
+gemini -p "Should watched state sync use optimistic updates or wait for server confirmation?"
+# Then: implementation based on decision
+codex exec "Implement optimistic watched state sync with WorkManager retry given: [UserData model]"
+```
+
+---
+
+## Project Structure
+
+### TV App (`app-tv/`)
+- Jetpack Compose for TV with explicit focus management
+- NavRail with activation model (Menu key / FocusSentinel)
+- Per-screen exit focus restoration via `LocalExitFocusState`
+
+### Mobile App (`app-mobile/`)
+- Standard Jetpack Compose
+- Bottom sheet patterns for media info
+- Material 3 theming
+
+### Core (`core/`)
+- `JellyfinClient` - API communication
+- `JellyfinModels.kt` - Data models (JellyfinItem, MediaSource, MediaStream)
+- Shared ViewModels and repositories
+
+---
+
+## Key Patterns
+
+### TV Focus Management
+```kotlin
+// Register screen's focus target for NavRail exit
+val updateExitFocus = rememberExitFocusRegistry(primaryFocusRequester)
+
+// Update when focus changes within screen
+Modifier.onFocusChanged { if (it.hasFocus) updateExitFocus(thisFocusRequester) }
+```
+
+### Media Stream Detection
+```kotlin
+// Check for HDR/Dolby Vision
+item.isDolbyVision  // Extension property
+item.isHdr          // Extension property
+item.is4K           // Extension property
+
+// Get primary video stream
+item.videoStream    // First video MediaStream
+```
+
+---
+
+## References
+
+- `references/episode-detail-enhancement-plan.md` - Panel discussion on episode screen features
+- `docs/` - Additional documentation
