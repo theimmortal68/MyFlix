@@ -65,6 +65,7 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.detail.DetailBackdropLayer
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -103,6 +104,9 @@ fun CollectionDetailScreen(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val shuffleFocusRequester = remember { FocusRequester() }
     val navBarFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(shuffleFocusRequester)
 
     // Track focused item in the grid for Master-Detail view
     var focusedItem by remember { mutableStateOf<JellyfinItem?>(null) }
@@ -330,6 +334,7 @@ fun CollectionDetailScreen(
                                 .onFocusChanged {
                                     if (it.isFocused) {
                                         focusedItem = item
+                                        updateExitFocus(focusRequesters[ITEMS_ROW])
                                     }
                                 },
                         )

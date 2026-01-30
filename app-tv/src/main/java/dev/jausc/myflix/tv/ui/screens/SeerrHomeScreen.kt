@@ -107,6 +107,7 @@ import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -143,6 +144,9 @@ fun SeerrHomeScreen(
     // Focus requester for content
     val contentFocusRequester = remember { FocusRequester() }
     val firstTrendingItemFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstTrendingItemFocusRequester)
 
     // Content state
     var isLoading by remember { mutableStateOf(true) }
@@ -420,7 +424,10 @@ fun SeerrHomeScreen(
                                             fromLongClick = true,
                                         )
                                     },
-                                    onItemFocused = { media -> previewItem = media },
+                                    onItemFocused = { media ->
+                                        previewItem = media
+                                        updateExitFocus(firstTrendingItemFocusRequester)
+                                    },
                                     onViewAll = onViewAll,
                                     firstItemFocusRequester = firstItemFocusRequester,
                                 )

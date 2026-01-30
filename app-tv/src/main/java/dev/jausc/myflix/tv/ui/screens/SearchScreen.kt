@@ -66,6 +66,7 @@ import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.VoiceSpeechHelper
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 
 @Composable
 fun SearchScreen(
@@ -85,6 +86,9 @@ fun SearchScreen(
     val searchFieldFocusRequester = remember { FocusRequester() }
     val resultsFocusRequester = remember { FocusRequester() }
     val navBarFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration - search field is primary target
+    val updateExitFocus = rememberExitFocusRegistry(searchFieldFocusRequester)
 
     // Voice search state
     val context = LocalContext.current
@@ -170,7 +174,10 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(searchFieldFocusRequester)
-                        .onFocusChanged { isTextFieldFocused = it.isFocused }
+                        .onFocusChanged {
+                            isTextFieldFocused = it.isFocused
+                            if (it.isFocused) updateExitFocus(searchFieldFocusRequester)
+                        }
                         .onKeyEvent { event ->
                             when {
                                 event.key == Key.DirectionDown &&
@@ -261,7 +268,8 @@ fun SearchScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         items(state.results, key = { it.id }) { item ->
-                            val focusModifier = if (state.results.indexOf(item) == 0) {
+                            val isFirstItem = state.results.indexOf(item) == 0
+                            val focusModifier = if (isFirstItem) {
                                 Modifier.focusRequester(resultsFocusRequester)
                             } else {
                                 Modifier
@@ -271,7 +279,9 @@ fun SearchScreen(
                                 item = item,
                                 imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
                                 onClick = { onItemClick(item.id) },
-                                modifier = focusModifier,
+                                modifier = focusModifier.onFocusChanged {
+                                    if (it.isFocused) updateExitFocus(resultsFocusRequester)
+                                },
                             )
                         }
                     }

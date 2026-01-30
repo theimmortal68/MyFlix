@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -22,12 +23,12 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  * Standard button height for all TV buttons.
  * Matches nav bar icon size for visual consistency.
  */
-private val StandardButtonHeight = 24.dp
+private val StandardButtonHeight = 20.dp
 
 /**
  * Standard icon size inside buttons.
  */
-private val StandardIconSize = 14.dp
+private val StandardIconSize = 12.dp
 
 /**
  * Standard loading indicator size inside buttons.
@@ -65,7 +66,8 @@ fun TvTextButton(
         onClick = onClick,
         modifier = modifier.height(StandardButtonHeight),
         enabled = enabled && !isLoading,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+        shape = ButtonDefaults.shape(shape = RoundedCornerShape(6.dp)),
         scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
         colors = ButtonDefaults.colors(
             containerColor = containerColor ?: defaultContainerColor,
@@ -113,14 +115,15 @@ fun TvIconButton(
         onClick = onClick,
         modifier = modifier.height(StandardButtonHeight),
         enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+        shape = ButtonDefaults.shape(shape = RoundedCornerShape(6.dp)),
         scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
         colors = ButtonDefaults.colors(
-            containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+            containerColor = Color.White.copy(alpha = 0.15f),
             contentColor = TvColors.TextPrimary,
             focusedContainerColor = TvColors.BluePrimary,
             focusedContentColor = Color.White,
-            disabledContainerColor = TvColors.SurfaceElevated.copy(alpha = 0.4f),
+            disabledContainerColor = Color.White.copy(alpha = 0.08f),
             disabledContentColor = TvColors.TextSecondary,
         ),
     ) {
@@ -159,7 +162,8 @@ fun TvIconTextButton(
         onClick = onClick,
         modifier = modifier.height(StandardButtonHeight),
         enabled = enabled && !isLoading,
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+        shape = ButtonDefaults.shape(shape = RoundedCornerShape(6.dp)),
         scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
         colors = ButtonDefaults.colors(
             containerColor = containerColor ?: defaultContainerColor,

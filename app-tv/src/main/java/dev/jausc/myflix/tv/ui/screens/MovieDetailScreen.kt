@@ -118,7 +118,9 @@ fun MovieDetailScreen(
 
     // Focus management
     var position by remember { mutableIntStateOf(0) }
-    val focusRequesters = remember { List(SIMILAR_ROW + 1) { FocusRequester() } }
+    val focusRequesters = remember {
+        List(SIMILAR_ROW + 1) { FocusRequester() }
+    }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     // Dialog state
@@ -185,7 +187,13 @@ fun MovieDetailScreen(
     }
 
     // Layered UI: DynamicBackground → NavigationRail + Content (DetailBackdropLayer → Content)
-    Box(modifier = modifier.fillMaxSize()) {
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRestorer(playFocusRequester),
+    ) {
         // Layer 1: Dynamic gradient background (covers full screen including nav rail)
         DynamicBackground(
             gradientColors = gradientColors,

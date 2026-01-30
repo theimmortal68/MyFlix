@@ -38,6 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +63,7 @@ import dev.jausc.myflix.tv.ui.components.TvDropdownMenu
 import dev.jausc.myflix.tv.ui.components.TvDropdownMenuItemWithCheck
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -74,6 +78,11 @@ fun SeerrRequestsScreen(
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
+
     var requestScope by remember { mutableStateOf(SeerrRequestScope.MINE) }
     var canViewAllRequests by remember { mutableStateOf<Boolean?>(null) }
     var selectedFilter by remember { mutableStateOf(SeerrRequestFilter.ALL) }
@@ -480,7 +489,7 @@ fun SeerrRequestsScreen(
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    itemsIndexed(requests, key = { _, request -> request.id }) { _, request ->
+                    itemsIndexed(requests, key = { _, request -> request.id }) { index, request ->
                         val mediaType = request.media?.mediaType ?: "unknown"
                         val tmdbId = request.media?.tmdbId
                         val cacheKey = "$mediaType:$tmdbId"
@@ -499,6 +508,15 @@ fun SeerrRequestsScreen(
                             onApprove = { handleApprove(request) },
                             onDecline = { handleDecline(request) },
                             onCancel = { handleCancel(request) },
+                            modifier = (if (index == 0) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier
+                            }).onFocusChanged { focusState ->
+                                if (focusState.isFocused) {
+                                    updateExitFocus(firstItemFocusRequester)
+                                }
+                            },
                         )
                     }
                     if (isLoadingMore) {
@@ -534,6 +552,7 @@ private fun CompactRequestRow(
     onApprove: () -> Unit,
     onDecline: () -> Unit,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val statusColor = when (request.status) {
         SeerrRequestStatus.PENDING_APPROVAL -> Color(0xFFFBBF24) // Yellow
@@ -556,7 +575,7 @@ private fun CompactRequestRow(
 
     // Single row with info Surface on left, action buttons on right
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

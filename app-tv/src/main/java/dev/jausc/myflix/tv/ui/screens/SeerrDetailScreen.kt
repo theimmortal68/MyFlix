@@ -82,6 +82,7 @@ import dev.jausc.myflix.tv.ui.components.TvIconButton
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.launch
 
 /**
@@ -113,6 +114,9 @@ fun SeerrDetailScreen(
 
     // Focus requester for the main action button
     val actionButtonFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(actionButtonFocusRequester)
 
     var isLoading by remember { mutableStateOf(true) }
     var media by remember { mutableStateOf<SeerrMedia?>(null) }

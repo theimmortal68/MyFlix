@@ -53,6 +53,12 @@ object CardSizes {
 
     /** Landscape card width (16:9 aspect ratio) - for episode thumbnails, 4 across */
     val WideMediaCardWidth = 210.dp
+
+    /** Season poster width - smaller for navigational use (10 across) */
+    val SeasonPosterWidth = 80.dp
+
+    /** Season poster height - maintains 5:7 aspect ratio */
+    val SeasonPosterHeight = 112.dp
 }
 
 /**

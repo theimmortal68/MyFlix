@@ -81,11 +81,13 @@ data class DialogItem(
  * @param items List of dialog items to display
  * @param fromLongClick If true, applies a 1-second delay before enabling items
  *                      to prevent accidental selection from the long-press release
+ * @param restoreFocusRequester Optional FocusRequester to restore focus to when dialog is dismissed
  */
 data class DialogParams(
     val title: String,
     val items: List<DialogItemEntry>,
     val fromLongClick: Boolean = false,
+    val restoreFocusRequester: FocusRequester? = null,
 )
 
 /**
@@ -124,9 +126,15 @@ fun DialogPopup(
         focusRequester.requestFocus()
     }
 
+    // Handle dismiss with focus restoration
+    val handleDismiss: () -> Unit = {
+        onDismissRequest()
+        params.restoreFocusRequester?.requestFocus()
+    }
+
     TvPopupContainer(
         visible = true,
-        onDismiss = onDismissRequest,
+        onDismiss = handleDismiss,
         anchor = anchor,
         minWidth = 220.dp,
         maxWidth = 320.dp,
@@ -200,7 +208,7 @@ fun DialogPopup(
                                 enabled = !waiting && item.enabled,
                                 onClick = {
                                     item.onClick()
-                                    onDismissRequest()
+                                    handleDismiss()
                                 },
                                 isFirst = isFirst,
                                 isLast = isLast,

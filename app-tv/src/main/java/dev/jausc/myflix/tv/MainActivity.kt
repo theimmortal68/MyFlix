@@ -17,6 +17,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -31,8 +32,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -48,15 +51,20 @@ import dev.jausc.myflix.core.common.util.NavigationHelper
 import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.viewmodel.DetailViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.components.NavItem
-import dev.jausc.myflix.tv.ui.components.SlideOutNavRailDimensions
-import dev.jausc.myflix.tv.ui.components.SlideOutNavigationRail
+import dev.jausc.myflix.tv.ui.components.navrail.FocusSentinel
+import dev.jausc.myflix.tv.ui.components.navrail.NavRailAnimations
+import dev.jausc.myflix.tv.ui.components.navrail.NavRailDimensions
+import dev.jausc.myflix.tv.ui.components.navrail.NavigationRail
 import dev.jausc.myflix.tv.ui.screens.CollectionDetailScreen
 import dev.jausc.myflix.tv.ui.screens.CollectionsLibraryScreen
 import dev.jausc.myflix.tv.ui.screens.DetailScreen
+import dev.jausc.myflix.tv.ui.screens.EpisodesScreen
 import dev.jausc.myflix.tv.ui.screens.HomeScreen
 import dev.jausc.myflix.tv.ui.screens.LibraryScreen
 import dev.jausc.myflix.tv.ui.screens.LoginScreen
@@ -84,6 +92,7 @@ import dev.jausc.myflix.tv.ui.screens.TrailerWebViewScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.LocalExitFocusState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -282,6 +291,7 @@ fun MyFlixTvApp() {
                 currentRoute?.startsWith("collection/") == true -> NavItem.COLLECTIONS
                 currentRoute?.startsWith("universes") == true -> NavItem.UNIVERSES
                 currentRoute?.startsWith("universeCollection/") == true -> NavItem.UNIVERSES
+                currentRoute?.startsWith("episodes") == true -> NavItem.SHOWS
                 else -> NavItem.HOME
             }
             // Update the source for future detail screens
@@ -290,26 +300,43 @@ fun MyFlixTvApp() {
         }
     }
 
-    // NavRail expansion state and focus requester
+    // NavRail state - explicit activation model prevents focus stealing
+    var isNavRailActive by remember { mutableStateOf(false) }
     var isNavRailExpanded by remember { mutableStateOf(false) }
     val navRailFocusRequester = remember { FocusRequester() }
+    // Sentinel focus requester - passed to content screens for explicit left navigation
+    val sentinelFocusRequester = remember { FocusRequester() }
+    // Exit focus state - screens register their last focused item here for NavRail exit
+    val exitFocusState = remember { mutableStateOf<FocusRequester?>(null) }
 
-    // Auto-collapse NavRail when route changes (navigation occurred)
+    // Sentinel enabled state - delayed after navigation to prevent focus stealing
+    var sentinelEnabled by remember { mutableStateOf(false) }
+
+    // Auto-collapse and deactivate NavRail when route changes (navigation occurred)
     var previousRoute by remember { mutableStateOf(currentRoute) }
     LaunchedEffect(currentRoute) {
-        if (currentRoute != previousRoute && previousRoute != null && isNavRailExpanded) {
-            delay(400L) // Brief delay to show selection before collapsing
-            isNavRailExpanded = false
+        if (currentRoute != previousRoute && previousRoute != null) {
+            // Disable sentinel during navigation
+            sentinelEnabled = false
+            if (isNavRailExpanded) {
+                delay(400L) // Brief delay to show selection before collapsing
+                isNavRailExpanded = false
+                isNavRailActive = false
+            }
         }
         previousRoute = currentRoute
+        // Re-enable sentinel after delay to let screen content establish focus
+        delay(NavRailAnimations.SentinelStartupDelayMs)
+        sentinelEnabled = true
     }
 
-    // Animate scrim alpha for NavRail
+    // Animate scrim alpha for NavRail (only show when active AND expanded)
     val scrimAlpha by animateFloatAsState(
-        targetValue = if (isNavRailExpanded) 0.5f else 0f,
+        targetValue = if (isNavRailActive && isNavRailExpanded) 0.5f else 0f,
         animationSpec = tween(durationMillis = 300),
         label = "scrimAlpha",
     )
+
 
     // Handle WebSocket remote control events
     LaunchedEffect(isLoggedIn) {
@@ -414,28 +441,35 @@ fun MyFlixTvApp() {
     val navHostModifier = if (showNavRail) {
         Modifier
             .fillMaxSize()
-            .padding(start = SlideOutNavRailDimensions.CollapsedWidth)
+            .padding(start = NavRailDimensions.CollapsedWidth)
     } else {
         Modifier.fillMaxSize()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TvColors.Background)
-            .onKeyEvent { event ->
-                // Handle Menu key press from anywhere to toggle NavRail
-                if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
-                    isNavRailExpanded = !isNavRailExpanded
-                    if (isNavRailExpanded) {
-                        navRailFocusRequester.requestFocus()
+    CompositionLocalProvider(LocalExitFocusState provides exitFocusState) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TvColors.Background)
+                .onKeyEvent { event ->
+                    // Handle Menu key press from anywhere to toggle NavRail
+                    if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
+                        if (isNavRailActive) {
+                            // Deactivate and collapse
+                            isNavRailActive = false
+                            isNavRailExpanded = false
+                        } else {
+                            // Activate and expand
+                            isNavRailActive = true
+                            isNavRailExpanded = true
+                            navRailFocusRequester.requestFocus()
+                        }
+                        true
+                    } else {
+                        false
                     }
-                    true
-                } else {
-                    false
-                }
-            },
-    ) {
+                },
+        ) {
         // Main content - NavHost always rendered
         NavHost(
             navController = navController,
@@ -476,6 +510,14 @@ fun MyFlixTvApp() {
                     onSeerrMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
+                    onEpisodeClick = { seriesId, seasonNumber, episodeId ->
+                        navController.navigate("episodes/$seriesId?seasonNumber=$seasonNumber&episodeId=$episodeId")
+                    },
+                    onSeriesMoreInfoClick = { seriesId ->
+                        // Navigate to EpisodesScreen for series, starting at season 1
+                        navController.navigate("episodes/$seriesId?seasonNumber=1")
+                    },
+                    leftEdgeFocusRequester = sentinelFocusRequester,
                 )
             }
 
@@ -999,6 +1041,18 @@ fun MyFlixTvApp() {
                             popUpTo("home") { inclusive = true }
                         }
                     },
+                    onNavigateToEpisodes = { seriesId, seasonNumber, episodeId ->
+                        val route = if (episodeId != null) {
+                            "episodes/$seriesId?seasonNumber=$seasonNumber&episodeId=$episodeId"
+                        } else {
+                            "episodes/$seriesId?seasonNumber=$seasonNumber"
+                        }
+                        // Replace current screen to avoid back-navigating to loading state
+                        navController.navigate(route) {
+                            popUpTo("detail/$itemId") { inclusive = true }
+                        }
+                    },
+                    leftEdgeFocusRequester = sentinelFocusRequester,
                 )
             }
 
@@ -1015,6 +1069,124 @@ fun MyFlixTvApp() {
                     },
                     onBack = { navController.popBackStack() },
                 )
+            }
+
+            // Episodes screen for series/season/episode browsing
+            composable(
+                route = "episodes/{seriesId}?seasonNumber={seasonNumber}&episodeId={episodeId}",
+                arguments = listOf(
+                    navArgument("seriesId") { type = NavType.StringType },
+                    navArgument("seasonNumber") {
+                        type = NavType.IntType
+                        defaultValue = -1
+                    },
+                    navArgument("episodeId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { backStackEntry ->
+                val seriesId = backStackEntry.arguments?.getString("seriesId") ?: return@composable
+                val seasonNumber = backStackEntry.arguments?.getInt("seasonNumber") ?: -1
+                val episodeId = backStackEntry.arguments?.getString("episodeId")
+
+                // Use DetailViewModel to load series data
+                val viewModel: DetailViewModel = viewModel(
+                    key = seriesId,
+                    factory = DetailViewModel.Factory(seriesId, jellyfinClient),
+                )
+                val state by viewModel.uiState.collectAsState()
+
+                // Determine initial season index based on season number
+                var selectedSeasonIndex by remember { mutableStateOf(0) }
+                var initialSeasonResolved by remember { mutableStateOf(false) }
+                val seasonChangeScope = rememberCoroutineScope()
+
+                // Resolve the initial season index once data is loaded
+                // Find season by indexNumber (season number) instead of list position
+                LaunchedEffect(state.seasons, seasonNumber) {
+                    if (state.seasons.isNotEmpty() && !initialSeasonResolved) {
+                        selectedSeasonIndex = if (seasonNumber >= 0) {
+                            // Find the season with matching indexNumber
+                            state.seasons.indexOfFirst { it.indexNumber == seasonNumber }
+                                .takeIf { it >= 0 } ?: 0
+                        } else {
+                            0
+                        }
+                        initialSeasonResolved = true
+                    }
+                }
+
+                // When a different season is selected, load its episodes
+                LaunchedEffect(selectedSeasonIndex, state.seasons, initialSeasonResolved) {
+                    if (initialSeasonResolved) {
+                        val season = state.seasons.getOrNull(selectedSeasonIndex)
+                        if (season != null && season.id != state.selectedSeason?.id) {
+                            viewModel.selectSeason(season)
+                        }
+                    }
+                }
+
+                // Show loading or episodes screen
+                if (state.isLoading || state.item == null) {
+                    // Focusable loading state to capture focus and prevent NavRail auto-expand
+                    val loadingFocusRequester = remember { FocusRequester() }
+                    LaunchedEffect(Unit) {
+                        loadingFocusRequester.requestFocus()
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(TvColors.Background)
+                            .focusRequester(loadingFocusRequester)
+                            .focusable(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.tv.material3.Text(
+                            text = "Loading...",
+                            color = TvColors.TextPrimary,
+                        )
+                    }
+                } else {
+                    EpisodesScreen(
+                        seriesName = state.item?.name ?: "",
+                        seasons = state.seasons,
+                        episodes = state.episodes,
+                        selectedSeasonIndex = selectedSeasonIndex,
+                        selectedEpisodeId = episodeId,
+                        jellyfinClient = jellyfinClient,
+                        onSeasonSelected = { index ->
+                            // Temporarily disable sentinel to prevent focus theft during season change
+                            sentinelEnabled = false
+                            selectedSeasonIndex = index
+                            // Re-enable sentinel after content has time to establish focus
+                            seasonChangeScope.launch {
+                                delay(NavRailAnimations.SentinelStartupDelayMs)
+                                sentinelEnabled = true
+                            }
+                        },
+                        onEpisodeClick = { episode ->
+                            // Navigate to player with selected episode
+                            val startPosition = episode.userData?.playbackPositionTicks
+                                ?.let { it / 10_000 } ?: 0L
+                            navController.navigate(NavigationHelper.buildPlayerRoute(episode.id, startPosition))
+                        },
+                        onWatchedClick = { episode ->
+                            val isCurrentlyWatched = episode.userData?.played == true
+                            viewModel.setPlayed(episode.id, !isCurrentlyWatched)
+                        },
+                        onFavoriteClick = { episode ->
+                            val isCurrentlyFavorite = episode.userData?.isFavorite == true
+                            viewModel.setFavorite(episode.id, !isCurrentlyFavorite)
+                        },
+                        onPersonClick = { personId ->
+                            navController.navigate("person/$personId")
+                        },
+                        onBackClick = { navController.popBackStack() },
+                        leftEdgeFocusRequester = sentinelFocusRequester,
+                    )
+                }
             }
 
             composable(
@@ -1057,20 +1229,39 @@ fun MyFlixTvApp() {
             )
         }
 
-        // NavRail - rendered in same Box as NavHost for proper focus navigation
+        // Focus sentinel - detects left-edge navigation and activates rail
+        // Positioned at x=0 (behind collapsed rail) so it's to the LEFT of content
+        // Content screens use sentinelFocusRequester for explicit left navigation
         if (showNavRail) {
-            SlideOutNavigationRail(
+            FocusSentinel(
+                isEnabled = !isNavRailActive && sentinelEnabled,
+                onActivate = {
+                    isNavRailActive = true
+                    isNavRailExpanded = true
+                },
+                railFocusRequester = navRailFocusRequester,
+                sentinelFocusRequester = sentinelFocusRequester,
+                modifier = Modifier.zIndex(0.25f),
+            )
+        }
+
+        // NavRail - uses explicit activation model to prevent focus stealing
+        if (showNavRail) {
+            NavigationRail(
                 selectedItem = currentNavItem,
                 onItemSelected = handleNavigation,
-                showUniverses = universesEnabled,
-                showDiscover = isSeerrAuthenticated && showDiscoverNav,
+                isActive = isNavRailActive,
                 isExpanded = isNavRailExpanded,
                 onExpandedChange = { isNavRailExpanded = it },
-                onCollapseAndFocusContent = { isNavRailExpanded = false },
-                modifier = Modifier
-                    .zIndex(1f)
-                    .focusRequester(navRailFocusRequester),
+                onDeactivate = { isNavRailActive = false },
+                showUniverses = universesEnabled,
+                showDiscover = isSeerrAuthenticated && showDiscoverNav,
+                firstItemFocusRequester = navRailFocusRequester,
+                // Use screen's registered exit focus target, fall back to default focus traversal
+                exitFocusRequester = exitFocusState.value ?: FocusRequester.Default,
+                modifier = Modifier.zIndex(1f),
             )
+        }
         }
     }
 }

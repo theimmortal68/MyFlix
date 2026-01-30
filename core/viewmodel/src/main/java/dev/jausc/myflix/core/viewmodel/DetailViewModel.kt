@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.UserData
 import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -220,46 +221,128 @@ class DetailViewModel(
 
     /**
      * Mark an episode as watched/unwatched.
+     * Uses optimistic update for immediate UI feedback.
      */
     fun setPlayed(episodeId: String, played: Boolean) {
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.copy(
+                episodes = state.episodes.map { episode ->
+                    if (episode.id == episodeId) {
+                        val currentUserData = episode.userData ?: UserData()
+                        episode.copy(userData = currentUserData.copy(played = played))
+                    } else {
+                        episode
+                    }
+                }
+            )
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
             jellyfinClient.setPlayed(episodeId, played)
-            refreshEpisodes()
         }
     }
 
     /**
      * Toggle an episode's favorite status.
+     * Uses optimistic update for immediate UI feedback.
      */
     fun setFavorite(episodeId: String, favorite: Boolean) {
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.copy(
+                episodes = state.episodes.map { episode ->
+                    if (episode.id == episodeId) {
+                        val currentUserData = episode.userData ?: UserData()
+                        episode.copy(userData = currentUserData.copy(isFavorite = favorite))
+                    } else {
+                        episode
+                    }
+                }
+            )
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
             jellyfinClient.setFavorite(episodeId, favorite)
-            refreshEpisodes()
+        }
+    }
+
+    /**
+     * Mark a season as watched/unwatched.
+     * Uses optimistic update for immediate UI feedback.
+     */
+    fun setSeasonPlayed(seasonId: String, played: Boolean) {
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.copy(
+                seasons = state.seasons.map { season ->
+                    if (season.id == seasonId) {
+                        val currentUserData = season.userData ?: UserData()
+                        season.copy(userData = currentUserData.copy(
+                            played = played,
+                            unplayedItemCount = if (played) 0 else null
+                        ))
+                    } else {
+                        season
+                    }
+                }
+            )
+        }
+
+        // Sync with server in background
+        viewModelScope.launch {
+            jellyfinClient.setPlayed(seasonId, played)
+            // Refresh seasons to get accurate unplayed counts
+            refreshSeasons()
         }
     }
 
     /**
      * Toggle the main item's favorite status.
      */
+    /**
+     * Toggle the main item's favorite status.
+     * Uses optimistic update for immediate UI feedback.
+     */
     fun toggleItemFavorite() {
         val currentItem = _uiState.value.item ?: return
         val isFavorite = currentItem.userData?.isFavorite == true
+        val newFavorite = !isFavorite
 
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.item?.let { item ->
+                val currentUserData = item.userData ?: UserData()
+                state.copy(item = item.copy(userData = currentUserData.copy(isFavorite = newFavorite)))
+            } ?: state
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
-            jellyfinClient.setFavorite(currentItem.id, !isFavorite)
-            refreshItem()
+            jellyfinClient.setFavorite(currentItem.id, newFavorite)
         }
     }
 
     /**
      * Mark the main item as watched/unwatched.
+     * Uses optimistic update for immediate UI feedback.
      */
     fun setItemPlayed(played: Boolean) {
         val currentItem = _uiState.value.item ?: return
 
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.item?.let { item ->
+                val currentUserData = item.userData ?: UserData()
+                state.copy(item = item.copy(userData = currentUserData.copy(played = played)))
+            } ?: state
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
             jellyfinClient.setPlayed(currentItem.id, played)
-            refreshItem()
         }
     }
 
@@ -271,6 +354,21 @@ class DetailViewModel(
             jellyfinClient.getItem(itemId)
                 .onSuccess { item ->
                     _uiState.update { it.copy(item = item) }
+                }
+        }
+    }
+
+    /**
+     * Refresh seasons to get accurate unplayed counts.
+     */
+    private fun refreshSeasons() {
+        val currentItem = _uiState.value.item ?: return
+        val seriesId = currentItem.seriesId ?: currentItem.id
+
+        viewModelScope.launch {
+            jellyfinClient.getSeasons(seriesId)
+                .onSuccess { seasons ->
+                    _uiState.update { it.copy(seasons = seasons) }
                 }
         }
     }

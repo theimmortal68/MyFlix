@@ -80,6 +80,7 @@ import dev.jausc.myflix.tv.ui.components.seerr.SeerrReleaseStatusOption
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrSortMenu
 import dev.jausc.myflix.tv.ui.components.seerr.SeerrSortOption
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -302,6 +303,9 @@ private fun SeerrMediaGridScreen(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val firstItemFocusRequester = remember { FocusRequester() }
 
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
+
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
 
@@ -459,10 +463,14 @@ private fun SeerrMediaGridScreen(
                         SeerrTvPosterCard(
                             media = media,
                             seerrClient = seerrClient,
-                            modifier = if (index == 0) {
+                            modifier = (if (index == 0) {
                                 Modifier.focusRequester(firstItemFocusRequester)
                             } else {
                                 Modifier
+                            }).onFocusChanged { focusState ->
+                                if (focusState.isFocused) {
+                                    updateExitFocus(firstItemFocusRequester)
+                                }
                             },
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
@@ -608,6 +616,9 @@ private fun SeerrFilterableMediaGridScreen(
     var page by remember { mutableIntStateOf(1) }
     var totalPages by remember { mutableIntStateOf(1) }
     val firstItemFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
 
     // Filter state using SeerrFilterState
     var filterState by remember {
@@ -837,10 +848,14 @@ private fun SeerrFilterableMediaGridScreen(
                         SeerrTvPosterCard(
                             media = media,
                             seerrClient = seerrClient,
-                            modifier = if (index == 0) {
+                            modifier = (if (index == 0) {
                                 Modifier.focusRequester(firstItemFocusRequester)
                             } else {
                                 Modifier
+                            }).onFocusChanged { focusState ->
+                                if (focusState.isFocused) {
+                                    updateExitFocus(firstItemFocusRequester)
+                                }
                             },
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)

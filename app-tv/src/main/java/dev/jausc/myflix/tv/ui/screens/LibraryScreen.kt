@@ -5,6 +5,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
@@ -53,6 +55,7 @@ import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterMenu
 import dev.jausc.myflix.tv.ui.components.library.LibrarySortMenu
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -91,6 +94,9 @@ fun LibraryScreen(
     val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
@@ -156,7 +162,13 @@ fun LibraryScreen(
             }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRestorer(firstItemFocusRequester),
+    ) {
         // Dynamic background that changes based on focused poster
         DynamicBackground(gradientColors = gradientColors)
 
@@ -251,6 +263,7 @@ fun LibraryScreen(
                                     onItemClick = onItemClick,
                                     onItemFocused = { _, imageUrl ->
                                         focusedImageUrl = imageUrl
+                                        updateExitFocus(firstItemFocusRequester)
                                     },
                                     modifier = Modifier.weight(1f),
                                 )

@@ -19,6 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
@@ -31,6 +34,7 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 
 @Composable
@@ -47,6 +51,12 @@ fun PersonDetailScreen(
         factory = PersonDetailViewModel.Factory(personId, jellyfinClient),
     )
     val state by viewModel.uiState.collectAsState()
+
+    // Focus management
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
 
     // Get person image URL for dynamic background
     val personImageUrl = remember(state.person?.id, state.person?.imageTags?.primary) {
@@ -147,7 +157,7 @@ fun PersonDetailScreen(
                                 onItemLongClick = { _, _ ->
                                     // TODO: Show item context menu
                                 },
-                                cardContent = { _, item, cardModifier, onClick, onLongClick ->
+                                cardContent = { index, item, cardModifier, onClick, onLongClick ->
                                     if (item != null) {
                                         MediaCard(
                                             item = item,
@@ -157,7 +167,19 @@ fun PersonDetailScreen(
                                             ),
                                             onClick = onClick,
                                             onLongClick = onLongClick,
-                                            modifier = cardModifier,
+                                            modifier = cardModifier
+                                                .then(
+                                                    if (index == 0) {
+                                                        Modifier.focusRequester(firstItemFocusRequester)
+                                                    } else {
+                                                        Modifier
+                                                    },
+                                                )
+                                                .onFocusChanged { focusState ->
+                                                    if (focusState.isFocused) {
+                                                        updateExitFocus(firstItemFocusRequester)
+                                                    }
+                                                },
                                         )
                                     }
                                 },

@@ -17,6 +17,7 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
@@ -52,12 +53,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -98,6 +101,7 @@ import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -115,6 +119,9 @@ fun HomeScreen(
     seerrClient: SeerrClient? = null,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
     restoreFocusRequester: FocusRequester? = null,
+    onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
+    onSeriesMoreInfoClick: (seriesId: String) -> Unit = { seriesId -> onItemClick(seriesId) },
+    leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -202,8 +209,11 @@ fun HomeScreen(
         )
     }
 
-    // Focus requester for initial app launch focus
+    // Focus requester for hero play button
     val heroPlayFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration - hero is primary/fallback target
+    val updateExitFocus = rememberExitFocusRegistry(heroPlayFocusRequester)
 
     // Saved focus state - survives back navigation
     var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -298,15 +308,20 @@ fun HomeScreen(
                         title = item.name,
                         items = buildHomeDialogItems(item, dialogActions),
                         fromLongClick = true,
+                        restoreFocusRequester = effectiveRestoreFocusRequester,
                     )
                 },
                 onSeerrMediaClick = onSeerrMediaClick,
+                onEpisodeClick = onEpisodeClick,
+                onSeriesMoreInfoClick = onSeriesMoreInfoClick,
                 hideWatchedFromRecent = hideWatchedFromRecent,
                 heroPlayFocusRequester = heroPlayFocusRequester,
                 // Focus restoration
                 savedFocusItemId = savedFocusItemId,
                 restoreFocusRequester = effectiveRestoreFocusRequester,
                 onItemFocused = { itemId -> savedFocusItemId = itemId },
+                leftEdgeFocusRequester = leftEdgeFocusRequester,
+                updateExitFocus = updateExitFocus,
             )
         }
     }
@@ -356,7 +371,7 @@ private data class RowData(
  * Uses Wholphin's exact pattern for stable scroll behavior.
  */
 @Suppress("UnusedParameter")
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun HomeContent(
     featuredItems: List<JellyfinItem>,
@@ -381,12 +396,18 @@ private fun HomeContent(
     onPlayClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
+    onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit,
+    onSeriesMoreInfoClick: (seriesId: String) -> Unit,
     hideWatchedFromRecent: Boolean = false,
     heroPlayFocusRequester: FocusRequester = remember { FocusRequester() },
     // Focus restoration
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester = remember { FocusRequester() },
     onItemFocused: (String) -> Unit = {},
+    // Left edge navigation - for activating NavRail
+    leftEdgeFocusRequester: FocusRequester? = null,
+    // NavRail exit focus registration
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -550,12 +571,25 @@ private fun HomeContent(
     // Track the current hero display item for the backdrop layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
+    // Track whether hero buttons or content was last focused (for NavRail exit restoration)
+    var heroWasLastFocused by remember { mutableStateOf(false) }
+
+    // FocusRequester to connect hero DOWN navigation to content rows
+    val contentFocusRequester = remember { FocusRequester() }
+
     // Content layers:
     // Layer 1 (back): Hero backdrop - 90% of screen with edge fading
     // Layer 2 (front): Hero info (37%) + Content rows (63%)
     // Note: NavigationRail is now provided by MainActivity
+    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+    // Explicit left focusProperties on items ensure left navigation still reaches sentinel
+    // Use hero or content requester based on what was last focused
+    val focusRestorerTarget = if (heroWasLastFocused) heroPlayFocusRequester else restoreFocusRequester
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRestorer(focusRestorerTarget),
     ) {
             val heroHeight = maxHeight * 0.37f
             // Disable automatic focus scrolling; we snap rows explicitly on focus.
@@ -567,9 +601,6 @@ private fun HomeContent(
             }
 
             var lastFocusedRow by remember { mutableIntStateOf(-1) }
-
-            // FocusRequester to connect hero DOWN navigation to content rows
-            val contentFocusRequester = remember { FocusRequester() }
 
             val heroImageWidth = maxWidth * 0.8f
             val heroImageHeight = maxHeight * 0.8f
@@ -619,9 +650,12 @@ private fun HomeContent(
                                 onItemClick = onItemClick,
                                 onItemLongClick = onItemLongClick,
                                 onCardFocused = { item ->
+                                    heroWasLastFocused = false
                                     pendingPreviewItem = item
                                     onItemFocused(item.id)
+                                    updateExitFocus(restoreFocusRequester)
                                 },
+                                onEpisodeClick = onEpisodeClick,
                                 onRowFocused = { rowIndex ->
                                     if (rowIndex == lastFocusedRow) return@ItemRow
                                     lastFocusedRow = rowIndex
@@ -636,7 +670,11 @@ private fun HomeContent(
                                 rowIndex = index,
                                 savedFocusItemId = savedFocusItemId,
                                 restoreFocusRequester = restoreFocusRequester,
-                                // First row gets the focus requester for hero DOWN navigation
+                                // First row: UP navigates to hero Play button
+                                upFocusTarget = if (index == 0) heroPlayFocusRequester else null,
+                                // Left edge navigation to NavRail sentinel
+                                leftEdgeFocusRequester = leftEdgeFocusRequester,
+                                // First row gets focus requester for hero DOWN navigation
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .then(
@@ -682,7 +720,23 @@ private fun HomeContent(
                     HeroSection(
                         featuredItems = filteredFeaturedItems,
                         jellyfinClient = jellyfinClient,
-                        onItemClick = onItemClick,
+                        onMoreInfoClick = { item ->
+                            // Series and Episodes go to EpisodesScreen, others go to DetailScreen
+                            when (item.type) {
+                                "Series" -> onSeriesMoreInfoClick(item.id)
+                                "Episode" -> {
+                                    // For episodes, navigate to EpisodesScreen with the parent series
+                                    val seriesId = item.seriesId
+                                    val seasonNumber = item.parentIndexNumber ?: 1
+                                    if (seriesId != null) {
+                                        onEpisodeClick(seriesId, seasonNumber, item.id)
+                                    } else {
+                                        onItemClick(item.id)
+                                    }
+                                }
+                                else -> onItemClick(item.id)
+                            }
+                        },
                         onPlayClick = onPlayClick,
                         modifier = Modifier.fillMaxSize(),
                         previewItem = previewItem,
@@ -690,7 +744,12 @@ private fun HomeContent(
                         onCurrentItemChanged = { item, _ ->
                             heroDisplayItem = item
                         },
-                        onPreviewClear = clearPreviewAndScrollToTop,
+                        onPreviewClear = {
+                            heroWasLastFocused = true
+                            updateExitFocus(heroPlayFocusRequester)
+                            clearPreviewAndScrollToTop()
+                        },
+                        leftEdgeFocusRequester = leftEdgeFocusRequester,
                     )
                 }
             }
@@ -711,10 +770,13 @@ private fun ItemRow(
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
     onCardFocused: (JellyfinItem) -> Unit,
+    onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit,
     onRowFocused: (Int) -> Unit = {},
     rowIndex: Int = 0,
     savedFocusItemId: String? = null,
     restoreFocusRequester: FocusRequester? = null,
+    upFocusTarget: FocusRequester? = null,
+    leftEdgeFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val lazyRowState = rememberLazyListState()
@@ -727,7 +789,7 @@ private fun ItemRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(start = 10.dp, end = 32.dp),
+            modifier = Modifier.padding(end = 32.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -759,10 +821,10 @@ private fun ItemRow(
             LazyRow(
                 state = lazyRowState,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                items(items, key = { item -> item.id }) { item ->
+                itemsIndexed(items, key = { _, item -> item.id }) { itemIndex, item ->
                     // Attach restoreFocusRequester to the item that should receive focus on back navigation
                     val focusModifier = if (savedFocusItemId == item.id && restoreFocusRequester != null) {
                         Modifier
@@ -779,6 +841,33 @@ private fun ItemRow(
                                 onCardFocused(item)
                                 onRowFocused(rowIndex)
                             }
+                        }
+                    }
+
+                    // Build navigation focus properties
+                    // - First item: left goes to sentinel (NavRail), up goes to hero (if first row)
+                    // - Other items: only up navigation override (if first row)
+                    val isFirstItem = itemIndex == 0
+                    val focusAndNavModifier = focusModifier.then(
+                        Modifier.focusProperties {
+                            if (upFocusTarget != null) {
+                                up = upFocusTarget
+                            }
+                            if (isFirstItem && leftEdgeFocusRequester != null) {
+                                left = leftEdgeFocusRequester
+                            }
+                        },
+                    )
+
+                    // Handle click: episodes go to episodes screen, others go to detail
+                    val handleClick: () -> Unit = {
+                        if (item.type == "Episode" && item.seriesId != null) {
+                            // Navigate to episodes screen for the series
+                            // Pass season number (parentIndexNumber) - will be resolved to index later
+                            val seasonNumber = item.parentIndexNumber ?: 1
+                            onEpisodeClick(item.seriesId!!, seasonNumber, item.id)
+                        } else {
+                            onItemClick(item.id)
                         }
                     }
 
@@ -801,10 +890,10 @@ private fun ItemRow(
                         WideMediaCard(
                             item = item,
                             imageUrl = imageUrl,
-                            onClick = { onItemClick(item.id) },
+                            onClick = handleClick,
                             showLabel = false,
                             onLongClick = { onItemLongClick(item) },
-                            modifier = focusModifier,
+                            modifier = focusAndNavModifier,
                         )
                     } else {
                         // For portrait cards: use series poster for episodes, otherwise use item poster
@@ -817,10 +906,10 @@ private fun ItemRow(
                         MediaCard(
                             item = item,
                             imageUrl = imageUrl,
-                            onClick = { onItemClick(item.id) },
+                            onClick = handleClick,
                             showLabel = false,
                             onLongClick = { onItemLongClick(item) },
-                            modifier = focusModifier,
+                            modifier = focusAndNavModifier,
                         )
                     }
                 }
@@ -849,7 +938,7 @@ private fun SeerrRequestRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(start = 10.dp, end = 32.dp),
+            modifier = Modifier.padding(end = 32.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -868,7 +957,7 @@ private fun SeerrRequestRow(
         // LazyRow of request cards
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(requests, key = { it.id }) { request ->
