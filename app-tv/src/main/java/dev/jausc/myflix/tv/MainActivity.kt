@@ -1163,6 +1163,14 @@ fun MyFlixTvApp() {
                                 ?.let { it / 10_000 } ?: 0L
                             navController.navigate(NavigationHelper.buildPlayerRoute(episode.id, startPosition))
                         },
+                        onWatchedClick = { episode ->
+                            val isCurrentlyWatched = episode.userData?.played == true
+                            viewModel.setPlayed(episode.id, !isCurrentlyWatched)
+                        },
+                        onFavoriteClick = { episode ->
+                            val isCurrentlyFavorite = episode.userData?.isFavorite == true
+                            viewModel.setFavorite(episode.id, !isCurrentlyFavorite)
+                        },
                         onPersonClick = { personId ->
                             navController.navigate("person/$personId")
                         },

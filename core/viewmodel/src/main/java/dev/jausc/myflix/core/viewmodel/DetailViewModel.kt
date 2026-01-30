@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.UserData
 import dev.jausc.myflix.core.network.JellyfinClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -220,21 +221,51 @@ class DetailViewModel(
 
     /**
      * Mark an episode as watched/unwatched.
+     * Uses optimistic update for immediate UI feedback.
      */
     fun setPlayed(episodeId: String, played: Boolean) {
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.copy(
+                episodes = state.episodes.map { episode ->
+                    if (episode.id == episodeId) {
+                        val currentUserData = episode.userData ?: UserData()
+                        episode.copy(userData = currentUserData.copy(played = played))
+                    } else {
+                        episode
+                    }
+                }
+            )
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
             jellyfinClient.setPlayed(episodeId, played)
-            refreshEpisodes()
         }
     }
 
     /**
      * Toggle an episode's favorite status.
+     * Uses optimistic update for immediate UI feedback.
      */
     fun setFavorite(episodeId: String, favorite: Boolean) {
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.copy(
+                episodes = state.episodes.map { episode ->
+                    if (episode.id == episodeId) {
+                        val currentUserData = episode.userData ?: UserData()
+                        episode.copy(userData = currentUserData.copy(isFavorite = favorite))
+                    } else {
+                        episode
+                    }
+                }
+            )
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
             jellyfinClient.setFavorite(episodeId, favorite)
-            refreshEpisodes()
         }
     }
 

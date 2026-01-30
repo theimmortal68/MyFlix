@@ -35,6 +35,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -133,6 +135,18 @@ fun EpisodesScreen(
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+
+    // Sync focusedEpisode with updated episodes list (for optimistic updates)
+    // When episodes list changes, find the same episode by ID and update reference
+    LaunchedEffect(episodes) {
+        val currentId = focusedEpisode?.id
+        if (currentId != null) {
+            val updatedEpisode = episodes.find { it.id == currentId }
+            if (updatedEpisode != null && updatedEpisode != focusedEpisode) {
+                focusedEpisode = updatedEpisode
+            }
+        }
+    }
 
     // Track focus setup - reset when season changes
     var focusSetForSeason by remember { mutableStateOf(-1) }
@@ -894,6 +908,48 @@ private fun EpisodeCard(
                         )
                     }
                 }
+
+                // Favorite indicator (top-left corner)
+                val isFavorite = episode.userData?.isFavorite == true
+                if (isFavorite) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(2.dp)
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Favorite",
+                            tint = Color(0xFFE91E63),
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
+
+                // Watched indicator (top-right corner)
+                val isWatched = episode.userData?.played == true
+                if (isWatched) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Watched",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
             }
         }
 
@@ -1501,18 +1557,20 @@ private fun KenBurnsBackdrop(
                     translationX = size.width * translateX
                 }
                 .drawWithCache {
+                    // Soft edge fade - 90% fully visible, gentle fade at left edge only
                     val leftFade = Brush.horizontalGradient(
                         colorStops = arrayOf(
                             0.0f to Color.Transparent,
-                            0.15f to Color.Black.copy(alpha = 0.5f),
-                            0.35f to Color.Black,
+                            0.05f to Color.Black.copy(alpha = 0.5f),
+                            0.10f to Color.Black,
                             1.0f to Color.Black,
                         ),
                     )
+                    // Bottom fade for smooth transition
                     val bottomFade = Brush.verticalGradient(
                         colorStops = arrayOf(
                             0.0f to Color.Black,
-                            0.6f to Color.Black,
+                            0.7f to Color.Black,
                             1.0f to Color.Transparent,
                         ),
                     )
@@ -1524,16 +1582,15 @@ private fun KenBurnsBackdrop(
                 },
         )
 
-        // Gradient overlay for text readability
+        // Minimal gradient overlay at the very edge for text readability
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.horizontalGradient(
                         colorStops = arrayOf(
-                            0.0f to TvColors.Background.copy(alpha = 0.8f),
-                            0.3f to TvColors.Background.copy(alpha = 0.4f),
-                            0.6f to Color.Transparent,
+                            0.0f to TvColors.Background.copy(alpha = 0.15f),
+                            0.05f to Color.Transparent,
                             1.0f to Color.Transparent,
                         ),
                     ),
