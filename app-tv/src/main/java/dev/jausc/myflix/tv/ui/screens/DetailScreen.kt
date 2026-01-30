@@ -151,10 +151,8 @@ fun DetailScreen(
                         val seasonNumber = season.indexNumber ?: 1
                         onNavigateToEpisodes(state.item?.id ?: itemId, seasonNumber, null)
                     },
-                    onSeasonLongClick = { season ->
-                        // Toggle season played status
-                        val played = season.userData?.played == true
-                        viewModel.setSeasonPlayed(season.id, !played)
+                    onSeasonSetPlayed = { season, played ->
+                        viewModel.setSeasonPlayed(season.id, played)
                     },
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,

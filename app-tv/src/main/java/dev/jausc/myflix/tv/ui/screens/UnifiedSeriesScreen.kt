@@ -96,6 +96,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.SeasonOptionsDialog
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -128,7 +129,7 @@ fun UnifiedSeriesScreen(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onSeasonClick: (JellyfinItem) -> Unit,
-    onSeasonLongClick: (JellyfinItem) -> Unit = {},
+    onSeasonSetPlayed: (JellyfinItem, Boolean) -> Unit = { _, _ -> },
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -149,6 +150,9 @@ fun UnifiedSeriesScreen(
 
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
+
+    // Season selected for options dialog (shown on long press)
+    var seasonForOptionsDialog by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Split special features into trailers and other extras
     val trailers = remember(state.specialFeatures) {
@@ -373,7 +377,7 @@ fun UnifiedSeriesScreen(
                                     seasons = state.seasons,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonClick = onSeasonClick,
-                                    onSeasonLongClick = onSeasonLongClick,
+                                    onSeasonLongClick = { season -> seasonForOptionsDialog = season },
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -423,6 +427,16 @@ fun UnifiedSeriesScreen(
                 }
             }
         }
+    }
+
+    // Season options dialog (shown on long press)
+    seasonForOptionsDialog?.let { season ->
+        SeasonOptionsDialog(
+            season = season,
+            onMarkWatched = { onSeasonSetPlayed(season, true) },
+            onMarkUnwatched = { onSeasonSetPlayed(season, false) },
+            onDismiss = { seasonForOptionsDialog = null },
+        )
     }
 }
 

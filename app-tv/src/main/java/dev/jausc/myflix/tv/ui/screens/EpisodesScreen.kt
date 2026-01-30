@@ -86,6 +86,7 @@ import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
 import dev.jausc.myflix.core.common.ui.IconColors
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.CardSizes
+import dev.jausc.myflix.tv.ui.components.SeasonOptionsDialog
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -129,7 +130,7 @@ fun EpisodesScreen(
     onEpisodeClick: (JellyfinItem) -> Unit,
     onWatchedClick: (JellyfinItem) -> Unit = {},
     onFavoriteClick: (JellyfinItem) -> Unit = {},
-    onSeasonLongClick: (JellyfinItem) -> Unit = {},
+    onSeasonSetPlayed: (JellyfinItem, Boolean) -> Unit = { _, _ -> },
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -137,6 +138,9 @@ fun EpisodesScreen(
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+
+    // Season selected for options dialog (shown on long press)
+    var seasonForOptionsDialog by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Sync focusedEpisode with updated episodes list (for optimistic updates)
     // When episodes list changes, find the same episode by ID and update reference
@@ -436,7 +440,7 @@ fun EpisodesScreen(
                                     selectedSeasonIndex = selectedSeasonIndex,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
-                                    onSeasonLongClick = onSeasonLongClick,
+                                    onSeasonLongClick = { season -> seasonForOptionsDialog = season },
                                     tabFocusRequester = firstTabFocusRequester,
                                 )
                             }
@@ -445,6 +449,16 @@ fun EpisodesScreen(
                 }
             }
         }
+    }
+
+    // Season options dialog (shown on long press)
+    seasonForOptionsDialog?.let { season ->
+        SeasonOptionsDialog(
+            season = season,
+            onMarkWatched = { onSeasonSetPlayed(season, true) },
+            onMarkUnwatched = { onSeasonSetPlayed(season, false) },
+            onDismiss = { seasonForOptionsDialog = null },
+        )
     }
 }
 
