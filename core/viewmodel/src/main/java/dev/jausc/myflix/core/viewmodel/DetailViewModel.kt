@@ -272,25 +272,47 @@ class DetailViewModel(
     /**
      * Toggle the main item's favorite status.
      */
+    /**
+     * Toggle the main item's favorite status.
+     * Uses optimistic update for immediate UI feedback.
+     */
     fun toggleItemFavorite() {
         val currentItem = _uiState.value.item ?: return
         val isFavorite = currentItem.userData?.isFavorite == true
+        val newFavorite = !isFavorite
 
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.item?.let { item ->
+                val currentUserData = item.userData ?: UserData()
+                state.copy(item = item.copy(userData = currentUserData.copy(isFavorite = newFavorite)))
+            } ?: state
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
-            jellyfinClient.setFavorite(currentItem.id, !isFavorite)
-            refreshItem()
+            jellyfinClient.setFavorite(currentItem.id, newFavorite)
         }
     }
 
     /**
      * Mark the main item as watched/unwatched.
+     * Uses optimistic update for immediate UI feedback.
      */
     fun setItemPlayed(played: Boolean) {
         val currentItem = _uiState.value.item ?: return
 
+        // Optimistic update - immediately update local state
+        _uiState.update { state ->
+            state.item?.let { item ->
+                val currentUserData = item.userData ?: UserData()
+                state.copy(item = item.copy(userData = currentUserData.copy(played = played)))
+            } ?: state
+        }
+
+        // Sync with server in background
         viewModelScope.launch {
             jellyfinClient.setPlayed(currentItem.id, played)
-            refreshItem()
         }
     }
 
