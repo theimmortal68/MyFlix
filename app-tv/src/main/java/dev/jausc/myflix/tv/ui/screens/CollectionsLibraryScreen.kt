@@ -43,6 +43,7 @@ import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -75,6 +76,9 @@ fun CollectionsLibraryScreen(
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
     var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
 
     // Track focused item for dynamic background
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -204,6 +208,7 @@ fun CollectionsLibraryScreen(
                                 onCollectionClick = onCollectionClick,
                                 onItemFocused = { _, imageUrl ->
                                     focusedImageUrl = imageUrl
+                                    updateExitFocus(firstItemFocusRequester)
                                 },
                                 modifier = Modifier.weight(1f),
                             )

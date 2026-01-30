@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +59,7 @@ import dev.jausc.myflix.core.seerr.SeerrPerson
 import dev.jausc.myflix.core.seerr.SeerrPersonCastCredit
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 
 /**
  * Seerr actor/person detail screen for TV.
@@ -79,6 +81,9 @@ fun SeerrActorDetailScreen(
 
     val backButtonFocusRequester = remember { FocusRequester() }
     val firstCardFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstCardFocusRequester)
 
     // Request focus on first card when content loads
     LaunchedEffect(state.person) {
@@ -130,6 +135,7 @@ fun SeerrActorDetailScreen(
                     onMediaClick = onMediaClick,
                     backButtonFocusRequester = backButtonFocusRequester,
                     firstCardFocusRequester = firstCardFocusRequester,
+                    updateExitFocus = updateExitFocus,
                 )
             }
         }
@@ -144,6 +150,7 @@ private fun TvActorDetailContent(
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     backButtonFocusRequester: FocusRequester,
     firstCardFocusRequester: FocusRequester,
+    updateExitFocus: (FocusRequester) -> Unit,
 ) {
     val currentPerson = state.person ?: return
     val castCredits = state.sortedCastCredits
@@ -195,10 +202,14 @@ private fun TvActorDetailContent(
                     val mediaType = credit.mediaType ?: "movie"
                     onMediaClick(mediaType, credit.id)
                 },
-                modifier = if (isFirst) {
+                modifier = (if (isFirst) {
                     Modifier.focusRequester(firstCardFocusRequester)
                 } else {
                     Modifier
+                }).onFocusChanged { focusState ->
+                    if (focusState.isFocused) {
+                        updateExitFocus(firstCardFocusRequester)
+                    }
                 },
             )
         }

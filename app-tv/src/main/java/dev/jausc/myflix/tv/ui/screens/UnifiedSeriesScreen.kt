@@ -97,6 +97,7 @@ import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import java.util.Locale
 
 /**
@@ -139,15 +140,9 @@ fun UnifiedSeriesScreen(
     val nextUpFocusRequester = remember { FocusRequester() }
     val firstTabFocusRequester = remember { FocusRequester() }
 
-    // Track last focused section for NavRail exit restoration: "action", "nextup", "tabs"
-    var lastFocusedSection by remember { mutableStateOf("action") }
+    // Item-level focus tracking for NavRail exit restoration
+    val updateExitFocus = rememberExitFocusRegistry(playButtonFocusRequester)
 
-    // Compute focus restoration target based on last focused section
-    val focusRestorerTarget = when (lastFocusedSection) {
-        "nextup" -> nextUpFocusRequester
-        "tabs" -> firstTabFocusRequester
-        else -> playButtonFocusRequester
-    }
 
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
@@ -214,8 +209,7 @@ fun UnifiedSeriesScreen(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .focusGroup()
-            .focusRestorer(focusRestorerTarget),
+            .focusGroup(),
     ) {
         // Layer 1: Ken Burns animated backdrop (top-right)
         KenBurnsBackdrop(
@@ -255,8 +249,7 @@ fun UnifiedSeriesScreen(
                 modifier = Modifier.fillMaxWidth(0.55f),
                 leftEdgeFocusRequester = leftEdgeFocusRequester,
                 nextUpFocusRequester = nextUpFocusRequester,
-                onActionFocused = { lastFocusedSection = "action" },
-                onNextUpFocused = { lastFocusedSection = "nextup" },
+                updateExitFocus = updateExitFocus,
             )
 
             // Spacer pushes tabs to bottom
@@ -294,19 +287,18 @@ fun UnifiedSeriesScreen(
                             var isFocused by remember { mutableStateOf(false) }
                             val isFirstTab = index == 0
 
+                            val tabFocusRequester = remember { FocusRequester() }
                             Column(
                                 modifier = Modifier
-                                    .then(
-                                        if (isFirstTab) {
-                                            Modifier.focusRequester(firstTabFocusRequester)
-                                        } else {
-                                            Modifier
-                                        },
+                                    .focusRequester(
+                                        if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
                                     )
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
-                                            lastFocusedSection = "tabs"
+                                            updateExitFocus(
+                                                if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
+                                            )
                                             // Cancel any pending tab change
                                             tabChangeJob?.cancel()
                                             // Start new debounced change
@@ -548,8 +540,7 @@ private fun SeriesHeroContent(
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
     nextUpFocusRequester: FocusRequester? = null,
-    onActionFocused: () -> Unit = {},
-    onNextUpFocused: () -> Unit = {},
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
 
     Column(modifier = modifier) {
@@ -600,7 +591,7 @@ private fun SeriesHeroContent(
             playButtonFocusRequester = playButtonFocusRequester,
             downFocusRequester = nextUpFocusRequester,
             leftEdgeFocusRequester = leftEdgeFocusRequester,
-            onButtonFocused = onActionFocused,
+            updateExitFocus = updateExitFocus,
         )
 
         // Next Up card (show if has progress, otherwise show S1 E1)
@@ -639,7 +630,7 @@ private fun SeriesHeroContent(
                                 left = leftEdgeFocusRequester
                             }
                         }
-                        .onFocusChanged { if (it.hasFocus) onNextUpFocused() },
+                        .onFocusChanged { if (it.hasFocus && nextUpFocusRequester != null) updateExitFocus(nextUpFocusRequester) },
                     scale = CardDefaults.scale(focusedScale = 1.03f),
                     border = CardDefaults.border(
                         focusedBorder = Border(
@@ -728,8 +719,13 @@ private fun SeriesActionButtonsRow(
     playButtonFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester? = null,
     leftEdgeFocusRequester: FocusRequester? = null,
-    onButtonFocused: () -> Unit = {},
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
+    // FocusRequesters for each action button
+    val shuffleFocusRequester = remember { FocusRequester() }
+    val watchedFocusRequester = remember { FocusRequester() }
+    val favoriteFocusRequester = remember { FocusRequester() }
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(vertical = 4.dp),
@@ -755,7 +751,7 @@ private fun SeriesActionButtonsRow(
                             down = downFocusRequester
                         }
                     }
-                    .onFocusChanged { if (it.hasFocus) onButtonFocused() },
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(playButtonFocusRequester) },
             )
         }
 
@@ -766,11 +762,14 @@ private fun SeriesActionButtonsRow(
                 icon = Icons.Outlined.Shuffle,
                 iconColor = IconColors.Shuffle,
                 onClick = onShuffleClick,
-                modifier = if (downFocusRequester != null) {
-                    Modifier.focusProperties { down = downFocusRequester }
-                } else {
-                    Modifier
-                },
+                modifier = Modifier
+                    .focusRequester(shuffleFocusRequester)
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(shuffleFocusRequester) },
             )
         }
 
@@ -781,11 +780,14 @@ private fun SeriesActionButtonsRow(
                 icon = if (isWatched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                 iconColor = IconColors.Watched,
                 onClick = onWatchedClick,
-                modifier = if (downFocusRequester != null) {
-                    Modifier.focusProperties { down = downFocusRequester }
-                } else {
-                    Modifier
-                },
+                modifier = Modifier
+                    .focusRequester(watchedFocusRequester)
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(watchedFocusRequester) },
             )
         }
 
@@ -796,11 +798,14 @@ private fun SeriesActionButtonsRow(
                 icon = if (isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 iconColor = if (isFavorite) IconColors.FavoriteFilled else IconColors.Favorite,
                 onClick = onFavoriteClick,
-                modifier = if (downFocusRequester != null) {
-                    Modifier.focusProperties { down = downFocusRequester }
-                } else {
-                    Modifier
-                },
+                modifier = Modifier
+                    .focusRequester(favoriteFocusRequester)
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(favoriteFocusRequester) },
             )
         }
     }

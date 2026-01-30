@@ -75,8 +75,6 @@ fun NavRailItem(
     rightFocusRequester: FocusRequester = FocusRequester.Default,
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    // Track if we're exiting right (to call onExitRight after focus moves)
-    var exitingRight by remember { mutableStateOf(false) }
 
     val haloAlpha by animateFloatAsState(
         targetValue = if (isFocused) NavRailAlpha.FocusedHalo else 0f,
@@ -105,18 +103,13 @@ fun NavRailItem(
             .background(Color.Transparent)
             .focusRequester(focusRequester)
             .onFocusChanged { focusState ->
-                val wasFocused = isFocused
                 isFocused = focusState.isFocused
-                // If we were exiting right and focus just left, collapse the rail
-                if (wasFocused && !focusState.isFocused && exitingRight) {
-                    exitingRight = false
-                    onExitRight()
-                }
             }
             .focusProperties {
                 up = upFocusRequester
                 down = downFocusRequester
                 left = FocusRequester.Cancel
+                // Right uses explicit requester if registered, else Default for natural traversal
                 right = rightFocusRequester
                 canFocus = isActive
             }
@@ -129,9 +122,20 @@ fun NavRailItem(
                         true
                     }
                     Key.DirectionRight -> {
-                        // Mark that we're exiting right - rail will collapse after focus moves
-                        exitingRight = true
-                        false // Let Compose move focus via focusProperties.right
+                        // Collapse/deactivate NavRail first
+                        onExitRight()
+                        // If screen registered explicit focus target, use it
+                        // Otherwise let focusProperties handle with Default traversal
+                        if (rightFocusRequester != FocusRequester.Default) {
+                            try {
+                                rightFocusRequester.requestFocus()
+                            } catch (_: IllegalStateException) {
+                                // Ignore if not attached
+                            }
+                            true // Consume event - we handled focus explicitly
+                        } else {
+                            false // Let focusProperties handle with Default traversal
+                        }
                     }
                     else -> false
                 }

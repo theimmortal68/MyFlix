@@ -32,6 +32,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -50,6 +53,7 @@ import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,6 +69,10 @@ fun SeerrCollectionDetailScreen(
     var refreshTrigger by remember { mutableStateOf(0) }
     var requestingId by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
 
     LaunchedEffect(collectionId, refreshTrigger) {
         isLoading = true
@@ -162,6 +170,7 @@ fun SeerrCollectionDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     items(parts, key = { it.id }) { media ->
+                        val isFirst = parts.indexOf(media) == 0
                         SeerrCollectionPosterCard(
                             media = media,
                             seerrClient = seerrClient,
@@ -170,6 +179,15 @@ fun SeerrCollectionDetailScreen(
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
                             onRequest = { requestMedia(media) },
+                            modifier = (if (isFirst) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier
+                            }).onFocusChanged { focusState ->
+                                if (focusState.isFocused) {
+                                    updateExitFocus(firstItemFocusRequester)
+                                }
+                            },
                         )
                     }
                 }
@@ -185,6 +203,7 @@ private fun SeerrCollectionPosterCard(
     isRequesting: Boolean,
     onClick: () -> Unit,
     onRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val posterUrl = seerrClient.getPosterUrl(media.posterPath)
     val availabilityStatus = media.availabilityStatus
@@ -197,7 +216,7 @@ private fun SeerrCollectionPosterCard(
 
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(120.dp),
+        modifier = modifier.width(120.dp),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,

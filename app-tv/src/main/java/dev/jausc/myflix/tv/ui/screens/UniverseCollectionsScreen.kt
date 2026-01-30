@@ -39,6 +39,7 @@ import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 
@@ -63,6 +64,9 @@ fun UniverseCollectionsScreen(
     val firstItemFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
 
     // Track focused collection for dynamic background
     var focusedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -210,6 +214,7 @@ fun UniverseCollectionsScreen(
                                         .onFocusChanged { focusState ->
                                             if (focusState.isFocused) {
                                                 focusedImageUrl = imageUrl
+                                                updateExitFocus(firstItemFocusRequester)
                                             }
                                         },
                                 )

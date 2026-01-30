@@ -101,6 +101,7 @@ import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -211,6 +212,9 @@ fun HomeScreen(
     // Focus requester for hero play button
     val heroPlayFocusRequester = remember { FocusRequester() }
 
+    // NavRail exit focus registration - hero is primary/fallback target
+    val updateExitFocus = rememberExitFocusRegistry(heroPlayFocusRequester)
+
     // Saved focus state - survives back navigation
     var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
     // Use provided focus requester (shared with NavRail) or create internal one
@@ -316,6 +320,7 @@ fun HomeScreen(
                 restoreFocusRequester = effectiveRestoreFocusRequester,
                 onItemFocused = { itemId -> savedFocusItemId = itemId },
                 leftEdgeFocusRequester = leftEdgeFocusRequester,
+                updateExitFocus = updateExitFocus,
             )
         }
     }
@@ -400,6 +405,8 @@ private fun HomeContent(
     onItemFocused: (String) -> Unit = {},
     // Left edge navigation - for activating NavRail
     leftEdgeFocusRequester: FocusRequester? = null,
+    // NavRail exit focus registration
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -645,6 +652,7 @@ private fun HomeContent(
                                     heroWasLastFocused = false
                                     pendingPreviewItem = item
                                     onItemFocused(item.id)
+                                    updateExitFocus(restoreFocusRequester)
                                 },
                                 onEpisodeClick = onEpisodeClick,
                                 onRowFocused = { rowIndex ->
@@ -737,6 +745,7 @@ private fun HomeContent(
                         },
                         onPreviewClear = {
                             heroWasLastFocused = true
+                            updateExitFocus(heroPlayFocusRequester)
                             clearPreviewAndScrollToTop()
                         },
                         leftEdgeFocusRequester = leftEdgeFocusRequester,

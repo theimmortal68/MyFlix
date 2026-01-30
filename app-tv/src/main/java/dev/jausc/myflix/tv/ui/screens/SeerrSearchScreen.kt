@@ -40,6 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -59,6 +62,7 @@ import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -73,6 +77,11 @@ fun SeerrSearchScreen(
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
+
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(SeerrSearchFilter.ALL) }
     var isLoading by remember { mutableStateOf(false) }
@@ -285,7 +294,7 @@ fun SeerrSearchScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    itemsIndexed(results, key = { _, media -> "${media.mediaType}-${media.id}" }) { _, media ->
+                    itemsIndexed(results, key = { _, media -> "${media.mediaType}-${media.id}" }) { index, media ->
                         SeerrSearchPosterCard(
                             media = media,
                             seerrClient = seerrClient,
@@ -294,6 +303,21 @@ fun SeerrSearchScreen(
                                     onPersonClick(media.tmdbId ?: media.id)
                                 } else {
                                     onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                }
+                            },
+                            modifier = if (index == 0) {
+                                Modifier
+                                    .focusRequester(firstItemFocusRequester)
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused) {
+                                            updateExitFocus(firstItemFocusRequester)
+                                        }
+                                    }
+                            } else {
+                                Modifier.onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        updateExitFocus(firstItemFocusRequester)
+                                    }
                                 }
                             },
                         )
@@ -317,7 +341,12 @@ fun SeerrSearchScreen(
 }
 
 @Composable
-private fun SeerrSearchPosterCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
+private fun SeerrSearchPosterCard(
+    media: SeerrMedia,
+    seerrClient: SeerrClient,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val imageUrl = if (media.mediaType == "person") {
         seerrClient.getProfileUrl(media.profilePath)
     } else {
@@ -326,7 +355,7 @@ private fun SeerrSearchPosterCard(media: SeerrMedia, seerrClient: SeerrClient, o
 
     Surface(
         onClick = onClick,
-        modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
+        modifier = modifier.width(120.dp).aspectRatio(2f / 3f),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface,

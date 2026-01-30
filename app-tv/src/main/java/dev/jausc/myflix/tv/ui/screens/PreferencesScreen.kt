@@ -79,6 +79,7 @@ import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.launch
 
 /**
@@ -137,6 +138,9 @@ fun PreferencesScreen(
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(contentFocusRequester)
 
     // Load available genres, collections, and libraries
     LaunchedEffect(Unit) {

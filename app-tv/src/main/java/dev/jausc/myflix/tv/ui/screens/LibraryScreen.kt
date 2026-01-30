@@ -55,6 +55,7 @@ import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterMenu
 import dev.jausc.myflix.tv.ui.components.library.LibrarySortMenu
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -93,6 +94,9 @@ fun LibraryScreen(
     val alphabetFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
+
+    // NavRail exit focus registration
+    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
@@ -259,6 +263,7 @@ fun LibraryScreen(
                                     onItemClick = onItemClick,
                                     onItemFocused = { _, imageUrl ->
                                         focusedImageUrl = imageUrl
+                                        updateExitFocus(firstItemFocusRequester)
                                     },
                                     modifier = Modifier.weight(1f),
                                 )

@@ -91,6 +91,7 @@ import dev.jausc.myflix.tv.ui.screens.TrailerWebViewScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.LocalExitFocusState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -304,6 +305,8 @@ fun MyFlixTvApp() {
     val navRailFocusRequester = remember { FocusRequester() }
     // Sentinel focus requester - passed to content screens for explicit left navigation
     val sentinelFocusRequester = remember { FocusRequester() }
+    // Exit focus state - screens register their last focused item here for NavRail exit
+    val exitFocusState = remember { mutableStateOf<FocusRequester?>(null) }
 
     // Sentinel enabled state - delayed after navigation to prevent focus stealing
     var sentinelEnabled by remember { mutableStateOf(false) }
@@ -442,29 +445,30 @@ fun MyFlixTvApp() {
         Modifier.fillMaxSize()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TvColors.Background)
-            .onKeyEvent { event ->
-                // Handle Menu key press from anywhere to toggle NavRail
-                if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
-                    if (isNavRailActive) {
-                        // Deactivate and collapse
-                        isNavRailActive = false
-                        isNavRailExpanded = false
+    CompositionLocalProvider(LocalExitFocusState provides exitFocusState) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TvColors.Background)
+                .onKeyEvent { event ->
+                    // Handle Menu key press from anywhere to toggle NavRail
+                    if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
+                        if (isNavRailActive) {
+                            // Deactivate and collapse
+                            isNavRailActive = false
+                            isNavRailExpanded = false
+                        } else {
+                            // Activate and expand
+                            isNavRailActive = true
+                            isNavRailExpanded = true
+                            navRailFocusRequester.requestFocus()
+                        }
+                        true
                     } else {
-                        // Activate and expand
-                        isNavRailActive = true
-                        isNavRailExpanded = true
-                        navRailFocusRequester.requestFocus()
+                        false
                     }
-                    true
-                } else {
-                    false
-                }
-            },
-    ) {
+                },
+        ) {
         // Main content - NavHost always rendered
         NavHost(
             navController = navController,
@@ -1236,10 +1240,11 @@ fun MyFlixTvApp() {
                 showUniverses = universesEnabled,
                 showDiscover = isSeerrAuthenticated && showDiscoverNav,
                 firstItemFocusRequester = navRailFocusRequester,
-                // Use Default to let Compose focus system handle right navigation naturally
-                // Screens use focusRestorer() to return focus to where it was
+                // Use screen's registered exit focus target, fall back to default focus traversal
+                exitFocusRequester = exitFocusState.value ?: FocusRequester.Default,
                 modifier = Modifier.zIndex(1f),
             )
+        }
         }
     }
 }

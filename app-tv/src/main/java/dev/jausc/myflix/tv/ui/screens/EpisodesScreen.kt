@@ -86,6 +86,7 @@ import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -140,21 +141,14 @@ fun EpisodesScreen(
     val firstTabFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
 
-    // Track last focused section for NavRail exit restoration: "action", "episodes", "tabs"
-    var lastFocusedSection by remember { mutableStateOf("episodes") }
+    // Item-level focus tracking for NavRail exit restoration
+    val updateExitFocus = rememberExitFocusRegistry(episodeRowFocusRequester)
 
     // Episode focus requesters - keyed by episode ID for restoring to specific episode
     val episodeFocusRequesters = remember(episodes) {
         episodes.associate { it.id to FocusRequester() }
     }
 
-    // Compute focus restoration target based on last focused section
-    val focusRestorerTarget = when (lastFocusedSection) {
-        "action" -> playFocusRequester
-        "tabs" -> firstTabFocusRequester
-        "episodes" -> focusedEpisode?.id?.let { episodeFocusRequesters[it] } ?: episodeRowFocusRequester
-        else -> episodeRowFocusRequester
-    }
 
     // Find target episode for focus
     // When switching seasons, selectedEpisodeId won't be in new episodes list,
@@ -219,8 +213,7 @@ fun EpisodesScreen(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Background)
-            .focusGroup()
-            .focusRestorer(focusRestorerTarget),
+            .focusGroup(),
     ) {
         // Episode thumbnail backdrop (top-right) - 40% of screen
         KenBurnsBackdrop(
@@ -249,7 +242,7 @@ fun EpisodesScreen(
                     episodeRowFocusRequester = episodeRowFocusRequester,
                     modifier = Modifier.fillMaxWidth(0.55f),
                     leftEdgeFocusRequester = leftEdgeFocusRequester,
-                    onActionFocused = { lastFocusedSection = "action" },
+                    updateExitFocus = updateExitFocus,
                 )
             } ?: run {
                 // Placeholder while loading
@@ -271,7 +264,7 @@ fun EpisodesScreen(
                 downFocusRequester = firstTabFocusRequester,
                 modifier = Modifier.fillMaxWidth(),
                 leftEdgeFocusRequester = leftEdgeFocusRequester,
-                onRowFocused = { lastFocusedSection = "episodes" },
+                updateExitFocus = updateExitFocus,
             )
 
             // Spacer pushes tabs to bottom
@@ -309,19 +302,18 @@ fun EpisodesScreen(
                             var isFocused by remember { mutableStateOf(false) }
                             val isFirstTab = index == 0
 
+                            val tabFocusRequester = remember { FocusRequester() }
                             Column(
                                 modifier = Modifier
-                                    .then(
-                                        if (isFirstTab) {
-                                            Modifier.focusRequester(firstTabFocusRequester)
-                                        } else {
-                                            Modifier
-                                        },
+                                    .focusRequester(
+                                        if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
                                     )
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
-                                            lastFocusedSection = "tabs"
+                                            updateExitFocus(
+                                                if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
+                                            )
                                             tabChangeJob?.cancel()
                                             tabChangeJob = coroutineScope.launch {
                                                 delay(150)
@@ -480,7 +472,7 @@ private fun EpisodeHeroContent(
     episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
-    onActionFocused: () -> Unit = {},
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
     val isWatched = episode.userData?.played == true
     val isFavorite = episode.userData?.isFavorite == true
@@ -554,7 +546,7 @@ private fun EpisodeHeroContent(
             focusRequester = playFocusRequester,
             downFocusRequester = episodeRowFocusRequester,
             leftEdgeFocusRequester = leftEdgeFocusRequester,
-            onButtonFocused = onActionFocused,
+            updateExitFocus = updateExitFocus,
         )
     }
 }
@@ -677,7 +669,7 @@ private fun EpisodeActionButtons(
     focusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
     leftEdgeFocusRequester: FocusRequester? = null,
-    onButtonFocused: () -> Unit = {},
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
     val playButtonText = when {
         hasProgress && remainingMinutes > 0 -> "Resume · ${remainingMinutes}m left"
@@ -685,7 +677,10 @@ private fun EpisodeActionButtons(
         else -> "Play"
     }
 
+    // FocusRequesters for each action button
     val playFocusRequester = remember { FocusRequester() }
+    val watchedFocusRequester = remember { FocusRequester() }
+    val favoriteFocusRequester = remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -709,7 +704,7 @@ private fun EpisodeActionButtons(
                             left = leftEdgeFocusRequester
                         }
                     }
-                    .onFocusChanged { if (it.hasFocus) onButtonFocused() },
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(playFocusRequester) },
             )
         }
 
@@ -719,7 +714,10 @@ private fun EpisodeActionButtons(
                 icon = if (isWatched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                 iconColor = IconColors.Watched,
                 onClick = onWatchedClick,
-                modifier = Modifier.focusProperties { down = downFocusRequester },
+                modifier = Modifier
+                    .focusRequester(watchedFocusRequester)
+                    .focusProperties { down = downFocusRequester }
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(watchedFocusRequester) },
             )
         }
 
@@ -729,7 +727,10 @@ private fun EpisodeActionButtons(
                 icon = if (isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                 iconColor = if (isFavorite) IconColors.FavoriteFilled else IconColors.Favorite,
                 onClick = onFavoriteClick,
-                modifier = Modifier.focusProperties { down = downFocusRequester },
+                modifier = Modifier
+                    .focusRequester(favoriteFocusRequester)
+                    .focusProperties { down = downFocusRequester }
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(favoriteFocusRequester) },
             )
         }
     }
@@ -755,7 +756,7 @@ private fun EpisodeCardRow(
     downFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
-    onRowFocused: () -> Unit = {},
+    updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
     val lazyListState = rememberLazyListState()
 
@@ -814,7 +815,7 @@ private fun EpisodeCardRow(
                         onClick = { onEpisodeClick(episode) },
                         onFocused = {
                             onEpisodeFocused(episode)
-                            onRowFocused()
+                            updateExitFocus(cardFocusRequester)
                         },
                         modifier = Modifier
                             .focusRequester(cardFocusRequester)

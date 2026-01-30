@@ -59,7 +59,7 @@ fun NavigationRail(
     showDiscover: Boolean = false,
     modifier: Modifier = Modifier,
     firstItemFocusRequester: FocusRequester = remember { FocusRequester() },
-    exitFocusRequester: FocusRequester = FocusRequester.Default,
+    exitFocusRequester: FocusRequester,
 ) {
     val mainItems = remember(showUniverses, showDiscover) {
         buildMainNavItems(showUniverses, showDiscover)
