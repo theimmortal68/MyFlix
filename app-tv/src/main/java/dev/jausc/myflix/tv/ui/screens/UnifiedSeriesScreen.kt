@@ -6,6 +6,7 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +61,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
@@ -139,13 +142,20 @@ fun UnifiedSeriesScreen(
     // Focus requesters for NavRail restoration
     val playButtonFocusRequester = remember { FocusRequester() }
     val nextUpFocusRequester = remember { FocusRequester() }
-    val firstTabFocusRequester = remember { FocusRequester() }
 
     // Item-level focus tracking for NavRail exit restoration
     val updateExitFocus = rememberExitFocusRegistry(playButtonFocusRequester)
 
     // Tab state
     var selectedTab by rememberSaveable { mutableStateOf(UnifiedSeriesTab.Seasons) }
+
+    // Stable focus requesters for each tab (keyed by enum for stability across recomposition)
+    val tabFocusRequesters = remember { mutableStateMapOf<UnifiedSeriesTab, FocusRequester>() }
+    fun getTabFocusRequester(tab: UnifiedSeriesTab): FocusRequester =
+        tabFocusRequesters.getOrPut(tab) { FocusRequester() }
+
+    // Track which tab should receive focus when navigating up from content
+    var lastFocusedTab by remember { mutableStateOf(UnifiedSeriesTab.Seasons) }
 
     // Split special features into trailers and other extras
     val trailers = remember(state.specialFeatures) {
@@ -245,7 +255,7 @@ fun UnifiedSeriesScreen(
                     onPlayClick()
                 },
                 playButtonFocusRequester = playButtonFocusRequester,
-                firstTabFocusRequester = firstTabFocusRequester,
+                firstTabFocusRequester = getTabFocusRequester(selectedTab),
                 modifier = Modifier.fillMaxWidth(0.55f),
                 leftEdgeFocusRequester = leftEdgeFocusRequester,
                 nextUpFocusRequester = nextUpFocusRequester,
@@ -278,27 +288,30 @@ fun UnifiedSeriesScreen(
                     // Tab row with debounced focus change - only show available tabs
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         availableTabs.forEachIndexed { index, tab ->
                             val isSelected = selectedTab == tab
                             var isFocused by remember { mutableStateOf(false) }
                             val isFirstTab = index == 0
+                            val tabRequester = getTabFocusRequester(tab)
 
-                            val tabFocusRequester = remember { FocusRequester() }
+                            // Animated halo effect for focus indication
+                            val haloAlpha by animateFloatAsState(
+                                targetValue = if (isFocused) 0.6f else 0f,
+                                animationSpec = tween(durationMillis = 150),
+                                label = "tabHaloAlpha",
+                            )
+
                             Column(
                                 modifier = Modifier
-                                    .focusRequester(
-                                        if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
-                                    )
+                                    .focusRequester(tabRequester)
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
-                                            updateExitFocus(
-                                                if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
-                                            )
+                                            lastFocusedTab = tab
+                                            updateExitFocus(tabRequester)
                                             // Cancel any pending tab change
                                             tabChangeJob?.cancel()
                                             // Start new debounced change
@@ -322,30 +335,51 @@ fun UnifiedSeriesScreen(
                                     ),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(
-                                    text = when (tab) {
-                                        UnifiedSeriesTab.Seasons -> "Seasons"
-                                        UnifiedSeriesTab.Details -> "Details"
-                                        UnifiedSeriesTab.CastCrew -> "Cast & Crew"
-                                        UnifiedSeriesTab.Trailers -> "Trailers"
-                                        UnifiedSeriesTab.Extras -> "Extras"
-                                        UnifiedSeriesTab.Related -> "Related"
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = when {
-                                        isSelected -> Color.White
-                                        isFocused -> Color.White.copy(alpha = 0.8f)
-                                        else -> TvColors.TextSecondary
-                                    },
-                                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                                )
+                                // Text with halo glow behind it when focused
+                                Box(contentAlignment = Alignment.Center) {
+                                    // Halo glow (blurred background) - extends beyond text
+                                    if (haloAlpha > 0f) {
+                                        Box(
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .blur(12.dp)
+                                                .background(
+                                                    TvColors.BluePrimary.copy(alpha = haloAlpha),
+                                                    RoundedCornerShape(16.dp),
+                                                ),
+                                        )
+                                    }
+                                    Text(
+                                        text = when (tab) {
+                                            UnifiedSeriesTab.Seasons -> "Seasons"
+                                            UnifiedSeriesTab.Details -> "Details"
+                                            UnifiedSeriesTab.CastCrew -> "Cast & Crew"
+                                            UnifiedSeriesTab.Trailers -> "Trailers"
+                                            UnifiedSeriesTab.Extras -> "Extras"
+                                            UnifiedSeriesTab.Related -> "Related"
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = when {
+                                            isFocused -> Color.White
+                                            isSelected -> Color.White
+                                            else -> TvColors.TextSecondary
+                                        },
+                                        fontWeight = if (isSelected || isFocused) FontWeight.Medium else FontWeight.Normal,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
+                                // Underline indicator
                                 Box(
                                     modifier = Modifier
-                                        .width(if (isSelected) 40.dp else 0.dp)
+                                        .width(if (isSelected || isFocused) 40.dp else 0.dp)
                                         .height(2.dp)
                                         .background(
-                                            if (isSelected) TvColors.BluePrimary else Color.Transparent,
+                                            when {
+                                                isFocused -> TvColors.BluePrimary
+                                                isSelected -> TvColors.BluePrimary.copy(alpha = 0.7f)
+                                                else -> Color.Transparent
+                                            },
                                             RoundedCornerShape(1.dp),
                                         ),
                                 )
@@ -353,15 +387,15 @@ fun UnifiedSeriesScreen(
                         }
                     }
 
-                    // Tab content - single row needs less height
-                    // Tab content area
+                    // Tab content area - navigates up to whichever tab was last focused
+                    val selectedTabRequester = getTabFocusRequester(lastFocusedTab)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
                             .padding(start = 2.dp)
                             .focusProperties {
-                                up = firstTabFocusRequester
+                                up = selectedTabRequester
                             },
                     ) {
                         when (selectedTab) {
@@ -370,13 +404,13 @@ fun UnifiedSeriesScreen(
                                     seasons = state.seasons,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonClick = onSeasonClick,
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                             UnifiedSeriesTab.Details -> {
                                 DetailsTabContent(
                                     series = series,
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                             UnifiedSeriesTab.CastCrew -> {
@@ -384,7 +418,7 @@ fun UnifiedSeriesScreen(
                                     people = people,
                                     jellyfinClient = jellyfinClient,
                                     onPersonClick = onNavigateToPerson,
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                             UnifiedSeriesTab.Trailers -> {
@@ -392,7 +426,7 @@ fun UnifiedSeriesScreen(
                                     trailers = trailers,
                                     jellyfinClient = jellyfinClient,
                                     onTrailerClick = { /* TODO: Handle trailer click */ },
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                             UnifiedSeriesTab.Extras -> {
@@ -400,7 +434,7 @@ fun UnifiedSeriesScreen(
                                     extras = extras,
                                     jellyfinClient = jellyfinClient,
                                     onExtraClick = { /* TODO: Handle extra click */ },
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                             UnifiedSeriesTab.Related -> {
@@ -411,7 +445,7 @@ fun UnifiedSeriesScreen(
                                     similarItems = similarWithEpisodes,
                                     jellyfinClient = jellyfinClient,
                                     onItemClick = onNavigateToDetail,
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                         }

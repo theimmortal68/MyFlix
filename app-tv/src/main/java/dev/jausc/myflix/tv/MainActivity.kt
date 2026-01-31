@@ -1191,6 +1191,9 @@ fun MyFlixTvApp() {
                         onPersonClick = { personId ->
                             navController.navigate("person/$personId")
                         },
+                        onGoToSeries = {
+                            navController.navigate("detail/$seriesId")
+                        },
                         onBackClick = { navController.popBackStack() },
                         leftEdgeFocusRequester = sentinelFocusRequester,
                     )

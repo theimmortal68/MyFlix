@@ -167,6 +167,85 @@ val updateExitFocus = rememberExitFocusRegistry(primaryFocusRequester)
 Modifier.onFocusChanged { if (it.hasFocus) updateExitFocus(thisFocusRequester) }
 ```
 
+### Tab Focus Restoration
+When navigating from tab content back up to tab headers, focus should return to the last focused tab, not always the first tab.
+
+```kotlin
+// 1. Create stable map of FocusRequesters (not inside loop)
+val tabFocusRequesters = remember { mutableStateMapOf<TabType, FocusRequester>() }
+fun getTabFocusRequester(tab: TabType): FocusRequester =
+    tabFocusRequesters.getOrPut(tab) { FocusRequester() }
+
+// 2. Track last focused tab
+var lastFocusedTab by remember { mutableStateOf(TabType.First) }
+
+// 3. On each tab, update tracking when focused
+Tab(
+    modifier = Modifier
+        .focusRequester(getTabFocusRequester(tab))
+        .onFocusChanged { if (it.isFocused) lastFocusedTab = tab }
+)
+
+// 4. In content area, point UP to last focused tab
+Box(
+    modifier = Modifier.focusProperties {
+        up = tabFocusRequesters[lastFocusedTab] ?: FocusRequester.Default
+    }
+) { /* Tab content */ }
+```
+
+### Animated Focus Halo Effect
+Visual feedback for focused elements using blur-based glow.
+
+```kotlin
+var isFocused by remember { mutableStateOf(false) }
+
+val haloAlpha by animateFloatAsState(
+    targetValue = if (isFocused) 0.6f else 0f,
+    animationSpec = tween(durationMillis = 150),
+    label = "haloAlpha",
+)
+
+Box {
+    // Halo glow layer (behind content)
+    if (haloAlpha > 0f) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .blur(12.dp)
+                .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(16.dp)),
+        )
+    }
+    // Actual content
+    Surface(
+        modifier = Modifier.onFocusChanged { isFocused = it.isFocused },
+        // ...
+    ) { /* content */ }
+}
+```
+
+### Menu Positioning with Container Offset
+When menus are inside padded containers (e.g., NavRail), anchor coordinates need adjustment.
+
+```kotlin
+var containerOffsetX by remember { mutableStateOf(0f) }
+var containerOffsetY by remember { mutableStateOf(0f) }
+
+BoxWithConstraints(
+    modifier = Modifier
+        .fillMaxSize()
+        .onGloballyPositioned { coordinates ->
+            val position = coordinates.positionInRoot()
+            containerOffsetX = position.x
+            containerOffsetY = position.y
+        },
+) {
+    // Adjust anchor position by container offset
+    val adjustedAnchorX = anchor.x.toPx() - containerOffsetX
+    val adjustedAnchorY = anchor.y.toPx() - containerOffsetY
+}
+```
+
 ### Media Stream Detection
 ```kotlin
 // Check for HDR/Dolby Vision
@@ -177,6 +256,37 @@ item.is4K           // Extension property
 // Get primary video stream
 item.videoStream    // First video MediaStream
 ```
+
+---
+
+## Recent Feature Work
+
+### Episode Screen Enhancements (January 2026)
+
+**Tab System Improvements:**
+- Added Chapters tab to episode screen showing chapter thumbnails with timestamps
+- Implemented tab focus restoration - navigating up from content returns to last focused tab
+- Added animated blue halo effect on focused tabs for better visual feedback
+- Removed padding between tab row and content for tighter layout
+
+**Chapter Display:**
+- Thumbnail size: 199×112dp (16:9 aspect ratio, matching season poster height of 112dp)
+- Chapter name displayed below thumbnail (not overlayed)
+- Focus border only on thumbnail, not text
+- Clicking chapter seeks to that timestamp in playback
+
+**Episode Options Menu:**
+- Fixed menu positioning when inside NavRail padded container
+- Implemented cascading submenu pattern with activeSubmenu state
+- LEFT key closes submenu, returns to parent menu
+- Added "Go to Series" action in Season Actions submenu
+
+**Key Files Modified:**
+- `EpisodesScreen.kt` - Tab system, chapters display, options dialog
+- `UnifiedSeriesScreen.kt` - Tab focus restoration, halo effect
+- `PlayerSlideOutMenu.kt` - Container offset tracking, cascading submenus
+- `MainActivity.kt` - Navigation callback for "Go to Series"
+- `JellyfinClient.kt` - Added "Chapters" to episode list API fields
 
 ---
 

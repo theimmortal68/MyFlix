@@ -302,7 +302,7 @@ class JellyfinClient(
 
         // Fields for episode listing
         const val EPISODE_LIST =
-            "Overview,ImageTags,UserData,MediaSources,People,RunTimeTicks,OfficialRating,CommunityRating,CriticRating,PremiereDate"
+            "Overview,ImageTags,UserData,MediaSources,People,RunTimeTicks,OfficialRating,CommunityRating,CriticRating,PremiereDate,Chapters"
     }
 
     // Image types for enableImageTypes parameter

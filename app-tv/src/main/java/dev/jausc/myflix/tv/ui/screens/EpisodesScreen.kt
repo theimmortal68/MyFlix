@@ -6,6 +6,7 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -57,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
@@ -150,6 +152,7 @@ fun EpisodesScreen(
     onFavoriteClick: (JellyfinItem) -> Unit = {},
     onSeasonWatchedClick: (JellyfinItem, Boolean) -> Unit = { _, _ -> },
     onPersonClick: (String) -> Unit = {},
+    onGoToSeries: () -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
@@ -179,8 +182,15 @@ fun EpisodesScreen(
     var focusSetForSeason by remember { mutableStateOf(-1) }
     // Focus requesters for NavRail restoration
     val episodeRowFocusRequester = remember { FocusRequester() }
-    val firstTabFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
+
+    // Stable focus requesters for each tab (keyed by enum for stability across recomposition)
+    val tabFocusRequesters = remember { mutableStateMapOf<EpisodeTab, FocusRequester>() }
+    fun getTabFocusRequester(tab: EpisodeTab): FocusRequester =
+        tabFocusRequesters.getOrPut(tab) { FocusRequester() }
+
+    // Track which tab should receive focus when navigating up from content
+    var lastFocusedTab by remember { mutableStateOf(EpisodeTab.Seasons) }
 
     // Item-level focus tracking for NavRail exit restoration
     val updateExitFocus = rememberExitFocusRegistry(episodeRowFocusRequester)
@@ -321,7 +331,7 @@ fun EpisodesScreen(
                 onEpisodeFocused = { episode -> focusedEpisode = episode },
                 focusRequester = episodeRowFocusRequester,
                 upFocusRequester = playFocusRequester,
-                downFocusRequester = firstTabFocusRequester,
+                downFocusRequester = getTabFocusRequester(selectedTab),
                 modifier = Modifier.fillMaxWidth(),
                 leftEdgeFocusRequester = leftEdgeFocusRequester,
                 updateExitFocus = updateExitFocus,
@@ -353,27 +363,30 @@ fun EpisodesScreen(
                     // Tab row with debounced focus change
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         availableTabs.forEachIndexed { index, tab ->
                             val isSelected = selectedTab == tab
                             var isFocused by remember { mutableStateOf(false) }
                             val isFirstTab = index == 0
+                            val tabRequester = getTabFocusRequester(tab)
 
-                            val tabFocusRequester = remember { FocusRequester() }
+                            // Animated halo effect for focus indication
+                            val haloAlpha by animateFloatAsState(
+                                targetValue = if (isFocused) 0.6f else 0f,
+                                animationSpec = tween(durationMillis = 150),
+                                label = "tabHaloAlpha",
+                            )
+
                             Column(
                                 modifier = Modifier
-                                    .focusRequester(
-                                        if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
-                                    )
+                                    .focusRequester(tabRequester)
                                     .onFocusChanged { focusState ->
                                         isFocused = focusState.isFocused
                                         if (focusState.isFocused) {
-                                            updateExitFocus(
-                                                if (isFirstTab) firstTabFocusRequester else tabFocusRequester,
-                                            )
+                                            lastFocusedTab = tab
+                                            updateExitFocus(tabRequester)
                                             tabChangeJob?.cancel()
                                             tabChangeJob = coroutineScope.launch {
                                                 delay(150)
@@ -396,30 +409,51 @@ fun EpisodesScreen(
                                     ),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(
-                                    text = when (tab) {
-                                        EpisodeTab.Seasons -> "Seasons"
-                                        EpisodeTab.Chapters -> "Chapters"
-                                        EpisodeTab.Details -> "Details"
-                                        EpisodeTab.MediaInfo -> "Media Info"
-                                        EpisodeTab.CastCrew -> "Cast & Crew"
-                                        EpisodeTab.GuestStars -> "Guest Stars"
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = when {
-                                        isSelected -> Color.White
-                                        isFocused -> Color.White.copy(alpha = 0.8f)
-                                        else -> TvColors.TextSecondary
-                                    },
-                                    fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                                )
+                                // Text with halo glow behind it when focused
+                                Box(contentAlignment = Alignment.Center) {
+                                    // Halo glow (blurred background) - extends beyond text
+                                    if (haloAlpha > 0f) {
+                                        Box(
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .blur(12.dp)
+                                                .background(
+                                                    TvColors.BluePrimary.copy(alpha = haloAlpha),
+                                                    RoundedCornerShape(16.dp),
+                                                ),
+                                        )
+                                    }
+                                    Text(
+                                        text = when (tab) {
+                                            EpisodeTab.Seasons -> "Seasons"
+                                            EpisodeTab.Chapters -> "Chapters"
+                                            EpisodeTab.Details -> "Details"
+                                            EpisodeTab.MediaInfo -> "Media Info"
+                                            EpisodeTab.CastCrew -> "Cast & Crew"
+                                            EpisodeTab.GuestStars -> "Guest Stars"
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = when {
+                                            isFocused -> Color.White
+                                            isSelected -> Color.White
+                                            else -> TvColors.TextSecondary
+                                        },
+                                        fontWeight = if (isSelected || isFocused) FontWeight.Medium else FontWeight.Normal,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
+                                // Underline indicator
                                 Box(
                                     modifier = Modifier
-                                        .width(if (isSelected) 40.dp else 0.dp)
+                                        .width(if (isSelected || isFocused) 40.dp else 0.dp)
                                         .height(2.dp)
                                         .background(
-                                            if (isSelected) TvColors.BluePrimary else Color.Transparent,
+                                            when {
+                                                isFocused -> TvColors.BluePrimary
+                                                isSelected -> TvColors.BluePrimary.copy(alpha = 0.7f)
+                                                else -> Color.Transparent
+                                            },
                                             RoundedCornerShape(1.dp),
                                         ),
                                 )
@@ -427,17 +461,15 @@ fun EpisodesScreen(
                         }
                     }
 
-                    // Tab content
-                    // focusGroup + focusRestorer allows the container to receive focus
-                    // from tab headers and delegate to first focusable child
-                    // Tab content area
+                    // Tab content area - navigates up to whichever tab was last focused
+                    val selectedTabRequester = getTabFocusRequester(lastFocusedTab)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
                             .padding(start = 2.dp)
                             .focusProperties {
-                                up = firstTabFocusRequester
+                                up = selectedTabRequester
                             },
                     ) {
                         when (selectedTab) {
@@ -450,7 +482,7 @@ fun EpisodesScreen(
                                         onChapterClick = { positionMs ->
                                             onEpisodeClick(episode)
                                         },
-                                        tabFocusRequester = firstTabFocusRequester,
+                                        tabFocusRequester = selectedTabRequester,
                                     )
                                 }
                             }
@@ -458,7 +490,7 @@ fun EpisodesScreen(
                                 focusedEpisode?.let { episode ->
                                     DetailsTabContent(
                                         episode = episode,
-                                        tabFocusRequester = firstTabFocusRequester,
+                                        tabFocusRequester = selectedTabRequester,
                                     )
                                 }
                             }
@@ -467,7 +499,7 @@ fun EpisodesScreen(
                                     MediaInfoTabContent(
                                         mediaStreams = episode.mediaSources?.firstOrNull()?.mediaStreams ?: emptyList(),
                                         genres = episode.genres ?: emptyList(),
-                                        tabFocusRequester = firstTabFocusRequester,
+                                        tabFocusRequester = selectedTabRequester,
                                     )
                                 }
                             }
@@ -477,7 +509,7 @@ fun EpisodesScreen(
                                         people = episode.people?.filter { it.type != "GuestStar" } ?: emptyList(),
                                         jellyfinClient = jellyfinClient,
                                         onPersonClick = onPersonClick,
-                                        tabFocusRequester = firstTabFocusRequester,
+                                        tabFocusRequester = selectedTabRequester,
                                     )
                                 }
                             }
@@ -486,7 +518,7 @@ fun EpisodesScreen(
                                     guestStars = guestStars,
                                     jellyfinClient = jellyfinClient,
                                     onPersonClick = onPersonClick,
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                             EpisodeTab.Seasons -> {
@@ -495,7 +527,7 @@ fun EpisodesScreen(
                                     selectedSeasonIndex = selectedSeasonIndex,
                                     jellyfinClient = jellyfinClient,
                                     onSeasonSelected = onSeasonSelected,
-                                    tabFocusRequester = firstTabFocusRequester,
+                                    tabFocusRequester = selectedTabRequester,
                                 )
                             }
                         }
@@ -519,6 +551,10 @@ fun EpisodesScreen(
                 onMarkSeasonWatched = { watched ->
                     currentSeason?.let { onSeasonWatchedClick(it, watched) }
                     showOptionsDialog = false
+                },
+                onGoToSeries = {
+                    showOptionsDialog = false
+                    onGoToSeries()
                 },
             )
         }
@@ -1692,6 +1728,7 @@ private fun ChaptersTabContent(
 
 /**
  * Individual chapter card with thumbnail and timestamp.
+ * Chapter name appears below the thumbnail, outside the focus border.
  */
 @Composable
 private fun ChapterCard(
@@ -1700,76 +1737,64 @@ private fun ChapterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.size(width = 200.dp, height = 140.dp),
-        scale = CardDefaults.scale(focusedScale = 1.03f),
-        border = CardDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = RoundedCornerShape(8.dp),
-            ),
-        ),
-        shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
+    Column(
+        modifier = modifier.width(199.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Chapter thumbnail
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = chapter.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+        // Thumbnail card with focus border
+        Card(
+            onClick = onClick,
+            modifier = Modifier.size(width = 199.dp, height = 112.dp),
+            scale = CardDefaults.scale(focusedScale = 1.03f),
+            border = CardDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = RoundedCornerShape(8.dp),
+                ),
+            ),
+            shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Chapter thumbnail
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = chapter.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
 
-            // Gradient for text visibility
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.8f),
-                            ),
-                        ),
-                    ),
-            )
-
-            // Timestamp badge (top-right)
-            chapter.startPositionTicks?.let { ticks ->
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .background(
-                            Color.Black.copy(alpha = 0.7f),
-                            RoundedCornerShape(4.dp),
+                // Timestamp badge (top-right)
+                chapter.startPositionTicks?.let { ticks ->
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.7f),
+                                RoundedCornerShape(4.dp),
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = TimeFormatUtil.formatTicksToTime(ticks),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
                         )
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = TimeFormatUtil.formatTicksToTime(ticks),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                    )
+                    }
                 }
             }
+        }
 
-            // Chapter name (bottom)
-            chapter.name?.let { name ->
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                )
-            }
+        // Chapter name below thumbnail
+        chapter.name?.let { name ->
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -2039,6 +2064,7 @@ private fun EpisodeOptionsDialog(
     onApply: (audioIndex: Int, subtitleIndex: Int) -> Unit,
     onDismiss: () -> Unit,
     onMarkSeasonWatched: (Boolean) -> Unit,
+    onGoToSeries: () -> Unit,
 ) {
     // Get media streams from the episode
     val mediaSource = episode.mediaSources?.firstOrNull()
@@ -2169,27 +2195,40 @@ private fun EpisodeOptionsDialog(
         }
 
         EpisodeOptionsSubmenu.SeasonActions -> {
-            val seasonItems = listOf(
-                if (isSeasonWatched) {
+            val seasonItems = buildList {
+                // Mark watched/unwatched
+                add(
+                    if (isSeasonWatched) {
+                        SlideOutMenuItem(
+                            text = "Mark Season as Unwatched",
+                            icon = Icons.Outlined.VisibilityOff,
+                            iconTint = Color(0xFFEF4444),
+                            onClick = {
+                                onMarkSeasonWatched(false)
+                            },
+                        )
+                    } else {
+                        SlideOutMenuItem(
+                            text = "Mark Season as Watched",
+                            icon = Icons.Outlined.Visibility,
+                            iconTint = Color(0xFF22C55E),
+                            onClick = {
+                                onMarkSeasonWatched(true)
+                            },
+                        )
+                    },
+                )
+                // Go to Series
+                add(
                     SlideOutMenuItem(
-                        text = "Mark Season as Unwatched",
-                        icon = Icons.Outlined.VisibilityOff,
-                        iconTint = Color(0xFFEF4444),
+                        text = "Go to Series",
+                        icon = Icons.Outlined.PlayArrow,
                         onClick = {
-                            onMarkSeasonWatched(false)
+                            onGoToSeries()
                         },
-                    )
-                } else {
-                    SlideOutMenuItem(
-                        text = "Mark Season as Watched",
-                        icon = Icons.Outlined.Visibility,
-                        iconTint = Color(0xFF22C55E),
-                        onClick = {
-                            onMarkSeasonWatched(true)
-                        },
-                    )
-                },
-            )
+                    ),
+                )
+            }
             PlayerSlideOutMenu(
                 visible = true,
                 title = "Season Actions",
