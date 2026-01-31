@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -37,8 +38,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Visibility
@@ -73,6 +76,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
+import androidx.tv.material3.FilterChip
+import androidx.tv.material3.FilterChipDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -89,6 +94,7 @@ import dev.jausc.myflix.core.common.ui.IconColors
 import dev.jausc.myflix.core.common.util.TimeFormatUtil
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.CardSizes
+import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
@@ -134,6 +140,7 @@ fun EpisodesScreen(
     onEpisodeClick: (JellyfinItem) -> Unit,
     onWatchedClick: (JellyfinItem) -> Unit = {},
     onFavoriteClick: (JellyfinItem) -> Unit = {},
+    onSeasonWatchedClick: (JellyfinItem, Boolean) -> Unit = { _, _ -> },
     onPersonClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -141,6 +148,9 @@ fun EpisodesScreen(
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+
+    // Options dialog state
+    var showOptionsDialog by remember { mutableStateOf(false) }
 
     // Sync focusedEpisode with updated episodes list (for optimistic updates)
     // When episodes list changes, find the same episode by ID and update reference
@@ -275,6 +285,7 @@ fun EpisodesScreen(
                     onPlayClick = { onEpisodeClick(episode) },
                     onWatchedClick = { onWatchedClick(episode) },
                     onFavoriteClick = { onFavoriteClick(episode) },
+                    onMoreClick = { showOptionsDialog = true },
                     playFocusRequester = playFocusRequester,
                     episodeRowFocusRequester = episodeRowFocusRequester,
                     modifier = Modifier.fillMaxWidth(0.58f),
@@ -480,6 +491,20 @@ fun EpisodesScreen(
                 }
             }
         }
+
+        // Episode options dialog
+        val currentSeason = seasons.getOrNull(selectedSeasonIndex)
+        if (showOptionsDialog && focusedEpisode != null) {
+            EpisodeOptionsDialog(
+                episode = focusedEpisode!!,
+                season = currentSeason,
+                onDismiss = { showOptionsDialog = false },
+                onMarkSeasonWatched = { watched ->
+                    currentSeason?.let { onSeasonWatchedClick(it, watched) }
+                    showOptionsDialog = false
+                },
+            )
+        }
     }
 }
 
@@ -520,6 +545,7 @@ private fun EpisodeHeroContent(
     onPlayClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onMoreClick: () -> Unit,
     playFocusRequester: FocusRequester,
     episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
@@ -594,6 +620,7 @@ private fun EpisodeHeroContent(
             onPlayClick = onPlayClick,
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
+            onMoreClick = onMoreClick,
             focusRequester = playFocusRequester,
             downFocusRequester = episodeRowFocusRequester,
             leftEdgeFocusRequester = leftEdgeFocusRequester,
@@ -777,6 +804,7 @@ private fun EpisodeActionButtons(
     onPlayClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onMoreClick: () -> Unit,
     focusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
     leftEdgeFocusRequester: FocusRequester? = null,
@@ -792,6 +820,7 @@ private fun EpisodeActionButtons(
     val playFocusRequester = remember { FocusRequester() }
     val watchedFocusRequester = remember { FocusRequester() }
     val favoriteFocusRequester = remember { FocusRequester() }
+    val moreFocusRequester = remember { FocusRequester() }
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -842,6 +871,19 @@ private fun EpisodeActionButtons(
                     .focusRequester(favoriteFocusRequester)
                     .focusProperties { down = downFocusRequester }
                     .onFocusChanged { if (it.hasFocus) updateExitFocus(favoriteFocusRequester) },
+            )
+        }
+
+        item("more") {
+            ExpandablePlayButton(
+                title = "More",
+                icon = Icons.Outlined.MoreVert,
+                iconColor = TvColors.TextPrimary,
+                onClick = onMoreClick,
+                modifier = Modifier
+                    .focusRequester(moreFocusRequester)
+                    .focusProperties { down = downFocusRequester }
+                    .onFocusChanged { if (it.hasFocus) updateExitFocus(moreFocusRequester) },
             )
         }
     }
@@ -1930,6 +1972,310 @@ private fun KenBurnsBackdrop(
                     ),
                 ),
         )
+    }
+}
+
+// endregion
+
+// region Episode Options Dialog
+
+/**
+ * Episode options dialog with audio/subtitle selection and season actions.
+ * Styled to match LibraryFilterDialog with FilterChip components.
+ */
+@Composable
+private fun EpisodeOptionsDialog(
+    episode: JellyfinItem,
+    season: JellyfinItem?,
+    onDismiss: () -> Unit,
+    onMarkSeasonWatched: (Boolean) -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    // Get media streams from the episode
+    val mediaSource = episode.mediaSources?.firstOrNull()
+    val audioStreams = remember(mediaSource) {
+        mediaSource?.mediaStreams?.filter { it.type == "Audio" } ?: emptyList()
+    }
+    val subtitleStreams = remember(mediaSource) {
+        mediaSource?.mediaStreams?.filter { it.type == "Subtitle" } ?: emptyList()
+    }
+
+    // Track selected audio/subtitle indices (default = first audio, no subtitle)
+    var selectedAudioIndex by remember {
+        mutableStateOf(audioStreams.indexOfFirst { it.isDefault == true }.takeIf { it >= 0 } ?: 0)
+    }
+    var selectedSubtitleIndex by remember {
+        mutableStateOf(subtitleStreams.indexOfFirst { it.isDefault == true }.takeIf { it >= 0 } ?: -1)
+    }
+
+    // Season watched status
+    val isSeasonWatched = season?.userData?.played == true
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 400.dp,
+        maxWidth = 500.dp,
+    ) {
+        Column {
+            Text(
+                text = "Episode Options",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Audio Track Section
+            if (audioStreams.isNotEmpty()) {
+                Text(
+                    text = "Audio Track",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    itemsIndexed(audioStreams) { index, stream ->
+                        val isSelected = selectedAudioIndex == index
+                        val label = buildString {
+                            append(stream.displayTitle ?: stream.language?.uppercase() ?: "Track ${index + 1}")
+                            stream.codec?.let { append(" (${it.uppercase()})") }
+                            stream.channels?.let { append(" ${it}ch") }
+                        }
+
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedAudioIndex = index },
+                            modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            colors = FilterChipDefaults.colors(
+                                containerColor = TvColors.SurfaceElevated,
+                                contentColor = TvColors.TextSecondary,
+                                focusedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
+                                focusedContentColor = TvColors.TextPrimary,
+                                selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
+                                selectedContentColor = TvColors.BluePrimary,
+                                focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.4f),
+                                focusedSelectedContentColor = TvColors.BluePrimary,
+                            ),
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Subtitle Track Section
+            if (subtitleStreams.isNotEmpty()) {
+                Text(
+                    text = "Subtitles",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    // "Off" option
+                    item {
+                        val isSelected = selectedSubtitleIndex == -1
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedSubtitleIndex = -1 },
+                            modifier = if (audioStreams.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier,
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            colors = FilterChipDefaults.colors(
+                                containerColor = TvColors.SurfaceElevated,
+                                contentColor = TvColors.TextSecondary,
+                                focusedContainerColor = Color(0xFF9333EA).copy(alpha = 0.3f),
+                                focusedContentColor = TvColors.TextPrimary,
+                                selectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.2f),
+                                selectedContentColor = Color(0xFF9333EA),
+                                focusedSelectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.4f),
+                                focusedSelectedContentColor = Color(0xFF9333EA),
+                            ),
+                        ) {
+                            Text("Off", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    itemsIndexed(subtitleStreams) { index, stream ->
+                        val isSelected = selectedSubtitleIndex == index
+                        val label = stream.displayTitle ?: stream.language?.uppercase() ?: "Track ${index + 1}"
+
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedSubtitleIndex = index },
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            colors = FilterChipDefaults.colors(
+                                containerColor = TvColors.SurfaceElevated,
+                                contentColor = TvColors.TextSecondary,
+                                focusedContainerColor = Color(0xFF9333EA).copy(alpha = 0.3f),
+                                focusedContentColor = TvColors.TextPrimary,
+                                selectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.2f),
+                                selectedContentColor = Color(0xFF9333EA),
+                                focusedSelectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.4f),
+                                focusedSelectedContentColor = Color(0xFF9333EA),
+                            ),
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Season Actions Section
+            if (season != null) {
+                Text(
+                    text = "Season Actions",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    item {
+                        FilterChip(
+                            selected = false,
+                            onClick = { onMarkSeasonWatched(true) },
+                            modifier = if (audioStreams.isEmpty() && subtitleStreams.isEmpty()) {
+                                Modifier.focusRequester(focusRequester)
+                            } else {
+                                Modifier
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Visibility,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            },
+                            colors = FilterChipDefaults.colors(
+                                containerColor = TvColors.SurfaceElevated,
+                                contentColor = TvColors.TextSecondary,
+                                focusedContainerColor = Color(0xFF22C55E).copy(alpha = 0.3f),
+                                focusedContentColor = TvColors.TextPrimary,
+                                selectedContainerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
+                                selectedContentColor = Color(0xFF22C55E),
+                                focusedSelectedContainerColor = Color(0xFF22C55E).copy(alpha = 0.4f),
+                                focusedSelectedContentColor = Color(0xFF22C55E),
+                            ),
+                        ) {
+                            Text("Mark Season Watched", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    item {
+                        FilterChip(
+                            selected = false,
+                            onClick = { onMarkSeasonWatched(false) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.VisibilityOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            },
+                            colors = FilterChipDefaults.colors(
+                                containerColor = TvColors.SurfaceElevated,
+                                contentColor = TvColors.TextSecondary,
+                                focusedContainerColor = Color(0xFFEF4444).copy(alpha = 0.3f),
+                                focusedContentColor = TvColors.TextPrimary,
+                                selectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                                selectedContentColor = Color(0xFFEF4444),
+                                focusedSelectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.4f),
+                                focusedSelectedContentColor = Color(0xFFEF4444),
+                            ),
+                        ) {
+                            Text("Mark Season Unwatched", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Close button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                androidx.tv.material3.Button(
+                    onClick = onDismiss,
+                    shape = androidx.tv.material3.ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                        containerColor = TvColors.BluePrimary.copy(alpha = 0.6f),
+                        contentColor = Color.White,
+                        focusedContainerColor = TvColors.BluePrimary,
+                        focusedContentColor = Color.White,
+                    ),
+                ) {
+                    Text("Close")
+                }
+            }
+        }
     }
 }
 
