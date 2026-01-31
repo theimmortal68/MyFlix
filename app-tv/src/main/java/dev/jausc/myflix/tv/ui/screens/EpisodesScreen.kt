@@ -90,6 +90,7 @@ import dev.jausc.myflix.core.common.util.TimeFormatUtil
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
+import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
@@ -566,6 +567,11 @@ private fun EpisodeHeroContent(
 
         // Metadata row
         EpisodeMetadataRow(episode = episode)
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Media badges: resolution, codec, HDR/DV, audio
+        MediaBadgesRow(item = episode)
 
         Spacer(modifier = Modifier.height(6.dp))
 
