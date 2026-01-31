@@ -117,11 +117,13 @@ fun NavRailItem(
             .onKeyEvent { event ->
                 when (event.key) {
                     Key.Enter, Key.DirectionCenter -> {
-                        if (event.type == KeyEventType.KeyDown) {
+                        // Trigger onClick on KeyUp to ensure the event is fully consumed
+                        // before focus changes. This prevents KeyUp from escaping to other
+                        // elements when onDeactivate() sets canFocus=false.
+                        if (event.type == KeyEventType.KeyUp) {
                             onClick()
                         }
-                        // Consume both KeyDown and KeyUp to prevent event leaking to other
-                        // components after focus shifts during navigation
+                        // Consume both KeyDown and KeyUp to prevent event leaking
                         true
                     }
                     Key.DirectionRight -> {

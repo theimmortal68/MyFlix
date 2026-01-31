@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
@@ -583,7 +584,7 @@ private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) 
 
 /**
  * Action buttons: Play and More Info (20dp height).
- * In preview mode, buttons are not rendered to prevent accidental clicks.
+ * In preview mode, buttons are invisible but still focusable for navigation.
  */
 @Composable
 private fun HeroActionButtons(
@@ -596,20 +597,22 @@ private fun HeroActionButtons(
     onButtonFocused: (() -> Unit)? = null,
     leftEdgeFocusRequester: FocusRequester? = null,
 ) {
-    // Don't render buttons in preview mode - they would be invisible but still
-    // receive focus/clicks, causing unintended playback when navigating
-    if (isPreviewMode) return
+    // Alpha is 0 in preview mode (invisible but focusable)
+    val buttonsAlpha = if (isPreviewMode) 0f else 1f
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.alpha(buttonsAlpha),
     ) {
         // Play button - receives initial focus on app launch
         // Left navigation goes to NavRail sentinel
+        // alwaysExpanded = true because buttons are hidden when not in hero focus area
         ExpandablePlayButton(
             title = playButtonText,
             icon = Icons.Outlined.PlayArrow,
             iconColor = playButtonIconColor,
             onClick = onPlayClick,
+            alwaysExpanded = true,
             modifier = Modifier
                 .focusRequester(playButtonFocusRequester)
                 .then(
@@ -632,6 +635,7 @@ private fun HeroActionButtons(
             icon = Icons.Outlined.Info,
             iconColor = IconColors.Info,
             onClick = onDetailsClick,
+            alwaysExpanded = true,
             modifier = Modifier
                 .onFocusChanged { state ->
                     if (state.isFocused) {

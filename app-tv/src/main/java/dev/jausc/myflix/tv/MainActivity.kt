@@ -1098,38 +1098,40 @@ fun MyFlixTvApp() {
                 )
                 val state by viewModel.uiState.collectAsState()
 
-                // Determine initial season index based on season number
-                var selectedSeasonIndex by remember { mutableStateOf(0) }
-                var initialSeasonResolved by remember { mutableStateOf(false) }
                 val seasonChangeScope = rememberCoroutineScope()
 
-                // Resolve the initial season index once data is loaded
-                // Find season by indexNumber (season number) instead of list position
-                LaunchedEffect(state.seasons, seasonNumber) {
-                    if (state.seasons.isNotEmpty() && !initialSeasonResolved) {
-                        selectedSeasonIndex = if (seasonNumber >= 0) {
-                            // Find the season with matching indexNumber
+                // Derive initial season index reactively - null means not yet resolvable
+                // This prevents the race condition where we render with index=0 before data loads
+                val resolvedSeasonIndex by remember(state.seasons, seasonNumber) {
+                    derivedStateOf {
+                        if (state.seasons.isEmpty()) null
+                        else if (seasonNumber >= 0) {
                             state.seasons.indexOfFirst { it.indexNumber == seasonNumber }
                                 .takeIf { it >= 0 } ?: 0
-                        } else {
-                            0
-                        }
-                        initialSeasonResolved = true
+                        } else 0
                     }
                 }
 
-                // When a different season is selected, load its episodes
-                LaunchedEffect(selectedSeasonIndex, state.seasons, initialSeasonResolved) {
-                    if (initialSeasonResolved) {
-                        val season = state.seasons.getOrNull(selectedSeasonIndex)
-                        if (season != null && season.id != state.selectedSeason?.id) {
-                            viewModel.selectSeason(season)
+                // Track user-selected season override (for manual season switching)
+                var userSeasonIndex by remember { mutableStateOf<Int?>(null) }
+
+                // Effective season index: user override takes precedence over initial
+                val selectedSeasonIndex = userSeasonIndex ?: resolvedSeasonIndex
+
+                // When season index changes, load episodes for that season
+                LaunchedEffect(selectedSeasonIndex, state.seasons) {
+                    selectedSeasonIndex?.let { index ->
+                        state.seasons.getOrNull(index)?.let { season ->
+                            if (season.id != state.selectedSeason?.id) {
+                                viewModel.selectSeason(season)
+                            }
                         }
                     }
                 }
 
                 // Show loading or episodes screen
-                if (state.isLoading || state.item == null) {
+                // Don't render until season index is resolved to prevent showing wrong season
+                if (state.isLoading || state.item == null || selectedSeasonIndex == null) {
                     // Focusable loading state to capture focus and prevent NavRail auto-expand
                     val loadingFocusRequester = remember { FocusRequester() }
                     LaunchedEffect(Unit) {
@@ -1153,13 +1155,13 @@ fun MyFlixTvApp() {
                         seriesName = state.item?.name ?: "",
                         seasons = state.seasons,
                         episodes = state.episodes,
-                        selectedSeasonIndex = selectedSeasonIndex,
+                        selectedSeasonIndex = selectedSeasonIndex!!,
                         selectedEpisodeId = episodeId,
                         jellyfinClient = jellyfinClient,
                         onSeasonSelected = { index ->
                             // Temporarily disable sentinel to prevent focus theft during season change
                             sentinelEnabled = false
-                            selectedSeasonIndex = index
+                            userSeasonIndex = index
                             // Re-enable sentinel after content has time to establish focus
                             seasonChangeScope.launch {
                                 delay(NavRailAnimations.SentinelStartupDelayMs)

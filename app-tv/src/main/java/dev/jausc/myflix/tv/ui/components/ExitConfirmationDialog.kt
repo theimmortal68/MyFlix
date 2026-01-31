@@ -33,12 +33,28 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
  *
  * @param onConfirmExit Callback when user confirms exit
  * @param onCancel Callback when user cancels (stays in app)
+ * @param restoreFocusRequester FocusRequester to restore focus to when dialog is dismissed
  * @param modifier Modifier for the component
  */
 @Composable
-fun ExitConfirmationDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier,) {
+fun ExitConfirmationDialog(
+    onConfirmExit: () -> Unit,
+    onCancel: () -> Unit,
+    restoreFocusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
     val cancelFocusRequester = remember { FocusRequester() }
     val exitFocusRequester = remember { FocusRequester() }
+
+    // Handle dismiss with focus restoration
+    val handleCancel: () -> Unit = {
+        onCancel()
+        try {
+            restoreFocusRequester?.requestFocus()
+        } catch (_: IllegalStateException) {
+            // Focus requester not attached, ignore
+        }
+    }
 
     // Focus cancel button by default (safer option)
     LaunchedEffect(Unit) {
@@ -47,7 +63,7 @@ fun ExitConfirmationDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit, modi
 
     TvCenteredPopup(
         visible = true,
-        onDismiss = onCancel,
+        onDismiss = handleCancel,
         minWidth = 320.dp,
         maxWidth = 380.dp,
         modifier = modifier,
@@ -79,7 +95,7 @@ fun ExitConfirmationDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit, modi
             ) {
                 // Cancel button - focused by default
                 Button(
-                    onClick = onCancel,
+                    onClick = handleCancel,
                     modifier = Modifier
                         .weight(1f)
                         .focusRequester(cancelFocusRequester)

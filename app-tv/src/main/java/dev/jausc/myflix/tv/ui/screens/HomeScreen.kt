@@ -166,7 +166,7 @@ fun HomeScreen(
                 viewModel.setFavorite(itemId, favorite)
             },
             onGoToSeries = { seriesId -> onItemClick(seriesId) },
-            onGoToSeason = { seasonId -> onItemClick(seasonId) },
+            // onGoToSeason intentionally omitted - not needed on home screen
             onHideFromResume = { itemId ->
                 viewModel.hideFromResume(itemId)
             },
@@ -351,6 +351,7 @@ fun HomeScreen(
             onCancel = {
                 showExitDialog = false
             },
+            restoreFocusRequester = heroPlayFocusRequester,
         )
     }
 }

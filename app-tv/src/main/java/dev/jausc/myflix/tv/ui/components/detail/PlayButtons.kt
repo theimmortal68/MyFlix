@@ -456,6 +456,9 @@ fun EpisodeActionButtons(
 /**
  * An icon button that expands to show text when focused.
  * 20dp square when unfocused (icon only), expands when focused (icon + text).
+ *
+ * @param alwaysExpanded When true, always shows icon + text regardless of focus state.
+ *                       Useful for hero sections where buttons are hidden when not in use.
  */
 @Composable
 fun ExpandablePlayButton(
@@ -466,13 +469,16 @@ fun ExpandablePlayButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     mirrorIcon: Boolean = false,
     iconColor: Color = Color.Unspecified,
+    alwaysExpanded: Boolean = false,
 ) {
     val isFocused by interactionSource.collectIsFocusedAsState()
+    // Show expanded state when focused OR when alwaysExpanded is true
+    val showExpanded = isFocused || alwaysExpanded
 
     Button(
         onClick = onClick,
         modifier = modifier.then(
-            if (isFocused) {
+            if (showExpanded) {
                 Modifier.requiredSizeIn(
                     minWidth = MinButtonSize,
                     minHeight = MinButtonSize,
@@ -486,7 +492,7 @@ fun ExpandablePlayButton(
             color = Color.White.copy(alpha = 0.2f),
             shape = ButtonShape,
         ),
-        contentPadding = if (isFocused) {
+        contentPadding = if (showExpanded) {
             PaddingValues(horizontal = 8.dp, vertical = 0.dp)
         } else {
             PaddingValues(0.dp)
@@ -515,7 +521,7 @@ fun ExpandablePlayButton(
                     }
                 ),
         )
-        if (isFocused) {
+        if (showExpanded) {
             Spacer(Modifier.width(4.dp))
             Text(
                 text = title,

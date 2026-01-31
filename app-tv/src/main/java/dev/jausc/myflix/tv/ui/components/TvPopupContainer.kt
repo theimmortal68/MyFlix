@@ -1,4 +1,5 @@
 @file:Suppress("MagicNumber")
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 
 package dev.jausc.myflix.tv.ui.components
 
@@ -13,6 +14,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -147,6 +150,11 @@ fun TvPopupContainer(
             ) + fadeOut(tween(150)),
             modifier = Modifier
                 .focusGroup()
+                .focusProperties {
+                    // Trap focus within the popup - prevent escaping to content behind
+                    @Suppress("DEPRECATION")
+                    exit = { FocusRequester.Cancel }
+                }
                 .then(
                     if (anchor != null) {
                         Modifier.offset { IntOffset(offsetX, offsetY) }

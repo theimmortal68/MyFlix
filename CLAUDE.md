@@ -118,6 +118,29 @@ codex exec "Implement optimistic watched state sync with WorkManager retry given
 
 ---
 
+## Building and Installing
+
+### Build TV App (from WSL)
+```bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "\$env:JAVA_HOME = 'C:\Users\jausc\AppData\Local\Programs\Android Studio\jbr'; cd 'C:\Users\jausc\StudioProjects\MyFlix'; .\gradlew.bat :app-tv:assembleDebug"
+```
+
+### Install on Test Devices
+```bash
+# Shield TV
+adb -s 192.168.1.136:5555 install -r "/mnt/c/Users/jausc/StudioProjects/MyFlix/app-tv/build/outputs/apk/debug/app-tv-universal-debug.apk"
+
+# Secondary device
+adb -s 192.168.1.200:5555 install -r "/mnt/c/Users/jausc/StudioProjects/MyFlix/app-tv/build/outputs/apk/debug/app-tv-universal-debug.apk"
+```
+
+### Build + Install in One Step
+```bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "\$env:JAVA_HOME = 'C:\Users\jausc\AppData\Local\Programs\Android Studio\jbr'; cd 'C:\Users\jausc\StudioProjects\MyFlix'; .\gradlew.bat :app-tv:assembleDebug" && adb -s 192.168.1.136:5555 install -r "/mnt/c/Users/jausc/StudioProjects/MyFlix/app-tv/build/outputs/apk/debug/app-tv-universal-debug.apk"
+```
+
+---
+
 ## Key Patterns
 
 ### TV Focus Management
