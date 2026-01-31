@@ -443,6 +443,7 @@ fun EpisodesScreen(
                                 focusedEpisode?.let { episode ->
                                     MediaInfoTabContent(
                                         mediaStreams = episode.mediaSources?.firstOrNull()?.mediaStreams ?: emptyList(),
+                                        genres = episode.genres ?: emptyList(),
                                         tabFocusRequester = firstTabFocusRequester,
                                     )
                                 }
@@ -565,13 +566,8 @@ private fun EpisodeHeroContent(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Metadata row
+        // Metadata row with media badges
         EpisodeMetadataRow(episode = episode)
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Media badges: resolution, codec, HDR/DV, audio
-        MediaBadgesRow(item = episode)
 
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -684,6 +680,9 @@ private fun EpisodeMetadataRow(episode: JellyfinItem) {
             MetadataDot()
             ProviderBadge(text = "TMDB", backgroundColor = Color(0xFF01D277))
         }
+
+        // Media badges (resolution, codec, HDR/DV, audio)
+        MediaBadgesRow(item = episode)
     }
 }
 
@@ -743,6 +742,28 @@ private fun ProviderBadge(text: String, backgroundColor: Color) {
                 fontSize = 9.sp,
             ),
             color = Color.Black,
+        )
+    }
+}
+
+/**
+ * Genre badge displayed in Media Info tab.
+ */
+@Composable
+private fun GenreBadge(text: String) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(TvColors.BluePrimary.copy(alpha = 0.2f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium,
+            ),
+            color = TvColors.TextPrimary,
         )
     }
 }
@@ -1314,12 +1335,13 @@ private fun OverviewSection(overview: String) {
 }
 
 /**
- * Media Info tab - shows video/audio/subtitle streams.
+ * Media Info tab - shows video/audio/subtitle streams and genres.
  * Made focusable for D-pad navigation from tab headers.
  */
 @Composable
 private fun MediaInfoTabContent(
     mediaStreams: List<MediaStream>,
+    genres: List<String> = emptyList(),
     tabFocusRequester: FocusRequester? = null,
 ) {
     val videoStreams = mediaStreams.filter { it.type == "Video" }
@@ -1331,6 +1353,35 @@ private fun MediaInfoTabContent(
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        // Genres section
+        if (genres.isNotEmpty()) {
+            item("genres") {
+                Box(
+                    modifier = Modifier
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
+                        }
+                        .focusable(),
+                ) {
+                    Column(modifier = Modifier.width(200.dp)) {
+                        Text(
+                            text = "Genres",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        genres.forEach { genre ->
+                            GenreBadge(text = genre)
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                }
+            }
+        }
+
         // Video info
         if (videoStreams.isNotEmpty()) {
             item("video") {
