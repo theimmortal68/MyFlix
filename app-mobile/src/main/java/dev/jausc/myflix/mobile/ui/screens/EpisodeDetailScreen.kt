@@ -21,8 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.DetailInfoItem
+import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.directors
+import dev.jausc.myflix.core.common.model.imdbId
+import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.writers
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
@@ -34,6 +37,7 @@ import dev.jausc.myflix.mobile.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.mobile.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.mobile.ui.components.detail.DetailInfoSection
 import dev.jausc.myflix.mobile.ui.components.detail.DotSeparatedRow
+import dev.jausc.myflix.mobile.ui.components.detail.ExternalLinksRow
 import dev.jausc.myflix.mobile.ui.components.detail.ItemRow
 import dev.jausc.myflix.mobile.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.mobile.ui.components.detail.MoviePlayButtons
@@ -101,7 +105,15 @@ fun EpisodeDetailScreen(
             episode.writers.mapNotNull { it.name }.takeIf { it.isNotEmpty() }?.let {
                 add(DetailInfoItem("Writers", it.joinToString(", ")))
             }
+            episode.tags?.takeIf { it.isNotEmpty() }?.let {
+                add(DetailInfoItem("Tags", it.joinToString(", ")))
+            }
         }
+    }
+
+    // Build external links from providerIds and externalUrls
+    val externalLinks = remember(episode.externalUrls, episode.imdbId, episode.tmdbId) {
+        buildEpisodeExternalLinks(episode)
     }
 
     LazyColumn(
@@ -164,6 +176,17 @@ fun EpisodeDetailScreen(
                 DetailInfoSection(
                     title = "Details",
                     items = detailInfoItems,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // External Links (IMDB, TMDB, etc.)
+        if (externalLinks.isNotEmpty()) {
+            item(key = "external_links") {
+                ExternalLinksRow(
+                    title = "External Links",
+                    links = externalLinks,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -331,4 +354,43 @@ private fun EpisodeDetailsHeader(episode: JellyfinItem, overviewOnClick: () -> U
             }
         }
     }
+}
+
+/**
+ * Build external links list from episode's externalUrls and providerIds.
+ * For episodes, links go to the specific episode page on IMDB/TMDB when possible.
+ */
+private fun buildEpisodeExternalLinks(episode: JellyfinItem): List<ExternalLinkItem> {
+    val links = mutableListOf<ExternalLinkItem>()
+
+    // Add links from externalUrls first
+    episode.externalUrls?.forEach { extUrl ->
+        val label = extUrl.name ?: return@forEach
+        val link = extUrl.url ?: return@forEach
+        if (label.isNotEmpty() && link.isNotEmpty()) {
+            links.add(ExternalLinkItem(label, link))
+        }
+    }
+
+    // Add IMDB link if not already present
+    episode.imdbId?.let { imdbId ->
+        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
+        if (!hasImdb) {
+            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
+        }
+    }
+
+    // Add TMDB link if not already present
+    // For episodes, TMDB uses format: /tv/{series_id}/season/{season}/episode/{episode}
+    // But we only have the episode's TMDB ID, so we link to the general episode page
+    episode.tmdbId?.let { tmdbId ->
+        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
+        if (!hasTmdb) {
+            // TMDB episode IDs don't have direct URLs, but we can try the TV episode format
+            // For now, link to TMDB search which will find the episode
+            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/search?query=${episode.name}"))
+        }
+    }
+
+    return links
 }

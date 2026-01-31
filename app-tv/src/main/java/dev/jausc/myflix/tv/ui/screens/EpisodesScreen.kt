@@ -78,11 +78,15 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import dev.jausc.myflix.core.common.model.JellyfinChapter
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.JellyfinPerson
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.formattedFullPremiereDate
+import dev.jausc.myflix.core.common.model.imdbId
+import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.ui.IconColors
+import dev.jausc.myflix.core.common.util.TimeFormatUtil
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
@@ -100,6 +104,7 @@ import java.util.Locale
  */
 private enum class EpisodeTab {
     Seasons,
+    Chapters,
     Details,
     MediaInfo,
     CastCrew,
@@ -224,6 +229,7 @@ fun EpisodesScreen(
     val availableTabs = remember(focusedEpisode, guestStars) {
         EpisodeTab.entries.filter { tab ->
             when (tab) {
+                EpisodeTab.Chapters -> focusedEpisode?.chapters?.isNotEmpty() == true
                 EpisodeTab.GuestStars -> guestStars.isNotEmpty()
                 EpisodeTab.CastCrew -> focusedEpisode?.people?.isNotEmpty() == true
                 EpisodeTab.MediaInfo -> focusedEpisode?.mediaSources?.firstOrNull()?.mediaStreams?.isNotEmpty() == true
@@ -368,11 +374,12 @@ fun EpisodesScreen(
                             ) {
                                 Text(
                                     text = when (tab) {
+                                        EpisodeTab.Seasons -> "Seasons"
+                                        EpisodeTab.Chapters -> "Chapters"
                                         EpisodeTab.Details -> "Details"
                                         EpisodeTab.MediaInfo -> "Media Info"
                                         EpisodeTab.CastCrew -> "Cast & Crew"
                                         EpisodeTab.GuestStars -> "Guest Stars"
-                                        EpisodeTab.Seasons -> "Seasons"
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = when {
@@ -410,6 +417,19 @@ fun EpisodesScreen(
                             },
                     ) {
                         when (selectedTab) {
+                            EpisodeTab.Chapters -> {
+                                focusedEpisode?.let { episode ->
+                                    ChaptersTabContent(
+                                        chapters = episode.chapters ?: emptyList(),
+                                        itemId = episode.id,
+                                        jellyfinClient = jellyfinClient,
+                                        onChapterClick = { positionMs ->
+                                            onEpisodeClick(episode)
+                                        },
+                                        tabFocusRequester = firstTabFocusRequester,
+                                    )
+                                }
+                            }
                             EpisodeTab.Details -> {
                                 focusedEpisode?.let { episode ->
                                     DetailsTabContent(
@@ -647,6 +667,18 @@ private fun EpisodeMetadataRow(episode: JellyfinItem) {
                 )
             }
         }
+
+        // IMDB badge
+        episode.imdbId?.let {
+            MetadataDot()
+            ProviderBadge(text = "IMDb", backgroundColor = Color(0xFFF5C518))
+        }
+
+        // TMDB badge
+        episode.tmdbId?.let {
+            MetadataDot()
+            ProviderBadge(text = "TMDB", backgroundColor = Color(0xFF01D277))
+        }
     }
 }
 
@@ -683,6 +715,29 @@ private fun RatingBadge(text: String) {
                 fontSize = 10.sp,
             ),
             color = Color.White,
+        )
+    }
+}
+
+/**
+ * Provider badge (IMDB, TMDB) showing that external metadata is available.
+ */
+@Composable
+private fun ProviderBadge(text: String, backgroundColor: Color) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 9.sp,
+            ),
+            color = Color.Black,
         )
     }
 }
@@ -1132,6 +1187,40 @@ private fun DetailsTabContent(
                 }
             }
         }
+
+        // Tags section
+        if (!episode.tags.isNullOrEmpty()) {
+            item("tags") {
+                Box(
+                    modifier = Modifier
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
+                        }
+                        .focusable(),
+                ) {
+                    Column(
+                        modifier = Modifier.width(250.dp),
+                    ) {
+                        Text(
+                            text = "Tags",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = episode.tags!!.joinToString(" • "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TvColors.TextSecondary,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1415,6 +1504,136 @@ private fun GuestStarsTabContent(
                     }
                 },
             )
+        }
+    }
+}
+
+/**
+ * Chapters tab - shows chapter thumbnails with timestamps.
+ * Clicking a chapter starts playback at that position.
+ */
+@Composable
+private fun ChaptersTabContent(
+    chapters: List<JellyfinChapter>,
+    itemId: String,
+    jellyfinClient: JellyfinClient,
+    onChapterClick: (Long) -> Unit,
+    tabFocusRequester: FocusRequester? = null,
+) {
+    if (chapters.isEmpty()) return
+
+    val firstFocus = remember { FocusRequester() }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRestorer(firstFocus),
+    ) {
+        itemsIndexed(chapters, key = { index, _ -> "chapter_$index" }) { index, chapter ->
+            val imageUrl = jellyfinClient.getChapterImageUrl(itemId, index)
+
+            ChapterCard(
+                chapter = chapter,
+                imageUrl = imageUrl,
+                onClick = {
+                    chapter.startPositionTicks?.let { ticks ->
+                        onChapterClick(ticks / 10_000)
+                    }
+                },
+                modifier = Modifier
+                    .then(if (index == 0) Modifier.focusRequester(firstFocus) else Modifier)
+                    .focusProperties {
+                        if (tabFocusRequester != null) {
+                            up = tabFocusRequester
+                        }
+                    },
+            )
+        }
+    }
+}
+
+/**
+ * Individual chapter card with thumbnail and timestamp.
+ */
+@Composable
+private fun ChapterCard(
+    chapter: JellyfinChapter,
+    imageUrl: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.size(width = 200.dp, height = 140.dp),
+        scale = CardDefaults.scale(focusedScale = 1.03f),
+        border = CardDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, TvColors.BluePrimary),
+                shape = RoundedCornerShape(8.dp),
+            ),
+        ),
+        shape = CardDefaults.shape(shape = RoundedCornerShape(8.dp)),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Chapter thumbnail
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = chapter.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            // Gradient for text visibility
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.8f),
+                            ),
+                        ),
+                    ),
+            )
+
+            // Timestamp badge (top-right)
+            chapter.startPositionTicks?.let { ticks ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .background(
+                            Color.Black.copy(alpha = 0.7f),
+                            RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = TimeFormatUtil.formatTicksToTime(ticks),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                    )
+                }
+            }
+
+            // Chapter name (bottom)
+            chapter.name?.let { name ->
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                )
+            }
         }
     }
 }
