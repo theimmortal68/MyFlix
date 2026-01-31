@@ -115,13 +115,17 @@ fun NavRailItem(
             }
             .focusable()
             .onKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (event.key) {
                     Key.Enter, Key.DirectionCenter -> {
-                        onClick()
+                        if (event.type == KeyEventType.KeyDown) {
+                            onClick()
+                        }
+                        // Consume both KeyDown and KeyUp to prevent event leaking to other
+                        // components after focus shifts during navigation
                         true
                     }
                     Key.DirectionRight -> {
+                        if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                         // Collapse/deactivate NavRail first
                         onExitRight()
                         // If screen registered explicit focus target, use it

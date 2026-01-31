@@ -44,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
@@ -584,7 +583,7 @@ private fun HeroDescription(item: JellyfinItem, isPreviewMode: Boolean = false) 
 
 /**
  * Action buttons: Play and More Info (20dp height).
- * In preview mode, buttons are invisible but still focusable for navigation.
+ * In preview mode, buttons are not rendered to prevent accidental clicks.
  */
 @Composable
 private fun HeroActionButtons(
@@ -597,12 +596,12 @@ private fun HeroActionButtons(
     onButtonFocused: (() -> Unit)? = null,
     leftEdgeFocusRequester: FocusRequester? = null,
 ) {
-    // Alpha is 0 in preview mode (invisible but focusable)
-    val buttonsAlpha = if (isPreviewMode) 0f else 1f
+    // Don't render buttons in preview mode - they would be invisible but still
+    // receive focus/clicks, causing unintended playback when navigating
+    if (isPreviewMode) return
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.alpha(buttonsAlpha),
     ) {
         // Play button - receives initial focus on app launch
         // Left navigation goes to NavRail sentinel
