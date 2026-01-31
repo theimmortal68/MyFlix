@@ -42,18 +42,33 @@ This project supports collaborative problem-solving using multiple AI models. Cl
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Default Behavior: Consensus Before Changes
+
+**IMPORTANT**: Before making non-trivial code changes, Claude MUST consult with Codex and Gemini to achieve consensus. This ensures:
+- Multiple perspectives on architecture and implementation
+- Consistent patterns across the codebase
+- Reduced risk of regressions
+
+**Process:**
+1. Claude identifies the problem and potential approaches
+2. Claude queries both Codex and Gemini with context
+3. Claude synthesizes responses and identifies consensus
+4. If models disagree, Claude presents options to user
+5. Only after consensus/approval does Claude implement changes
+
 ### When to Use Multi-Model Collaboration
 
-**Good candidates:**
-- Complex TV focus management (D-pad navigation, focus restoration)
-- Architecture decisions with multiple valid approaches
-- Performance-sensitive features requiring trade-off analysis
-- Cross-cutting concerns (state sync, offline support, caching)
+**Always consult (default behavior):**
+- Bug fixes that involve race conditions or state management
+- UI/UX changes that affect user interaction patterns
+- Navigation or focus management changes
+- Any change touching multiple files or components
 
-**Not needed for:**
-- Simple bug fixes
-- Straightforward CRUD operations
-- Well-documented API integrations
+**May skip consultation for:**
+- Typo fixes
+- Simple logging additions
+- Comment updates
+- Single-line obvious fixes
 
 ### Prompt Guidelines
 

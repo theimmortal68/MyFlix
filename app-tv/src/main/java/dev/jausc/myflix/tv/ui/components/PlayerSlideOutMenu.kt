@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -122,6 +123,10 @@ fun PlayerSlideOutMenu(
     firstItemFocusRequester: FocusRequester? = null,
     leftFocusRequester: FocusRequester? = null,
     rightFocusRequester: FocusRequester? = null,
+    /** Called when LEFT navigation occurs, before focus moves. Useful for closing submenus. */
+    onLeftNavigation: (() -> Unit)? = null,
+    /** Maximum height for the menu content (excluding title). Defaults to 350.dp. */
+    maxContentHeight: Dp = 350.dp,
     modifier: Modifier = Modifier,
 ) {
     if (visible) {
@@ -146,7 +151,19 @@ fun PlayerSlideOutMenu(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    // Track container's position in root to adjust anchor coordinates
+    var containerOffsetX by remember { mutableStateOf(0f) }
+    var containerOffsetY by remember { mutableStateOf(0f) }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                containerOffsetX = position.x
+                containerOffsetY = position.y
+            },
+    ) {
         val density = LocalDensity.current
         val menuWidth = 200.dp
         val menuHeight = 300.dp // Approximate max height
@@ -155,10 +172,11 @@ fun PlayerSlideOutMenu(
         val menuWidthPx = with(density) { measuredWidthPx ?: menuWidth.toPx() }
         val menuHeightPx = with(density) { measuredHeightPx ?: menuHeight.toPx() }
 
-        // Calculate menu position based on anchor
+        // Calculate menu position based on anchor (adjusted for container offset)
         val offsetX = if (anchor != null) {
             with(density) {
-                val anchorPx = anchor.x.toPx()
+                // Anchor is in root coordinates, adjust for container's position
+                val anchorPx = anchor.x.toPx() - containerOffsetX
                 val maxWidthPx = maxWidth.toPx()
                 val rawX = when (anchor.alignment) {
                     MenuAnchorAlignment.BottomStart -> anchorPx
@@ -174,9 +192,14 @@ fun PlayerSlideOutMenu(
 
         val offsetY = if (anchor != null) {
             with(density) {
-                val anchorPx = anchor.y.toPx()
+                // Anchor is in root coordinates, adjust for container's position
+                val anchorPx = anchor.y.toPx() - containerOffsetY
+                val maxHeightPx = maxHeight.toPx()
                 val targetY = if (anchor.placement == MenuAnchorPlacement.Below) {
-                    anchorPx + 12.dp.toPx()
+                    val rawY = anchorPx + 12.dp.toPx()
+                    // Ensure menu doesn't go past screen bottom (with 16dp margin)
+                    val maxY = maxHeightPx - menuHeightPx - 16f
+                    rawY.coerceIn(16f, max(16f, maxY))
                 } else {
                     (anchorPx - menuHeightPx).coerceAtLeast(48f)
                 }
@@ -278,6 +301,7 @@ fun PlayerSlideOutMenu(
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(0.dp),
+                    modifier = Modifier.heightIn(max = maxContentHeight),
                 ) {
                     itemsIndexed(items, key = { _, item -> item.text }) { index, item ->
                         SlideOutMenuItemRow(
@@ -287,6 +311,7 @@ fun PlayerSlideOutMenu(
                             onDismiss = onDismiss,
                             leftFocusRequester = leftFocusRequester,
                             rightFocusRequester = rightFocusRequester,
+                            onLeftNavigation = onLeftNavigation,
                             onFocused = { focusedIndex = index },
                             modifier = Modifier.focusRequester(itemFocusRequesters[index]),
                         )
@@ -335,7 +360,19 @@ fun PlayerSlideOutMenuSectioned(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    // Track container's position in root to adjust anchor coordinates
+    var containerOffsetX by remember { mutableStateOf(0f) }
+    var containerOffsetY by remember { mutableStateOf(0f) }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                containerOffsetX = position.x
+                containerOffsetY = position.y
+            },
+    ) {
         val density = LocalDensity.current
         val menuWidth = 220.dp
         val menuHeight = 400.dp // Sectioned menus are taller
@@ -344,10 +381,11 @@ fun PlayerSlideOutMenuSectioned(
         val menuWidthPx = with(density) { measuredWidthPx ?: menuWidth.toPx() }
         val menuHeightPx = with(density) { measuredHeightPx ?: menuHeight.toPx() }
 
-        // Calculate menu position based on anchor
+        // Calculate menu position based on anchor (adjusted for container offset)
         val offsetX = if (anchor != null) {
             with(density) {
-                val anchorPx = anchor.x.toPx()
+                // Anchor is in root coordinates, adjust for container's position
+                val anchorPx = anchor.x.toPx() - containerOffsetX
                 val maxWidthPx = maxWidth.toPx()
                 val rawX = when (anchor.alignment) {
                     MenuAnchorAlignment.BottomStart -> anchorPx
@@ -363,9 +401,14 @@ fun PlayerSlideOutMenuSectioned(
 
         val offsetY = if (anchor != null) {
             with(density) {
-                val anchorPx = anchor.y.toPx()
+                // Anchor is in root coordinates, adjust for container's position
+                val anchorPx = anchor.y.toPx() - containerOffsetY
+                val maxHeightPx = maxHeight.toPx()
                 val targetY = if (anchor.placement == MenuAnchorPlacement.Below) {
-                    anchorPx + 12.dp.toPx()
+                    val rawY = anchorPx + 12.dp.toPx()
+                    // Ensure menu doesn't go past screen bottom (with 16dp margin)
+                    val maxY = maxHeightPx - menuHeightPx - 16f
+                    rawY.coerceIn(16f, max(16f, maxY))
                 } else {
                     (anchorPx - menuHeightPx).coerceAtLeast(48f)
                 }
@@ -535,6 +578,7 @@ private fun SlideOutMenuItemRow(
     onDismiss: () -> Unit,
     leftFocusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester?,
+    onLeftNavigation: (() -> Unit)? = null,
     onFocused: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -577,6 +621,7 @@ private fun SlideOutMenuItemRow(
                 }
                 when (event.key) {
                     Key.DirectionLeft -> {
+                        onLeftNavigation?.invoke()
                         if (leftFocusRequester != null) {
                             leftFocusRequester.requestFocus()
                             true

@@ -1092,9 +1092,15 @@ fun MyFlixTvApp() {
                 val episodeId = backStackEntry.arguments?.getString("episodeId")
 
                 // Use DetailViewModel to load series data
+                // Pass seasonNumber to let ViewModel auto-select the correct season,
+                // avoiding race condition where Season 1 is selected before we can override
                 val viewModel: DetailViewModel = viewModel(
-                    key = seriesId,
-                    factory = DetailViewModel.Factory(seriesId, jellyfinClient),
+                    key = "$seriesId-$seasonNumber", // Include seasonNumber in key to recreate VM if season changes
+                    factory = DetailViewModel.Factory(
+                        itemId = seriesId,
+                        jellyfinClient = jellyfinClient,
+                        preferredSeasonNumber = if (seasonNumber > 0) seasonNumber else -1,
+                    ),
                 )
                 val state by viewModel.uiState.collectAsState()
 

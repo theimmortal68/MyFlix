@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,7 +69,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -76,10 +80,10 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import androidx.tv.material3.FilterChip
-import androidx.tv.material3.FilterChipDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -94,7 +98,11 @@ import dev.jausc.myflix.core.common.ui.IconColors
 import dev.jausc.myflix.core.common.util.TimeFormatUtil
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.tv.ui.components.CardSizes
-import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
+import dev.jausc.myflix.tv.ui.components.MenuAnchor
+import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
+import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
+import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
+import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
@@ -151,6 +159,9 @@ fun EpisodesScreen(
 
     // Options dialog state
     var showOptionsDialog by remember { mutableStateOf(false) }
+
+    // Anchor for the options menu (captured from More button)
+    var optionsMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
 
     // Sync focusedEpisode with updated episodes list (for optimistic updates)
     // When episodes list changes, find the same episode by ID and update reference
@@ -286,6 +297,7 @@ fun EpisodesScreen(
                     onWatchedClick = { onWatchedClick(episode) },
                     onFavoriteClick = { onFavoriteClick(episode) },
                     onMoreClick = { showOptionsDialog = true },
+                    onMoreAnchorChanged = { optionsMenuAnchor = it },
                     playFocusRequester = playFocusRequester,
                     episodeRowFocusRequester = episodeRowFocusRequester,
                     modifier = Modifier.fillMaxWidth(0.58f),
@@ -498,6 +510,11 @@ fun EpisodesScreen(
             EpisodeOptionsDialog(
                 episode = focusedEpisode!!,
                 season = currentSeason,
+                anchor = optionsMenuAnchor,
+                onApply = { audioIndex, subtitleIndex ->
+                    // TODO: Apply audio/subtitle track selection to playback preferences
+                    // For now, this callback is prepared for future implementation
+                },
                 onDismiss = { showOptionsDialog = false },
                 onMarkSeasonWatched = { watched ->
                     currentSeason?.let { onSeasonWatchedClick(it, watched) }
@@ -546,6 +563,7 @@ private fun EpisodeHeroContent(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onMoreClick: () -> Unit,
+    onMoreAnchorChanged: (MenuAnchor) -> Unit,
     playFocusRequester: FocusRequester,
     episodeRowFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
@@ -621,6 +639,7 @@ private fun EpisodeHeroContent(
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
             onMoreClick = onMoreClick,
+            onMoreAnchorChanged = onMoreAnchorChanged,
             focusRequester = playFocusRequester,
             downFocusRequester = episodeRowFocusRequester,
             leftEdgeFocusRequester = leftEdgeFocusRequester,
@@ -805,11 +824,13 @@ private fun EpisodeActionButtons(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onMoreClick: () -> Unit,
+    onMoreAnchorChanged: (MenuAnchor) -> Unit,
     focusRequester: FocusRequester,
     downFocusRequester: FocusRequester,
     leftEdgeFocusRequester: FocusRequester? = null,
     updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
+    val density = LocalDensity.current
     val playButtonText = when {
         hasProgress && remainingMinutes > 0 -> "Resume · ${remainingMinutes}m left"
         hasProgress -> "Resume"
@@ -875,16 +896,33 @@ private fun EpisodeActionButtons(
         }
 
         item("more") {
-            ExpandablePlayButton(
-                title = "More",
-                icon = Icons.Outlined.MoreVert,
-                iconColor = TvColors.TextPrimary,
-                onClick = onMoreClick,
-                modifier = Modifier
-                    .focusRequester(moreFocusRequester)
-                    .focusProperties { down = downFocusRequester }
-                    .onFocusChanged { if (it.hasFocus) updateExitFocus(moreFocusRequester) },
-            )
+            Box(
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    val position = coordinates.positionInRoot()
+                    val size = coordinates.size
+                    with(density) {
+                        onMoreAnchorChanged(
+                            MenuAnchor(
+                                x = position.x.toDp(),
+                                y = (position.y + size.height).toDp(),
+                                alignment = MenuAnchorAlignment.BottomStart,
+                                placement = MenuAnchorPlacement.Below,
+                            ),
+                        )
+                    }
+                },
+            ) {
+                ExpandablePlayButton(
+                    title = "More",
+                    icon = Icons.Outlined.MoreVert,
+                    iconColor = TvColors.TextPrimary,
+                    onClick = onMoreClick,
+                    modifier = Modifier
+                        .focusRequester(moreFocusRequester)
+                        .focusProperties { down = downFocusRequester }
+                        .onFocusChanged { if (it.hasFocus) updateExitFocus(moreFocusRequester) },
+                )
+            }
         }
     }
 }
@@ -1980,18 +2018,28 @@ private fun KenBurnsBackdrop(
 // region Episode Options Dialog
 
 /**
- * Episode options dialog with audio/subtitle selection and season actions.
- * Styled to match LibraryFilterDialog with FilterChip components.
+ * Submenu types for episode options cascading menu.
+ */
+private enum class EpisodeOptionsSubmenu {
+    Audio,
+    Subtitles,
+    SeasonActions,
+}
+
+/**
+ * Episode options menu with cascading submenus for audio/subtitle selection and season actions.
+ * Uses PlayerSlideOutMenu pattern like LibraryFilterMenu - main menu shows categories,
+ * clicking a category opens a submenu with actual options.
  */
 @Composable
 private fun EpisodeOptionsDialog(
     episode: JellyfinItem,
     season: JellyfinItem?,
+    anchor: MenuAnchor?,
+    onApply: (audioIndex: Int, subtitleIndex: Int) -> Unit,
     onDismiss: () -> Unit,
     onMarkSeasonWatched: (Boolean) -> Unit,
 ) {
-    val focusRequester = remember { FocusRequester() }
-
     // Get media streams from the episode
     val mediaSource = episode.mediaSources?.firstOrNull()
     val audioStreams = remember(mediaSource) {
@@ -2002,279 +2050,160 @@ private fun EpisodeOptionsDialog(
     }
 
     // Track selected audio/subtitle indices (default = first audio, no subtitle)
-    var selectedAudioIndex by remember {
-        mutableStateOf(audioStreams.indexOfFirst { it.isDefault == true }.takeIf { it >= 0 } ?: 0)
-    }
-    var selectedSubtitleIndex by remember {
-        mutableStateOf(subtitleStreams.indexOfFirst { it.isDefault == true }.takeIf { it >= 0 } ?: -1)
-    }
+    val defaultAudioIndex = audioStreams.indexOfFirst { it.isDefault == true }.takeIf { it >= 0 } ?: 0
+    val defaultSubtitleIndex = subtitleStreams.indexOfFirst { it.isDefault == true }.takeIf { it >= 0 } ?: -1
 
     // Season watched status
     val isSeasonWatched = season?.userData?.played == true
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    // Cascading submenu state
+    var activeSubmenu by remember { mutableStateOf<EpisodeOptionsSubmenu?>(null) }
+    val submenuAnchors = remember { mutableStateMapOf<EpisodeOptionsSubmenu, MenuAnchor>() }
+    val mainMenuFocusRequester = remember { FocusRequester() }
+    val submenuFocusRequester = remember { FocusRequester() }
+
+    // Build main menu entries (categories only)
+    val submenuEntries = buildList {
+        if (audioStreams.isNotEmpty()) {
+            add(EpisodeOptionsSubmenu.Audio to "Audio Track")
+        }
+        if (subtitleStreams.isNotEmpty()) {
+            add(EpisodeOptionsSubmenu.Subtitles to "Subtitles")
+        }
+        if (season != null) {
+            add(EpisodeOptionsSubmenu.SeasonActions to "Season Actions")
+        }
     }
 
-    TvCenteredPopup(
+    // Main menu - shows categories only
+    PlayerSlideOutMenu(
         visible = true,
-        onDismiss = onDismiss,
-        minWidth = 400.dp,
-        maxWidth = 500.dp,
-    ) {
-        Column {
-            Text(
-                text = "Episode Options",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+        title = "Episode Options",
+        items = submenuEntries.map { (submenu, label) ->
+            SlideOutMenuItem(
+                text = label,
+                dismissOnClick = false,
+                onClick = { activeSubmenu = submenu },
             )
+        },
+        onDismiss = onDismiss,
+        anchor = anchor,
+        firstItemFocusRequester = mainMenuFocusRequester,
+        rightFocusRequester = if (activeSubmenu != null) submenuFocusRequester else null,
+    )
 
-            Spacer(modifier = Modifier.height(16.dp))
+    // Capture anchors for submenu positioning
+    // Note: For simplicity, submenus appear next to main menu using same anchor
+    val submenuAnchor = anchor?.copy(
+        x = anchor.x + 180.dp, // Offset submenu to the right of main menu
+    )
 
-            // Audio Track Section
-            if (audioStreams.isNotEmpty()) {
-                Text(
-                    text = "Audio Track",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    itemsIndexed(audioStreams) { index, stream ->
-                        val isSelected = selectedAudioIndex == index
-                        val label = buildString {
-                            append(stream.displayTitle ?: stream.language?.uppercase() ?: "Track ${index + 1}")
-                            stream.codec?.let { append(" (${it.uppercase()})") }
-                            stream.channels?.let { append(" ${it}ch") }
-                        }
-
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedAudioIndex = index },
-                            modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
-                            leadingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.SurfaceElevated,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = TvColors.BluePrimary.copy(alpha = 0.3f),
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.2f),
-                                selectedContentColor = TvColors.BluePrimary,
-                                focusedSelectedContainerColor = TvColors.BluePrimary.copy(alpha = 0.4f),
-                                focusedSelectedContentColor = TvColors.BluePrimary,
-                            ),
-                        ) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+    // Submenu - shows actual options based on active submenu
+    when (activeSubmenu) {
+        EpisodeOptionsSubmenu.Audio -> {
+            val audioItems = audioStreams.mapIndexed { index, stream ->
+                val label = buildString {
+                    append(stream.displayTitle ?: stream.language?.uppercase() ?: "Track ${index + 1}")
+                    stream.codec?.let { append(" (${it.uppercase()})") }
+                    stream.channels?.let { append(" ${it}ch") }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Subtitle Track Section
-            if (subtitleStreams.isNotEmpty()) {
-                Text(
-                    text = "Subtitles",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 8.dp),
+                SlideOutMenuItem(
+                    text = label,
+                    selected = index == defaultAudioIndex,
+                    onClick = {
+                        onApply(index, defaultSubtitleIndex)
+                        onDismiss()
+                    },
                 )
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    // "Off" option
-                    item {
-                        val isSelected = selectedSubtitleIndex == -1
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedSubtitleIndex = -1 },
-                            modifier = if (audioStreams.isEmpty()) Modifier.focusRequester(focusRequester) else Modifier,
-                            leadingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.SurfaceElevated,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = Color(0xFF9333EA).copy(alpha = 0.3f),
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.2f),
-                                selectedContentColor = Color(0xFF9333EA),
-                                focusedSelectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.4f),
-                                focusedSelectedContentColor = Color(0xFF9333EA),
-                            ),
-                        ) {
-                            Text("Off", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-
-                    itemsIndexed(subtitleStreams) { index, stream ->
-                        val isSelected = selectedSubtitleIndex == index
-                        val label = stream.displayTitle ?: stream.language?.uppercase() ?: "Track ${index + 1}"
-
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedSubtitleIndex = index },
-                            leadingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.SurfaceElevated,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = Color(0xFF9333EA).copy(alpha = 0.3f),
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.2f),
-                                selectedContentColor = Color(0xFF9333EA),
-                                focusedSelectedContainerColor = Color(0xFF9333EA).copy(alpha = 0.4f),
-                                focusedSelectedContentColor = Color(0xFF9333EA),
-                            ),
-                        ) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Audio Track",
+                items = audioItems,
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+                onLeftNavigation = { activeSubmenu = null },
+            )
+        }
 
-            // Season Actions Section
-            if (season != null) {
-                Text(
-                    text = "Season Actions",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    item {
-                        FilterChip(
-                            selected = false,
-                            onClick = { onMarkSeasonWatched(true) },
-                            modifier = if (audioStreams.isEmpty() && subtitleStreams.isEmpty()) {
-                                Modifier.focusRequester(focusRequester)
-                            } else {
-                                Modifier
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Visibility,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.SurfaceElevated,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = Color(0xFF22C55E).copy(alpha = 0.3f),
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = Color(0xFF22C55E).copy(alpha = 0.2f),
-                                selectedContentColor = Color(0xFF22C55E),
-                                focusedSelectedContainerColor = Color(0xFF22C55E).copy(alpha = 0.4f),
-                                focusedSelectedContentColor = Color(0xFF22C55E),
-                            ),
-                        ) {
-                            Text("Mark Season Watched", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-
-                    item {
-                        FilterChip(
-                            selected = false,
-                            onClick = { onMarkSeasonWatched(false) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.VisibilityOff,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            },
-                            colors = FilterChipDefaults.colors(
-                                containerColor = TvColors.SurfaceElevated,
-                                contentColor = TvColors.TextSecondary,
-                                focusedContainerColor = Color(0xFFEF4444).copy(alpha = 0.3f),
-                                focusedContentColor = TvColors.TextPrimary,
-                                selectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
-                                selectedContentColor = Color(0xFFEF4444),
-                                focusedSelectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.4f),
-                                focusedSelectedContentColor = Color(0xFFEF4444),
-                            ),
-                        ) {
-                            Text("Mark Season Unwatched", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Close button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                androidx.tv.material3.Button(
-                    onClick = onDismiss,
-                    shape = androidx.tv.material3.ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = androidx.tv.material3.ButtonDefaults.colors(
-                        containerColor = TvColors.BluePrimary.copy(alpha = 0.6f),
-                        contentColor = Color.White,
-                        focusedContainerColor = TvColors.BluePrimary,
-                        focusedContentColor = Color.White,
+        EpisodeOptionsSubmenu.Subtitles -> {
+            val subtitleItems = buildList {
+                // "Off" option
+                add(
+                    SlideOutMenuItem(
+                        text = "Off",
+                        selected = defaultSubtitleIndex == -1,
+                        onClick = {
+                            onApply(defaultAudioIndex, -1)
+                            onDismiss()
+                        },
                     ),
-                ) {
-                    Text("Close")
+                )
+                // Subtitle tracks
+                subtitleStreams.forEachIndexed { index, stream ->
+                    val label = stream.displayTitle ?: stream.language?.uppercase() ?: "Track ${index + 1}"
+                    add(
+                        SlideOutMenuItem(
+                            text = label,
+                            selected = index == defaultSubtitleIndex,
+                            onClick = {
+                                onApply(defaultAudioIndex, index)
+                                onDismiss()
+                            },
+                        ),
+                    )
                 }
             }
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Subtitles",
+                items = subtitleItems,
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+                onLeftNavigation = { activeSubmenu = null },
+            )
+        }
+
+        EpisodeOptionsSubmenu.SeasonActions -> {
+            val seasonItems = listOf(
+                if (isSeasonWatched) {
+                    SlideOutMenuItem(
+                        text = "Mark Season as Unwatched",
+                        icon = Icons.Outlined.VisibilityOff,
+                        iconTint = Color(0xFFEF4444),
+                        onClick = {
+                            onMarkSeasonWatched(false)
+                        },
+                    )
+                } else {
+                    SlideOutMenuItem(
+                        text = "Mark Season as Watched",
+                        icon = Icons.Outlined.Visibility,
+                        iconTint = Color(0xFF22C55E),
+                        onClick = {
+                            onMarkSeasonWatched(true)
+                        },
+                    )
+                },
+            )
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Season Actions",
+                items = seasonItems,
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+                onLeftNavigation = { activeSubmenu = null },
+            )
+        }
+
+        null -> {
+            // No submenu shown
         }
     }
 }

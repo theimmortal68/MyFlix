@@ -52,18 +52,29 @@ data class DetailUiState(
 class DetailViewModel(
     private val itemId: String,
     private val jellyfinClient: JellyfinClient,
+    /**
+     * When set, auto-selects the season with this indexNumber instead of Season 1.
+     * Used when navigating directly to a specific season (e.g., from episode click on Home).
+     * Set to null to disable auto-selection entirely (caller controls via selectSeason).
+     * Set to -1 to auto-select first season (default behavior).
+     */
+    private val preferredSeasonNumber: Int? = -1,
 ) : ViewModel() {
 
     /**
      * Factory for creating DetailViewModel with manual dependency injection.
+     *
+     * @param preferredSeasonNumber Season number to auto-select. Use -1 for first season (default),
+     *        null to skip auto-selection (caller controls), or specific number (1-based) for that season.
      */
     class Factory(
         private val itemId: String,
         private val jellyfinClient: JellyfinClient,
+        private val preferredSeasonNumber: Int? = -1,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            DetailViewModel(itemId, jellyfinClient) as T
+            DetailViewModel(itemId, jellyfinClient, preferredSeasonNumber) as T
     }
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -136,6 +147,10 @@ class DetailViewModel(
 
     /**
      * Load seasons for a series.
+     * Auto-selection behavior is controlled by [preferredSeasonNumber]:
+     * - -1: Select first season (default, for DetailScreen)
+     * - null: No auto-selection (caller controls via selectSeason, for EpisodesScreen)
+     * - >0: Select season with that indexNumber
      */
     private fun loadSeasons(seriesId: String, preferredSeasonId: String? = null) {
         viewModelScope.launch {
@@ -143,13 +158,32 @@ class DetailViewModel(
                 .onSuccess { seasons ->
                     _uiState.update { it.copy(seasons = seasons) }
 
-                    // Auto-select first season
-                    if (seasons.isNotEmpty()) {
-                        val preferredSeason = preferredSeasonId?.let { id ->
-                            seasons.firstOrNull { it.id == id }
+                    if (seasons.isEmpty()) {
+                        _uiState.update { it.copy(isLoading = false) }
+                        return@onSuccess
+                    }
+
+                    // Determine which season to auto-select based on preferredSeasonNumber
+                    val targetSeason: JellyfinItem? = when {
+                        // Explicit season ID override (e.g., navigating from Season item)
+                        preferredSeasonId != null -> {
+                            seasons.firstOrNull { it.id == preferredSeasonId }
                         }
-                        selectSeason(preferredSeason ?: seasons.first())
+                        // Skip auto-selection - caller will control via selectSeason
+                        preferredSeasonNumber == null -> null
+                        // Specific season number requested
+                        preferredSeasonNumber > 0 -> {
+                            seasons.firstOrNull { it.indexNumber == preferredSeasonNumber }
+                                ?: seasons.first() // Fallback if season number not found
+                        }
+                        // Default: select first season (-1 or any other value)
+                        else -> seasons.first()
+                    }
+
+                    if (targetSeason != null) {
+                        selectSeason(targetSeason)
                     } else {
+                        // No auto-selection - just mark loading as complete
                         _uiState.update { it.copy(isLoading = false) }
                     }
                 }
