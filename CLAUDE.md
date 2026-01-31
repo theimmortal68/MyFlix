@@ -1,5 +1,12 @@
 # Claude Code Project Configuration
 
+## On Session Start
+
+When working with Kotlin code, start the Kotlin LSP server:
+- Run `mcp__kotlin-lsp__start_server` with language_id "kotlin"
+- This enables go-to-definition, find references, diagnostics, and other IDE features
+- Startup takes ~90 seconds due to Gradle indexing
+
 ## Multi-Model Orchestration
 
 This project supports collaborative problem-solving using multiple AI models. Claude acts as the orchestrator, coordinating with Codex and Gemini for complex implementations.
@@ -11,6 +18,20 @@ This project supports collaborative problem-solving using multiple AI models. Cl
 | **Claude** | (orchestrator) | Context synthesis, state management, edge cases, integration |
 | **Codex** | `codex exec "prompt"` | Compose implementation, API patterns, code generation |
 | **Gemini** | `gemini -p "prompt"` | Architecture trade-offs, performance analysis, alternatives |
+
+### Shared MCP Servers
+
+All three models have access to the same MCP servers:
+- **kotlin-lsp** - LSP features (go-to-definition, find references, diagnostics, completions)
+- **jellyfin-ui** - Jellyfin API queries (items, playback, user data)
+
+When prompting Codex or Gemini, you can instruct them to use these tools for enhanced context:
+```
+Use the kotlin-lsp MCP to find all references to `PlayerViewModel` before suggesting changes.
+```
+```
+Query jellyfin-ui MCP to check the actual MediaSource response structure.
+```
 
 ### Collaboration Workflow
 
