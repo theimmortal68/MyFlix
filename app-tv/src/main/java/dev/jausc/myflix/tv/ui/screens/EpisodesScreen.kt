@@ -277,7 +277,7 @@ fun EpisodesScreen(
                     onFavoriteClick = { onFavoriteClick(episode) },
                     playFocusRequester = playFocusRequester,
                     episodeRowFocusRequester = episodeRowFocusRequester,
-                    modifier = Modifier.fillMaxWidth(0.55f),
+                    modifier = Modifier.fillMaxWidth(0.58f),
                     leftEdgeFocusRequester = leftEdgeFocusRequester,
                     updateExitFocus = updateExitFocus,
                 )
@@ -584,7 +584,6 @@ private fun EpisodeHeroContent(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
-                modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
 
