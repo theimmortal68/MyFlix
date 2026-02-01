@@ -1,6 +1,21 @@
 package dev.jausc.myflix.core.common.util
 
 /**
+ * Constants for Jellyfin time conversions.
+ * Jellyfin uses 10-million ticks per second (100 nanoseconds per tick).
+ */
+object TickConstants {
+    /** Number of ticks per second (10 million) */
+    const val TICKS_PER_SECOND = 10_000_000L
+
+    /** Number of ticks per millisecond */
+    const val TICKS_PER_MS = TICKS_PER_SECOND / 1000
+
+    /** Number of ticks per minute (600 million) */
+    const val TICKS_PER_MINUTE = TICKS_PER_SECOND * 60
+}
+
+/**
  * Utility functions for formatting time values.
  */
 object TimeFormatUtil {
@@ -12,7 +27,7 @@ object TimeFormatUtil {
      * @return Formatted time string (e.g., "1:23:45" or "23:45")
      */
     fun formatTicksToTime(ticks: Long): String {
-        val totalSeconds = ticks / 10_000_000
+        val totalSeconds = ticks / TickConstants.TICKS_PER_SECOND
         val hours = totalSeconds / 3600
         val minutes = totalSeconds % 3600 / 60
         val seconds = totalSeconds % 60
@@ -50,7 +65,7 @@ object TimeFormatUtil {
      * @return Formatted duration string
      */
     fun formatRuntimeTicks(ticks: Long): String {
-        val totalMinutes = ticks / 600_000_000
+        val totalMinutes = ticks / TickConstants.TICKS_PER_MINUTE
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
 

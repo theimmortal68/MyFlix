@@ -98,8 +98,13 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.MediaCard
+import dev.jausc.myflix.tv.ui.components.detail.DotSeparator
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
+import dev.jausc.myflix.tv.ui.components.detail.RatingBadge
+import dev.jausc.myflix.tv.ui.components.detail.StarRating
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import java.util.Locale
@@ -457,100 +462,6 @@ fun UnifiedSeriesScreen(
 }
 
 /**
- * Ken Burns effect backdrop - slow zoom and pan animation.
- */
-@Composable
-private fun KenBurnsBackdrop(
-    imageUrl: String?,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "ken_burns")
-
-    // Slow zoom: 1.0 -> 1.1 over 20 seconds
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 20000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "scale",
-    )
-
-    // Subtle horizontal pan: -2% to +2%
-    val translateX by infiniteTransition.animateFloat(
-        initialValue = -0.02f,
-        targetValue = 0.02f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 25000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "translateX",
-    )
-
-    val request = remember(imageUrl) {
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .build()
-    }
-
-    Box(modifier = modifier) {
-        AsyncImage(
-            model = request,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = size.width * translateX
-                }
-                .drawWithCache {
-                    // Edge fade masks
-                    val leftFade = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.15f to Color.Black.copy(alpha = 0.5f),
-                            0.35f to Color.Black,
-                            1.0f to Color.Black,
-                        ),
-                    )
-                    val bottomFade = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black,
-                            0.6f to Color.Black,
-                            1.0f to Color.Transparent,
-                        ),
-                    )
-                    onDrawWithContent {
-                        drawContent()
-                        drawRect(leftFade, blendMode = BlendMode.DstIn)
-                        drawRect(bottomFade, blendMode = BlendMode.DstIn)
-                    }
-                },
-        )
-
-        // Additional gradient overlay for text readability
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to TvColors.Background.copy(alpha = 0.8f),
-                            0.3f to TvColors.Background.copy(alpha = 0.4f),
-                            0.6f to Color.Transparent,
-                            1.0f to Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-    }
-}
-
-/**
  * Hero content showing series title, metadata, overview, and action buttons.
  * Matches home screen hero styling exactly.
  */
@@ -883,76 +794,6 @@ private fun SeriesMetadataRow(series: JellyfinItem) {
 }
 
 /**
- * Small dot separator for metadata rows.
- */
-@Composable
-private fun DotSeparator() {
-    Text(
-        text = "•",
-        style = MaterialTheme.typography.bodySmall,
-        color = TvColors.TextPrimary.copy(alpha = 0.6f),
-    )
-}
-
-/**
- * Badge for official ratings (PG-13, TV-MA, etc.) with color-coded backgrounds.
- * Matches home screen RatingBadge exactly.
- */
-@Composable
-private fun RatingBadge(text: String) {
-    val backgroundColor = when (text.uppercase()) {
-        "G", "TV-G", "TV-Y", "TV-Y7", "TV-Y7-FV" -> Color(0xFF2E7D32)
-        "PG", "TV-PG" -> Color(0xFF1565C0)
-        "PG-13", "TV-14", "16" -> Color(0xFFF57C00)
-        "R", "TV-MA", "NC-17", "NR", "UNRATED" -> Color(0xFFC62828)
-        else -> Color(0xFF616161)
-    }
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor)
-            .padding(horizontal = 6.dp),
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 10.sp,
-            ),
-            color = Color.White,
-        )
-    }
-}
-
-/**
- * Star rating display (community rating out of 10).
- * Matches home screen StarRating exactly.
- */
-@Composable
-private fun StarRating(rating: Float) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Star,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = Color(0xFFFFD700),
-        )
-        Text(
-            text = String.format(Locale.US, "%.1f", rating),
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Medium,
-            ),
-            color = TvColors.TextPrimary,
-        )
-    }
-}
-
-/**
  * Builds the play button text based on progress state.
  * Shows "Resume" if has progress, "Play" otherwise.
  */
@@ -1146,8 +987,10 @@ private fun PersonCard(
             ),
         ) {
             AsyncImage(
-                model = person.primaryImageTag?.let {
-                    jellyfinClient.getPersonImageUrl(person.id ?: "", it)
+                model = person.id?.let { id ->
+                    person.primaryImageTag?.let { tag ->
+                        jellyfinClient.getPersonImageUrl(id, tag)
+                    }
                 },
                 contentDescription = person.name,
                 contentScale = ContentScale.Crop,

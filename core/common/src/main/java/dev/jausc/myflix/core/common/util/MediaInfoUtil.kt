@@ -1,5 +1,3 @@
-@file:Suppress("MagicNumber")
-
 package dev.jausc.myflix.core.common.util
 
 import dev.jausc.myflix.core.common.model.JellyfinItem
@@ -44,7 +42,7 @@ object MediaInfoUtil {
      */
     fun MutableList<String>.addRuntimeDetails(now: LocalDateTime, item: JellyfinItem,) {
         val runtimeTicks = item.runTimeTicks ?: return
-        val runtimeMinutes = (runtimeTicks / 600_000_000).toInt()
+        val runtimeMinutes = (runtimeTicks / TickConstants.TICKS_PER_MINUTE).toInt()
         if (runtimeMinutes <= 0) return
 
         // Format runtime as "1h 48m" or "48m"
@@ -61,7 +59,7 @@ object MediaInfoUtil {
         val positionTicks = item.userData?.playbackPositionTicks ?: 0L
         if (positionTicks > 0L) {
             val remainingTicks = runtimeTicks - positionTicks
-            val remainingMinutes = (remainingTicks / 600_000_000).toInt()
+            val remainingMinutes = (remainingTicks / TickConstants.TICKS_PER_MINUTE).toInt()
             if (remainingMinutes > 0) {
                 val remainingHours = remainingMinutes / 60
                 val remainingMins = remainingMinutes % 60
@@ -76,7 +74,7 @@ object MediaInfoUtil {
 
         // Calculate "ends at" time
         val ticksToPlay = if (positionTicks > 0L) runtimeTicks - positionTicks else runtimeTicks
-        val secondsToPlay = ticksToPlay / 10_000_000
+        val secondsToPlay = ticksToPlay / TickConstants.TICKS_PER_SECOND
         val endTime = now.plusSeconds(secondsToPlay)
         val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
         add("ends at ${endTime.format(timeFormatter)}")

@@ -67,6 +67,8 @@ import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
 
+private val MinButtonSize = 36.dp
+
 /**
  * Vertical list of episode rows for the season detail screen.
  * Each row shows thumbnail, description, and action buttons.

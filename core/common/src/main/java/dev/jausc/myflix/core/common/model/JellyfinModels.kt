@@ -1,5 +1,6 @@
 package dev.jausc.myflix.core.common.model
 
+import dev.jausc.myflix.core.common.util.TickConstants
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -235,7 +236,7 @@ val JellyfinItem.formattedFullPremiereDate: String?
     }
 
 val JellyfinItem.runtimeMinutes: Int?
-    get() = runTimeTicks?.let { (it / 600_000_000).toInt() }
+    get() = runTimeTicks?.let { (it / TickConstants.TICKS_PER_MINUTE).toInt() }
 
 val JellyfinItem.progressPercent: Float
     get() {

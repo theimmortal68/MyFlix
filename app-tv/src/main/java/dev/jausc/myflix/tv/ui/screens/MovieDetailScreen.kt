@@ -78,8 +78,12 @@ import dev.jausc.myflix.tv.ui.components.detail.GenreText
 import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.components.detail.ItemRow
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
+import dev.jausc.myflix.tv.ui.components.detail.DotSeparator
 import dev.jausc.myflix.tv.ui.components.detail.OverviewDialog
 import dev.jausc.myflix.tv.ui.components.detail.OverviewText
+import dev.jausc.myflix.tv.ui.components.detail.RatingBadge
+import dev.jausc.myflix.tv.ui.components.detail.StarRating
+import dev.jausc.myflix.tv.ui.components.detail.getRatingColor
 import dev.jausc.myflix.core.common.ui.getStudioLogoResource
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberGradientColors
@@ -182,8 +186,8 @@ fun MovieDetailScreen(
         delay(100)
         try {
             playFocusRequester.requestFocus()
-        } catch (_: Exception) {
-            // Ignore focus errors
+        } catch (_: IllegalStateException) {
+            // FocusRequester not attached yet - expected during rapid navigation
         }
     }
 
@@ -665,95 +669,6 @@ private fun MovieHeroRatingRow(movie: JellyfinItem, studioName: String?,) {
             if (needsDot) DotSeparator()
             StudioBadge(studioName = studioName)
         }
-    }
-}
-
-/**
- * Small dot separator for metadata rows.
- */
-@Composable
-private fun DotSeparator() {
-    Text(
-        text = "•",
-        style = MaterialTheme.typography.bodySmall,
-        color = TvColors.TextPrimary.copy(alpha = 0.6f),
-    )
-}
-
-/**
- * Rating badge with colored background based on content rating.
- */
-@Composable
-private fun RatingBadge(text: String) {
-    val backgroundColor = getRatingColor(text)
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor)
-            .padding(horizontal = 6.dp),
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 10.sp,
-            ),
-            color = Color.White,
-        )
-    }
-}
-
-/**
- * Get the background color for a content rating.
- */
-private fun getRatingColor(rating: String): Color {
-    val normalizedRating = rating.uppercase().trim()
-    return when {
-        // Green - Family friendly
-        normalizedRating in listOf("G", "TV-G", "TV-Y", "TV-Y7", "TV-Y7-FV") ->
-            Color(0xFF2E7D32) // Green 800
-
-        // Blue - General/Parental guidance
-        normalizedRating in listOf("PG", "TV-PG") ->
-            Color(0xFF1565C0) // Blue 800
-
-        // Orange - Teen/Caution
-        normalizedRating in listOf("PG-13", "TV-14", "16") ->
-            Color(0xFFF57C00) // Orange 700
-
-        // Red - Restricted/Mature
-        normalizedRating in listOf("R", "TV-MA", "NC-17", "NR", "UNRATED") ->
-            Color(0xFFC62828) // Red 800
-
-        // Gray - Default/Unknown
-        else -> Color(0xFF616161) // Gray 700
-    }
-}
-
-/**
- * Star rating display with gold star icon.
- */
-@Composable
-private fun StarRating(rating: Float) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Star,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = Color(0xFFFFD700), // Gold color
-        )
-        Text(
-            text = String.format(java.util.Locale.US, "%.1f", rating),
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Medium,
-            ),
-            color = TvColors.TextPrimary,
-        )
     }
 }
 

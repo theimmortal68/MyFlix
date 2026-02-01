@@ -36,11 +36,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream
-import dev.jausc.myflix.core.common.model.imdbId
-import dev.jausc.myflix.core.common.model.tmdbId
+import dev.jausc.myflix.core.common.model.TmdbContentType
+import dev.jausc.myflix.core.common.model.buildExternalLinks
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.network.JellyfinClient
@@ -106,7 +105,7 @@ fun SeasonDetailScreen(
     }
 
     val externalLinks = remember(series.externalUrls, series.imdbId, series.tmdbId) {
-        buildExternalLinks(series)
+        buildExternalLinks(series, TmdbContentType.TV)
     }
     val featureSections = remember(state.specialFeatures) {
         buildFeatureSections(state.specialFeatures, emptySet())
@@ -787,32 +786,4 @@ private fun buildEpisodeMenu(
         subtitle = subtitle,
         items = items,
     )
-}
-
-private fun buildExternalLinks(series: JellyfinItem): List<ExternalLinkItem> {
-    val links = mutableListOf<ExternalLinkItem>()
-
-    series.externalUrls?.forEach { url ->
-        val label = url.name?.trim().orEmpty()
-        val link = url.url?.trim().orEmpty()
-        if (label.isNotEmpty() && link.isNotEmpty()) {
-            links.add(ExternalLinkItem(label, link))
-        }
-    }
-
-    series.imdbId?.let { imdbId ->
-        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
-        if (!hasImdb) {
-            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
-        }
-    }
-
-    series.tmdbId?.let { tmdbId ->
-        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
-        if (!hasTmdb) {
-            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/tv/$tmdbId"))
-        }
-    }
-
-    return links
 }

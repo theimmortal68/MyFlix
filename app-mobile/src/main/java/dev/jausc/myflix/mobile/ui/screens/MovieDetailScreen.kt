@@ -26,15 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.jausc.myflix.core.common.model.DetailInfoItem
-import dev.jausc.myflix.core.common.model.ExternalLinkItem
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.TmdbContentType
+import dev.jausc.myflix.core.common.model.buildExternalLinks
 import dev.jausc.myflix.core.common.model.directors
-import dev.jausc.myflix.core.common.model.imdbId
-import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.common.model.writers
 import dev.jausc.myflix.core.common.util.buildFeatureSections
-import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
@@ -79,31 +77,6 @@ fun MovieDetailScreen(
     // Detect trailer for the trailer button
     val trailerItem = remember(state.specialFeatures) {
         findNewestTrailer(state.specialFeatures)
-    }
-
-    // Check for YouTube remote trailer if no local trailer
-    val remoteTrailer = remember(movie.remoteTrailers) {
-        movie.remoteTrailers?.firstOrNull()
-    }
-
-    // Build action for trailer button - prefer local, fallback to remote
-    @Suppress("UnusedPrivateProperty")
-    val trailerAction: (() -> Unit)? = remember(trailerItem, remoteTrailer) {
-        when {
-            trailerItem != null -> {
-                { onPlayItemClick(trailerItem.id, null) }
-            }
-            remoteTrailer != null -> {
-                extractYouTubeVideoKey(remoteTrailer.url)?.let { key ->
-                    {
-                        onTrailerClick(key, remoteTrailer.name)
-                    }
-                }
-            }
-            else -> {
-                null
-            }
-        }
     }
 
     // Build categorized feature sections (excluding the trailer already shown)
@@ -197,7 +170,7 @@ fun MovieDetailScreen(
     }
 
     val externalLinks = remember(movie.externalUrls, movie.imdbId, movie.tmdbId) {
-        buildExternalLinks(movie)
+        buildExternalLinks(movie, TmdbContentType.MOVIE)
     }
 
     LazyColumn(
@@ -519,34 +492,6 @@ private fun MovieDetailsHeader(
             }
         }
     }
-}
-
-private fun buildExternalLinks(movie: JellyfinItem): List<ExternalLinkItem> {
-    val links = mutableListOf<ExternalLinkItem>()
-
-    movie.externalUrls?.forEach { url ->
-        val label = url.name?.trim().orEmpty()
-        val link = url.url?.trim().orEmpty()
-        if (label.isNotEmpty() && link.isNotEmpty()) {
-            links.add(ExternalLinkItem(label, link))
-        }
-    }
-
-    movie.imdbId?.let { imdbId ->
-        val hasImdb = links.any { it.label.equals("imdb", ignoreCase = true) }
-        if (!hasImdb) {
-            links.add(ExternalLinkItem("IMDb", "https://www.imdb.com/title/$imdbId"))
-        }
-    }
-
-    movie.tmdbId?.let { tmdbId ->
-        val hasTmdb = links.any { it.label.equals("tmdb", ignoreCase = true) }
-        if (!hasTmdb) {
-            links.add(ExternalLinkItem("TMDB", "https://www.themoviedb.org/movie/$tmdbId"))
-        }
-    }
-
-    return links
 }
 
 private fun formatCriticRating(rating: Float): String = if (rating > 10f) {

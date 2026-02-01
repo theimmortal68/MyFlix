@@ -106,6 +106,8 @@ import dev.jausc.myflix.tv.ui.components.MenuAnchorPlacement
 import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenu
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -286,6 +288,7 @@ fun EpisodesScreen(
         // Episode thumbnail backdrop (top-right) - 40% of screen
         KenBurnsBackdrop(
             imageUrl = thumbnailUrl,
+            fadePreset = KenBurnsFadePreset.EPISODES,
             modifier = Modifier
                 .fillMaxWidth(0.4f)
                 .fillMaxHeight(0.4f)
@@ -739,7 +742,7 @@ private fun EpisodeMetadataRow(episode: JellyfinItem) {
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Star,
-                    contentDescription = null,
+                    contentDescription = "Rating: ${String.format(Locale.US, "%.1f", rating)} out of 10",
                     modifier = Modifier.size(14.dp),
                     tint = Color(0xFFFFD700),
                 )
@@ -1938,102 +1941,6 @@ private fun SeasonPosterCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.width(CardSizes.SeasonPosterWidth),
-        )
-    }
-}
-
-// endregion
-
-// region Ken Burns Backdrop
-
-/**
- * Ken Burns effect backdrop with animated zoom and pan.
- */
-@Composable
-private fun KenBurnsBackdrop(
-    imageUrl: String?,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "ken_burns")
-
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 20000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "scale",
-    )
-
-    val translateX by infiniteTransition.animateFloat(
-        initialValue = -0.02f,
-        targetValue = 0.02f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 25000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "translateX",
-    )
-
-    val request = remember(imageUrl) {
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .build()
-    }
-
-    Box(modifier = modifier) {
-        AsyncImage(
-            model = request,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = size.width * translateX
-                }
-                .drawWithCache {
-                    // Soft edge fade - 90% fully visible, gentle fade at left edge only
-                    val leftFade = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.05f to Color.Black.copy(alpha = 0.5f),
-                            0.10f to Color.Black,
-                            1.0f to Color.Black,
-                        ),
-                    )
-                    // Bottom fade for smooth transition
-                    val bottomFade = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black,
-                            0.7f to Color.Black,
-                            1.0f to Color.Transparent,
-                        ),
-                    )
-                    onDrawWithContent {
-                        drawContent()
-                        drawRect(leftFade, blendMode = BlendMode.DstIn)
-                        drawRect(bottomFade, blendMode = BlendMode.DstIn)
-                    }
-                },
-        )
-
-        // Minimal gradient overlay at the very edge for text readability
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to TvColors.Background.copy(alpha = 0.15f),
-                            0.05f to Color.Transparent,
-                            1.0f to Color.Transparent,
-                        ),
-                    ),
-                ),
         )
     }
 }
