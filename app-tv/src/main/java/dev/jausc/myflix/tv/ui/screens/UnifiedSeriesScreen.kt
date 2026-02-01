@@ -3,13 +3,6 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,17 +45,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -105,6 +91,8 @@ import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.components.detail.RatingBadge
 import dev.jausc.myflix.tv.ui.components.detail.StarRating
+import dev.jausc.myflix.tv.ui.components.detail.TvTabRow
+import dev.jausc.myflix.tv.ui.components.detail.TvTabRowFocusConfig
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import java.util.Locale
@@ -271,9 +259,6 @@ fun UnifiedSeriesScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             // Tab section with shaded background
-            val coroutineScope = rememberCoroutineScope()
-            var tabChangeJob by remember { mutableStateOf<Job?>(null) }
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -291,106 +276,30 @@ fun UnifiedSeriesScreen(
             ) {
                 Column {
                     // Tab row with debounced focus change - only show available tabs
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    ) {
-                        availableTabs.forEachIndexed { index, tab ->
-                            val isSelected = selectedTab == tab
-                            var isFocused by remember { mutableStateOf(false) }
-                            val isFirstTab = index == 0
-                            val tabRequester = getTabFocusRequester(tab)
-
-                            // Animated halo effect for focus indication
-                            val haloAlpha by animateFloatAsState(
-                                targetValue = if (isFocused) 0.6f else 0f,
-                                animationSpec = tween(durationMillis = 150),
-                                label = "tabHaloAlpha",
-                            )
-
-                            Column(
-                                modifier = Modifier
-                                    .focusRequester(tabRequester)
-                                    .onFocusChanged { focusState ->
-                                        isFocused = focusState.isFocused
-                                        if (focusState.isFocused) {
-                                            lastFocusedTab = tab
-                                            updateExitFocus(tabRequester)
-                                            // Cancel any pending tab change
-                                            tabChangeJob?.cancel()
-                                            // Start new debounced change
-                                            tabChangeJob = coroutineScope.launch {
-                                                delay(150) // 150ms debounce
-                                                selectedTab = tab
-                                            }
-                                        }
-                                    }
-                                    .focusProperties {
-                                        up = nextUpFocusRequester
-                                        // First tab: left goes to NavRail sentinel
-                                        if (isFirstTab && leftEdgeFocusRequester != null) {
-                                            left = leftEdgeFocusRequester
-                                        }
-                                    }
-                                    .focusable()
-                                    .selectable(
-                                        selected = isSelected,
-                                        onClick = { selectedTab = tab },
-                                    ),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                // Text with halo glow behind it when focused
-                                Box(contentAlignment = Alignment.Center) {
-                                    // Halo glow (blurred background) - extends beyond text
-                                    if (haloAlpha > 0f) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .blur(12.dp)
-                                                .background(
-                                                    TvColors.BluePrimary.copy(alpha = haloAlpha),
-                                                    RoundedCornerShape(16.dp),
-                                                ),
-                                        )
-                                    }
-                                    Text(
-                                        text = when (tab) {
-                                            UnifiedSeriesTab.Seasons -> "Seasons"
-                                            UnifiedSeriesTab.Details -> "Details"
-                                            UnifiedSeriesTab.CastCrew -> "Cast & Crew"
-                                            UnifiedSeriesTab.Trailers -> "Trailers"
-                                            UnifiedSeriesTab.Extras -> "Extras"
-                                            UnifiedSeriesTab.Related -> "Related"
-                                        },
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = when {
-                                            isFocused -> Color.White
-                                            isSelected -> Color.White
-                                            else -> TvColors.TextSecondary
-                                        },
-                                        fontWeight = if (isSelected || isFocused) FontWeight.Medium else FontWeight.Normal,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                // Underline indicator
-                                Box(
-                                    modifier = Modifier
-                                        .width(if (isSelected || isFocused) 40.dp else 0.dp)
-                                        .height(2.dp)
-                                        .background(
-                                            when {
-                                                isFocused -> TvColors.BluePrimary
-                                                isSelected -> TvColors.BluePrimary.copy(alpha = 0.7f)
-                                                else -> Color.Transparent
-                                            },
-                                            RoundedCornerShape(1.dp),
-                                        ),
-                                )
+                    TvTabRow(
+                        tabs = availableTabs,
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        tabLabel = { tab ->
+                            when (tab) {
+                                UnifiedSeriesTab.Seasons -> "Seasons"
+                                UnifiedSeriesTab.Details -> "Details"
+                                UnifiedSeriesTab.CastCrew -> "Cast & Crew"
+                                UnifiedSeriesTab.Trailers -> "Trailers"
+                                UnifiedSeriesTab.Extras -> "Extras"
+                                UnifiedSeriesTab.Related -> "Related"
                             }
-                        }
-                    }
+                        },
+                        getTabFocusRequester = ::getTabFocusRequester,
+                        onTabFocused = { tab, requester ->
+                            lastFocusedTab = tab
+                            updateExitFocus(requester)
+                        },
+                        focusConfig = TvTabRowFocusConfig(
+                            upFocusRequester = nextUpFocusRequester,
+                            leftEdgeFocusRequester = leftEdgeFocusRequester,
+                        ),
+                    )
 
                     // Tab content area - navigates up to whichever tab was last focused
                     val selectedTabRequester = getTabFocusRequester(lastFocusedTab)
