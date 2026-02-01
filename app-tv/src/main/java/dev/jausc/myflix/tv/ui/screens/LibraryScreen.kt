@@ -43,13 +43,17 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.ui.HomeActions
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.LibraryUiState
 import dev.jausc.myflix.core.viewmodel.LibraryViewModel
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
+import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterMenu
@@ -101,6 +105,25 @@ fun LibraryScreen(
     var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
     var sortMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
 
+    // Long-press dialog state
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
+    var dialogRestoreFocus by remember { mutableStateOf<FocusRequester?>(null) }
+
+    // Dialog actions for long-press menu
+    val dialogActions = remember(viewModel) {
+        HomeActions(
+            onGoTo = onItemClick,
+            onPlay = onPlayClick,
+            onMarkWatched = { itemId, watched ->
+                viewModel.setPlayed(itemId, watched)
+            },
+            onToggleFavorite = { itemId, favorite ->
+                viewModel.setFavorite(itemId, favorite)
+            },
+        )
+    }
+
     // All letters are always available - the API handles filtering
     // If a letter has no items, the user will see "0 items" which is acceptable
     // This provides immediate responsiveness rather than waiting for slow alphabet index
@@ -145,12 +168,15 @@ fun LibraryScreen(
                     if (shouldFocus) {
                         didRequestInitialFocus = true
                         lastFocusedForLetter = currentLetter
-                        // Delay to ensure grid is rendered
-                        delay(300)
-                        try {
-                            firstItemFocusRequester.requestFocus()
-                        } catch (_: Exception) {
-                            // Focus request failed, ignore
+                        // Retry focus request - grid may not be attached immediately after loading
+                        repeat(5) { attempt ->
+                            delay(if (attempt == 0) 100 else 150)
+                            try {
+                                firstItemFocusRequester.requestFocus()
+                                return@collect // Success, exit
+                            } catch (_: Exception) {
+                                // Focus request failed, retry
+                            }
                         }
                     }
                 }
@@ -262,6 +288,16 @@ fun LibraryScreen(
                                     filterBarFocusRequester = filterBarFirstButtonFocusRequester,
                                     alphabetFocusRequester = alphabetFocusRequester,
                                     onItemClick = onItemClick,
+                                    onItemLongClick = { item, focusRequester ->
+                                        dialogRestoreFocus = focusRequester
+                                        dialogParams = DialogParams(
+                                            title = item.name,
+                                            items = buildHomeDialogItems(item, dialogActions),
+                                            fromLongClick = true,
+                                            restoreFocusRequester = focusRequester,
+                                        )
+                                        dialogVisible = true
+                                    },
                                     onItemFocused = { _, _ ->
                                         updateExitFocus(firstItemFocusRequester)
                                     },
@@ -287,6 +323,19 @@ fun LibraryScreen(
                         }
                     }
                 }
+            }
+
+            // Long-press context menu dialog - INSIDE focusGroup to prevent focus escape
+            dialogParams?.let { params ->
+                DialogPopup(
+                    params = params,
+                    visible = dialogVisible,
+                    onDismissRequest = { dialogVisible = false },
+                    onDismissed = {
+                        dialogParams = null
+                        dialogRestoreFocus = null
+                    },
+                )
             }
         }
 
@@ -355,11 +404,17 @@ private fun LibraryGridContent(
     filterBarFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
+    onItemLongClick: (JellyfinItem, FocusRequester) -> Unit,
     onItemFocused: (JellyfinItem, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Dummy focus requester to block focus movement (requests to unattached requester fail)
     val focusTrap = remember { FocusRequester() }
+
+    // Stable map of focus requesters for each item (for long-press focus restoration)
+    val itemFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    fun getItemFocusRequester(itemId: String): FocusRequester =
+        itemFocusRequesters.getOrPut(itemId) { FocusRequester() }
 
     LazyVerticalGrid(
         state = gridState,
@@ -392,16 +447,20 @@ private fun LibraryGridContent(
             // Block down navigation when loading more and on last row
             val shouldBlockDown = state.isLoadingMore && isLastRow
 
+            val itemFocusRequester = getItemFocusRequester(item.id)
+
             MediaCard(
                 item = item,
                 imageUrl = imageUrl,
                 onClick = { onItemClick(item.id) },
+                onLongClick = { onItemLongClick(item, itemFocusRequester) },
                 aspectRatio = aspectRatio,
                 showLabel = true,
                 onItemFocused = { focusedItem ->
                     onItemFocused(focusedItem, imageUrl)
                 },
                 modifier = Modifier
+                    .focusRequester(itemFocusRequester)
                     .then(
                         if (index == 0) {
                             Modifier.focusRequester(firstItemFocusRequester)

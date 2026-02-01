@@ -497,6 +497,50 @@ class LibraryViewModel(
     }
 
     /**
+     * Mark an item as watched/unwatched.
+     * Updates both the server and local state for immediate UI feedback.
+     */
+    fun setPlayed(itemId: String, played: Boolean) {
+        viewModelScope.launch {
+            jellyfinClient.setPlayed(itemId, played)
+            // Update local state for immediate feedback
+            _uiState.update { state ->
+                state.copy(
+                    items = state.items.map { item ->
+                        if (item.id == itemId) {
+                            item.copy(userData = item.userData?.copy(played = played))
+                        } else {
+                            item
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    /**
+     * Toggle an item's favorite status.
+     * Updates both the server and local state for immediate UI feedback.
+     */
+    fun setFavorite(itemId: String, favorite: Boolean) {
+        viewModelScope.launch {
+            jellyfinClient.setFavorite(itemId, favorite)
+            // Update local state for immediate feedback
+            _uiState.update { state ->
+                state.copy(
+                    items = state.items.map { item ->
+                        if (item.id == itemId) {
+                            item.copy(userData = item.userData?.copy(isFavorite = favorite))
+                        } else {
+                            item
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    /**
      * Update filter state and reload items.
      */
     private fun updateFilterState(update: (LibraryFilterState) -> LibraryFilterState) {

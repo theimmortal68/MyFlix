@@ -16,6 +16,9 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,10 @@ import dev.jausc.myflix.core.common.model.isDolbyVision
 import dev.jausc.myflix.core.common.model.isHdr
 import dev.jausc.myflix.core.common.model.progressPercent
 import dev.jausc.myflix.tv.ui.theme.TvColors
+
+// Status indicator colors
+private val WatchedGreen = Color(0xFF4CAF50)
+private val FavoritePink = Color(0xFFE91E63)
 
 // HDR/DV Badge Colors
 private val DolbyVisionOrange = Color(0xFFFF6B00)
@@ -178,19 +185,61 @@ private fun MediaCardInternal(
                     contentScale = ContentScale.Crop,
                 )
 
-                // HDR/DV badge (top-left corner)
-                if (item.isDolbyVision) {
-                    HdrBadge(
-                        text = "DV",
-                        color = DolbyVisionOrange,
-                        modifier = Modifier.align(Alignment.TopStart),
-                    )
-                } else if (item.isHdr) {
-                    HdrBadge(
-                        text = "HDR",
-                        color = HdrBlue,
-                        modifier = Modifier.align(Alignment.TopStart),
-                    )
+                // Favorite indicator (top-left corner) - takes priority over HDR badges
+                val isFavorite = item.userData?.isFavorite == true
+                if (isFavorite) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Favorite",
+                            tint = FavoritePink,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                } else {
+                    // HDR/DV badge (top-left corner) - only show if not favorite
+                    if (item.isDolbyVision) {
+                        HdrBadge(
+                            text = "DV",
+                            color = DolbyVisionOrange,
+                            modifier = Modifier.align(Alignment.TopStart),
+                        )
+                    } else if (item.isHdr) {
+                        HdrBadge(
+                            text = "HDR",
+                            color = HdrBlue,
+                            modifier = Modifier.align(Alignment.TopStart),
+                        )
+                    }
+                }
+
+                // Watched indicator (top-right corner)
+                val isWatched = item.userData?.played == true
+                if (isWatched) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(20.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Watched",
+                            tint = WatchedGreen,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
 
                 if (item.progressPercent > 0f && item.progressPercent < 1f) {

@@ -5,6 +5,7 @@ package dev.jausc.myflix.tv.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -73,6 +75,7 @@ fun TvPopupContainer(
     maxWidth: Dp = 400.dp,
     maxHeight: Dp? = null,
     modifier: Modifier = Modifier,
+    visibleState: MutableTransitionState<Boolean>? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     // Handle back button
@@ -81,6 +84,10 @@ fun TvPopupContainer(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val internalVisibleState = remember { MutableTransitionState(visible) }
+        internalVisibleState.targetState = visible
+        val resolvedVisibleState = visibleState ?: internalVisibleState
+
         val density = LocalDensity.current
         val estimatedHeight = maxHeight ?: 400.dp
         val estimatedWidth = (minWidth + maxWidth) / 2
@@ -123,7 +130,7 @@ fun TvPopupContainer(
 
         // Backdrop scrim
         AnimatedVisibility(
-            visible = visible,
+            visibleState = resolvedVisibleState,
             enter = fadeIn(tween(150)),
             exit = fadeOut(tween(150)),
         ) {
@@ -137,7 +144,7 @@ fun TvPopupContainer(
 
         // Popup content
         AnimatedVisibility(
-            visible = visible,
+            visibleState = resolvedVisibleState,
             enter = scaleIn(
                 animationSpec = tween(200),
                 initialScale = 0.85f,

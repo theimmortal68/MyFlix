@@ -38,6 +38,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import androidx.compose.animation.core.MutableTransitionState
 import kotlinx.coroutines.delay
 
 /**
@@ -103,12 +104,23 @@ data class DialogParams(
 @Composable
 fun DialogPopup(
     params: DialogParams,
+    visible: Boolean,
     onDismissRequest: () -> Unit,
+    onDismissed: () -> Unit,
     anchor: PopupAnchor? = null,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
+    val visibilityState = remember { MutableTransitionState(false) }
+    var dismissed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(visible) {
+        visibilityState.targetState = visible
+        if (visible) {
+            dismissed = false
+        }
+    }
 
     // Anti-propagation: 1-second delay after long-press dialog appears
     var waiting by remember { mutableStateOf(params.fromLongClick) }
@@ -121,19 +133,35 @@ fun DialogPopup(
         }
     }
 
-    // Focus first item when popup appears
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    // Focus first item when popup appears - wait for content to be composed
+    LaunchedEffect(visibilityState.currentState) {
+        if (visibilityState.currentState) {
+            // Content is now visible, request focus
+            focusRequester.requestFocus()
+        }
     }
 
-    // Handle dismiss with focus restoration
+    // Handle dismiss request - visibility transition handles focus restoration
     val handleDismiss: () -> Unit = {
         onDismissRequest()
-        params.restoreFocusRequester?.requestFocus()
+    }
+
+    // Restore focus only after exit animation completes
+    LaunchedEffect(visibilityState.currentState, visibilityState.isIdle, dismissed, visible) {
+        if (!dismissed &&
+            !visible &&
+            !visibilityState.currentState &&
+            visibilityState.isIdle
+        ) {
+            dismissed = true
+            params.restoreFocusRequester?.requestFocus()
+            onDismissed()
+        }
     }
 
     TvPopupContainer(
-        visible = true,
+        visible = visible,
+        visibleState = visibilityState,
         onDismiss = handleDismiss,
         anchor = anchor,
         minWidth = 220.dp,

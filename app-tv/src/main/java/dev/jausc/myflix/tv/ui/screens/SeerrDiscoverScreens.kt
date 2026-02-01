@@ -308,6 +308,7 @@ private fun SeerrMediaGridScreen(
 
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
 
     // Seerr actions for context menu
     val seerrActions = remember(onMediaClick, scope, seerrClient) {
@@ -481,6 +482,7 @@ private fun SeerrMediaGridScreen(
                                     items = buildSeerrDialogItems(media, seerrActions),
                                     fromLongClick = true,
                                 )
+                                dialogVisible = true
                             },
                         )
                     }
@@ -504,7 +506,9 @@ private fun SeerrMediaGridScreen(
         dialogParams?.let { params ->
             DialogPopup(
                 params = params,
-                onDismissRequest = { dialogParams = null },
+                visible = dialogVisible,
+                onDismissRequest = { dialogVisible = false },
+                onDismissed = { dialogParams = null },
             )
         }
     }
@@ -637,6 +641,7 @@ private fun SeerrFilterableMediaGridScreen(
 
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
 
     // Menu state for slide-out menus
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -866,6 +871,7 @@ private fun SeerrFilterableMediaGridScreen(
                                     items = buildSeerrDialogItems(media, seerrActions),
                                     fromLongClick = true,
                                 )
+                                dialogVisible = true
                             },
                         )
                     }
@@ -889,7 +895,9 @@ private fun SeerrFilterableMediaGridScreen(
         dialogParams?.let { params ->
             DialogPopup(
                 params = params,
-                onDismissRequest = { dialogParams = null },
+                visible = dialogVisible,
+                onDismissRequest = { dialogVisible = false },
+                onDismissed = { dialogParams = null },
             )
         }
 
