@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val POLL_INTERVAL_MS = 30_000L
 
@@ -82,6 +84,9 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    /** Mutex to prevent overlapping loadContent calls during background polling */
+    private val loadContentMutex = Mutex()
+
     // Observe preference changes
     val hideWatchedFromRecent = preferences.hideWatchedFromRecent
     val showSeasonPremieres = preferences.showSeasonPremieres
@@ -110,101 +115,109 @@ class HomeViewModel(
      */
     fun loadContent(showLoading: Boolean = true) {
         viewModelScope.launch {
-            if (showLoading) {
-                _uiState.update { it.copy(isLoading = true, error = null) }
-            }
+            // Use mutex to prevent overlapping loads during background polling
+            // tryLock returns false if already loading, skipping this refresh
+            if (!loadContentMutex.tryLock()) return@launch
 
-            jellyfinClient.clearCache()
-
-            // Get libraries first
-            jellyfinClient.getLibraries()
-                .onSuccess { libs ->
-                    _uiState.update { it.copy(libraries = libs) }
-
-                    val moviesLibraryId = findMoviesLibraryId(libs)
-                    val showsLibraryId = findShowsLibraryId(libs)
-
-                    // Load latest movies
-                    if (moviesLibraryId != null) {
-                        jellyfinClient.getLatestMovies(moviesLibraryId, limit = 12)
-                            .onSuccess { items ->
-                                _uiState.update { it.copy(recentMovies = items) }
-                            }
-                    }
-
-                    // Load latest series
-                    if (showsLibraryId != null) {
-                        jellyfinClient.getLatestSeries(showsLibraryId, limit = 12)
-                            .onSuccess { items ->
-                                _uiState.update { it.copy(recentShows = items) }
-                            }
-                    }
-
-                    // Load latest episodes
-                    if (showsLibraryId != null) {
-                        jellyfinClient.getLatestEpisodes(showsLibraryId, limit = 12)
-                            .onSuccess { items ->
-                                _uiState.update { it.copy(recentEpisodes = items) }
-                            }
-                    }
-                }
-                .onFailure { e ->
-                    _uiState.update {
-                        it.copy(error = "Failed to load libraries: ${e.message ?: "Unknown error"}")
-                    }
+            try {
+                if (showLoading) {
+                    _uiState.update { it.copy(isLoading = true, error = null) }
                 }
 
-            // Load Next Up
-            jellyfinClient.getNextUp(limit = 12)
-                .onSuccess { items ->
-                    _uiState.update { it.copy(nextUp = items) }
-                }
+                jellyfinClient.clearCache()
 
-            // Load Continue Watching
-            jellyfinClient.getContinueWatching(limit = 12)
-                .onSuccess { items ->
-                    _uiState.update { it.copy(continueWatching = items) }
-                }
+                // Get libraries first
+                jellyfinClient.getLibraries()
+                    .onSuccess { libs ->
+                        _uiState.update { it.copy(libraries = libs) }
 
-            // Load Season Premieres
-            if (showSeasonPremieres.value) {
-                jellyfinClient.getUpcomingEpisodes(limit = 12)
+                        val moviesLibraryId = findMoviesLibraryId(libs)
+                        val showsLibraryId = findShowsLibraryId(libs)
+
+                        // Load latest movies
+                        if (moviesLibraryId != null) {
+                            jellyfinClient.getLatestMovies(moviesLibraryId, limit = 12)
+                                .onSuccess { items ->
+                                    _uiState.update { it.copy(recentMovies = items) }
+                                }
+                        }
+
+                        // Load latest series
+                        if (showsLibraryId != null) {
+                            jellyfinClient.getLatestSeries(showsLibraryId, limit = 12)
+                                .onSuccess { items ->
+                                    _uiState.update { it.copy(recentShows = items) }
+                                }
+                        }
+
+                        // Load latest episodes
+                        if (showsLibraryId != null) {
+                            jellyfinClient.getLatestEpisodes(showsLibraryId, limit = 12)
+                                .onSuccess { items ->
+                                    _uiState.update { it.copy(recentEpisodes = items) }
+                                }
+                        }
+                    }
+                    .onFailure { e ->
+                        _uiState.update {
+                            it.copy(error = "Failed to load libraries: ${e.message ?: "Unknown error"}")
+                        }
+                    }
+
+                // Load Next Up
+                jellyfinClient.getNextUp(limit = 12)
                     .onSuccess { items ->
-                        _uiState.update { it.copy(seasonPremieres = items) }
+                        _uiState.update { it.copy(nextUp = items) }
                     }
-            }
 
-            // Load Collections
-            if (showCollections.value) {
-                jellyfinClient.getCollections(limit = 50)
+                // Load Continue Watching
+                jellyfinClient.getContinueWatching(limit = 12)
                     .onSuccess { items ->
-                        _uiState.update { it.copy(collections = items) }
-                        loadPinnedCollections()
+                        _uiState.update { it.copy(continueWatching = items) }
                     }
+
+                // Load Season Premieres
+                if (showSeasonPremieres.value) {
+                    jellyfinClient.getUpcomingEpisodes(limit = 12)
+                        .onSuccess { items ->
+                            _uiState.update { it.copy(seasonPremieres = items) }
+                        }
+                }
+
+                // Load Collections
+                if (showCollections.value) {
+                    jellyfinClient.getCollections(limit = 50)
+                        .onSuccess { items ->
+                            _uiState.update { it.copy(collections = items) }
+                            loadPinnedCollections()
+                        }
+                }
+
+                // Load Suggestions
+                if (showSuggestions.value) {
+                    jellyfinClient.getSuggestions(limit = 12)
+                        .onSuccess { items ->
+                            _uiState.update { it.copy(suggestions = items) }
+                        }
+                }
+
+                // Load Genre Rows
+                if (showGenreRows.value) {
+                    loadGenreRows()
+                }
+
+                // Load Recent Requests from Seerr
+                if (showSeerrRecentRequests.value && seerrClient != null) {
+                    loadRecentRequests()
+                }
+
+                // Build featured items
+                buildFeaturedItems()
+
+                _uiState.update { it.copy(isLoading = false) }
+            } finally {
+                loadContentMutex.unlock()
             }
-
-            // Load Suggestions
-            if (showSuggestions.value) {
-                jellyfinClient.getSuggestions(limit = 12)
-                    .onSuccess { items ->
-                        _uiState.update { it.copy(suggestions = items) }
-                    }
-            }
-
-            // Load Genre Rows
-            if (showGenreRows.value) {
-                loadGenreRows()
-            }
-
-            // Load Recent Requests from Seerr
-            if (showSeerrRecentRequests.value && seerrClient != null) {
-                loadRecentRequests()
-            }
-
-            // Build featured items
-            buildFeaturedItems()
-
-            _uiState.update { it.copy(isLoading = false) }
         }
     }
 

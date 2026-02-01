@@ -866,11 +866,12 @@ private fun ItemRow(
 
                     // Handle click: episodes go to episodes screen, others go to detail
                     val handleClick: () -> Unit = {
-                        if (item.type == "Episode" && item.seriesId != null) {
+                        val seriesId = item.seriesId
+                        if (item.type == "Episode" && seriesId != null) {
                             // Navigate to episodes screen for the series
                             // Pass season number (parentIndexNumber) - will be resolved to index later
                             val seasonNumber = item.parentIndexNumber ?: 1
-                            onEpisodeClick(item.seriesId!!, seasonNumber, item.id)
+                            onEpisodeClick(seriesId, seasonNumber, item.id)
                         } else {
                             onItemClick(item.id)
                         }
@@ -902,9 +903,10 @@ private fun ItemRow(
                         )
                     } else {
                         // For portrait cards: use series poster for episodes, otherwise use item poster
-                        val imageUrl = if (item.type == "Episode" && item.seriesId != null) {
+                        val seriesIdForPoster = item.seriesId
+                        val imageUrl = if (item.type == "Episode" && seriesIdForPoster != null) {
                             // Use series poster for episodes in portrait view
-                            jellyfinClient.getPrimaryImageUrl(item.seriesId!!, null)
+                            jellyfinClient.getPrimaryImageUrl(seriesIdForPoster, null)
                         } else {
                             jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary)
                         }
@@ -992,15 +994,19 @@ private fun SeerrRequestCard(
 
     // Lazily fetch media details to get poster path
     var mediaDetails by remember { mutableStateOf<SeerrMedia?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
 
     LaunchedEffect(tmdbId, mediaType) {
         if (tmdbId != null && mediaType != null) {
+            loadFailed = false
             val result = if (mediaType == "tv") {
                 seerrClient.getTVShow(tmdbId)
             } else {
                 seerrClient.getMovie(tmdbId)
             }
-            result.onSuccess { mediaDetails = it }
+            result
+                .onSuccess { mediaDetails = it }
+                .onFailure { loadFailed = true }
         }
     }
 
@@ -1029,17 +1035,21 @@ private fun SeerrRequestCard(
                         .clip(RoundedCornerShape(8.dp)),
                 )
             } else {
-                // Placeholder while loading
+                // Placeholder while loading or on error
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(TvColors.SurfaceElevated, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
+                    // Use request media title as fallback, show first letter or "?"
+                    val displayChar = mediaDetails?.displayTitle?.firstOrNull()
+                        ?: request.media?.name?.firstOrNull()
+                        ?: '?'
                     Text(
-                        text = mediaDetails?.displayTitle?.take(1) ?: "?",
+                        text = displayChar.toString(),
                         style = MaterialTheme.typography.headlineLarge,
-                        color = TvColors.TextSecondary,
+                        color = if (loadFailed) TvColors.TextSecondary.copy(alpha = 0.5f) else TvColors.TextSecondary,
                     )
                 }
             }

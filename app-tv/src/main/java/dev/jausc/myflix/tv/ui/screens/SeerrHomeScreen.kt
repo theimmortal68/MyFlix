@@ -86,19 +86,16 @@ import dev.jausc.myflix.core.seerr.PopularNetworks
 import dev.jausc.myflix.core.seerr.PopularStudios
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
-import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrGenre
-import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrNetwork
-import dev.jausc.myflix.core.seerr.SeerrNetworkRow
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.core.seerr.SeerrStudio
-import dev.jausc.myflix.core.seerr.SeerrStudioRow
+import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import dev.jausc.myflix.tv.ui.components.DialogItem
 import dev.jausc.myflix.tv.ui.components.DialogItemDivider
 import dev.jausc.myflix.tv.ui.components.DialogItemEntry
@@ -125,6 +122,7 @@ import java.util.Locale
  */
 @Composable
 fun SeerrHomeScreen(
+    viewModel: SeerrHomeViewModel,
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onNavigateSeerrSearch: () -> Unit = {},
@@ -138,8 +136,9 @@ fun SeerrHomeScreen(
     onNavigateStudio: (studioId: Int, studioName: String) -> Unit = { _, _ -> },
     onNavigateNetwork: (networkId: Int, networkName: String) -> Unit = { _, _ -> },
 ) {
-    // Coroutine scope for async operations
-    val coroutineScope = rememberCoroutineScope()
+    // Collect UI state from ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+    val isAuthenticated by viewModel.isAuthenticated.collectAsState()
 
     // Focus requester for content
     val contentFocusRequester = remember { FocusRequester() }
@@ -148,20 +147,11 @@ fun SeerrHomeScreen(
     // NavRail exit focus registration
     val updateExitFocus = rememberExitFocusRegistry(firstTrendingItemFocusRequester)
 
-    // Content state
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var rows by remember { mutableStateOf<List<SeerrDiscoverRow>>(emptyList()) }
-    var genreRows by remember { mutableStateOf<List<SeerrGenreRow>>(emptyList()) }
-    var studiosRow by remember { mutableStateOf<SeerrStudioRow?>(null) }
-    var networksRow by remember { mutableStateOf<SeerrNetworkRow?>(null) }
-    var featuredItem by remember { mutableStateOf<SeerrMedia?>(null) }
-
-    // Preview item - shows focused card's media in hero section
+    // TV-specific state: preview item for hero section
     var previewItem by remember { mutableStateOf<SeerrMedia?>(null) }
 
     // The item to display in hero - preview takes precedence
-    val heroDisplayItem = previewItem ?: featuredItem
+    val heroDisplayItem = previewItem ?: uiState.featuredItem
 
     // Ratings for hero item (RT and IMDB)
     var heroRtRating by remember { mutableStateOf<SeerrRottenTomatoesRating?>(null) }
@@ -172,65 +162,25 @@ fun SeerrHomeScreen(
     var dialogVisible by remember { mutableStateOf(false) }
     var dialogMedia by remember { mutableStateOf<SeerrMedia?>(null) }
 
-    // Seerr actions for context menu
-    val seerrActions = remember(onMediaClick, coroutineScope, seerrClient) {
+    // Seerr actions for context menu - use ViewModel methods
+    val seerrActions = remember(onMediaClick, viewModel) {
         SeerrMediaActions(
             onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
-            onRequest = { media ->
-                coroutineScope.launch {
-                    if (media.isMovie) {
-                        seerrClient.requestMovie(media.tmdbId ?: media.id)
-                    } else {
-                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
-                    }
-                }
-            },
-            onBlacklist = { media ->
-                coroutineScope.launch {
-                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
-                }
-            },
+            onRequest = { media -> viewModel.requestMedia(media) },
+            onBlacklist = { media -> viewModel.addToBlacklist(media) },
         )
     }
 
-    // Collect auth state as Compose state for proper recomposition
-    val isAuthenticated by seerrClient.isAuthenticated.collectAsState()
-
-    // Load content - key on auth status to reload if auth changes
+    // Reload content when auth changes
     LaunchedEffect(isAuthenticated) {
-        if (!isAuthenticated) {
-            errorMessage = "Not connected to Seerr"
-            isLoading = false
-            return@LaunchedEffect
+        if (isAuthenticated) {
+            viewModel.loadContent()
         }
-
-        isLoading = true
-        errorMessage = null
-
-        // Load discover rows using shared helper
-        val sliders = seerrClient.getDiscoverSettings().getOrNull()
-        val discoverRows = if (!sliders.isNullOrEmpty()) {
-            SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders)
-        } else {
-            SeerrDiscoverHelper.loadFallbackRows(seerrClient)
-        }
-
-        rows = discoverRows
-        featuredItem = discoverRows.firstOrNull()?.items?.firstOrNull()
-
-        // Load genre rows for browsing
-        genreRows = SeerrDiscoverHelper.loadGenreRows(seerrClient)
-
-        // Load studios and networks rows
-        studiosRow = SeerrDiscoverHelper.getStudiosRow()
-        networksRow = SeerrDiscoverHelper.getNetworksRow()
-
-        isLoading = false
     }
 
     // Request focus on first trending item when content loads
-    LaunchedEffect(rows) {
-        if (rows.isNotEmpty()) {
+    LaunchedEffect(uiState.rows) {
+        if (uiState.rows.isNotEmpty()) {
             kotlinx.coroutines.delay(100)
             try {
                 firstTrendingItemFocusRequester.requestFocus()
@@ -280,7 +230,7 @@ fun SeerrHomeScreen(
     ) {
             // Main content
             when {
-                isLoading -> {
+                uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -289,7 +239,7 @@ fun SeerrHomeScreen(
                     }
                 }
 
-                errorMessage != null -> {
+                uiState.errorMessage != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -297,13 +247,13 @@ fun SeerrHomeScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = Icons.Outlined.Explore,
-                                contentDescription = null,
+                                contentDescription = "Error loading Seerr content",
                                 modifier = Modifier.size(64.dp),
                                 tint = TvColors.TextSecondary,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = errorMessage ?: "Failed to load content",
+                                text = uiState.errorMessage ?: "Failed to load content",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = TvColors.TextSecondary,
                             )
@@ -381,19 +331,15 @@ fun SeerrHomeScreen(
                             // 8. Upcoming TV
                             // 9. Networks
 
-                            // Find rows by type for ordered rendering
-                            val trendingRow = rows.find { it.rowType == SeerrRowType.TRENDING }
-                            val popularMoviesRow = rows.find { it.rowType == SeerrRowType.POPULAR_MOVIES }
-                            val movieGenresRow = genreRows.find { it.mediaType == "movie" }
-                            val upcomingMoviesRow = rows.find { it.rowType == SeerrRowType.UPCOMING_MOVIES }
-                            val popularTvRow = rows.find { it.rowType == SeerrRowType.POPULAR_TV }
-                            val tvGenresRow = genreRows.find { it.mediaType == "tv" }
-                            val upcomingTvRow = rows.find { it.rowType == SeerrRowType.UPCOMING_TV }
-
-                            // Other rows not in the ordered list
-                            val otherRows = rows.filter { row ->
-                                row.rowType == SeerrRowType.OTHER
-                            }
+                            // Use computed properties from uiState for row access
+                            val trendingRow = uiState.trendingRow
+                            val popularMoviesRow = uiState.popularMoviesRow
+                            val movieGenresRow = uiState.movieGenresRow
+                            val upcomingMoviesRow = uiState.upcomingMoviesRow
+                            val popularTvRow = uiState.popularTvRow
+                            val tvGenresRow = uiState.tvGenresRow
+                            val upcomingTvRow = uiState.upcomingTvRow
+                            val otherRows = uiState.otherRows
 
                             // Helper to render a content row
                             @Composable
@@ -466,7 +412,7 @@ fun SeerrHomeScreen(
                             }
 
                             // 5. Studios
-                            studiosRow?.let { studioRow ->
+                            uiState.studiosRow?.let { studioRow ->
                                 item(key = studioRow.key) {
                                     SeerrStudioBrowseRow(
                                         title = studioRow.title,
@@ -502,7 +448,7 @@ fun SeerrHomeScreen(
                             }
 
                             // 9. Networks
-                            networksRow?.let { networkRow ->
+                            uiState.networksRow?.let { networkRow ->
                                 item(key = networkRow.key) {
                                     SeerrNetworkBrowseRow(
                                         title = networkRow.title,
@@ -670,7 +616,7 @@ private fun SeerrHeroSection(
                 ) {
                     Icon(
                         imageVector = statusIcon,
-                        contentDescription = null,
+                        contentDescription = statusText,
                         modifier = Modifier.size(16.dp),
                         tint = statusColor,
                     )
@@ -965,7 +911,7 @@ private fun TvViewAllCard(onClick: () -> Unit) {
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                    contentDescription = null,
+                    contentDescription = "View all items",
                     modifier = Modifier.size(32.dp),
                     tint = TvColors.BluePrimary,
                 )

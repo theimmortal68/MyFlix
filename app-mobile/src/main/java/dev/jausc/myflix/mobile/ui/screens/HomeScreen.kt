@@ -545,15 +545,19 @@ private fun MobileSeerrRequestCard(
 
     // Lazily fetch media details to get poster path
     var mediaDetails by remember { mutableStateOf<SeerrMedia?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(tmdbId, mediaType) {
         if (tmdbId != null && mediaType != null) {
+            loadFailed = false
             val result = if (mediaType == "tv") {
                 seerrClient.getTVShow(tmdbId)
             } else {
                 seerrClient.getMovie(tmdbId)
             }
-            result.onSuccess { mediaDetails = it }
+            result
+                .onSuccess { mediaDetails = it }
+                .onFailure { loadFailed = true }
         }
     }
 
@@ -586,17 +590,25 @@ private fun MobileSeerrRequestCard(
                         .clip(RoundedCornerShape(8.dp)),
                 )
             } else {
-                // Placeholder while loading
+                // Placeholder while loading or on error
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
                     contentAlignment = androidx.compose.ui.Alignment.Center,
                 ) {
+                    // Use request media title as fallback, show first letter or "?"
+                    val displayChar = mediaDetails?.displayTitle?.firstOrNull()
+                        ?: request.media?.name?.firstOrNull()
+                        ?: '?'
                     Text(
-                        text = mediaDetails?.displayTitle?.take(1) ?: "?",
+                        text = displayChar.toString(),
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (loadFailed) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 }
             }
