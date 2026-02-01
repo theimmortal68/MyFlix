@@ -5,6 +5,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +46,6 @@ import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.LibraryUiState
 import dev.jausc.myflix.core.viewmodel.LibraryViewModel
-import dev.jausc.myflix.tv.ui.components.DynamicBackground
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
@@ -56,7 +56,6 @@ import dev.jausc.myflix.tv.ui.components.library.LibraryFilterMenu
 import dev.jausc.myflix.tv.ui.components.library.LibrarySortMenu
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
-import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -101,10 +100,6 @@ fun LibraryScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
     var sortMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
-
-    // Track focused item for dynamic background
-    var focusedImageUrl by remember { mutableStateOf<String?>(null) }
-    val gradientColors = rememberGradientColors(focusedImageUrl)
 
     // All letters are always available - the API handles filtering
     // If a letter has no items, the user will see "0 items" which is acceptable
@@ -162,18 +157,24 @@ fun LibraryScreen(
             }
     }
 
-    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .focusGroup()
-            .focusRestorer(firstItemFocusRequester),
-    ) {
-        // Dynamic background that changes based on focused poster
-        DynamicBackground(gradientColors = gradientColors)
+    // Outer wrapper - menus need to be outside focusGroup to avoid focusRestorer interference
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Black background (like home screen)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TvColors.Background),
+        )
 
-        // Note: NavigationRail is now provided by MainActivity
-        Box(modifier = Modifier.fillMaxSize()) {
+        // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusGroup()
+                .focusRestorer(firstItemFocusRequester),
+        ) {
+            // Note: NavigationRail is now provided by MainActivity
+            Box(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Top padding for content
                     Spacer(modifier = Modifier.height(16.dp))
@@ -261,8 +262,7 @@ fun LibraryScreen(
                                     filterBarFocusRequester = filterBarFirstButtonFocusRequester,
                                     alphabetFocusRequester = alphabetFocusRequester,
                                     onItemClick = onItemClick,
-                                    onItemFocused = { _, imageUrl ->
-                                        focusedImageUrl = imageUrl
+                                    onItemFocused = { _, _ ->
                                         updateExitFocus(firstItemFocusRequester)
                                     },
                                     modifier = Modifier.weight(1f),
@@ -288,7 +288,9 @@ fun LibraryScreen(
                     }
                 }
             }
+        }
 
+        // Menus are OUTSIDE focusGroup to avoid focusRestorer interference
         LibraryFilterMenu(
             visible = showFilterMenu,
             currentWatchedFilter = state.filterState.watchedFilter,
@@ -313,7 +315,14 @@ fun LibraryScreen(
             onSeriesStatusChange = { status ->
                 viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, status)
             },
-            onDismiss = { showFilterMenu = false },
+            onDismiss = {
+                showFilterMenu = false
+                try {
+                    firstItemFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                    // Focus request failed, ignore
+                }
+            },
             anchor = filterMenuAnchor,
         )
 
@@ -322,7 +331,14 @@ fun LibraryScreen(
             currentSortBy = state.filterState.sortBy,
             currentSortOrder = state.filterState.sortOrder,
             onSortChange = { sortBy, sortOrder -> viewModel.updateSort(sortBy, sortOrder) },
-            onDismiss = { showSortMenu = false },
+            onDismiss = {
+                showSortMenu = false
+                try {
+                    firstItemFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                    // Focus request failed, ignore
+                }
+            },
             anchor = sortMenuAnchor,
         )
     }
