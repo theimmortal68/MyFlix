@@ -302,6 +302,7 @@ internal fun LibraryFilterMenu(
     currentRatingFilter: Float?,
     currentYearRange: YearRange,
     currentSeriesStatus: SeriesStatusFilter,
+    currentFavoritesOnly: Boolean,
     availableGenres: List<String>,
     selectedGenres: Set<String>,
     availableParentalRatings: List<String>,
@@ -314,6 +315,7 @@ internal fun LibraryFilterMenu(
     onFilterChange: (WatchedFilter, Float?) -> Unit,
     onYearRangeChange: (YearRange) -> Unit,
     onSeriesStatusChange: (SeriesStatusFilter) -> Unit,
+    onFavoritesOnlyChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     anchor: MenuAnchor?,
 ) {
@@ -350,6 +352,7 @@ internal fun LibraryFilterMenu(
     val sortedGenres = availableGenres.sorted()
     val sortedRatings = availableParentalRatings.sorted()
     val submenuEntries = buildList {
+        add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Favorites, "Favorites"))
         add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Watched, "Watched Status"))
         add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Rating, "Minimum Rating"))
         add(LibraryFilterSubmenuEntry(LibraryFilterSubmenu.Year, "Year"))
@@ -389,6 +392,28 @@ internal fun LibraryFilterMenu(
 
     val submenuAnchor = activeSubmenu?.let { submenuAnchors[it] } ?: anchor
     when (activeSubmenu) {
+        LibraryFilterSubmenu.Favorites -> {
+            PlayerSlideOutMenu(
+                visible = true,
+                title = "Favorites",
+                items = listOf(
+                    SlideOutMenuItem(
+                        text = "All Items",
+                        selected = !currentFavoritesOnly,
+                        onClick = { onFavoritesOnlyChange(false) },
+                    ),
+                    SlideOutMenuItem(
+                        text = "Favorites Only",
+                        selected = currentFavoritesOnly,
+                        onClick = { onFavoritesOnlyChange(true) },
+                    ),
+                ),
+                onDismiss = { activeSubmenu = null },
+                anchor = submenuAnchor,
+                firstItemFocusRequester = submenuFocusRequester,
+                leftFocusRequester = mainMenuFocusRequester,
+            )
+        }
         LibraryFilterSubmenu.Watched -> {
             PlayerSlideOutMenu(
                 visible = true,
@@ -532,6 +557,7 @@ internal fun LibraryFilterMenu(
 }
 
 private enum class LibraryFilterSubmenu {
+    Favorites,
     Watched,
     Rating,
     Year,

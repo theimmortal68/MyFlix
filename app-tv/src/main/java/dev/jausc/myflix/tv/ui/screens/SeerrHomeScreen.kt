@@ -169,6 +169,7 @@ fun SeerrHomeScreen(
 
     // Dialog state for long-press context menu
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
     var dialogMedia by remember { mutableStateOf<SeerrMedia?>(null) }
 
     // Seerr actions for context menu
@@ -423,6 +424,7 @@ fun SeerrHomeScreen(
                                             items = buildSeerrDialogItems(media, seerrActions),
                                             fromLongClick = true,
                                         )
+                                        dialogVisible = true
                                     },
                                     onItemFocused = { media ->
                                         previewItem = media
@@ -525,7 +527,9 @@ fun SeerrHomeScreen(
         dialogParams?.let { params ->
             DialogPopup(
                 params = params,
-                onDismissRequest = {
+                visible = dialogVisible,
+                onDismissRequest = { dialogVisible = false },
+                onDismissed = {
                     dialogParams = null
                     dialogMedia = null
                 },

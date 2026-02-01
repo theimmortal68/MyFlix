@@ -85,6 +85,16 @@ Query jellyfin-ui MCP to check the actual MediaSource response structure.
 - Navigation or focus management changes
 - Any change touching multiple files or components
 
+**Bug Fix Protocol (MANDATORY):**
+When diagnosing and fixing bugs, Claude MUST:
+1. Consult BOTH Codex and Gemini with the bug description and relevant code context
+2. Wait for both models to respond with their analysis
+3. Achieve consensus on the root cause and fix approach
+4. Only implement changes AFTER consensus is reached
+5. If models disagree, present both approaches to the user for decision
+
+Do NOT attempt bug fixes without multi-model consultation. Do NOT implement partial fixes while waiting for model responses.
+
 **May skip consultation for:**
 - Typo fixes
 - Simple logging additions

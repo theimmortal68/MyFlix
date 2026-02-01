@@ -152,6 +152,7 @@ fun HomeScreen(
 
     // Long-press dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Dialog actions
@@ -310,6 +311,7 @@ fun HomeScreen(
                         fromLongClick = true,
                         restoreFocusRequester = effectiveRestoreFocusRequester,
                     )
+                    dialogVisible = true
                 },
                 onSeerrMediaClick = onSeerrMediaClick,
                 onEpisodeClick = onEpisodeClick,
@@ -330,7 +332,9 @@ fun HomeScreen(
     dialogParams?.let { params ->
         DialogPopup(
             params = params,
-            onDismissRequest = { dialogParams = null },
+            visible = dialogVisible,
+            onDismissRequest = { dialogVisible = false },
+            onDismissed = { dialogParams = null },
         )
     }
 

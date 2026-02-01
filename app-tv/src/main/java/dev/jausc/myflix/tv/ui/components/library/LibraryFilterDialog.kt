@@ -41,14 +41,15 @@ import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
- * Dialog for advanced library filters: watched status, rating, year range.
+ * Dialog for advanced library filters: watched status, rating, year range, favorites.
  */
 @Composable
 fun LibraryFilterDialog(
     currentWatchedFilter: WatchedFilter,
     currentRatingFilter: Float?,
     currentYearRange: YearRange,
-    onApply: (WatchedFilter, Float?, YearRange) -> Unit,
+    currentFavoritesOnly: Boolean = false,
+    onApply: (WatchedFilter, Float?, YearRange, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -58,6 +59,7 @@ fun LibraryFilterDialog(
     var ratingFilter by remember { mutableStateOf(currentRatingFilter) }
     var yearFrom by remember { mutableStateOf(currentYearRange.from) }
     var yearTo by remember { mutableStateOf(currentYearRange.to) }
+    var favoritesOnly by remember { mutableStateOf(currentFavoritesOnly) }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -90,6 +92,46 @@ fun LibraryFilterDialog(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Favorites Section
+            Text(
+                text = "Favorites",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            FilterChip(
+                selected = favoritesOnly,
+                onClick = { favoritesOnly = !favoritesOnly },
+                modifier = Modifier.focusRequester(focusRequester),
+                leadingIcon = if (favoritesOnly) {
+                    {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
+                colors = FilterChipDefaults.colors(
+                    containerColor = TvColors.SurfaceElevated,
+                    contentColor = TvColors.TextSecondary,
+                    focusedContainerColor = Color(0xFFEF4444).copy(alpha = 0.3f),
+                    focusedContentColor = TvColors.TextPrimary,
+                    selectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
+                    selectedContentColor = Color(0xFFEF4444),
+                    focusedSelectedContainerColor = Color(0xFFEF4444).copy(alpha = 0.4f),
+                    focusedSelectedContentColor = Color(0xFFEF4444),
+                ),
+            ) {
+                Text("Favorites Only", style = MaterialTheme.typography.labelMedium)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Watched Status Section
             Text(
                 text = "Watched Status",
@@ -108,11 +150,6 @@ fun LibraryFilterDialog(
                     FilterChip(
                         selected = isSelected,
                         onClick = { watchedFilter = filter },
-                        modifier = if (filter == WatchedFilter.ALL) {
-                            Modifier.focusRequester(focusRequester)
-                        } else {
-                            Modifier
-                        },
                         leadingIcon = if (isSelected) {
                             {
                                 Icon(
@@ -290,6 +327,7 @@ fun LibraryFilterDialog(
                 Button(
                     onClick = {
                         // Clear all filters
+                        favoritesOnly = false
                         watchedFilter = WatchedFilter.ALL
                         ratingFilter = null
                         yearFrom = null
@@ -321,7 +359,7 @@ fun LibraryFilterDialog(
 
                 Button(
                     onClick = {
-                        onApply(watchedFilter, ratingFilter, YearRange(yearFrom, yearTo))
+                        onApply(watchedFilter, ratingFilter, YearRange(yearFrom, yearTo), favoritesOnly)
                     },
                     shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     colors = ButtonDefaults.colors(

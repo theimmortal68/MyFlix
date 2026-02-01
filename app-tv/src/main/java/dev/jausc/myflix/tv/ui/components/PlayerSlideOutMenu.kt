@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -144,9 +145,10 @@ fun PlayerSlideOutMenu(
     val listState = rememberLazyListState()
     var focusedIndex by remember { mutableStateOf(0) }
 
-    // Focus first item when menu appears
+    // Focus first item when menu appears - delay allows AnimatedVisibility to attach nodes
     LaunchedEffect(visible) {
         if (visible && itemFocusRequesters.isNotEmpty()) {
+            delay(200)
             itemFocusRequesters.first().requestFocus()
         }
     }
@@ -354,8 +356,10 @@ fun PlayerSlideOutMenuSectioned(
     }
     var focusedIndex by remember { mutableStateOf(0) }
 
+    // Focus first item when menu appears - delay allows AnimatedVisibility to attach nodes
     LaunchedEffect(visible) {
         if (visible && itemFocusRequesters.isNotEmpty()) {
+            delay(200)
             itemFocusRequesters.first().requestFocus()
         }
     }

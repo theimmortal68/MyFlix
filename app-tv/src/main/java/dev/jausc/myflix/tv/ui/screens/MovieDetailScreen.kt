@@ -125,6 +125,7 @@ fun MovieDetailScreen(
 
     // Dialog state
     var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
     var mediaInfoItem by remember { mutableStateOf<JellyfinItem?>(null) }
     var showOverview by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
@@ -256,7 +257,6 @@ fun MovieDetailScreen(
                                             icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                                             iconTint = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
                                         ) {
-                                            dialogParams = null
                                             onFavoriteClick()
                                         }
                                     )
@@ -266,26 +266,21 @@ fun MovieDetailScreen(
                                         text = "Media Info",
                                         icon = Icons.Outlined.Info,
                                         iconTint = IconColors.MediaInfo,
-                                    ) {
-                                        dialogParams = null
-                                        mediaInfoItem = movie
-                                    }
+                                    ) { mediaInfoItem = movie }
                                 )
                                 add(
                                     DialogItem(
                                         text = "Add to Playlist",
                                         icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
                                         iconTint = IconColors.Playlist,
-                                    ) {
-                                        dialogParams = null
-                                        showPlaylistDialog = true
-                                    }
+                                    ) { showPlaylistDialog = true }
                                 )
                             }
                             dialogParams = DialogParams(
                                 title = movie.name,
                                 items = moreItems,
                             )
+                            dialogVisible = true
                         },
                         buttonOnFocusChanged = {
                             if (it.isFocused) {
@@ -495,7 +490,9 @@ fun MovieDetailScreen(
     dialogParams?.let { params ->
         DialogPopup(
             params = params,
-            onDismissRequest = { dialogParams = null },
+            visible = dialogVisible,
+            onDismissRequest = { dialogVisible = false },
+            onDismissed = { dialogParams = null },
         )
     }
 

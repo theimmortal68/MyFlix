@@ -330,6 +330,16 @@ fun MyFlixTvApp() {
         sentinelEnabled = true
     }
 
+    // Re-enable sentinel when NavRail becomes inactive (handles same-destination navigation)
+    // This covers the case where the route doesn't change but the rail was deactivated
+    LaunchedEffect(isNavRailActive) {
+        if (!isNavRailActive) {
+            // Wait for focus to settle on content before re-enabling sentinel
+            delay(NavRailAnimations.SentinelStartupDelayMs)
+            sentinelEnabled = true
+        }
+    }
+
     // Animate scrim alpha for NavRail (only show when active AND expanded)
     val scrimAlpha by animateFloatAsState(
         targetValue = if (isNavRailActive && isNavRailExpanded) 0.5f else 0f,
@@ -455,7 +465,8 @@ fun MyFlixTvApp() {
                     // Handle Menu key press from anywhere to toggle NavRail
                     if (showNavRail && event.type == KeyEventType.KeyDown && event.key == Key.Menu) {
                         if (isNavRailActive) {
-                            // Deactivate and collapse
+                            // Deactivate and collapse - disable sentinel to prevent race condition
+                            sentinelEnabled = false
                             isNavRailActive = false
                             isNavRailExpanded = false
                         } else {
@@ -1264,7 +1275,12 @@ fun MyFlixTvApp() {
                 isActive = isNavRailActive,
                 isExpanded = isNavRailExpanded,
                 onExpandedChange = { isNavRailExpanded = it },
-                onDeactivate = { isNavRailActive = false },
+                onDeactivate = {
+                    // Disable sentinel immediately to prevent race condition where
+                    // focus traversal through sentinel re-activates the rail
+                    sentinelEnabled = false
+                    isNavRailActive = false
+                },
                 showUniverses = universesEnabled,
                 showDiscover = isSeerrAuthenticated && showDiscoverNav,
                 firstItemFocusRequester = navRailFocusRequester,

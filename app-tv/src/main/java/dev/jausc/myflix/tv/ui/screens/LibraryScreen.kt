@@ -5,6 +5,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,21 +43,23 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.preferences.AppPreferences
+import dev.jausc.myflix.core.common.ui.HomeActions
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.LibraryUiState
 import dev.jausc.myflix.core.viewmodel.LibraryViewModel
-import dev.jausc.myflix.tv.ui.components.DynamicBackground
+import dev.jausc.myflix.tv.ui.components.DialogParams
+import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.TvTextButton
+import dev.jausc.myflix.tv.ui.components.buildHomeDialogItems
 import dev.jausc.myflix.tv.ui.components.library.AlphabetScrollBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterBar
 import dev.jausc.myflix.tv.ui.components.library.LibraryFilterMenu
 import dev.jausc.myflix.tv.ui.components.library.LibrarySortMenu
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
-import dev.jausc.myflix.tv.ui.util.rememberGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
@@ -95,16 +98,34 @@ fun LibraryScreen(
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
-    // NavRail exit focus registration
-    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
+    // Track last focused item for reliable focus restoration after NavRail exit
+    var lastFocusedRequester by remember { mutableStateOf<FocusRequester?>(null) }
+
+    // NavRail exit focus registration - use last focused item, fallback to first
+    val updateExitFocus = rememberExitFocusRegistry(lastFocusedRequester ?: firstItemFocusRequester)
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
     var sortMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
 
-    // Track focused item for dynamic background
-    var focusedImageUrl by remember { mutableStateOf<String?>(null) }
-    val gradientColors = rememberGradientColors(focusedImageUrl)
+    // Long-press dialog state
+    var dialogParams by remember { mutableStateOf<DialogParams?>(null) }
+    var dialogVisible by remember { mutableStateOf(false) }
+    var dialogRestoreFocus by remember { mutableStateOf<FocusRequester?>(null) }
+
+    // Dialog actions for long-press menu
+    val dialogActions = remember(viewModel) {
+        HomeActions(
+            onGoTo = onItemClick,
+            onPlay = onPlayClick,
+            onMarkWatched = { itemId, watched ->
+                viewModel.setPlayed(itemId, watched)
+            },
+            onToggleFavorite = { itemId, favorite ->
+                viewModel.setFavorite(itemId, favorite)
+            },
+        )
+    }
 
     // All letters are always available - the API handles filtering
     // If a letter has no items, the user will see "0 items" which is acceptable
@@ -150,30 +171,44 @@ fun LibraryScreen(
                     if (shouldFocus) {
                         didRequestInitialFocus = true
                         lastFocusedForLetter = currentLetter
-                        // Delay to ensure grid is rendered
-                        delay(300)
-                        try {
-                            firstItemFocusRequester.requestFocus()
-                        } catch (_: Exception) {
-                            // Focus request failed, ignore
+                        // Scroll to top first to ensure item 0 is composed
+                        gridState.scrollToItem(0)
+                        // Small delay to let composition settle
+                        delay(50)
+                        // Retry focus request - grid may not be attached immediately after loading
+                        repeat(5) { attempt ->
+                            delay(if (attempt == 0) 50 else 100)
+                            try {
+                                firstItemFocusRequester.requestFocus()
+                                return@collect // Success, exit
+                            } catch (_: Exception) {
+                                // Focus request failed, retry
+                            }
                         }
                     }
                 }
             }
     }
 
-    // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .focusGroup()
-            .focusRestorer(firstItemFocusRequester),
-    ) {
-        // Dynamic background that changes based on focused poster
-        DynamicBackground(gradientColors = gradientColors)
+    // Outer wrapper - menus need to be outside focusGroup to avoid focusRestorer interference
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Black background (like home screen)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TvColors.Background),
+        )
 
-        // Note: NavigationRail is now provided by MainActivity
-        Box(modifier = Modifier.fillMaxSize()) {
+        // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+        // Use lastFocusedRequester for reliable restoration after scrolling
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusGroup()
+                .focusRestorer(lastFocusedRequester ?: firstItemFocusRequester),
+        ) {
+            // Note: NavigationRail is now provided by MainActivity
+            Box(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Top padding for content
                     Spacer(modifier = Modifier.height(16.dp))
@@ -261,9 +296,20 @@ fun LibraryScreen(
                                     filterBarFocusRequester = filterBarFirstButtonFocusRequester,
                                     alphabetFocusRequester = alphabetFocusRequester,
                                     onItemClick = onItemClick,
-                                    onItemFocused = { _, imageUrl ->
-                                        focusedImageUrl = imageUrl
-                                        updateExitFocus(firstItemFocusRequester)
+                                    onItemLongClick = { item, focusRequester ->
+                                        dialogRestoreFocus = focusRequester
+                                        dialogParams = DialogParams(
+                                            title = item.name,
+                                            items = buildHomeDialogItems(item, dialogActions),
+                                            fromLongClick = true,
+                                            restoreFocusRequester = focusRequester,
+                                        )
+                                        dialogVisible = true
+                                    },
+                                    onItemFocused = { _, _, focusRequester ->
+                                        // Track the actual focused item for reliable NavRail exit
+                                        lastFocusedRequester = focusRequester
+                                        updateExitFocus(focusRequester)
                                     },
                                     modifier = Modifier.weight(1f),
                                 )
@@ -289,12 +335,28 @@ fun LibraryScreen(
                 }
             }
 
+            // Long-press context menu dialog - INSIDE focusGroup to prevent focus escape
+            dialogParams?.let { params ->
+                DialogPopup(
+                    params = params,
+                    visible = dialogVisible,
+                    onDismissRequest = { dialogVisible = false },
+                    onDismissed = {
+                        dialogParams = null
+                        dialogRestoreFocus = null
+                    },
+                )
+            }
+        }
+
+        // Menus are OUTSIDE focusGroup to avoid focusRestorer interference
         LibraryFilterMenu(
             visible = showFilterMenu,
             currentWatchedFilter = state.filterState.watchedFilter,
             currentRatingFilter = state.filterState.ratingFilter,
             currentYearRange = state.filterState.yearRange,
             currentSeriesStatus = state.filterState.seriesStatus,
+            currentFavoritesOnly = state.filterState.favoritesOnly,
             availableGenres = state.availableGenres,
             selectedGenres = state.filterState.selectedGenres,
             availableParentalRatings = state.availableParentalRatings,
@@ -305,15 +367,25 @@ fun LibraryScreen(
             onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
             onClearParentalRatings = { viewModel.clearParentalRatings() },
             onFilterChange = { watched, rating ->
-                viewModel.applyFilters(watched, rating, state.filterState.yearRange, state.filterState.seriesStatus)
+                viewModel.applyFilters(watched, rating, state.filterState.yearRange, state.filterState.seriesStatus, state.filterState.favoritesOnly)
             },
             onYearRangeChange = { range ->
-                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, range, state.filterState.seriesStatus)
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, range, state.filterState.seriesStatus, state.filterState.favoritesOnly)
             },
             onSeriesStatusChange = { status ->
-                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, status)
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, status, state.filterState.favoritesOnly)
             },
-            onDismiss = { showFilterMenu = false },
+            onFavoritesOnlyChange = { favorites ->
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, state.filterState.seriesStatus, favorites)
+            },
+            onDismiss = {
+                showFilterMenu = false
+                try {
+                    firstItemFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                    // Focus request failed, ignore
+                }
+            },
             anchor = filterMenuAnchor,
         )
 
@@ -322,7 +394,14 @@ fun LibraryScreen(
             currentSortBy = state.filterState.sortBy,
             currentSortOrder = state.filterState.sortOrder,
             onSortChange = { sortBy, sortOrder -> viewModel.updateSort(sortBy, sortOrder) },
-            onDismiss = { showSortMenu = false },
+            onDismiss = {
+                showSortMenu = false
+                try {
+                    firstItemFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                    // Focus request failed, ignore
+                }
+            },
             anchor = sortMenuAnchor,
         )
     }
@@ -339,11 +418,17 @@ private fun LibraryGridContent(
     filterBarFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
-    onItemFocused: (JellyfinItem, String) -> Unit,
+    onItemLongClick: (JellyfinItem, FocusRequester) -> Unit,
+    onItemFocused: (JellyfinItem, String, FocusRequester) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Dummy focus requester to block focus movement (requests to unattached requester fail)
     val focusTrap = remember { FocusRequester() }
+
+    // Stable map of focus requesters for each item (for long-press focus restoration)
+    val itemFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    fun getItemFocusRequester(itemId: String): FocusRequester =
+        itemFocusRequesters.getOrPut(itemId) { FocusRequester() }
 
     LazyVerticalGrid(
         state = gridState,
@@ -376,16 +461,20 @@ private fun LibraryGridContent(
             // Block down navigation when loading more and on last row
             val shouldBlockDown = state.isLoadingMore && isLastRow
 
+            val itemFocusRequester = getItemFocusRequester(item.id)
+
             MediaCard(
                 item = item,
                 imageUrl = imageUrl,
                 onClick = { onItemClick(item.id) },
+                onLongClick = { onItemLongClick(item, itemFocusRequester) },
                 aspectRatio = aspectRatio,
                 showLabel = true,
                 onItemFocused = { focusedItem ->
-                    onItemFocused(focusedItem, imageUrl)
+                    onItemFocused(focusedItem, imageUrl, itemFocusRequester)
                 },
                 modifier = Modifier
+                    .focusRequester(itemFocusRequester)
                     .then(
                         if (index == 0) {
                             Modifier.focusRequester(firstItemFocusRequester)
