@@ -850,6 +850,7 @@ class JellyfinClient(
         sortOrder: String = "Ascending",
         genres: List<String>? = null,
         isPlayed: Boolean? = null,
+        isFavorite: Boolean? = null,
         minCommunityRating: Float? = null,
         years: String? = null,
         officialRatings: List<String>? = null,
@@ -862,6 +863,7 @@ class JellyfinClient(
         val filterSuffix = buildString {
             genres?.let { append("_g${it.hashCode()}") }
             isPlayed?.let { append("_p$it") }
+            isFavorite?.let { append("_f$it") }
             minCommunityRating?.let { append("_r$it") }
             years?.let { append("_y${it.hashCode()}") }
             officialRatings?.let { append("_o${it.hashCode()}") }
@@ -901,6 +903,9 @@ class JellyfinClient(
                 }
                 isPlayed?.let {
                     parameter("isPlayed", it)
+                }
+                isFavorite?.let {
+                    parameter("isFavorite", it)
                 }
                 minCommunityRating?.let {
                     parameter("minCommunityRating", it)

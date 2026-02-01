@@ -356,6 +356,7 @@ fun LibraryScreen(
             currentRatingFilter = state.filterState.ratingFilter,
             currentYearRange = state.filterState.yearRange,
             currentSeriesStatus = state.filterState.seriesStatus,
+            currentFavoritesOnly = state.filterState.favoritesOnly,
             availableGenres = state.availableGenres,
             selectedGenres = state.filterState.selectedGenres,
             availableParentalRatings = state.availableParentalRatings,
@@ -366,13 +367,16 @@ fun LibraryScreen(
             onParentalRatingToggle = { viewModel.toggleParentalRating(it) },
             onClearParentalRatings = { viewModel.clearParentalRatings() },
             onFilterChange = { watched, rating ->
-                viewModel.applyFilters(watched, rating, state.filterState.yearRange, state.filterState.seriesStatus)
+                viewModel.applyFilters(watched, rating, state.filterState.yearRange, state.filterState.seriesStatus, state.filterState.favoritesOnly)
             },
             onYearRangeChange = { range ->
-                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, range, state.filterState.seriesStatus)
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, range, state.filterState.seriesStatus, state.filterState.favoritesOnly)
             },
             onSeriesStatusChange = { status ->
-                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, status)
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, status, state.filterState.favoritesOnly)
+            },
+            onFavoritesOnlyChange = { favorites ->
+                viewModel.applyFilters(state.filterState.watchedFilter, state.filterState.ratingFilter, state.filterState.yearRange, state.filterState.seriesStatus, favorites)
             },
             onDismiss = {
                 showFilterMenu = false

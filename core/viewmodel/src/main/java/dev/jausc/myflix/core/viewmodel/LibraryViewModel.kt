@@ -252,6 +252,7 @@ class LibraryViewModel(
                 WatchedFilter.UNWATCHED -> false
                 WatchedFilter.ALL -> null
             }
+            val isFavorite = if (filterState.favoritesOnly) true else null
             val years = filterState.yearRange.toJellyfinParam()
 
             // Convert current letter to nameStartsWith parameter
@@ -268,6 +269,7 @@ class LibraryViewModel(
                 sortOrder = filterState.sortOrder.jellyfinValue,
                 genres = genres,
                 isPlayed = isPlayed,
+                isFavorite = isFavorite,
                 minCommunityRating = filterState.ratingFilter,
                 years = years,
                 officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
@@ -430,6 +432,13 @@ class LibraryViewModel(
     }
 
     /**
+     * Toggle favorites-only filter.
+     */
+    fun toggleFavoritesOnly() {
+        updateFilterState { it.copy(favoritesOnly = !it.favoritesOnly) }
+    }
+
+    /**
      * Apply multiple filter changes at once (from filter dialog/sheet).
      */
     fun applyFilters(
@@ -437,6 +446,7 @@ class LibraryViewModel(
         ratingFilter: Float?,
         yearRange: YearRange,
         seriesStatus: SeriesStatusFilter = SeriesStatusFilter.ALL,
+        favoritesOnly: Boolean = false,
     ) {
         updateFilterState { state ->
             state.copy(
@@ -444,6 +454,7 @@ class LibraryViewModel(
                 ratingFilter = ratingFilter,
                 yearRange = yearRange,
                 seriesStatus = seriesStatus,
+                favoritesOnly = favoritesOnly,
             )
         }
     }

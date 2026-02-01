@@ -112,6 +112,7 @@ data class LibraryFilterState(
     val yearRange: YearRange = YearRange(),
     val ratingFilter: Float? = null,
     val seriesStatus: SeriesStatusFilter = SeriesStatusFilter.ALL,
+    val favoritesOnly: Boolean = false,
 ) {
     /**
      * Check if any filters are active (beyond default sort).
@@ -122,7 +123,8 @@ data class LibraryFilterState(
             watchedFilter != WatchedFilter.ALL ||
             yearRange.isActive ||
             ratingFilter != null ||
-            seriesStatus != SeriesStatusFilter.ALL
+            seriesStatus != SeriesStatusFilter.ALL ||
+            favoritesOnly
 
     /**
      * Count of active filters for badge display.
@@ -136,6 +138,7 @@ data class LibraryFilterState(
             if (yearRange.isActive) count++
             if (ratingFilter != null) count++
             if (seriesStatus != SeriesStatusFilter.ALL) count++
+            if (favoritesOnly) count++
             return count
         }
 
