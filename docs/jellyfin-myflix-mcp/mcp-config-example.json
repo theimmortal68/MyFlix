@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "jellyfin-ui": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/openapi-mcp-server",
+        "/path/to/jellyfin-myflix-ui.json"
+      ],
+      "env": {
+        "API_BASE_URL": "http://your-jellyfin-server:8096",
+        "API_KEY": "your-jellyfin-api-key"
+      }
+    }
+  }
+}

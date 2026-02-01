@@ -1,0 +1,1454 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Jellyfin API - MyFlix UI Subset",
+    "description": "Filtered Jellyfin API spec containing only endpoints relevant to MyFlix TV/Mobile UI content display. This reduces context size from ~2MB to ~100KB while covering all UI needs.",
+    "version": "10.11.5",
+    "x-myflix-version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "{serverUrl}",
+      "description": "Jellyfin server",
+      "variables": {
+        "serverUrl": {
+          "default": "http://localhost:8096",
+          "description": "Your Jellyfin server URL"
+        }
+      }
+    }
+  ],
+  "tags": [
+    {"name": "Home", "description": "Home screen content rows"},
+    {"name": "Details", "description": "Item detail screens"},
+    {"name": "Browse", "description": "Library browsing and filtering"},
+    {"name": "Search", "description": "Search functionality"},
+    {"name": "Playback", "description": "Playback info and reporting"},
+    {"name": "UserData", "description": "User-specific data (favorites, played status)"},
+    {"name": "Images", "description": "Image URLs and metadata"}
+  ],
+  "paths": {
+    "/Items": {
+      "get": {
+        "tags": ["Browse", "Home"],
+        "operationId": "GetItems",
+        "summary": "Get items with filters - PRIMARY ENDPOINT",
+        "description": "The most versatile endpoint for getting media items. Used for:\n- Home rows (genre rows, collection rows)\n- Library browsing\n- Filtered lists\n\nCommon patterns:\n- Genre row: includeItemTypes=Movie&genreIds={id}&sortBy=SortName\n- Collection items: tags=universe-collection:{slug}\n- Recently added: sortBy=DateCreated&sortOrder=Descending",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID (required without API key)", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "parentId", "in": "query", "description": "Library/folder to search within", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "includeItemTypes", "in": "query", "description": "Filter by type: Movie, Series, Episode, BoxSet, Season", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "excludeItemTypes", "in": "query", "description": "Exclude types", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "genres", "in": "query", "description": "Filter by genre names (pipe delimited)", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "genreIds", "in": "query", "description": "Filter by genre IDs", "schema": {"type": "array", "items": {"type": "string", "format": "uuid"}}},
+          {"name": "tags", "in": "query", "description": "Filter by tags (pipe delimited). Used for Universe Collections: tags=universe-collection:mcu", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "years", "in": "query", "description": "Filter by production year", "schema": {"type": "array", "items": {"type": "integer"}}},
+          {"name": "personIds", "in": "query", "description": "Filter by person (actor/director) IDs", "schema": {"type": "array", "items": {"type": "string", "format": "uuid"}}},
+          {"name": "studioIds", "in": "query", "description": "Filter by studio IDs", "schema": {"type": "array", "items": {"type": "string", "format": "uuid"}}},
+          {"name": "filters", "in": "query", "description": "Special filters: IsResumable, IsPlayed, IsUnplayed, IsFavorite, Likes", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "isPlayed", "in": "query", "description": "Filter by played status", "schema": {"type": "boolean"}},
+          {"name": "isFavorite", "in": "query", "description": "Filter by favorite status", "schema": {"type": "boolean"}},
+          {"name": "sortBy", "in": "query", "description": "Sort field: SortName, DateCreated, DatePlayed, PremiereDate, CommunityRating, Random", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "sortOrder", "in": "query", "description": "Ascending or Descending", "schema": {"type": "array", "items": {"type": "string", "enum": ["Ascending", "Descending"]}}},
+          {"name": "recursive", "in": "query", "description": "Search recursively in folders", "schema": {"type": "boolean", "default": true}},
+          {"name": "startIndex", "in": "query", "description": "Pagination start index", "schema": {"type": "integer"}},
+          {"name": "limit", "in": "query", "description": "Max items to return", "schema": {"type": "integer"}},
+          {"name": "fields", "in": "query", "description": "Additional fields: Overview, People, Genres, Studios, Tags, ProviderIds, MediaStreams, Chapters, PrimaryImageAspectRatio, DateCreated, MediaSources, Path", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "enableUserData", "in": "query", "description": "Include user data (played, favorite, etc)", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "description": "Include image tags", "schema": {"type": "boolean", "default": true}},
+          {"name": "imageTypeLimit", "in": "query", "description": "Max images per type", "schema": {"type": "integer"}},
+          {"name": "enableImageTypes", "in": "query", "description": "Image types to include: Primary, Backdrop, Thumb, Logo, Banner", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "searchTerm", "in": "query", "description": "Search filter", "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Item list",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/{itemId}": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetItem",
+        "summary": "Get single item details",
+        "description": "Get full details for a movie, series, season, or episode. Used for detail screens.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID for user-specific data", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Item details",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDto"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/UserItems/Resume": {
+      "get": {
+        "tags": ["Home"],
+        "operationId": "GetResumeItems",
+        "summary": "Get Continue Watching items",
+        "description": "Returns items with playback progress. Used for the Continue Watching row on home screen.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer", "default": 20}},
+          {"name": "fields", "in": "query", "description": "Additional fields", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "includeItemTypes", "in": "query", "description": "Filter by type: Movie, Episode", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "excludeItemTypes", "in": "query", "description": "Exclude types", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Resume items",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/Latest": {
+      "get": {
+        "tags": ["Home"],
+        "operationId": "GetLatestMedia",
+        "summary": "Get latest added items",
+        "description": "Returns recently added items. Used for Latest Movies, Latest Shows rows.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "parentId", "in": "query", "description": "Library ID to filter", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "includeItemTypes", "in": "query", "description": "Filter by type: Movie, Series", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer", "default": 20}},
+          {"name": "fields", "in": "query", "description": "Additional fields", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "imageTypeLimit", "in": "query", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest items (array, not wrapped)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/BaseItemDto"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Shows/NextUp": {
+      "get": {
+        "tags": ["Home"],
+        "operationId": "GetNextUp",
+        "summary": "Get next episodes to watch",
+        "description": "Returns the next unwatched episode for each series the user is watching. Used for Next Up row.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer", "default": 20}},
+          {"name": "fields", "in": "query", "description": "Additional fields", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "seriesId", "in": "query", "description": "Filter to specific series", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "parentId", "in": "query", "description": "Library ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "enableResumable", "in": "query", "description": "Include resumable episodes", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableRewatching", "in": "query", "description": "Include rewatching episodes", "schema": {"type": "boolean", "default": false}},
+          {"name": "disableFirstEpisode", "in": "query", "description": "Skip showing first episode", "schema": {"type": "boolean", "default": false}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Next up episodes",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Shows/{seriesId}/Seasons": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetSeasons",
+        "summary": "Get seasons for a series",
+        "description": "Returns all seasons for a TV series. Used for series detail screen.",
+        "parameters": [
+          {"name": "seriesId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "fields", "in": "query", "description": "Additional fields", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "isMissing", "in": "query", "description": "Filter by missing status", "schema": {"type": "boolean"}},
+          {"name": "isSpecialSeason", "in": "query", "description": "Filter specials", "schema": {"type": "boolean"}},
+          {"name": "adjacentTo", "in": "query", "description": "Get adjacent season", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Season list",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Shows/{seriesId}/Episodes": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetEpisodes",
+        "summary": "Get episodes for a series",
+        "description": "Returns episodes for a TV series, optionally filtered by season. Used for series/season detail screens.",
+        "parameters": [
+          {"name": "seriesId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "seasonId", "in": "query", "description": "Filter to specific season", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "season", "in": "query", "description": "Filter by season number", "schema": {"type": "integer"}},
+          {"name": "fields", "in": "query", "description": "Additional fields: Overview, People, MediaStreams", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "isMissing", "in": "query", "description": "Filter by missing status", "schema": {"type": "boolean"}},
+          {"name": "adjacentTo", "in": "query", "description": "Get adjacent episodes", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "startIndex", "in": "query", "description": "Pagination start", "schema": {"type": "integer"}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer"}},
+          {"name": "startItemId", "in": "query", "description": "Start from specific episode", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "sortBy", "in": "query", "description": "Sort field", "schema": {"type": "string"}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Episode list",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/{itemId}/Similar": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetSimilarItems",
+        "summary": "Get similar items",
+        "description": "Returns items similar to the given item. Used for 'More Like This' row on detail screens.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer", "default": 20}},
+          {"name": "fields", "in": "query", "description": "Additional fields", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "excludeArtistIds", "in": "query", "description": "Exclude artists (for music)", "schema": {"type": "array", "items": {"type": "string", "format": "uuid"}}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Similar items",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/{itemId}/ThemeMedia": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetThemeMedia",
+        "summary": "Get theme songs and videos",
+        "description": "Returns theme music and theme videos for an item. Used for background music on detail screens.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "inheritFromParent", "in": "query", "description": "Check parent items for theme", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Theme media",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AllThemeMediaResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/UserViews": {
+      "get": {
+        "tags": ["Browse"],
+        "operationId": "GetUserViews",
+        "summary": "Get user library views",
+        "description": "Returns the user's library views (Movies, TV Shows, etc). Used for library navigation.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "includeExternalContent", "in": "query", "description": "Include external content", "schema": {"type": "boolean", "default": true}},
+          {"name": "includeHidden", "in": "query", "description": "Include hidden views", "schema": {"type": "boolean", "default": false}},
+          {"name": "presetViews", "in": "query", "description": "Preset views to include", "schema": {"type": "array", "items": {"type": "string"}}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Library views",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Genres": {
+      "get": {
+        "tags": ["Browse"],
+        "operationId": "GetGenres",
+        "summary": "Get genres",
+        "description": "Returns all genres. Used for genre filtering and genre rows.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "parentId", "in": "query", "description": "Library to filter", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "includeItemTypes", "in": "query", "description": "Filter by item types", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "searchTerm", "in": "query", "description": "Search filter", "schema": {"type": "string"}},
+          {"name": "startIndex", "in": "query", "description": "Pagination start", "schema": {"type": "integer"}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer"}},
+          {"name": "sortBy", "in": "query", "description": "Sort field", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "sortOrder", "in": "query", "description": "Sort order", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableTotalRecordCount", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Genre list",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Persons": {
+      "get": {
+        "tags": ["Browse"],
+        "operationId": "GetPersons",
+        "summary": "Get persons (actors, directors)",
+        "description": "Returns persons. Used for cast/crew listings and person filtering.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "description": "Max items", "schema": {"type": "integer"}},
+          {"name": "searchTerm", "in": "query", "description": "Search filter", "schema": {"type": "string"}},
+          {"name": "fields", "in": "query", "description": "Additional fields", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "filters", "in": "query", "description": "Filters", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "isFavorite", "in": "query", "description": "Filter favorites", "schema": {"type": "boolean"}},
+          {"name": "personTypes", "in": "query", "description": "Filter by type: Actor, Director, Writer, Producer", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "appearsInItemId", "in": "query", "description": "Filter by item appearance", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Person list",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Persons/{name}": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetPerson",
+        "summary": "Get person details",
+        "description": "Returns details for a specific person. Used for person detail screens.",
+        "parameters": [
+          {"name": "name", "in": "path", "required": true, "description": "Person name", "schema": {"type": "string"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Person details",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDto"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Search/Hints": {
+      "get": {
+        "tags": ["Search"],
+        "operationId": "GetSearchHints",
+        "summary": "Get search hints",
+        "description": "Returns search suggestions/hints. Used for search functionality.",
+        "parameters": [
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "searchTerm", "in": "query", "required": true, "description": "Search query", "schema": {"type": "string"}},
+          {"name": "limit", "in": "query", "description": "Max results", "schema": {"type": "integer"}},
+          {"name": "startIndex", "in": "query", "description": "Pagination start", "schema": {"type": "integer"}},
+          {"name": "includeItemTypes", "in": "query", "description": "Filter by types", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "excludeItemTypes", "in": "query", "description": "Exclude types", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "parentId", "in": "query", "description": "Library to search", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "isMovie", "in": "query", "schema": {"type": "boolean"}},
+          {"name": "isSeries", "in": "query", "schema": {"type": "boolean"}},
+          {"name": "includeArtists", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "includeGenres", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "includePeople", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "includeStudios", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "mediaTypes", "in": "query", "description": "Filter by media type", "schema": {"type": "array", "items": {"type": "string"}}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Search hints",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/SearchHintResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/{itemId}/PlaybackInfo": {
+      "get": {
+        "tags": ["Playback"],
+        "operationId": "GetPlaybackInfo",
+        "summary": "Get playback info",
+        "description": "Returns playback URLs and transcoding info. Essential for starting playback.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Playback info",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/PlaybackInfoResponse"}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playback"],
+        "operationId": "GetPostedPlaybackInfo",
+        "summary": "Get playback info with device profile",
+        "description": "Same as GET but allows posting device capabilities for better transcoding decisions.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "maxStreamingBitrate", "in": "query", "description": "Max bitrate", "schema": {"type": "integer"}},
+          {"name": "startTimeTicks", "in": "query", "description": "Start position", "schema": {"type": "integer", "format": "int64"}},
+          {"name": "audioStreamIndex", "in": "query", "description": "Audio stream index", "schema": {"type": "integer"}},
+          {"name": "subtitleStreamIndex", "in": "query", "description": "Subtitle stream index", "schema": {"type": "integer"}},
+          {"name": "maxAudioChannels", "in": "query", "description": "Max audio channels", "schema": {"type": "integer"}},
+          {"name": "mediaSourceId", "in": "query", "description": "Media source ID", "schema": {"type": "string"}},
+          {"name": "autoOpenLiveStream", "in": "query", "description": "Auto open live stream", "schema": {"type": "boolean"}},
+          {"name": "enableDirectPlay", "in": "query", "description": "Enable direct play", "schema": {"type": "boolean"}},
+          {"name": "enableDirectStream", "in": "query", "description": "Enable direct stream", "schema": {"type": "boolean"}},
+          {"name": "enableTranscoding", "in": "query", "description": "Enable transcoding", "schema": {"type": "boolean"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/PlaybackInfoDto"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Playback info",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/PlaybackInfoResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/MediaSegments/{itemId}": {
+      "get": {
+        "tags": ["Playback"],
+        "operationId": "GetItemSegments",
+        "summary": "Get media segments (intros, credits)",
+        "description": "Returns skip intro/credits markers. Used for auto-skip functionality.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "includeSegmentTypes", "in": "query", "description": "Segment types: Intro, Outro, Recap, Preview, Commercial", "schema": {"type": "array", "items": {"type": "string"}}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Media segments",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MediaSegmentDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/{itemId}/Intros": {
+      "get": {
+        "tags": ["Playback"],
+        "operationId": "GetIntros",
+        "summary": "Get intro videos",
+        "description": "Returns intro/preroll videos to play before main content.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Intro videos",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Sessions/Playing": {
+      "post": {
+        "tags": ["Playback"],
+        "operationId": "ReportPlaybackStart",
+        "summary": "Report playback start",
+        "description": "Reports that playback has started. Creates the 'Now Playing' session.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/PlaybackStartInfo"}
+            }
+          }
+        },
+        "responses": {
+          "204": {"description": "Playback start reported"}
+        }
+      }
+    },
+    "/Sessions/Playing/Progress": {
+      "post": {
+        "tags": ["Playback"],
+        "operationId": "ReportPlaybackProgress",
+        "summary": "Report playback progress",
+        "description": "Reports playback position. Should be called every 10 seconds during playback.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/PlaybackProgressInfo"}
+            }
+          }
+        },
+        "responses": {
+          "204": {"description": "Progress reported"}
+        }
+      }
+    },
+    "/Sessions/Playing/Stopped": {
+      "post": {
+        "tags": ["Playback"],
+        "operationId": "ReportPlaybackStopped",
+        "summary": "Report playback stopped",
+        "description": "Reports that playback has stopped. Clears the 'Now Playing' session.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/PlaybackStopInfo"}
+            }
+          }
+        },
+        "responses": {
+          "204": {"description": "Playback stopped reported"}
+        }
+      }
+    },
+    "/UserItems/{itemId}/UserData": {
+      "get": {
+        "tags": ["UserData"],
+        "operationId": "GetItemUserData",
+        "summary": "Get user data for item",
+        "description": "Returns user-specific data: played status, favorite, play count, position.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "User data",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["UserData"],
+        "operationId": "UpdateItemUserData",
+        "summary": "Update user data for item",
+        "description": "Updates user-specific data.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user data",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/UserPlayedItems/{itemId}": {
+      "post": {
+        "tags": ["UserData"],
+        "operationId": "MarkPlayedItem",
+        "summary": "Mark item as played",
+        "description": "Marks an item as played/watched.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "datePlayed", "in": "query", "description": "Date played (ISO)", "schema": {"type": "string", "format": "date-time"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "User data",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["UserData"],
+        "operationId": "MarkUnplayedItem",
+        "summary": "Mark item as unplayed",
+        "description": "Marks an item as not played/unwatched.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "User data",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/UserFavoriteItems/{itemId}": {
+      "post": {
+        "tags": ["UserData"],
+        "operationId": "MarkFavoriteItem",
+        "summary": "Mark item as favorite",
+        "description": "Adds item to user's favorites.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "User data",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["UserData"],
+        "operationId": "UnmarkFavoriteItem",
+        "summary": "Remove item from favorites",
+        "description": "Removes item from user's favorites.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "description": "User ID", "schema": {"type": "string", "format": "uuid"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "User data",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserItemDataDto"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Movies/{itemId}/Similar": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetSimilarMovies",
+        "summary": "Get similar movies",
+        "description": "Alias for /Items/{itemId}/Similar for movies.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}},
+          {"name": "fields", "in": "query", "schema": {"type": "array", "items": {"type": "string"}}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Similar movies",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Shows/{itemId}/Similar": {
+      "get": {
+        "tags": ["Details"],
+        "operationId": "GetSimilarShows",
+        "summary": "Get similar shows",
+        "description": "Alias for /Items/{itemId}/Similar for TV shows.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "userId", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}},
+          {"name": "fields", "in": "query", "schema": {"type": "array", "items": {"type": "string"}}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Similar shows",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Movies/Recommendations": {
+      "get": {
+        "tags": ["Home"],
+        "operationId": "GetMovieRecommendations",
+        "summary": "Get movie recommendations",
+        "description": "Returns personalized movie recommendations based on viewing history.",
+        "parameters": [
+          {"name": "userId", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "parentId", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "fields", "in": "query", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "categoryLimit", "in": "query", "description": "Items per category", "schema": {"type": "integer", "default": 5}},
+          {"name": "itemLimit", "in": "query", "description": "Total items", "schema": {"type": "integer", "default": 8}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommendations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/RecommendationDto"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Shows/Upcoming": {
+      "get": {
+        "tags": ["Home"],
+        "operationId": "GetUpcomingEpisodes",
+        "summary": "Get upcoming episodes",
+        "description": "Returns upcoming/airing episodes.",
+        "parameters": [
+          {"name": "userId", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20}},
+          {"name": "startIndex", "in": "query", "schema": {"type": "integer"}},
+          {"name": "fields", "in": "query", "schema": {"type": "array", "items": {"type": "string"}}},
+          {"name": "parentId", "in": "query", "schema": {"type": "string", "format": "uuid"}},
+          {"name": "enableUserData", "in": "query", "schema": {"type": "boolean", "default": true}},
+          {"name": "enableImages", "in": "query", "schema": {"type": "boolean", "default": true}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Upcoming episodes",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BaseItemDtoQueryResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Users/Me": {
+      "get": {
+        "tags": ["UserData"],
+        "operationId": "GetCurrentUser",
+        "summary": "Get current user",
+        "description": "Returns the current authenticated user's info.",
+        "responses": {
+          "200": {
+            "description": "User info",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserDto"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Users/AuthenticateByName": {
+      "post": {
+        "tags": ["UserData"],
+        "operationId": "AuthenticateUserByName",
+        "summary": "Authenticate user",
+        "description": "Authenticates user by username and password. Returns access token.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/AuthenticateUserByName"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication result",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AuthenticationResult"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Users/Public": {
+      "get": {
+        "tags": ["UserData"],
+        "operationId": "GetPublicUsers",
+        "summary": "Get public users",
+        "description": "Returns list of users for login screen (no auth required).",
+        "responses": {
+          "200": {
+            "description": "Public users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/UserDto"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Items/{itemId}/Images/{imageType}": {
+      "get": {
+        "tags": ["Images"],
+        "operationId": "GetItemImage",
+        "summary": "Get item image",
+        "description": "Returns an image for an item. Most common image types: Primary (poster), Backdrop, Thumb, Logo, Banner.",
+        "parameters": [
+          {"name": "itemId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"name": "imageType", "in": "path", "required": true, "description": "Primary, Backdrop, Thumb, Logo, Banner, Art, Disc", "schema": {"type": "string"}},
+          {"name": "maxWidth", "in": "query", "description": "Max width in pixels", "schema": {"type": "integer"}},
+          {"name": "maxHeight", "in": "query", "description": "Max height in pixels", "schema": {"type": "integer"}},
+          {"name": "width", "in": "query", "description": "Fixed width", "schema": {"type": "integer"}},
+          {"name": "height", "in": "query", "description": "Fixed height", "schema": {"type": "integer"}},
+          {"name": "quality", "in": "query", "description": "Image quality 0-100", "schema": {"type": "integer"}},
+          {"name": "fillWidth", "in": "query", "description": "Fill width for blur hash", "schema": {"type": "integer"}},
+          {"name": "fillHeight", "in": "query", "description": "Fill height for blur hash", "schema": {"type": "integer"}},
+          {"name": "tag", "in": "query", "description": "Image tag for caching", "schema": {"type": "string"}},
+          {"name": "format", "in": "query", "description": "Image format: Jpg, Png, Webp", "schema": {"type": "string"}},
+          {"name": "percentPlayed", "in": "query", "description": "Percent played overlay", "schema": {"type": "number"}},
+          {"name": "unplayedCount", "in": "query", "description": "Unplayed count overlay", "schema": {"type": "integer"}},
+          {"name": "blur", "in": "query", "description": "Blur radius", "schema": {"type": "integer"}},
+          {"name": "backgroundColor", "in": "query", "description": "Background color", "schema": {"type": "string"}},
+          {"name": "foregroundLayer", "in": "query", "description": "Foreground layer", "schema": {"type": "string"}},
+          {"name": "imageIndex", "in": "query", "description": "Image index (for multiple backdrops)", "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Image binary",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BaseItemDto": {
+        "type": "object",
+        "description": "The main item DTO. Contains all media item information.",
+        "properties": {
+          "Id": {"type": "string", "format": "uuid", "description": "Item ID"},
+          "Name": {"type": "string", "description": "Display name"},
+          "OriginalTitle": {"type": "string", "description": "Original title (different language)"},
+          "SortName": {"type": "string", "description": "Name used for sorting"},
+          "Type": {"type": "string", "description": "Item type: Movie, Series, Season, Episode, BoxSet, Person, Genre"},
+          "CollectionType": {"type": "string", "description": "For libraries: movies, tvshows, music"},
+          "Overview": {"type": "string", "description": "Plot description"},
+          "Taglines": {"type": "array", "items": {"type": "string"}, "description": "Taglines"},
+          "Genres": {"type": "array", "items": {"type": "string"}, "description": "Genre names"},
+          "GenreItems": {"type": "array", "items": {"$ref": "#/components/schemas/NameGuidPair"}, "description": "Genres with IDs"},
+          "Tags": {"type": "array", "items": {"type": "string"}, "description": "Tags (including universe-collection tags)"},
+          "Studios": {"type": "array", "items": {"$ref": "#/components/schemas/NameGuidPair"}, "description": "Studios"},
+          "People": {"type": "array", "items": {"$ref": "#/components/schemas/BaseItemPerson"}, "description": "Cast and crew"},
+          "ProductionYear": {"type": "integer", "description": "Release year"},
+          "PremiereDate": {"type": "string", "format": "date-time", "description": "Release/premiere date"},
+          "EndDate": {"type": "string", "format": "date-time", "description": "Series end date"},
+          "OfficialRating": {"type": "string", "description": "Content rating: PG, PG-13, R, TV-MA, etc."},
+          "CommunityRating": {"type": "number", "description": "User rating (1-10)"},
+          "CriticRating": {"type": "number", "description": "Critic rating (1-100)"},
+          "RunTimeTicks": {"type": "integer", "format": "int64", "description": "Duration in ticks (10,000 ticks = 1ms)"},
+          "PlayAccess": {"type": "string", "description": "Full or None"},
+          "Status": {"type": "string", "description": "Series status: Continuing, Ended"},
+          "AirDays": {"type": "array", "items": {"type": "string"}, "description": "Air days"},
+          "AirTime": {"type": "string", "description": "Air time"},
+          "SeriesId": {"type": "string", "format": "uuid", "description": "Parent series ID (for seasons/episodes)"},
+          "SeriesName": {"type": "string", "description": "Parent series name"},
+          "SeasonId": {"type": "string", "format": "uuid", "description": "Parent season ID (for episodes)"},
+          "SeasonName": {"type": "string", "description": "Parent season name"},
+          "IndexNumber": {"type": "integer", "description": "Episode number or season number"},
+          "IndexNumberEnd": {"type": "integer", "description": "End episode number (for multi-episode files)"},
+          "ParentIndexNumber": {"type": "integer", "description": "Season number (for episodes)"},
+          "ParentId": {"type": "string", "format": "uuid", "description": "Parent folder/library ID"},
+          "Path": {"type": "string", "description": "File path"},
+          "Container": {"type": "string", "description": "File container: mkv, mp4, avi"},
+          "VideoType": {"type": "string", "description": "VideoFile, Iso, Dvd, BluRay"},
+          "HasSubtitles": {"type": "boolean", "description": "Has embedded subtitles"},
+          "SpecialFeatureCount": {"type": "integer", "description": "Number of special features"},
+          "LocalTrailerCount": {"type": "integer", "description": "Number of local trailers"},
+          "RemoteTrailers": {"type": "array", "items": {"$ref": "#/components/schemas/MediaUrl"}, "description": "YouTube trailer URLs"},
+          "MediaSources": {"type": "array", "items": {"$ref": "#/components/schemas/MediaSourceInfo"}, "description": "Available media versions"},
+          "MediaStreams": {"type": "array", "items": {"$ref": "#/components/schemas/MediaStream"}, "description": "Video/audio/subtitle streams"},
+          "Chapters": {"type": "array", "items": {"$ref": "#/components/schemas/ChapterInfo"}, "description": "Chapter markers"},
+          "ProviderIds": {"type": "object", "additionalProperties": {"type": "string"}, "description": "External IDs: Imdb, Tmdb, Tvdb"},
+          "ExternalUrls": {"type": "array", "items": {"$ref": "#/components/schemas/ExternalUrl"}, "description": "External links"},
+          "ImageTags": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Image tags by type for caching"},
+          "BackdropImageTags": {"type": "array", "items": {"type": "string"}, "description": "Backdrop image tags"},
+          "ImageBlurHashes": {"type": "object", "description": "Blur hashes for placeholder images"},
+          "PrimaryImageAspectRatio": {"type": "number", "description": "Poster aspect ratio"},
+          "UserData": {"$ref": "#/components/schemas/UserItemDataDto", "description": "User-specific data"},
+          "ChildCount": {"type": "integer", "description": "Number of children (seasons for series, episodes for season)"},
+          "RecursiveItemCount": {"type": "integer", "description": "Total items recursively"},
+          "Width": {"type": "integer", "description": "Video width"},
+          "Height": {"type": "integer", "description": "Video height"},
+          "IsFolder": {"type": "boolean", "description": "Is a folder/container"},
+          "DateCreated": {"type": "string", "format": "date-time", "description": "When added to library"},
+          "DateLastMediaAdded": {"type": "string", "format": "date-time", "description": "Last media added (for folders)"},
+          "LocationType": {"type": "string", "description": "FileSystem, Remote, Virtual, Offline"},
+          "CanDownload": {"type": "boolean", "description": "Can be downloaded"},
+          "CanDelete": {"type": "boolean", "description": "Can be deleted"},
+          "SeriesTimerId": {"type": "string", "description": "Series timer ID (Live TV)"},
+          "ChannelId": {"type": "string", "format": "uuid", "description": "Channel ID (Live TV)"}
+        }
+      },
+      "BaseItemDtoQueryResult": {
+        "type": "object",
+        "description": "Paginated list of items",
+        "properties": {
+          "Items": {"type": "array", "items": {"$ref": "#/components/schemas/BaseItemDto"}, "description": "Items"},
+          "TotalRecordCount": {"type": "integer", "description": "Total available items"},
+          "StartIndex": {"type": "integer", "description": "Current start index"}
+        }
+      },
+      "UserItemDataDto": {
+        "type": "object",
+        "description": "User-specific item data",
+        "properties": {
+          "Rating": {"type": "number", "description": "User's rating"},
+          "PlayedPercentage": {"type": "number", "description": "Percentage played"},
+          "UnplayedItemCount": {"type": "integer", "description": "Unplayed items (for folders)"},
+          "PlaybackPositionTicks": {"type": "integer", "format": "int64", "description": "Resume position"},
+          "PlayCount": {"type": "integer", "description": "Play count"},
+          "IsFavorite": {"type": "boolean", "description": "Is favorite"},
+          "Played": {"type": "boolean", "description": "Has been played"},
+          "Key": {"type": "string", "description": "Unique key"},
+          "LastPlayedDate": {"type": "string", "format": "date-time", "description": "Last played date"}
+        }
+      },
+      "BaseItemPerson": {
+        "type": "object",
+        "description": "Person (cast/crew) in an item",
+        "properties": {
+          "Id": {"type": "string", "format": "uuid", "description": "Person ID"},
+          "Name": {"type": "string", "description": "Person name"},
+          "Role": {"type": "string", "description": "Role/character name"},
+          "Type": {"type": "string", "description": "Actor, Director, Writer, Producer, GuestStar"},
+          "PrimaryImageTag": {"type": "string", "description": "Image tag"},
+          "ImageBlurHashes": {"type": "object", "description": "Blur hashes"}
+        }
+      },
+      "MediaSourceInfo": {
+        "type": "object",
+        "description": "A playable version of an item",
+        "properties": {
+          "Id": {"type": "string", "description": "Source ID"},
+          "Name": {"type": "string", "description": "Source name"},
+          "Path": {"type": "string", "description": "File path"},
+          "Container": {"type": "string", "description": "Container format"},
+          "Size": {"type": "integer", "format": "int64", "description": "File size"},
+          "Bitrate": {"type": "integer", "description": "Total bitrate"},
+          "RunTimeTicks": {"type": "integer", "format": "int64", "description": "Duration"},
+          "SupportsDirectPlay": {"type": "boolean", "description": "Supports direct play"},
+          "SupportsDirectStream": {"type": "boolean", "description": "Supports direct stream"},
+          "SupportsTranscoding": {"type": "boolean", "description": "Supports transcoding"},
+          "DirectStreamUrl": {"type": "string", "description": "Direct stream URL"},
+          "TranscodingUrl": {"type": "string", "description": "Transcoding URL"},
+          "TranscodingSubProtocol": {"type": "string", "description": "hls, http"},
+          "TranscodingContainer": {"type": "string", "description": "Output container"},
+          "MediaStreams": {"type": "array", "items": {"$ref": "#/components/schemas/MediaStream"}, "description": "Streams"},
+          "VideoType": {"type": "string", "description": "Video type"},
+          "Video3DFormat": {"type": "string", "description": "3D format"},
+          "DefaultAudioStreamIndex": {"type": "integer", "description": "Default audio stream"},
+          "DefaultSubtitleStreamIndex": {"type": "integer", "description": "Default subtitle stream"}
+        }
+      },
+      "MediaStream": {
+        "type": "object",
+        "description": "A video, audio, or subtitle stream",
+        "properties": {
+          "Index": {"type": "integer", "description": "Stream index"},
+          "Type": {"type": "string", "description": "Video, Audio, Subtitle, Data"},
+          "Codec": {"type": "string", "description": "Codec name: hevc, aac, srt"},
+          "Language": {"type": "string", "description": "Language code: eng, spa"},
+          "DisplayLanguage": {"type": "string", "description": "Language display name"},
+          "DisplayTitle": {"type": "string", "description": "Full display title"},
+          "Title": {"type": "string", "description": "Track title"},
+          "IsDefault": {"type": "boolean", "description": "Is default track"},
+          "IsForced": {"type": "boolean", "description": "Is forced track"},
+          "IsExternal": {"type": "boolean", "description": "Is external file"},
+          "IsTextSubtitleStream": {"type": "boolean", "description": "Is text subtitle"},
+          "SupportsExternalStream": {"type": "boolean", "description": "Can be external"},
+          "DeliveryUrl": {"type": "string", "description": "Subtitle delivery URL"},
+          "Width": {"type": "integer", "description": "Video width"},
+          "Height": {"type": "integer", "description": "Video height"},
+          "AspectRatio": {"type": "string", "description": "Aspect ratio"},
+          "Channels": {"type": "integer", "description": "Audio channels"},
+          "SampleRate": {"type": "integer", "description": "Audio sample rate"},
+          "BitRate": {"type": "integer", "description": "Stream bitrate"},
+          "BitDepth": {"type": "integer", "description": "Video bit depth"},
+          "VideoRange": {"type": "string", "description": "SDR, HDR"},
+          "VideoRangeType": {"type": "string", "description": "SDR, HDR10, HLG, DOVI"},
+          "Profile": {"type": "string", "description": "Codec profile"}
+        }
+      },
+      "ChapterInfo": {
+        "type": "object",
+        "description": "Chapter marker",
+        "properties": {
+          "StartPositionTicks": {"type": "integer", "format": "int64", "description": "Start position"},
+          "Name": {"type": "string", "description": "Chapter name"},
+          "ImageTag": {"type": "string", "description": "Thumbnail tag"},
+          "ImageDateModified": {"type": "string", "format": "date-time"}
+        }
+      },
+      "NameGuidPair": {
+        "type": "object",
+        "description": "Name and ID pair",
+        "properties": {
+          "Name": {"type": "string"},
+          "Id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "MediaUrl": {
+        "type": "object",
+        "description": "External media URL (trailer)",
+        "properties": {
+          "Name": {"type": "string"},
+          "Url": {"type": "string"}
+        }
+      },
+      "ExternalUrl": {
+        "type": "object",
+        "description": "External info URL",
+        "properties": {
+          "Name": {"type": "string"},
+          "Url": {"type": "string"}
+        }
+      },
+      "SearchHintResult": {
+        "type": "object",
+        "description": "Search results",
+        "properties": {
+          "SearchHints": {"type": "array", "items": {"$ref": "#/components/schemas/SearchHint"}},
+          "TotalRecordCount": {"type": "integer"}
+        }
+      },
+      "SearchHint": {
+        "type": "object",
+        "description": "Search result item",
+        "properties": {
+          "ItemId": {"type": "string", "format": "uuid"},
+          "Id": {"type": "string", "format": "uuid"},
+          "Name": {"type": "string"},
+          "MatchedTerm": {"type": "string"},
+          "IndexNumber": {"type": "integer"},
+          "ProductionYear": {"type": "integer"},
+          "ParentIndexNumber": {"type": "integer"},
+          "PrimaryImageTag": {"type": "string"},
+          "ThumbImageTag": {"type": "string"},
+          "ThumbImageItemId": {"type": "string"},
+          "BackdropImageTag": {"type": "string"},
+          "BackdropImageItemId": {"type": "string"},
+          "Type": {"type": "string"},
+          "IsFolder": {"type": "boolean"},
+          "RunTimeTicks": {"type": "integer", "format": "int64"},
+          "MediaType": {"type": "string"},
+          "StartDate": {"type": "string", "format": "date-time"},
+          "EndDate": {"type": "string", "format": "date-time"},
+          "Series": {"type": "string"},
+          "Status": {"type": "string"},
+          "Album": {"type": "string"},
+          "AlbumId": {"type": "string", "format": "uuid"},
+          "AlbumArtist": {"type": "string"},
+          "Artists": {"type": "array", "items": {"type": "string"}},
+          "SongCount": {"type": "integer"},
+          "EpisodeCount": {"type": "integer"},
+          "ChannelId": {"type": "string", "format": "uuid"},
+          "ChannelName": {"type": "string"},
+          "PrimaryImageAspectRatio": {"type": "number"}
+        }
+      },
+      "AllThemeMediaResult": {
+        "type": "object",
+        "description": "Theme media result",
+        "properties": {
+          "ThemeVideosResult": {"$ref": "#/components/schemas/ThemeMediaResult"},
+          "ThemeSongsResult": {"$ref": "#/components/schemas/ThemeMediaResult"},
+          "SoundtrackSongsResult": {"$ref": "#/components/schemas/ThemeMediaResult"}
+        }
+      },
+      "ThemeMediaResult": {
+        "type": "object",
+        "properties": {
+          "Items": {"type": "array", "items": {"$ref": "#/components/schemas/BaseItemDto"}},
+          "TotalRecordCount": {"type": "integer"},
+          "StartIndex": {"type": "integer"},
+          "OwnerId": {"type": "string", "format": "uuid"}
+        }
+      },
+      "PlaybackInfoResponse": {
+        "type": "object",
+        "description": "Playback info for starting playback",
+        "properties": {
+          "MediaSources": {"type": "array", "items": {"$ref": "#/components/schemas/MediaSourceInfo"}},
+          "PlaySessionId": {"type": "string", "description": "Session ID for reporting"},
+          "ErrorCode": {"type": "string", "description": "Error code if playback not allowed"}
+        }
+      },
+      "PlaybackInfoDto": {
+        "type": "object",
+        "description": "Request body for playback info",
+        "properties": {
+          "UserId": {"type": "string", "format": "uuid"},
+          "MaxStreamingBitrate": {"type": "integer"},
+          "StartTimeTicks": {"type": "integer", "format": "int64"},
+          "AudioStreamIndex": {"type": "integer"},
+          "SubtitleStreamIndex": {"type": "integer"},
+          "MaxAudioChannels": {"type": "integer"},
+          "MediaSourceId": {"type": "string"},
+          "LiveStreamId": {"type": "string"},
+          "DeviceProfile": {"$ref": "#/components/schemas/DeviceProfile"},
+          "EnableDirectPlay": {"type": "boolean"},
+          "EnableDirectStream": {"type": "boolean"},
+          "EnableTranscoding": {"type": "boolean"},
+          "AllowVideoStreamCopy": {"type": "boolean"},
+          "AllowAudioStreamCopy": {"type": "boolean"},
+          "AutoOpenLiveStream": {"type": "boolean"}
+        }
+      },
+      "DeviceProfile": {
+        "type": "object",
+        "description": "Device capabilities for transcoding decisions",
+        "properties": {
+          "Name": {"type": "string"},
+          "MaxStreamingBitrate": {"type": "integer"},
+          "MaxStaticBitrate": {"type": "integer"},
+          "MusicStreamingTranscodingBitrate": {"type": "integer"},
+          "MaxStaticMusicBitrate": {"type": "integer"},
+          "DirectPlayProfiles": {"type": "array", "items": {"$ref": "#/components/schemas/DirectPlayProfile"}},
+          "TranscodingProfiles": {"type": "array", "items": {"$ref": "#/components/schemas/TranscodingProfile"}},
+          "ContainerProfiles": {"type": "array", "items": {"type": "object"}},
+          "CodecProfiles": {"type": "array", "items": {"type": "object"}},
+          "SubtitleProfiles": {"type": "array", "items": {"$ref": "#/components/schemas/SubtitleProfile"}}
+        }
+      },
+      "DirectPlayProfile": {
+        "type": "object",
+        "properties": {
+          "Container": {"type": "string"},
+          "VideoCodec": {"type": "string"},
+          "AudioCodec": {"type": "string"},
+          "Type": {"type": "string"}
+        }
+      },
+      "TranscodingProfile": {
+        "type": "object",
+        "properties": {
+          "Container": {"type": "string"},
+          "Type": {"type": "string"},
+          "VideoCodec": {"type": "string"},
+          "AudioCodec": {"type": "string"},
+          "Protocol": {"type": "string"},
+          "Context": {"type": "string"},
+          "MaxAudioChannels": {"type": "string"},
+          "MinSegments": {"type": "integer"},
+          "SegmentLength": {"type": "integer"},
+          "BreakOnNonKeyFrames": {"type": "boolean"}
+        }
+      },
+      "SubtitleProfile": {
+        "type": "object",
+        "properties": {
+          "Format": {"type": "string"},
+          "Method": {"type": "string"}
+        }
+      },
+      "MediaSegmentDtoQueryResult": {
+        "type": "object",
+        "description": "Media segments (intro/outro markers)",
+        "properties": {
+          "Items": {"type": "array", "items": {"$ref": "#/components/schemas/MediaSegmentDto"}},
+          "TotalRecordCount": {"type": "integer"}
+        }
+      },
+      "MediaSegmentDto": {
+        "type": "object",
+        "description": "A media segment (intro, outro, etc)",
+        "properties": {
+          "Id": {"type": "string", "format": "uuid"},
+          "ItemId": {"type": "string", "format": "uuid"},
+          "Type": {"type": "string", "description": "Intro, Outro, Recap, Preview, Commercial"},
+          "StartTicks": {"type": "integer", "format": "int64"},
+          "EndTicks": {"type": "integer", "format": "int64"}
+        }
+      },
+      "PlaybackStartInfo": {
+        "type": "object",
+        "description": "Playback start report",
+        "properties": {
+          "ItemId": {"type": "string", "format": "uuid"},
+          "SessionId": {"type": "string"},
+          "MediaSourceId": {"type": "string"},
+          "AudioStreamIndex": {"type": "integer"},
+          "SubtitleStreamIndex": {"type": "integer"},
+          "IsPaused": {"type": "boolean"},
+          "IsMuted": {"type": "boolean"},
+          "PositionTicks": {"type": "integer", "format": "int64"},
+          "PlaybackStartTimeTicks": {"type": "integer", "format": "int64"},
+          "VolumeLevel": {"type": "integer"},
+          "Brightness": {"type": "integer"},
+          "AspectRatio": {"type": "string"},
+          "PlayMethod": {"type": "string", "description": "DirectPlay, DirectStream, Transcode"},
+          "LiveStreamId": {"type": "string"},
+          "PlaySessionId": {"type": "string"},
+          "RepeatMode": {"type": "string"},
+          "NowPlayingQueue": {"type": "array", "items": {"type": "object"}},
+          "PlaylistItemId": {"type": "string"}
+        }
+      },
+      "PlaybackProgressInfo": {
+        "type": "object",
+        "description": "Playback progress report",
+        "properties": {
+          "ItemId": {"type": "string", "format": "uuid"},
+          "SessionId": {"type": "string"},
+          "MediaSourceId": {"type": "string"},
+          "AudioStreamIndex": {"type": "integer"},
+          "SubtitleStreamIndex": {"type": "integer"},
+          "IsPaused": {"type": "boolean"},
+          "IsMuted": {"type": "boolean"},
+          "PositionTicks": {"type": "integer", "format": "int64"},
+          "PlaybackStartTimeTicks": {"type": "integer", "format": "int64"},
+          "VolumeLevel": {"type": "integer"},
+          "Brightness": {"type": "integer"},
+          "AspectRatio": {"type": "string"},
+          "PlayMethod": {"type": "string"},
+          "LiveStreamId": {"type": "string"},
+          "PlaySessionId": {"type": "string"},
+          "RepeatMode": {"type": "string"},
+          "NowPlayingQueue": {"type": "array", "items": {"type": "object"}},
+          "PlaylistItemId": {"type": "string"},
+          "EventName": {"type": "string"}
+        }
+      },
+      "PlaybackStopInfo": {
+        "type": "object",
+        "description": "Playback stop report",
+        "properties": {
+          "ItemId": {"type": "string", "format": "uuid"},
+          "SessionId": {"type": "string"},
+          "MediaSourceId": {"type": "string"},
+          "PositionTicks": {"type": "integer", "format": "int64"},
+          "LiveStreamId": {"type": "string"},
+          "PlaySessionId": {"type": "string"},
+          "Failed": {"type": "boolean"},
+          "NowPlayingQueue": {"type": "array", "items": {"type": "object"}},
+          "PlaylistItemId": {"type": "string"}
+        }
+      },
+      "RecommendationDto": {
+        "type": "object",
+        "description": "Movie recommendation category",
+        "properties": {
+          "Items": {"type": "array", "items": {"$ref": "#/components/schemas/BaseItemDto"}},
+          "RecommendationType": {"type": "string", "description": "SimilarToRecentlyPlayed, SimilarToLikedItem, HasDirectorFromRecentlyPlayed, HasActorFromRecentlyPlayed"},
+          "BaselineItemName": {"type": "string", "description": "Item that triggered this recommendation"},
+          "CategoryId": {"type": "string", "format": "uuid"}
+        }
+      },
+      "UserDto": {
+        "type": "object",
+        "description": "User information",
+        "properties": {
+          "Id": {"type": "string", "format": "uuid"},
+          "Name": {"type": "string"},
+          "ServerId": {"type": "string"},
+          "ServerName": {"type": "string"},
+          "PrimaryImageTag": {"type": "string"},
+          "HasPassword": {"type": "boolean"},
+          "HasConfiguredPassword": {"type": "boolean"},
+          "HasConfiguredEasyPassword": {"type": "boolean"},
+          "EnableAutoLogin": {"type": "boolean"},
+          "LastLoginDate": {"type": "string", "format": "date-time"},
+          "LastActivityDate": {"type": "string", "format": "date-time"},
+          "Configuration": {"$ref": "#/components/schemas/UserConfiguration"},
+          "Policy": {"$ref": "#/components/schemas/UserPolicy"}
+        }
+      },
+      "UserConfiguration": {
+        "type": "object",
+        "properties": {
+          "AudioLanguagePreference": {"type": "string"},
+          "PlayDefaultAudioTrack": {"type": "boolean"},
+          "SubtitleLanguagePreference": {"type": "string"},
+          "DisplayMissingEpisodes": {"type": "boolean"},
+          "GroupedFolders": {"type": "array", "items": {"type": "string"}},
+          "SubtitleMode": {"type": "string"},
+          "DisplayCollectionsView": {"type": "boolean"},
+          "EnableLocalPassword": {"type": "boolean"},
+          "OrderedViews": {"type": "array", "items": {"type": "string"}},
+          "LatestItemsExcludes": {"type": "array", "items": {"type": "string"}},
+          "MyMediaExcludes": {"type": "array", "items": {"type": "string"}},
+          "HidePlayedInLatest": {"type": "boolean"},
+          "RememberAudioSelections": {"type": "boolean"},
+          "RememberSubtitleSelections": {"type": "boolean"},
+          "EnableNextEpisodeAutoPlay": {"type": "boolean"}
+        }
+      },
+      "UserPolicy": {
+        "type": "object",
+        "properties": {
+          "IsAdministrator": {"type": "boolean"},
+          "IsHidden": {"type": "boolean"},
+          "IsDisabled": {"type": "boolean"},
+          "MaxParentalRating": {"type": "integer"},
+          "BlockedTags": {"type": "array", "items": {"type": "string"}},
+          "EnableUserPreferenceAccess": {"type": "boolean"},
+          "EnableRemoteAccess": {"type": "boolean"},
+          "EnableLiveTvAccess": {"type": "boolean"},
+          "EnableLiveTvManagement": {"type": "boolean"},
+          "EnableMediaPlayback": {"type": "boolean"},
+          "EnableAudioPlaybackTranscoding": {"type": "boolean"},
+          "EnableVideoPlaybackTranscoding": {"type": "boolean"},
+          "EnablePlaybackRemuxing": {"type": "boolean"},
+          "EnableContentDeletion": {"type": "boolean"},
+          "EnableContentDownloading": {"type": "boolean"},
+          "EnableSyncTranscoding": {"type": "boolean"},
+          "EnableSubtitleDownloading": {"type": "boolean"},
+          "EnableSubtitleManagement": {"type": "boolean"},
+          "EnabledDevices": {"type": "array", "items": {"type": "string"}},
+          "EnableAllDevices": {"type": "boolean"},
+          "EnabledFolders": {"type": "array", "items": {"type": "string"}},
+          "EnableAllFolders": {"type": "boolean"}
+        }
+      },
+      "AuthenticateUserByName": {
+        "type": "object",
+        "description": "Login request",
+        "properties": {
+          "Username": {"type": "string"},
+          "Pw": {"type": "string", "description": "Password"}
+        }
+      },
+      "AuthenticationResult": {
+        "type": "object",
+        "description": "Login result",
+        "properties": {
+          "User": {"$ref": "#/components/schemas/UserDto"},
+          "SessionInfo": {"type": "object"},
+          "AccessToken": {"type": "string", "description": "API token for X-Emby-Token header"},
+          "ServerId": {"type": "string"}
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "name": "X-Emby-Token",
+        "in": "header",
+        "description": "Jellyfin API token. Get from Dashboard > API Keys or from AuthenticateUserByName response."
+      }
+    }
+  },
+  "security": [
+    {"ApiKeyAuth": []}
+  ]
+}
