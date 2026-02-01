@@ -98,8 +98,11 @@ fun LibraryScreen(
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
-    // NavRail exit focus registration
-    val updateExitFocus = rememberExitFocusRegistry(firstItemFocusRequester)
+    // Track last focused item for reliable focus restoration after NavRail exit
+    var lastFocusedRequester by remember { mutableStateOf<FocusRequester?>(null) }
+
+    // NavRail exit focus registration - use last focused item, fallback to first
+    val updateExitFocus = rememberExitFocusRegistry(lastFocusedRequester ?: firstItemFocusRequester)
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var filterMenuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
@@ -168,9 +171,13 @@ fun LibraryScreen(
                     if (shouldFocus) {
                         didRequestInitialFocus = true
                         lastFocusedForLetter = currentLetter
+                        // Scroll to top first to ensure item 0 is composed
+                        gridState.scrollToItem(0)
+                        // Small delay to let composition settle
+                        delay(50)
                         // Retry focus request - grid may not be attached immediately after loading
                         repeat(5) { attempt ->
-                            delay(if (attempt == 0) 100 else 150)
+                            delay(if (attempt == 0) 50 else 100)
                             try {
                                 firstItemFocusRequester.requestFocus()
                                 return@collect // Success, exit
@@ -193,11 +200,12 @@ fun LibraryScreen(
         )
 
         // focusGroup + focusRestorer saves/restores focus when NavRail is entered/exited
+        // Use lastFocusedRequester for reliable restoration after scrolling
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .focusGroup()
-                .focusRestorer(firstItemFocusRequester),
+                .focusRestorer(lastFocusedRequester ?: firstItemFocusRequester),
         ) {
             // Note: NavigationRail is now provided by MainActivity
             Box(modifier = Modifier.fillMaxSize()) {
@@ -298,8 +306,10 @@ fun LibraryScreen(
                                         )
                                         dialogVisible = true
                                     },
-                                    onItemFocused = { _, _ ->
-                                        updateExitFocus(firstItemFocusRequester)
+                                    onItemFocused = { _, _, focusRequester ->
+                                        // Track the actual focused item for reliable NavRail exit
+                                        lastFocusedRequester = focusRequester
+                                        updateExitFocus(focusRequester)
                                     },
                                     modifier = Modifier.weight(1f),
                                 )
@@ -405,7 +415,7 @@ private fun LibraryGridContent(
     alphabetFocusRequester: FocusRequester,
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem, FocusRequester) -> Unit,
-    onItemFocused: (JellyfinItem, String) -> Unit,
+    onItemFocused: (JellyfinItem, String, FocusRequester) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Dummy focus requester to block focus movement (requests to unattached requester fail)
@@ -457,7 +467,7 @@ private fun LibraryGridContent(
                 aspectRatio = aspectRatio,
                 showLabel = true,
                 onItemFocused = { focusedItem ->
-                    onItemFocused(focusedItem, imageUrl)
+                    onItemFocused(focusedItem, imageUrl, itemFocusRequester)
                 },
                 modifier = Modifier
                     .focusRequester(itemFocusRequester)
