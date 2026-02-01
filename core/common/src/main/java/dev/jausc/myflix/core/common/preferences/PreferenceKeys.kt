@@ -180,6 +180,12 @@ object PreferenceKeys {
         /** Prefix for library parental ratings (append libraryId) */
         const val LIBRARY_PARENTAL_RATINGS_PREFIX = "library_parental_ratings_"
 
+        /** Prefix for library series status filter (append libraryId) */
+        const val LIBRARY_SERIES_STATUS_PREFIX = "library_series_status_"
+
+        /** Prefix for library favorites only filter (append libraryId) */
+        const val LIBRARY_FAVORITES_ONLY_PREFIX = "library_favorites_only_"
+
         // First-run tips
         /** Whether user has seen the nav bar tip */
         const val HAS_SEEN_NAV_BAR_TIP = "has_seen_nav_bar_tip"

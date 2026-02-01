@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import dev.jausc.myflix.core.common.model.LibraryFilterState
 import dev.jausc.myflix.core.common.model.LibrarySortOption
 import dev.jausc.myflix.core.common.model.LibraryViewMode
+import dev.jausc.myflix.core.common.model.SeriesStatusFilter
 import dev.jausc.myflix.core.common.model.SortOrder
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
@@ -580,6 +581,16 @@ abstract class AppPreferences(context: Context) {
             parentalRatingsString.split(",").toSet()
         }
 
+        val seriesStatusValue = prefs.getString(
+            PreferenceKeys.Prefs.LIBRARY_SERIES_STATUS_PREFIX + libraryId,
+            SeriesStatusFilter.ALL.name,
+        ) ?: SeriesStatusFilter.ALL.name
+
+        val favoritesOnly = prefs.getBoolean(
+            PreferenceKeys.Prefs.LIBRARY_FAVORITES_ONLY_PREFIX + libraryId,
+            false,
+        )
+
         return LibraryFilterState(
             sortBy = LibrarySortOption.fromJellyfinValue(sortByValue),
             sortOrder = SortOrder.fromJellyfinValue(sortOrderValue),
@@ -589,6 +600,8 @@ abstract class AppPreferences(context: Context) {
             selectedParentalRatings = selectedParentalRatings,
             yearRange = YearRange(from = yearFrom, to = yearTo),
             ratingFilter = ratingFilter,
+            seriesStatus = SeriesStatusFilter.fromString(seriesStatusValue),
+            favoritesOnly = favoritesOnly,
         )
     }
 
@@ -642,6 +655,18 @@ abstract class AppPreferences(context: Context) {
                 state.ratingFilter ?: -1f,
             )
             .apply()
+
+        // Save series status and favorites only filters
+        prefs.edit()
+            .putString(
+                PreferenceKeys.Prefs.LIBRARY_SERIES_STATUS_PREFIX + libraryId,
+                state.seriesStatus.name,
+            )
+            .putBoolean(
+                PreferenceKeys.Prefs.LIBRARY_FAVORITES_ONLY_PREFIX + libraryId,
+                state.favoritesOnly,
+            )
+            .apply()
     }
 
     /**
@@ -658,6 +683,8 @@ abstract class AppPreferences(context: Context) {
             .remove(PreferenceKeys.Prefs.LIBRARY_YEAR_TO_PREFIX + libraryId)
             .remove(PreferenceKeys.Prefs.LIBRARY_RATING_PREFIX + libraryId)
             .remove(PreferenceKeys.Prefs.LIBRARY_PARENTAL_RATINGS_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_SERIES_STATUS_PREFIX + libraryId)
+            .remove(PreferenceKeys.Prefs.LIBRARY_FAVORITES_ONLY_PREFIX + libraryId)
             .apply()
     }
 

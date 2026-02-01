@@ -36,6 +36,8 @@ private const val PREFETCH_PARALLEL_PAGES = 3
 data class LibraryUiState(
     val items: List<JellyfinItem> = emptyList(),
     val totalRecordCount: Int = 0,
+    /** Tracks the next API start index for pagination (separate from items.size due to client-side filtering) */
+    val apiNextStartIndex: Int = 0,
     val isLoading: Boolean = true,
     val isLoadingMore: Boolean = false,
     val error: String? = null,
@@ -49,7 +51,7 @@ data class LibraryUiState(
         get() = !isLoading && items.isEmpty() && error == null
 
     val canLoadMore: Boolean
-        get() = items.size < totalRecordCount && !isLoading && !isLoadingMore
+        get() = apiNextStartIndex < totalRecordCount && !isLoading && !isLoadingMore
 }
 
 /**
@@ -303,9 +305,16 @@ class LibraryViewModel(
                             }
                             .distinct()
                             .sorted()
+                        // Track API pagination offset separately from filtered items count
+                        val nextApiIndex = if (resetList) {
+                            result.items.size
+                        } else {
+                            startIndex + result.items.size
+                        }
                         state.copy(
                             items = newItems,
                             totalRecordCount = result.totalRecordCount,
+                            apiNextStartIndex = nextApiIndex,
                             isLoading = false,
                             isLoadingMore = false,
                             availableParentalRatings = parentalRatings,
@@ -330,7 +339,7 @@ class LibraryViewModel(
     fun loadMore() {
         val currentState = _uiState.value
         if (currentState.canLoadMore) {
-            loadLibraryItems(resetList = false, startIndex = currentState.items.size)
+            loadLibraryItems(resetList = false, startIndex = currentState.apiNextStartIndex)
         }
     }
 
@@ -513,8 +522,8 @@ class LibraryViewModel(
      */
     fun setPlayed(itemId: String, played: Boolean) {
         viewModelScope.launch {
-            jellyfinClient.setPlayed(itemId, played)
-            // Update local state for immediate feedback
+            // Optimistically update local state for immediate feedback
+            val previousState = _uiState.value.items.find { it.id == itemId }?.userData?.played
             _uiState.update { state ->
                 state.copy(
                     items = state.items.map { item ->
@@ -523,9 +532,26 @@ class LibraryViewModel(
                         } else {
                             item
                         }
-                    }
+                    },
                 )
             }
+
+            // Send to server, revert on failure
+            jellyfinClient.setPlayed(itemId, played)
+                .onFailure {
+                    // Revert to previous state on error
+                    _uiState.update { state ->
+                        state.copy(
+                            items = state.items.map { item ->
+                                if (item.id == itemId) {
+                                    item.copy(userData = item.userData?.copy(played = previousState ?: false))
+                                } else {
+                                    item
+                                }
+                            },
+                        )
+                    }
+                }
         }
     }
 
@@ -535,8 +561,8 @@ class LibraryViewModel(
      */
     fun setFavorite(itemId: String, favorite: Boolean) {
         viewModelScope.launch {
-            jellyfinClient.setFavorite(itemId, favorite)
-            // Update local state for immediate feedback
+            // Optimistically update local state for immediate feedback
+            val previousState = _uiState.value.items.find { it.id == itemId }?.userData?.isFavorite
             _uiState.update { state ->
                 state.copy(
                     items = state.items.map { item ->
@@ -545,9 +571,26 @@ class LibraryViewModel(
                         } else {
                             item
                         }
-                    }
+                    },
                 )
             }
+
+            // Send to server, revert on failure
+            jellyfinClient.setFavorite(itemId, favorite)
+                .onFailure {
+                    // Revert to previous state on error
+                    _uiState.update { state ->
+                        state.copy(
+                            items = state.items.map { item ->
+                                if (item.id == itemId) {
+                                    item.copy(userData = item.userData?.copy(isFavorite = previousState ?: false))
+                                } else {
+                                    item
+                                }
+                            },
+                        )
+                    }
+                }
         }
     }
 

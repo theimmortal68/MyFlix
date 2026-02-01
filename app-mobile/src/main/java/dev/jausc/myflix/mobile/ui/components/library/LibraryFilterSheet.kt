@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.jausc.myflix.core.common.model.SeriesStatusFilter
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
 
@@ -43,7 +44,10 @@ fun LibraryFilterSheet(
     currentWatchedFilter: WatchedFilter,
     currentRatingFilter: Float?,
     currentYearRange: YearRange,
-    onApply: (WatchedFilter, Float?, YearRange) -> Unit,
+    currentSeriesStatus: SeriesStatusFilter = SeriesStatusFilter.ALL,
+    currentFavoritesOnly: Boolean = false,
+    showSeriesStatusFilter: Boolean = false,
+    onApply: (WatchedFilter, Float?, YearRange, SeriesStatusFilter, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -53,6 +57,8 @@ fun LibraryFilterSheet(
     var ratingFilter by remember { mutableStateOf(currentRatingFilter) }
     var yearFrom by remember { mutableStateOf(currentYearRange.from) }
     var yearTo by remember { mutableStateOf(currentYearRange.to) }
+    var seriesStatus by remember { mutableStateOf(currentSeriesStatus) }
+    var favoritesOnly by remember { mutableStateOf(currentFavoritesOnly) }
 
     val ratingOptions = listOf(
         null to "Any",
@@ -63,7 +69,7 @@ fun LibraryFilterSheet(
     )
 
     val currentYear = YearRange.currentYear
-    val yearOptions = listOf(null) + (currentYear downTo 1980).toList()
+    val yearOptions = listOf(null) + (currentYear downTo YearRange.MIN_YEAR).toList()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -221,6 +227,76 @@ fun LibraryFilterSheet(
                 }
             }
 
+            // Favorites Filter
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "Favorites",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            FilterChip(
+                selected = favoritesOnly,
+                onClick = { favoritesOnly = !favoritesOnly },
+                label = { Text("Favorites Only") },
+                leadingIcon = if (favoritesOnly) {
+                    {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = "Selected",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
+
+            // Series Status Filter (only for TV shows)
+            if (showSeriesStatusFilter) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "Series Status",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                ) {
+                    SeriesStatusFilter.entries.forEach { status ->
+                        val isSelected = seriesStatus == status
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { seriesStatus = status },
+                            label = { Text(status.label) },
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = "Selected",
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Action buttons
@@ -234,6 +310,8 @@ fun LibraryFilterSheet(
                         ratingFilter = null
                         yearFrom = null
                         yearTo = null
+                        seriesStatus = SeriesStatusFilter.ALL
+                        favoritesOnly = false
                     },
                     modifier = Modifier.weight(1f),
                 ) {
@@ -242,7 +320,13 @@ fun LibraryFilterSheet(
 
                 Button(
                     onClick = {
-                        onApply(watchedFilter, ratingFilter, YearRange(yearFrom, yearTo))
+                        onApply(
+                            watchedFilter,
+                            ratingFilter,
+                            YearRange(yearFrom, yearTo),
+                            seriesStatus,
+                            favoritesOnly,
+                        )
                     },
                     modifier = Modifier.weight(1f),
                 ) {

@@ -253,8 +253,11 @@ fun LibraryScreen(
                 currentWatchedFilter = state.filterState.watchedFilter,
                 currentRatingFilter = state.filterState.ratingFilter,
                 currentYearRange = state.filterState.yearRange,
-                onApply = { watchedFilter, ratingFilter, yearRange ->
-                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange)
+                currentSeriesStatus = state.filterState.seriesStatus,
+                currentFavoritesOnly = state.filterState.favoritesOnly,
+                showSeriesStatusFilter = collectionType == "tvshows",
+                onApply = { watchedFilter, ratingFilter, yearRange, seriesStatus, favoritesOnly ->
+                    viewModel.applyFilters(watchedFilter, ratingFilter, yearRange, seriesStatus, favoritesOnly)
                     showFilterSheet = false
                 },
                 onDismiss = { showFilterSheet = false },
