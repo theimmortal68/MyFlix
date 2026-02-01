@@ -67,7 +67,7 @@ import dev.jausc.myflix.tv.ui.theme.IconColors
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.launch
 
-private val MinButtonSize = 36.dp
+private val EpisodeButtonMinSize = 36.dp
 
 /**
  * Vertical list of episode rows for the season detail screen.
@@ -417,7 +417,7 @@ private fun EpisodeActionButton(
 
     Button(
         onClick = onClick,
-        modifier = modifier.height(MinButtonSize),
+        modifier = modifier.height(EpisodeButtonMinSize),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
         interactionSource = interactionSource,
         scale = ButtonDefaults.scale(focusedScale = 1f),
@@ -429,7 +429,7 @@ private fun EpisodeActionButton(
         ),
     ) {
         Box(
-            modifier = Modifier.height(MinButtonSize),
+            modifier = Modifier.height(EpisodeButtonMinSize),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

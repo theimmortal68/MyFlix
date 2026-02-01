@@ -52,6 +52,7 @@ import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailViewModel
+import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
@@ -577,7 +578,11 @@ fun MyFlixTvApp() {
                         onBack = { navController.popBackStack() },
                     )
                 } else {
+                    val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
+                        factory = SeerrHomeViewModel.Factory(seerrClient),
+                    )
                     SeerrHomeScreen(
+                        viewModel = seerrHomeViewModel,
                         seerrClient = seerrClient,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")

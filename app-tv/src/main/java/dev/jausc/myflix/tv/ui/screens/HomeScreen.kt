@@ -1042,10 +1042,8 @@ private fun SeerrRequestCard(
                         .background(TvColors.SurfaceElevated, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // Use request media title as fallback, show first letter or "?"
-                    val displayChar = mediaDetails?.displayTitle?.firstOrNull()
-                        ?: request.media?.name?.firstOrNull()
-                        ?: '?'
+                    // Use media title as fallback, show first letter or "?"
+                    val displayChar = mediaDetails?.displayTitle?.firstOrNull() ?: '?'
                     Text(
                         text = displayChar.toString(),
                         style = MaterialTheme.typography.headlineLarge,
