@@ -81,6 +81,8 @@ data class JellyfinItem(
     // Trailers
     @SerialName("RemoteTrailers") val remoteTrailers: List<JellyfinRemoteTrailer>? = null,
     @SerialName("LocalTrailerCount") val localTrailerCount: Int? = null,
+    // Extra type for special features (Featurette, BehindTheScenes, Trailer, etc.)
+    @SerialName("ExtraType") val extraType: String? = null,
     // Production locations
     @SerialName("ProductionLocations") val productionLocations: List<String>? = null,
     // Child count (number of seasons for a series, number of episodes for a season)

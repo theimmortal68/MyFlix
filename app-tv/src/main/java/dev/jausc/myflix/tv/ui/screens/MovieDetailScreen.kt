@@ -1056,6 +1056,31 @@ private fun ExtraCard(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 4.dp),
         )
+
+        // Extra type label (Featurette, Behind the Scenes, etc.)
+        item.extraType?.let { type ->
+            Text(
+                text = formatExtraType(type),
+                style = MaterialTheme.typography.labelSmall,
+                color = TvColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Format extra type for display (e.g., "BehindTheScenes" -> "Behind the Scenes").
+ */
+private fun formatExtraType(type: String): String {
+    return when (type) {
+        "BehindTheScenes" -> "Behind the Scenes"
+        "DeletedScene" -> "Deleted Scene"
+        "ThemeSong" -> "Theme Song"
+        "ThemeVideo" -> "Theme Video"
+        else -> type // Featurette, Trailer, Interview, Clip, etc. are already readable
     }
 }
 
