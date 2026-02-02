@@ -122,7 +122,7 @@ private fun ChapterCard(
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier
-            .width(210.dp)
+            .width(201.dp)
             .onFocusChanged { isFocused = it.isFocused },
     ) {
         Column {

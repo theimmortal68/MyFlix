@@ -102,7 +102,7 @@ fun StarRating(rating: Float, contentDescription: String? = null) {
 @Composable
 fun RottenTomatoesRating(percentage: Int) {
     val isFresh = percentage >= 60
-    val iconRes = if (isFresh) R.drawable.ic_rt_fresh else R.drawable.ic_rt_rotten
+    val iconRes = if (isFresh) R.drawable.ic_rotten_tomatoes_fresh else R.drawable.ic_rotten_tomatoes_rotten
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

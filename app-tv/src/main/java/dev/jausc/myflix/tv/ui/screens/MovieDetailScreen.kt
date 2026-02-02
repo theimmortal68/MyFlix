@@ -76,8 +76,6 @@ import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.R
-import dev.jausc.myflix.tv.ui.components.MediaCard
-import dev.jausc.myflix.tv.ui.components.WideMediaCard
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparator
@@ -86,7 +84,6 @@ import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
 import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.RatingBadge
-import dev.jausc.myflix.tv.ui.components.detail.RottenTomatoesRating
 import dev.jausc.myflix.tv.ui.components.detail.StarRating
 import dev.jausc.myflix.tv.ui.components.detail.TvTabRow
 import dev.jausc.myflix.tv.ui.components.detail.TvTabRowFocusConfig
@@ -299,12 +296,12 @@ fun MovieDetailScreen(
                     )
 
                     // Tab content area - navigates up to last focused tab
-                    // Height of 220dp accommodates MediaCards with labels (165dp poster + 55dp title+year)
+                    // Height of 150dp accommodates Details content and compact cards
                     val selectedTabRequester = getTabFocusRequester(lastFocusedTab)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(220.dp)
+                            .height(153.dp)
                             .padding(start = 2.dp)
                             .focusProperties {
                                 up = selectedTabRequester
@@ -682,17 +679,7 @@ private fun MovieDetailsTabContent(
                         movie.communityRating?.let { "★ ${"%.1f".format(Locale.US, it)}" } ?: "—",
                     )
                     movie.criticRating?.let { rating ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = "RT",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TvColors.TextSecondary,
-                            )
-                            RottenTomatoesRating(percentage = rating.roundToInt())
-                        }
+                        RottenTomatoesDetailItem(percentage = rating.roundToInt())
                     }
                 }
             }
@@ -1022,7 +1009,7 @@ private fun ExtraCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(118.dp)
+                    .height(108.dp)
                     .clip(RoundedCornerShape(8.dp)),
             ) {
                 AsyncImage(
@@ -1085,7 +1072,79 @@ private fun formatExtraType(type: String): String {
 }
 
 /**
+ * Compact poster card for Similar/Collections tabs.
+ * 60dp × 90dp poster with single-line title below (total ~120dp height).
+ */
+@Composable
+private fun CompactPosterCard(
+    item: JellyfinItem,
+    imageUrl: String,
+    onClick: () -> Unit,
+    tabFocusRequester: FocusRequester? = null,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .width(83.dp)
+            .focusProperties { if (tabFocusRequester != null) up = tabFocusRequester },
+    ) {
+        // Poster with focus border (60dp × 90dp, 2:3 aspect ratio)
+        androidx.tv.material3.Surface(
+            onClick = onClick,
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+            ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            modifier = Modifier.onFocusChanged { isFocused = it.isFocused },
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(83.dp)
+                    .height(125.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+            ) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(6.dp))
+                        .then(
+                            if (isFocused) {
+                                Modifier.border(
+                                    width = 2.dp,
+                                    color = TvColors.BluePrimary,
+                                    shape = RoundedCornerShape(6.dp),
+                                )
+                            } else {
+                                Modifier
+                            },
+                        ),
+                )
+            }
+        }
+
+        // Title only (no year) - single line with ellipsis
+        Text(
+            text = item.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = TvColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+        )
+    }
+}
+
+/**
  * Collections tab - movies in same collection(s).
+ * Uses compact cards (60dp × 90dp) with single-line title to fit in 120dp height.
  */
 @Composable
 private fun CollectionsTabContent(
@@ -1103,19 +1162,15 @@ private fun CollectionsTabContent(
 
     LazyRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         itemsIndexed(allItems, key = { _, item -> item.id }) { _, item ->
-            MediaCard(
+            CompactPosterCard(
                 item = item,
                 imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
                 onClick = { onItemClick(item.id) },
-                showLabel = true,
-                onLongClick = { },
-                modifier = Modifier.focusProperties {
-                    if (tabFocusRequester != null) up = tabFocusRequester
-                },
+                tabFocusRequester = tabFocusRequester,
             )
         }
     }
@@ -1123,6 +1178,7 @@ private fun CollectionsTabContent(
 
 /**
  * Similar tab - movies similar to this one.
+ * Uses compact cards (60dp × 90dp) with single-line title to fit in 120dp height.
  */
 @Composable
 private fun SimilarTabContent(
@@ -1134,19 +1190,15 @@ private fun SimilarTabContent(
 ) {
     LazyRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         itemsIndexed(similarItems, key = { _, item -> item.id }) { _, item ->
-            MediaCard(
+            CompactPosterCard(
                 item = item,
                 imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
                 onClick = { onItemClick(item.id) },
-                showLabel = true,
-                onLongClick = { },
-                modifier = Modifier.focusProperties {
-                    if (tabFocusRequester != null) up = tabFocusRequester
-                },
+                tabFocusRequester = tabFocusRequester,
             )
         }
     }
@@ -1173,6 +1225,53 @@ private fun DetailItem(label: String, value: String) {
             style = MaterialTheme.typography.bodySmall,
             color = TvColors.TextPrimary,
         )
+    }
+}
+
+/**
+ * Rotten Tomatoes detail item with label line and icon/score/descriptor line.
+ */
+@Composable
+private fun RottenTomatoesDetailItem(percentage: Int) {
+    val isFresh = percentage >= 60
+    val isCertifiedFresh = percentage >= 75
+    val iconRes = if (isFresh) R.drawable.ic_rotten_tomatoes_fresh else R.drawable.ic_rotten_tomatoes_rotten
+    val descriptor = when {
+        isCertifiedFresh -> "Certified Fresh"
+        isFresh -> "Fresh"
+        else -> "Rotten"
+    }
+
+    Column {
+        Text(
+            text = "Rotten Tomatoes",
+            style = MaterialTheme.typography.labelSmall,
+            color = TvColors.TextSecondary,
+            fontSize = 10.sp,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = descriptor,
+                modifier = Modifier.size(16.dp),
+                tint = Color.Unspecified,
+            )
+            Text(
+                text = "$percentage%",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = TvColors.TextPrimary,
+            )
+            Text(
+                text = descriptor,
+                style = MaterialTheme.typography.bodySmall,
+                color = TvColors.TextPrimary,
+            )
+        }
     }
 }
 
