@@ -708,11 +708,10 @@ fun MyFlixTvApp() {
                         navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
                     },
                     onTrailerClick = { videoKey, videoTitle ->
-                        if (useTrailerFallback) {
-                            navController.navigate(NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, videoTitle))
-                        } else {
-                            navController.navigate(NavigationHelper.buildSeerrTrailerRoute(videoKey, videoTitle))
-                        }
+                        // Use WebView player for trailers (NewPipeExtractor has issues with YouTube)
+                        val route = NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, videoTitle)
+                        android.util.Log.d("MainActivity", "onTrailerClick: navigating to WebView player, videoKey=$videoKey")
+                        navController.navigate(route)
                     },
                     onBack = { navController.popBackStack() },
                     onActorClick = { personId ->
@@ -823,6 +822,7 @@ fun MyFlixTvApp() {
                     videoKey = videoKey,
                     title = title,
                     onBack = { navController.popBackStack() },
+                    useMpvPlayer = useMpvPlayer,
                 )
             }
 
@@ -1036,11 +1036,9 @@ fun MyFlixTvApp() {
                     navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
                 },
                 onTrailerClick = { videoKey, title ->
-                    val route = if (useTrailerFallback) {
-                        NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, title)
-                    } else {
-                        NavigationHelper.buildSeerrTrailerRoute(videoKey, title)
-                    }
+                    // Use WebView player for trailers (NewPipeExtractor has issues with YouTube)
+                    val route = NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, title)
+                    android.util.Log.d("MainActivity", "onTrailerClick (MovieDetail): navigating to WebView player, videoKey=$videoKey")
                     navController.navigate(route)
                 },
                 onBack = { navController.popBackStack() },

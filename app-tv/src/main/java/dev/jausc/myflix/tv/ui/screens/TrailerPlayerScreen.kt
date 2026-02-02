@@ -52,10 +52,17 @@ import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 
+private const val TAG = "TrailerPlayerScreen"
+
 @Composable
-fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
+fun TrailerPlayerScreen(
+    videoKey: String,
+    title: String?,
+    onBack: () -> Unit,
+    useMpvPlayer: Boolean = false,
+) {
     val context = LocalContext.current
-    val playerController = remember { PlayerController(context, useMpv = false) }
+    val playerController = remember(useMpvPlayer) { PlayerController(context, useMpv = useMpvPlayer) }
     val playbackState by playerController.state.collectAsState()
 
     var resolvedStream by remember { mutableStateOf<YouTubeStream?>(null) }
@@ -63,19 +70,36 @@ fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showControls by remember { mutableStateOf(true) }
 
+    android.util.Log.d(TAG, "TrailerPlayerScreen composing: videoKey=$videoKey, title=$title")
+
     DisposableEffect(Unit) {
-        playerController.initialize()
-        onDispose { playerController.release() }
+        android.util.Log.d(TAG, "Initializing PlayerController...")
+        val initResult = playerController.initialize()
+        android.util.Log.d(TAG, "PlayerController initialized: $initResult")
+        onDispose {
+            android.util.Log.d(TAG, "Releasing PlayerController")
+            playerController.release()
+        }
     }
 
     LaunchedEffect(videoKey) {
+        android.util.Log.d(TAG, "LaunchedEffect: Starting trailer resolution for $videoKey")
         isLoading = true
         errorMessage = null
         resolvedStream = null
-        YouTubeTrailerResolver.resolveTrailer(context, videoKey)
-            .onSuccess { resolvedStream = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load trailer" }
+        val result = YouTubeTrailerResolver.resolveTrailer(context, videoKey)
+        android.util.Log.d(TAG, "Resolution result: isSuccess=${result.isSuccess}, isFailure=${result.isFailure}")
+        result
+            .onSuccess {
+                android.util.Log.d(TAG, "SUCCESS: url=${it.url.take(100)}..., title=${it.title}, duration=${it.durationMs}ms, isHls=${it.isHls}")
+                resolvedStream = it
+            }
+            .onFailure {
+                android.util.Log.e(TAG, "FAILURE: ${it.message}", it)
+                errorMessage = it.message ?: "Failed to load trailer"
+            }
         isLoading = false
+        android.util.Log.d(TAG, "Resolution complete: isLoading=$isLoading, hasStream=${resolvedStream != null}, error=$errorMessage")
     }
 
     LaunchedEffect(showControls, playbackState.isPlaying) {
@@ -153,18 +177,27 @@ fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
 
 @Composable
 private fun TrailerVideoSurface(playerController: PlayerController, url: String, modifier: Modifier = Modifier,) {
+    android.util.Log.d(TAG, "TrailerVideoSurface: url=${url.take(100)}...")
+
     LaunchedEffect(url) {
+        android.util.Log.d(TAG, "LaunchedEffect: Calling playerController.play()")
         playerController.play(url, startPositionMs = 0)
+        android.util.Log.d(TAG, "playerController.play() called, exoPlayer=${playerController.exoPlayer}")
     }
 
     AndroidView(
         factory = { ctx ->
+            android.util.Log.d(TAG, "AndroidView factory: Creating PlayerView")
             PlayerView(ctx).apply {
                 player = playerController.exoPlayer
                 useController = false
+                android.util.Log.d(TAG, "PlayerView created, player attached: ${player != null}")
             }
         },
-        update = { view -> view.player = playerController.exoPlayer },
+        update = { view ->
+            android.util.Log.d(TAG, "AndroidView update: player=${playerController.exoPlayer}")
+            view.player = playerController.exoPlayer
+        },
         modifier = modifier,
     )
 }

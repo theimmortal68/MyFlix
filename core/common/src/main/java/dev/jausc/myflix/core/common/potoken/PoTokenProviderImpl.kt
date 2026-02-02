@@ -8,7 +8,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.schabi.newpipe.extractor.NewPipe
-import org.schabi.newpipe.extractor.services.youtube.InnertubeClientRequestInfo
 import org.schabi.newpipe.extractor.services.youtube.PoTokenProvider
 import org.schabi.newpipe.extractor.services.youtube.PoTokenResult
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
@@ -86,19 +85,9 @@ object PoTokenProviderImpl : PoTokenProvider {
             if (shouldRecreate) {
                 Log.d(TAG, "Creating new PoTokenGenerator")
 
-                // Get visitor data from YouTube
-                val innertubeClientRequestInfo = InnertubeClientRequestInfo.ofWebClient()
-                innertubeClientRequestInfo.clientInfo.clientVersion =
-                    YoutubeParsingHelper.getClientVersion()
-
-                webPoTokenVisitorData = YoutubeParsingHelper.getVisitorDataFromInnertube(
-                    innertubeClientRequestInfo,
-                    NewPipe.getPreferredLocalization(),
-                    NewPipe.getPreferredContentCountry(),
-                    YoutubeParsingHelper.getYouTubeHeaders(),
-                    YoutubeParsingHelper.YOUTUBEI_V1_URL,
-                    null,
-                    false
+                // Generate random visitor data (avoids network call which can fail on some devices)
+                webPoTokenVisitorData = YoutubeParsingHelper.randomVisitorData(
+                    NewPipe.getPreferredContentCountry()
                 )
 
                 // Close existing generator on main thread

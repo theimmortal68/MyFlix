@@ -42,6 +42,8 @@ object YouTubeTrailerResolver {
             NewPipe.init(OkHttpDownloader())
             PoTokenProviderImpl.initialize(context)
             YoutubeStreamExtractor.setPoTokenProvider(PoTokenProviderImpl)
+            // Enable iOS client as fallback when Android client doesn't have a valid PoToken
+            YoutubeStreamExtractor.setFetchIosClient(true)
         }
     }
 
@@ -56,12 +58,20 @@ object YouTubeTrailerResolver {
     suspend fun resolveTrailer(context: Context, videoKey: String): Result<YouTubeStream> =
         withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "=== Starting trailer resolution for videoKey: $videoKey ===")
             initialize(context)
+            Log.d(TAG, "NewPipe initialized, fetching stream info...")
+
             val videoUrl = "https://www.youtube.com/watch?v=$videoKey"
             val info = StreamInfo.getInfo(ServiceList.YouTube, videoUrl)
+            Log.d(TAG, "StreamInfo received: title=${info.name}, duration=${info.duration}s")
+            Log.d(TAG, "HLS URL: ${info.hlsUrl}")
+            Log.d(TAG, "Video streams count: ${info.videoStreams?.size ?: 0}")
+            Log.d(TAG, "Audio streams count: ${info.audioStreams?.size ?: 0}")
 
             val hlsUrl = info.hlsUrl?.takeIf { it.isNotBlank() }
             if (hlsUrl != null) {
+                Log.d(TAG, "Using HLS stream: $hlsUrl")
                 return@withContext Result.success(
                     YouTubeStream(
                     url = hlsUrl,
@@ -72,11 +82,26 @@ object YouTubeTrailerResolver {
                 )
             }
 
+            Log.d(TAG, "No HLS, selecting best progressive stream...")
+            info.videoStreams?.forEachIndexed { idx, stream ->
+                Log.d(TAG, "  Stream[$idx]: ${stream.resolution} ${stream.format?.name} codec=${stream.codec} videoOnly=${stream.isVideoOnly}")
+            }
+
             val stream = selectBestStream(info)
-                ?: throw IOException("No playable YouTube streams available")
+            if (stream == null) {
+                Log.e(TAG, "No playable streams found!")
+                throw IOException("No playable YouTube streams available")
+            }
+
+            Log.d(TAG, "Selected stream: ${stream.resolution} ${stream.format?.name} codec=${stream.codec}")
 
             val streamUrl = stream.content
-                ?: throw IOException("Stream URL is not available")
+            if (streamUrl.isNullOrBlank()) {
+                Log.e(TAG, "Stream URL is null or blank!")
+                throw IOException("Stream URL is not available")
+            }
+
+            Log.d(TAG, "=== SUCCESS: Stream URL obtained (${streamUrl.take(100)}...) ===")
 
             Result.success(
                 YouTubeStream(
@@ -87,7 +112,10 @@ object YouTubeTrailerResolver {
             )
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error resolving trailer: ${e.message}", e)
+            Log.e(TAG, "=== FAILED: Error resolving trailer ===", e)
+            Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+            Log.e(TAG, "Message: ${e.message}")
+            e.cause?.let { Log.e(TAG, "Cause: ${it.message}", it) }
             Result.failure(e)
         }
     }
