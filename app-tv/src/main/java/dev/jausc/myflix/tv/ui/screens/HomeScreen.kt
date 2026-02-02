@@ -91,8 +91,10 @@ import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
 import dev.jausc.myflix.tv.ui.components.DialogPopup
 import dev.jausc.myflix.tv.ui.components.ExitConfirmationDialog
-import dev.jausc.myflix.tv.ui.components.HeroBackdropLayer
 import dev.jausc.myflix.tv.ui.components.HeroSection
+import dev.jausc.myflix.tv.ui.components.buildBackdropUrl
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
 import dev.jausc.myflix.tv.ui.components.HomeDialogActions
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.MediaInfoDialog
@@ -573,8 +575,9 @@ private fun HomeContent(
         }
     }
 
-    // Track the current hero display item for the backdrop layer
+    // Track the current hero display item and backdrop URL for the Ken Burns layer
     var heroDisplayItem by remember { mutableStateOf<JellyfinItem?>(null) }
+    var heroBackdropUrl by remember { mutableStateOf<String?>(null) }
 
     // Track whether hero buttons or content was last focused (for NavRail exit restoration)
     var heroWasLastFocused by remember { mutableStateOf(false) }
@@ -611,16 +614,19 @@ private fun HomeContent(
             val heroImageHeight = maxHeight * 0.8f
 
             if (filteredFeaturedItems.isNotEmpty() || previewItem != null) {
-                // Layer 0 (back): Hero image anchored top-right at 60% of screen
+                // Layer 0 (back): Hero image anchored top-right at 60% of screen with Ken Burns effect
+                // Build URL for preview item if set, otherwise use heroBackdropUrl from auto-rotation
+                val displayBackdropUrl = previewItem?.let { buildBackdropUrl(it, jellyfinClient) }
+                    ?: heroBackdropUrl
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .zIndex(0f),
                 ) {
-                    HeroBackdropLayer(
-                        item = previewItem ?: heroDisplayItem,
-                        jellyfinClient = jellyfinClient,
-                        contentScale = ContentScale.Fit,
+                    KenBurnsBackdrop(
+                        imageUrl = displayBackdropUrl,
+                        fadePreset = KenBurnsFadePreset.HOME_SCREEN,
                         modifier = Modifier
                             .size(heroImageWidth, heroImageHeight)
                             .align(Alignment.TopEnd),
@@ -746,8 +752,9 @@ private fun HomeContent(
                         modifier = Modifier.fillMaxSize(),
                         previewItem = previewItem,
                         playButtonFocusRequester = heroPlayFocusRequester,
-                        onCurrentItemChanged = { item, _ ->
+                        onCurrentItemChanged = { item, url ->
                             heroDisplayItem = item
+                            heroBackdropUrl = url
                         },
                         onPreviewClear = {
                             heroWasLastFocused = true

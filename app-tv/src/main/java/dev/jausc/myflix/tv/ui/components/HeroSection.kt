@@ -292,7 +292,7 @@ fun HeroSection(
 /**
  * Build the backdrop URL for an item, using series backdrop for episodes.
  */
-private fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient): String {
+internal fun buildBackdropUrl(item: JellyfinItem, jellyfinClient: JellyfinClient): String {
     val backdropTag = item.backdropImageTags?.firstOrNull()
     if (backdropTag != null) {
         return jellyfinClient.getBackdropUrl(item.id, backdropTag, maxWidth = 1920)
