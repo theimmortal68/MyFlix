@@ -7,6 +7,32 @@
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "jellyfin-ui": {
+      "command": "/usr/bin/npx",
+      "args": [
+        "-y",
+        "@ivotoby/openapi-mcp-server",
+        "--openapi-spec",
+        "/home/jstout/StudioProjects/MyFlix/docs/jellyfin-myflix-mcp/jellyfin-myflix-ui.json"
+      ],
+      "env": {
+        "API_BASE_URL": "https://jellyfin.myflix.media",
+        "API_HEADERS": "{\"X-Emby-Token\": \"39481533ae3340eeb90304f38c60ef38\"}",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    "kotlin-lsp": {
+      "command": "/usr/bin/npx",
+      "args": [
+        "-y",
+        "@axivo/mcp-lsp"
+      ],
+      "env": {
+        "LSP_FILE_PATH": "/home/jstout/.codex/lsp.json"
+      },
+      "timeout": 60000,
+      "trust": true
     }
   }
 }
