@@ -47,6 +47,7 @@ fun CastCrewSection(
     onPersonLongClick: (Int, JellyfinPerson) -> Unit,
     modifier: Modifier = Modifier,
     title: String = "Cast & Crew",
+    showTitle: Boolean = true,
     accentColor: Color = Color(0xFFE5A00D),
     cardOnFocus: ((isFocused: Boolean, index: Int) -> Unit)? = null,
 ) {
@@ -60,24 +61,26 @@ fun CastCrewSection(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
     ) {
-        // Row header with accent bar - matches home screen style
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(start = 10.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(24.dp)
-                    .background(accentColor, shape = MaterialTheme.shapes.small),
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = TvColors.TextPrimary,
-            )
+        // Row header with accent bar - only shown if showTitle is true
+        if (showTitle) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(start = 10.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(24.dp)
+                        .background(accentColor, shape = MaterialTheme.shapes.small),
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TvColors.TextPrimary,
+                )
+            }
         }
         LazyRow(
             state = state,

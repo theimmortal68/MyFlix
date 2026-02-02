@@ -163,7 +163,7 @@ fun <T : Enum<T>> TvTabRow(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Underline indicator - shows on both selected and focused
                 Box(

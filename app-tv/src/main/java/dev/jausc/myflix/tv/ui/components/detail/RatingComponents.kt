@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.components.detail
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import java.util.Locale
 
@@ -82,6 +85,36 @@ fun StarRating(rating: Float, contentDescription: String? = null) {
         )
         Text(
             text = String.format(Locale.US, "%.1f", rating),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium,
+            ),
+            color = TvColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * Rotten Tomatoes rating with tomato icon and percentage.
+ * Shows fresh tomato for 60%+ and rotten for below 60%.
+ *
+ * @param percentage The RT critic score (0-100)
+ */
+@Composable
+fun RottenTomatoesRating(percentage: Int) {
+    val isFresh = percentage >= 60
+    val iconRes = if (isFresh) R.drawable.ic_rt_fresh else R.drawable.ic_rt_rotten
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = if (isFresh) "Fresh" else "Rotten",
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = "$percentage%",
             style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = FontWeight.Medium,
             ),

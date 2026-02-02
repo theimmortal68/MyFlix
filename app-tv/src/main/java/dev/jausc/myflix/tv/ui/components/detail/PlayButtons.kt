@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
@@ -56,8 +57,7 @@ private val ButtonShape = RoundedCornerShape(6.dp)
 
 /**
  * Standard row of expandable play buttons for movies.
- * Includes Play (or Resume & Restart), Trailer, Watched, Favorite, More.
- * More popup contains: Media Info, Add to Playlist.
+ * Includes Play (or Resume & Restart), Trailer, Watched, Favorite.
  */
 @Composable
 fun ExpandablePlayButtons(
@@ -67,18 +67,19 @@ fun ExpandablePlayButtons(
     onPlayClick: (resumePosition: Long) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onMoreClick: () -> Unit,
     buttonOnFocusChanged: (FocusState) -> Unit,
     modifier: Modifier = Modifier,
     onTrailerClick: (() -> Unit)? = null,
     playButtonFocusRequester: FocusRequester? = null,
+    leftEdgeFocusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
 ) {
     val firstFocus = playButtonFocusRequester ?: remember { FocusRequester() }
     val hasProgress = resumePositionTicks > 0L
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(8.dp),
+        contentPadding = PaddingValues(vertical = 4.dp),
         modifier = modifier
             .focusGroup()
             .focusRestorer(firstFocus),
@@ -92,6 +93,14 @@ fun ExpandablePlayButtons(
                     iconColor = IconColors.Resume,
                     onClick = { onPlayClick(resumePositionTicks) },
                     modifier = Modifier
+                        .focusProperties {
+                            if (downFocusRequester != null) {
+                                down = downFocusRequester
+                            }
+                            if (leftEdgeFocusRequester != null) {
+                                left = leftEdgeFocusRequester
+                            }
+                        }
                         .onFocusChanged(buttonOnFocusChanged)
                         .focusRequester(firstFocus),
                 )
@@ -103,7 +112,13 @@ fun ExpandablePlayButtons(
                     icon = Icons.Outlined.Refresh,
                     iconColor = IconColors.Restart,
                     onClick = { onPlayClick(0L) },
-                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    modifier = Modifier
+                        .focusProperties {
+                            if (downFocusRequester != null) {
+                                down = downFocusRequester
+                            }
+                        }
+                        .onFocusChanged(buttonOnFocusChanged),
                     mirrorIcon = true,
                 )
             }
@@ -116,6 +131,14 @@ fun ExpandablePlayButtons(
                     iconColor = IconColors.Play,
                     onClick = { onPlayClick(0L) },
                     modifier = Modifier
+                        .focusProperties {
+                            if (downFocusRequester != null) {
+                                down = downFocusRequester
+                            }
+                            if (leftEdgeFocusRequester != null) {
+                                left = leftEdgeFocusRequester
+                            }
+                        }
                         .onFocusChanged(buttonOnFocusChanged)
                         .focusRequester(firstFocus),
                 )
@@ -127,10 +150,16 @@ fun ExpandablePlayButtons(
             item("trailer") {
                 ExpandablePlayButton(
                     title = "Trailer",
-                    icon = Icons.Outlined.PlayArrow,
+                    icon = Icons.Outlined.OndemandVideo,
                     iconColor = IconColors.Trailer,
                     onClick = onTrailerClick,
-                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                    modifier = Modifier
+                        .focusProperties {
+                            if (downFocusRequester != null) {
+                                down = downFocusRequester
+                            }
+                        }
+                        .onFocusChanged(buttonOnFocusChanged),
                 )
             }
         }
@@ -142,31 +171,30 @@ fun ExpandablePlayButtons(
                 icon = if (watched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                 iconColor = IconColors.Watched,
                 onClick = onWatchedClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                modifier = Modifier
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged(buttonOnFocusChanged),
             )
         }
 
-        // Favorite button (only shown when no resume progress - otherwise in More popup)
-        if (!hasProgress) {
-            item("favorite") {
-                ExpandablePlayButton(
-                    title = if (favorite) "Remove Favorite" else "Add to Favorites",
-                    icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                    iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
-                    onClick = onFavoriteClick,
-                    modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
-                )
-            }
-        }
-
-        // More button (Media Info, Add to Playlist, optionally Favorite when resuming)
-        item("more") {
+        // Favorite button
+        item("favorite") {
             ExpandablePlayButton(
-                title = "More",
-                icon = Icons.Outlined.MoreVert,
-                iconColor = IconColors.More,
-                onClick = onMoreClick,
-                modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
+                title = if (favorite) "Remove Favorite" else "Add to Favorites",
+                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                onClick = onFavoriteClick,
+                modifier = Modifier
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged(buttonOnFocusChanged),
             )
         }
     }

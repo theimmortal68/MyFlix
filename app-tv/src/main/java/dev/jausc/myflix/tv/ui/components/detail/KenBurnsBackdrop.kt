@@ -38,6 +38,8 @@ enum class KenBurnsFadePreset {
     EPISODES,
     /** Home screen fade - matches HeroBackdropLayer's edge blending */
     HOME_SCREEN,
+    /** Movie detail screen - balanced fade for cinematic feel */
+    MOVIE,
 }
 
 /**
@@ -108,6 +110,13 @@ fun KenBurnsBackdrop(
             bottomFadeMid = 0.4f,
             overlayAlpha = 0.7f,
             overlayFadeEnd = 0.4f,
+        )
+        KenBurnsFadePreset.MOVIE -> FadeConfig(
+            leftFadeStart = 0.12f,
+            leftFadeMid = 0.28f,
+            bottomFadeMid = 0.55f,
+            overlayAlpha = 0.75f,
+            overlayFadeEnd = 0.45f,
         )
     }
 

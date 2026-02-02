@@ -109,12 +109,12 @@ import java.util.Locale
 
 /**
  * Tab options for the episode detail screen.
- * Order matters - Seasons first for quick season switching.
+ * Order matters - Seasons first for quick season switching, Details before Chapters.
  */
 private enum class EpisodeTab {
     Seasons,
-    Chapters,
     Details,
+    Chapters,
     MediaInfo,
     CastCrew,
     GuestStars,
@@ -412,10 +412,12 @@ fun EpisodesScreen(
                             }
                             EpisodeTab.MediaInfo -> {
                                 focusedEpisode?.let { episode ->
+                                    val episodeMediaSource = episode.mediaSources?.firstOrNull()
                                     MediaInfoTabContent(
-                                        mediaStreams = episode.mediaSources?.firstOrNull()?.mediaStreams ?: emptyList(),
+                                        mediaStreams = episodeMediaSource?.mediaStreams ?: emptyList(),
                                         genres = episode.genres ?: emptyList(),
                                         tabFocusRequester = selectedTabRequester,
+                                        mediaSource = episodeMediaSource,
                                     )
                                 }
                             }
@@ -1301,6 +1303,77 @@ private fun DetailItem(label: String, value: String) {
 }
 
 /**
+ * Get dynamic range label for video stream (HDR, HDR10, HDR10+, Dolby Vision, etc.)
+ */
+private fun getDynamicRangeLabel(stream: MediaStream): String? {
+    // Check for Dolby Vision first (highest priority)
+    val videoDoViTitle = stream.videoDoViTitle
+    if (!videoDoViTitle.isNullOrBlank()) {
+        return "Dolby Vision"
+    }
+
+    // Check videoRangeType for specific HDR formats
+    val rangeType = stream.videoRangeType?.uppercase()
+    if (rangeType != null) {
+        return when {
+            rangeType.contains("DOVI") || rangeType.contains("DOLBY") -> "Dolby Vision"
+            rangeType.contains("HDR10+") || rangeType.contains("HDR10PLUS") -> "HDR10+"
+            rangeType.contains("HDR10") -> "HDR10"
+            rangeType.contains("HLG") -> "HLG"
+            rangeType.contains("HDR") -> "HDR"
+            rangeType == "SDR" -> null // Don't show SDR
+            else -> null
+        }
+    }
+
+    // Fall back to videoRange
+    val videoRange = stream.videoRange?.uppercase()
+    if (videoRange != null && videoRange != "SDR") {
+        return videoRange
+    }
+
+    return null
+}
+
+/**
+ * Get full audio codec label including profile (DTS-HD MA, TrueHD Atmos, etc.)
+ */
+private fun getFullAudioCodecLabel(stream: MediaStream): String {
+    val codec = stream.codec?.uppercase() ?: return "Unknown"
+    val profile = stream.profile?.uppercase()
+
+    // Build full codec string based on codec and profile
+    return when {
+        // DTS variants
+        codec == "DTS" && profile != null -> when {
+            profile.contains("MA") || profile.contains("HD MA") -> "DTS-HD MA"
+            profile.contains("HD") -> "DTS-HD"
+            profile.contains("X") -> "DTS:X"
+            else -> "DTS"
+        }
+        codec.contains("DTS") -> codec
+
+        // TrueHD / Atmos
+        codec == "TRUEHD" && profile?.contains("ATMOS") == true -> "TrueHD Atmos"
+        codec == "TRUEHD" -> "TrueHD"
+
+        // EAC3 / Atmos
+        codec == "EAC3" && profile?.contains("ATMOS") == true -> "EAC3 Atmos"
+        codec == "EAC3" -> "EAC3"
+
+        // AC3
+        codec == "AC3" -> "AC3"
+
+        // AAC variants
+        codec == "AAC" && profile != null -> "AAC $profile"
+        codec == "AAC" -> "AAC"
+
+        // FLAC, PCM, etc.
+        else -> codec
+    }
+}
+
+/**
  * Overview section with auto-scroll for long text.
  * Scrolls automatically when text overflows the visible area.
  */
@@ -1367,7 +1440,7 @@ private fun OverviewSection(overview: String) {
 }
 
 /**
- * Media Info tab - shows video/audio/subtitle streams and genres.
+ * Media Info tab - shows video/audio/subtitle streams, genres, and file info.
  * Made focusable for D-pad navigation from tab headers.
  */
 @Composable
@@ -1375,6 +1448,7 @@ private fun MediaInfoTabContent(
     mediaStreams: List<MediaStream>,
     genres: List<String> = emptyList(),
     tabFocusRequester: FocusRequester? = null,
+    mediaSource: dev.jausc.myflix.core.common.model.MediaSource? = null,
 ) {
     val videoStreams = mediaStreams.filter { it.type == "Video" }
     val audioStreams = mediaStreams.filter { it.type == "Audio" }
@@ -1385,35 +1459,6 @@ private fun MediaInfoTabContent(
         contentPadding = PaddingValues(horizontal = 4.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Genres section
-        if (genres.isNotEmpty()) {
-            item("genres") {
-                Box(
-                    modifier = Modifier
-                        .focusProperties {
-                            if (tabFocusRequester != null) {
-                                up = tabFocusRequester
-                            }
-                        }
-                        .focusable(),
-                ) {
-                    Column(modifier = Modifier.width(200.dp)) {
-                        Text(
-                            text = "Genres",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = TvColors.TextPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        genres.forEach { genre ->
-                            GenreBadge(text = genre)
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-                    }
-                }
-            }
-        }
-
         // Video info
         if (videoStreams.isNotEmpty()) {
             item("video") {
@@ -1440,6 +1485,11 @@ private fun MediaInfoTabContent(
                                 DetailItem("Resolution", "${stream.width}x${stream.height}")
                             }
                             stream.aspectRatio?.let { DetailItem("Aspect", it) }
+                            // Dynamic Range (HDR info)
+                            val dynamicRange = getDynamicRangeLabel(stream)
+                            if (dynamicRange != null) {
+                                DetailItem("Dynamic Range", dynamicRange)
+                            }
                             stream.bitRate?.let {
                                 DetailItem("Bitrate", "${it / 1_000_000} Mbps")
                             }
@@ -1449,7 +1499,7 @@ private fun MediaInfoTabContent(
             }
         }
 
-        // Audio info
+        // Audio info - with full codec labels
         if (audioStreams.isNotEmpty()) {
             item("audio") {
                 Box(
@@ -1461,7 +1511,7 @@ private fun MediaInfoTabContent(
                         }
                         .focusable(),
                 ) {
-                    Column(modifier = Modifier.width(250.dp)) {
+                    Column(modifier = Modifier.width(280.dp)) {
                         Text(
                             text = "Audio (${audioStreams.size} tracks)",
                             style = MaterialTheme.typography.titleSmall,
@@ -1472,7 +1522,8 @@ private fun MediaInfoTabContent(
                         audioStreams.take(4).forEach { stream ->
                             val info = buildString {
                                 append(stream.language?.uppercase() ?: "UND")
-                                stream.codec?.let { append(" - ${it.uppercase()}") }
+                                append(" - ")
+                                append(getFullAudioCodecLabel(stream))
                                 stream.channels?.let { append(" ${it}ch") }
                             }
                             Text(
@@ -1493,7 +1544,7 @@ private fun MediaInfoTabContent(
             }
         }
 
-        // Subtitle info
+        // Subtitle info - compact list without extra spacing
         if (subtitleStreams.isNotEmpty()) {
             item("subtitles") {
                 Box(
@@ -1528,6 +1579,40 @@ private fun MediaInfoTabContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TvColors.TextSecondary.copy(alpha = 0.7f),
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // File info
+        if (mediaSource != null) {
+            item("file") {
+                Box(
+                    modifier = Modifier
+                        .focusProperties {
+                            if (tabFocusRequester != null) {
+                                up = tabFocusRequester
+                            }
+                        }
+                        .focusable(),
+                ) {
+                    Column(modifier = Modifier.width(150.dp)) {
+                        Text(
+                            text = "File",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TvColors.TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        mediaSource.container?.let { DetailItem("Container", it.uppercase()) }
+                        mediaSource.size?.let { size ->
+                            val sizeStr = when {
+                                size >= 1_000_000_000 -> "${"%.1f".format(Locale.US, size / 1_000_000_000.0)} GB"
+                                size >= 1_000_000 -> "${"%.0f".format(Locale.US, size / 1_000_000.0)} MB"
+                                else -> "${"%.0f".format(Locale.US, size / 1_000.0)} KB"
+                            }
+                            DetailItem("Size", sizeStr)
                         }
                     }
                 }

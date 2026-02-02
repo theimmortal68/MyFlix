@@ -114,6 +114,7 @@ fun DetailScreen(
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
                     modifier = Modifier.fillMaxSize(),
+                    leftEdgeFocusRequester = leftEdgeFocusRequester,
                 )
             }
 
