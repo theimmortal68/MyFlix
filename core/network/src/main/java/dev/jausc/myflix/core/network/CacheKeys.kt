@@ -97,8 +97,19 @@ object CacheKeys {
         sortOrder: String,
         nameStartsWith: String?,
         excludeUniverseCollections: Boolean,
+        genres: List<String>?,
+        isPlayed: Boolean?,
+        isFavorite: Boolean?,
+        minCommunityRating: Float?,
+        years: String?,
+        officialRatings: List<String>?,
     ): String =
-        "collectionsFiltered:$limit:$startIndex:$sortBy:$sortOrder:${nameStartsWith ?: ""}:$excludeUniverseCollections"
+        "collectionsFiltered:$limit:$startIndex:$sortBy:$sortOrder:${nameStartsWith ?: ""}:$excludeUniverseCollections:" +
+            "${genres?.joinToString(",") ?: ""}:${isPlayed ?: ""}:${isFavorite ?: ""}:" +
+            "${minCommunityRating ?: ""}:${years ?: ""}:${officialRatings?.joinToString(",") ?: ""}"
+
+    /** Genres for collections (BoxSets) */
+    fun collectionGenres(): String = "collectionGenres"
 
     /** Universe collections (tagged with "universe-collection") */
     fun universeCollections(limit: Int): String = "universeCollections:$limit"

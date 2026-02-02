@@ -1253,7 +1253,7 @@ class JellyfinClient(
 
     /**
      * Get collections with pagination and filtering support (for library-style view).
-     * Supports alphabet navigation and sorting.
+     * Supports alphabet navigation, sorting, and filtering by genres, watched status, etc.
      */
     suspend fun getCollectionsFiltered(
         limit: Int = 100,
@@ -1262,8 +1262,18 @@ class JellyfinClient(
         sortOrder: String? = null,
         nameStartsWith: String? = null,
         excludeUniverseCollections: Boolean = false,
+        genres: List<String>? = null,
+        isPlayed: Boolean? = null,
+        isFavorite: Boolean? = null,
+        minCommunityRating: Float? = null,
+        years: String? = null,
+        officialRatings: List<String>? = null,
     ): Result<ItemsResponse> {
-        val key = CacheKeys.collectionsFiltered(limit, startIndex, sortBy ?: "Default", sortOrder ?: "Default", nameStartsWith, excludeUniverseCollections)
+        val key = CacheKeys.collectionsFiltered(
+            limit, startIndex, sortBy ?: "Default", sortOrder ?: "Default",
+            nameStartsWith, excludeUniverseCollections, genres, isPlayed,
+            isFavorite, minCommunityRating, years, officialRatings,
+        )
         getCached<ItemsResponse>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
         return runCatching {
             val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
@@ -1274,9 +1284,27 @@ class JellyfinClient(
                 parameter("recursive", true)
                 parameter("startIndex", startIndex)
                 parameter("limit", limit)
-                parameter("fields", Fields.CARD + ",Tags")
+                parameter("fields", Fields.CARD + ",Tags,Genres")
                 parameter("enableImageTypes", ImageTypes.HERO)
-                nameStartsWith?.let { parameter("nameStartsWith", it) }
+                // Handle letter filter - "#" means items starting with numbers/symbols
+                nameStartsWith?.takeIf { it.isNotEmpty() }?.let { letter ->
+                    if (letter == "#") {
+                        parameter("nameLessThan", "A")
+                    } else {
+                        parameter("nameStartsWith", letter)
+                    }
+                }
+                // Filter parameters
+                genres?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("genres", it.joinToString("|"))
+                }
+                isPlayed?.let { parameter("isPlayed", it) }
+                isFavorite?.let { parameter("isFavorite", it) }
+                minCommunityRating?.let { parameter("minCommunityRating", it) }
+                years?.takeIf { it.isNotEmpty() }?.let { parameter("years", it) }
+                officialRatings?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("OfficialRatings", it.joinToString(","))
+                }
             }.body()
             val items = if (excludeUniverseCollections) {
                 r.items.filter { item ->
@@ -1293,6 +1321,24 @@ class JellyfinClient(
                 r.totalRecordCount
             }
             ItemsResponse(items, adjustedTotal).also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get genres available for collections (BoxSets).
+     */
+    suspend fun getCollectionGenres(): Result<List<JellyfinGenre>> {
+        val key = CacheKeys.collectionGenres()
+        getCached<List<JellyfinGenre>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
+        return runCatching {
+            val r: GenresResponse = httpClient.get("$baseUrl/Genres") {
+                header("Authorization", authHeader())
+                parameter("userId", userId)
+                parameter("includeItemTypes", "BoxSet")
+                parameter("sortBy", "SortName")
+                parameter("sortOrder", "Ascending")
+            }.body()
+            r.items.also { putCache(key, it) }
         }
     }
 
@@ -1318,6 +1364,52 @@ class JellyfinClient(
                 parameter("limit", limit)
                 parameter("fields", Fields.CARD)
                 parameter("enableImageTypes", ImageTypes.HERO)
+            }.body()
+            r.items.also { putCache(key, it) }
+        }
+    }
+
+    /**
+     * Get universe collections with filtering support.
+     * Universe collections are BoxSets with a special tag for franchise groupings.
+     */
+    suspend fun getUniverseCollectionsFiltered(
+        limit: Int = 200,
+        sortBy: String? = null,
+        sortOrder: String? = null,
+        genres: List<String>? = null,
+        isPlayed: Boolean? = null,
+        isFavorite: Boolean? = null,
+        minCommunityRating: Float? = null,
+        years: String? = null,
+        officialRatings: List<String>? = null,
+    ): Result<List<JellyfinItem>> {
+        val key = "universeCollectionsFiltered:$limit:${sortBy ?: "Default"}:${sortOrder ?: "Default"}:" +
+            "${genres?.joinToString(",") ?: ""}:${isPlayed ?: ""}:${isFavorite ?: ""}:" +
+            "${minCommunityRating ?: ""}:${years ?: ""}:${officialRatings?.joinToString(",") ?: ""}"
+        getCached<List<JellyfinItem>>(key, CacheKeys.Ttl.LIBRARIES)?.let { return Result.success(it) }
+        return runCatching {
+            val r: ItemsResponse = httpClient.get("$baseUrl/Users/$userId/Items") {
+                header("Authorization", authHeader())
+                parameter("includeItemTypes", "BoxSet")
+                parameter("tags", "universe-collection")
+                if (sortBy != null) parameter("sortBy", sortBy)
+                if (sortOrder != null) parameter("sortOrder", sortOrder)
+                parameter("recursive", true)
+                parameter("limit", limit)
+                parameter("fields", Fields.CARD + ",Tags,Genres")
+                parameter("enableImageTypes", ImageTypes.HERO)
+                // Filter parameters
+                genres?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("genres", it.joinToString("|"))
+                }
+                isPlayed?.let { parameter("isPlayed", it) }
+                isFavorite?.let { parameter("isFavorite", it) }
+                minCommunityRating?.let { parameter("minCommunityRating", it) }
+                years?.takeIf { it.isNotEmpty() }?.let { parameter("years", it) }
+                officialRatings?.takeIf { it.isNotEmpty() }?.let {
+                    parameter("OfficialRatings", it.joinToString(","))
+                }
             }.body()
             r.items.also { putCache(key, it) }
         }

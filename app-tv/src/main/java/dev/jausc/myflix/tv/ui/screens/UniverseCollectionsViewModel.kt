@@ -3,6 +3,7 @@ package dev.jausc.myflix.tv.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.LibraryFilterState
 import dev.jausc.myflix.core.common.model.LibrarySortOption
@@ -10,32 +11,21 @@ import dev.jausc.myflix.core.common.model.LibraryViewMode
 import dev.jausc.myflix.core.common.model.SortOrder
 import dev.jausc.myflix.core.common.model.WatchedFilter
 import dev.jausc.myflix.core.common.model.YearRange
-import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.network.JellyfinClient
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private const val PAGE_SIZE = 100
-private const val PREFETCH_DELAY_MS = 50L
-private const val PREFETCH_PARALLEL_PAGES = 3
-
 /**
- * UI state for the collections library screen.
+ * UI state for the universe collections screen.
  */
-data class CollectionsUiState(
+data class UniverseCollectionsUiState(
     val items: List<JellyfinItem> = emptyList(),
     val totalRecordCount: Int = 0,
     val isLoading: Boolean = true,
-    val isLoadingMore: Boolean = false,
     val error: String? = null,
-    /** Current letter filter for alphabet navigation (null = show all) */
-    val currentLetter: Char? = null,
     /** Filter state (sort, view mode, filters) */
     val filterState: LibraryFilterState = LibraryFilterState.DEFAULT,
     /** Available genres for filter menu */
@@ -45,38 +35,32 @@ data class CollectionsUiState(
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty() && error == null
-
-    val canLoadMore: Boolean
-        get() = items.size < totalRecordCount && !isLoading && !isLoadingMore
 }
 
 /**
- * ViewModel for the Collections library screen.
- * Manages collections loading with pagination, sorting, filtering, and alphabet navigation.
+ * ViewModel for the Universe Collections screen.
+ * Manages universe collections (BoxSets tagged with "universe-collection") with sorting and filtering.
  */
-class CollectionsViewModel(
+class UniverseCollectionsViewModel(
     private val jellyfinClient: JellyfinClient,
-    private val excludeUniverseCollections: Boolean,
 ) : ViewModel() {
     /**
-     * Factory for creating CollectionsViewModel with manual dependency injection.
+     * Factory for creating UniverseCollectionsViewModel with manual dependency injection.
      */
     class Factory(
         private val jellyfinClient: JellyfinClient,
-        private val excludeUniverseCollections: Boolean,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            CollectionsViewModel(jellyfinClient, excludeUniverseCollections) as T
+            UniverseCollectionsViewModel(jellyfinClient) as T
     }
 
-    private val _uiState = MutableStateFlow(CollectionsUiState())
-    val uiState: StateFlow<CollectionsUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(UniverseCollectionsUiState())
+    val uiState: StateFlow<UniverseCollectionsUiState> = _uiState.asStateFlow()
 
     init {
-        loadCollections(resetList = true)
+        loadCollections()
         loadGenres()
-        startBackgroundPrefetch()
     }
 
     /**
@@ -86,107 +70,21 @@ class CollectionsViewModel(
         viewModelScope.launch {
             jellyfinClient.getCollectionGenres()
                 .onSuccess { genres ->
-                    // Extract unique parental ratings from loaded items
-                    val parentalRatings = _uiState.value.items
-                        .mapNotNull { it.officialRating }
-                        .distinct()
-                        .sorted()
-
                     _uiState.update { state ->
-                        state.copy(
-                            availableGenres = genres,
-                            availableParentalRatings = parentalRatings,
-                        )
+                        state.copy(availableGenres = genres)
                     }
                 }
         }
     }
 
     /**
-     * Pre-fetch collection items in background for faster navigation.
+     * Load universe collections with current filter/sort state.
      */
-    private fun startBackgroundPrefetch() {
+    private fun loadCollections() {
         viewModelScope.launch {
-            // Wait for initial load to complete
-            while (_uiState.value.isLoading) {
-                delay(100)
-            }
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val initialState = _uiState.value
-            if (initialState.items.isEmpty() || initialState.error != null) return@launch
-
-            val totalItems = initialState.totalRecordCount
-            var apiStartIndex = PAGE_SIZE
-
-            // Phase 1: Load remaining pages
-            while (apiStartIndex < totalItems) {
-                if (_uiState.value.currentLetter != null || _uiState.value.isLoading) {
-                    delay(500)
-                    continue
-                }
-
-                val pagesToFetch = (0 until PREFETCH_PARALLEL_PAGES)
-                    .map { apiStartIndex + (it * PAGE_SIZE) }
-                    .filter { it < totalItems }
-
-                pagesToFetch.map { startIndex ->
-                    async { prefetchPage(startIndex, null) }
-                }.awaitAll()
-
-                apiStartIndex += PREFETCH_PARALLEL_PAGES * PAGE_SIZE
-                delay(PREFETCH_DELAY_MS)
-            }
-
-            // Phase 2: Pre-fetch first page of each letter
-            val alphabet = listOf('#') + ('A'..'Z').toList()
-            alphabet.chunked(PREFETCH_PARALLEL_PAGES).forEach { letterBatch ->
-                if (_uiState.value.currentLetter != null || _uiState.value.isLoading) {
-                    delay(500)
-                    return@forEach
-                }
-
-                letterBatch.map { letter ->
-                    async {
-                        prefetchPage(0, if (letter == '#') "#" else letter.toString())
-                    }
-                }.awaitAll()
-
-                delay(PREFETCH_DELAY_MS)
-            }
-        }
-    }
-
-    /**
-     * Prefetch a page of collections into cache without updating UI.
-     */
-    private suspend fun prefetchPage(startIndex: Int, nameStartsWith: String?) {
-        val state = _uiState.value.filterState
-        jellyfinClient.getCollectionsFiltered(
-            limit = PAGE_SIZE,
-            startIndex = startIndex,
-            sortBy = state.sortBy.jellyfinValue,
-            sortOrder = state.sortOrder.jellyfinValue,
-            nameStartsWith = nameStartsWith,
-            excludeUniverseCollections = excludeUniverseCollections,
-        )
-    }
-
-    /**
-     * Load collections with pagination support.
-     */
-    private fun loadCollections(resetList: Boolean = false, startIndex: Int = 0) {
-        viewModelScope.launch {
-            if (resetList) {
-                _uiState.update { it.copy(isLoading = true, error = null) }
-            } else {
-                _uiState.update { it.copy(isLoadingMore = true) }
-            }
-
-            val currentState = _uiState.value
-            val filterState = currentState.filterState
-            val nameStartsWith = currentState.currentLetter?.let { letter ->
-                if (letter == '#') "#" else letter.toString()
-            }
+            val filterState = _uiState.value.filterState
 
             // Build filter parameters
             val isPlayed = when (filterState.watchedFilter) {
@@ -195,13 +93,10 @@ class CollectionsViewModel(
                 WatchedFilter.UNWATCHED -> false
             }
 
-            jellyfinClient.getCollectionsFiltered(
-                limit = PAGE_SIZE,
-                startIndex = startIndex,
+            jellyfinClient.getUniverseCollectionsFiltered(
+                limit = 200,
                 sortBy = filterState.sortBy.jellyfinValue,
                 sortOrder = filterState.sortOrder.jellyfinValue,
-                nameStartsWith = nameStartsWith,
-                excludeUniverseCollections = excludeUniverseCollections,
                 genres = filterState.selectedGenres.toList().takeIf { it.isNotEmpty() },
                 isPlayed = isPlayed,
                 isFavorite = if (filterState.favoritesOnly) true else null,
@@ -209,72 +104,30 @@ class CollectionsViewModel(
                 years = filterState.yearRange.toJellyfinParam(),
                 officialRatings = filterState.selectedParentalRatings.toList().takeIf { it.isNotEmpty() },
             )
-                .onSuccess { result ->
+                .onSuccess { items ->
                     // Extract parental ratings from results for filter menu
-                    val newParentalRatings = result.items
+                    val parentalRatings = items
                         .mapNotNull { it.officialRating }
                         .distinct()
+                        .sorted()
 
                     _uiState.update { state ->
-                        val newItems = if (resetList) {
-                            result.items
-                        } else {
-                            (state.items + result.items).distinctBy { it.id }
-                        }
-
-                        // Merge parental ratings
-                        val allParentalRatings = (state.availableParentalRatings + newParentalRatings)
-                            .distinct()
-                            .sorted()
-
                         state.copy(
-                            items = newItems,
-                            totalRecordCount = result.totalRecordCount,
+                            items = items,
+                            totalRecordCount = items.size,
                             isLoading = false,
-                            isLoadingMore = false,
-                            availableParentalRatings = allParentalRatings,
+                            availableParentalRatings = parentalRatings,
                         )
                     }
                 }
                 .onFailure { e ->
                     _uiState.update { state ->
                         state.copy(
-                            error = e.message ?: "Failed to load collections",
+                            error = e.message ?: "Failed to load universe collections",
                             isLoading = false,
-                            isLoadingMore = false,
                         )
                     }
                 }
-        }
-    }
-
-    /**
-     * Load more collections (pagination).
-     */
-    fun loadMore() {
-        val currentState = _uiState.value
-        if (currentState.canLoadMore) {
-            loadCollections(resetList = false, startIndex = currentState.items.size)
-        }
-    }
-
-    /**
-     * Jump to collections starting with a specific letter.
-     */
-    fun jumpToLetter(letter: Char) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, items = emptyList(), currentLetter = letter) }
-            loadCollections(resetList = true)
-        }
-    }
-
-    /**
-     * Clear the letter filter and show all collections.
-     */
-    fun clearLetterFilter() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, items = emptyList(), currentLetter = null) }
-            loadCollections(resetList = true)
         }
     }
 
@@ -282,7 +135,7 @@ class CollectionsViewModel(
      * Refresh collections.
      */
     fun refresh() {
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     // ========== Filter/Sort Methods ==========
@@ -303,11 +156,10 @@ class CollectionsViewModel(
         _uiState.update { state ->
             state.copy(
                 filterState = state.filterState.copy(sortBy = sortBy, sortOrder = sortOrder),
-                items = emptyList(),
                 isLoading = true,
             )
         }
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     /**
@@ -327,11 +179,10 @@ class CollectionsViewModel(
                     yearRange = yearRange,
                     favoritesOnly = favoritesOnly,
                 ),
-                items = emptyList(),
                 isLoading = true,
             )
         }
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     /**
@@ -346,11 +197,10 @@ class CollectionsViewModel(
             }
             state.copy(
                 filterState = state.filterState.copy(selectedGenres = newGenres),
-                items = emptyList(),
                 isLoading = true,
             )
         }
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     /**
@@ -360,11 +210,10 @@ class CollectionsViewModel(
         _uiState.update { state ->
             state.copy(
                 filterState = state.filterState.copy(selectedGenres = emptySet()),
-                items = emptyList(),
                 isLoading = true,
             )
         }
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     /**
@@ -379,11 +228,10 @@ class CollectionsViewModel(
             }
             state.copy(
                 filterState = state.filterState.copy(selectedParentalRatings = newRatings),
-                items = emptyList(),
                 isLoading = true,
             )
         }
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     /**
@@ -393,11 +241,10 @@ class CollectionsViewModel(
         _uiState.update { state ->
             state.copy(
                 filterState = state.filterState.copy(selectedParentalRatings = emptySet()),
-                items = emptyList(),
                 isLoading = true,
             )
         }
-        loadCollections(resetList = true)
+        loadCollections()
     }
 
     /**
