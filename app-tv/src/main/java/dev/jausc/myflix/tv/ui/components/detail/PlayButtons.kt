@@ -482,6 +482,85 @@ fun EpisodeActionButtons(
 }
 
 /**
+ * Action buttons for collection details.
+ * Includes Shuffle, Mark Watched, and Favorite buttons.
+ */
+@Composable
+fun CollectionActionButtons(
+    watched: Boolean,
+    favorite: Boolean,
+    onShuffleClick: () -> Unit,
+    onWatchedClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    buttonOnFocusChanged: (FocusState) -> Unit,
+    modifier: Modifier = Modifier,
+    shuffleFocusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
+) {
+    val firstFocus = shuffleFocusRequester ?: remember { FocusRequester() }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(vertical = 4.dp),
+        modifier = modifier
+            .focusGroup()
+            .focusRestorer(firstFocus),
+    ) {
+        // Shuffle button
+        item("shuffle") {
+            ExpandablePlayButton(
+                title = "Shuffle",
+                icon = Icons.Outlined.Shuffle,
+                iconColor = IconColors.Shuffle,
+                onClick = onShuffleClick,
+                modifier = Modifier
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged(buttonOnFocusChanged)
+                    .focusRequester(firstFocus),
+            )
+        }
+
+        // Mark Watched button
+        item("watched") {
+            ExpandablePlayButton(
+                title = if (watched) "Mark Unwatched" else "Mark Watched",
+                icon = if (watched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                iconColor = IconColors.Watched,
+                onClick = onWatchedClick,
+                modifier = Modifier
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+
+        // Favorite button
+        item("favorite") {
+            ExpandablePlayButton(
+                title = if (favorite) "Remove Favorite" else "Add to Favorites",
+                icon = if (favorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                iconColor = if (favorite) IconColors.FavoriteFilled else IconColors.Favorite,
+                onClick = onFavoriteClick,
+                modifier = Modifier
+                    .focusProperties {
+                        if (downFocusRequester != null) {
+                            down = downFocusRequester
+                        }
+                    }
+                    .onFocusChanged(buttonOnFocusChanged),
+            )
+        }
+    }
+}
+
+/**
  * An icon button that expands to show text when focused.
  * 20dp square when unfocused (icon only), expands when focused (icon + text).
  *
