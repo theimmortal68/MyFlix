@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -17,8 +18,10 @@ import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import dev.jausc.myflix.core.player.audio.NightModeAudioProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,22 +54,47 @@ enum class AudioPassthroughMode {
  * - OFF: Use FFmpeg to decode DTS/TrueHD to PCM (works on all devices, loses Atmos/DTS:X spatial)
  * - AUTO: Passthrough to AVR if device reports support, otherwise decode
  * - ALWAYS: Force passthrough attempt (may fail if AVR doesn't support format)
+ *
+ * Night mode (DRC):
+ * - When enabled, applies dynamic range compression to reduce volume differences
+ * - Boosts quiet dialogue, compresses loud sounds for late-night viewing
  */
 @Suppress("TooManyFunctions")
+@OptIn(UnstableApi::class)
 class ExoPlayerWrapper(
     private val context: Context,
     private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
+    nightModeEnabled: Boolean = false,
 ) : UnifiedPlayer {
+
+    // Night mode audio processor for dynamic range compression
+    private val nightModeProcessor = NightModeAudioProcessor().apply {
+        setEnabled(nightModeEnabled)
+    }
     /**
-     * Custom RenderersFactory that uses FFmpeg for audio and video decoding
+     * Custom RenderersFactory that uses FFmpeg for audio and video decoding.
      * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, HEVC, etc.
+     * Also injects the night mode audio processor for dynamic range compression.
      */
-    private class FfmpegRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+    private inner class FfmpegRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
         init {
             // Enable decoder fallback for when hardware decoders fail
             setEnableDecoderFallback(true)
             // Use FFmpeg extension as fallback when MediaCodec fails
             setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
+        }
+
+        override fun buildAudioSink(
+            context: Context,
+            enableFloatOutput: Boolean,
+            enableAudioTrackPlaybackParams: Boolean,
+        ): AudioSink {
+            // Build AudioSink with night mode processor in the chain
+            return DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(enableFloatOutput)
+                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                .setAudioProcessors(arrayOf(nightModeProcessor))
+                .build()
         }
 
         override fun buildAudioRenderers(
@@ -99,6 +127,35 @@ class ExoPlayerWrapper(
                 eventListener,
                 out,
             )
+        }
+    }
+
+    /**
+     * Custom RenderersFactory for passthrough mode.
+     * Injects the night mode audio processor for dynamic range compression.
+     */
+    private inner class PassthroughRenderersFactory(
+        context: Context,
+        enableDecoderFallback: Boolean,
+    ) : DefaultRenderersFactory(context) {
+        init {
+            setEnableDecoderFallback(enableDecoderFallback)
+            // PREFER: Use extension renderers (AV1 software) first, then hardware
+            // This enables AV1 playback on devices like Shield TV without hardware AV1
+            setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+        }
+
+        override fun buildAudioSink(
+            context: Context,
+            enableFloatOutput: Boolean,
+            enableAudioTrackPlaybackParams: Boolean,
+        ): AudioSink {
+            // Build AudioSink with night mode processor in the chain
+            return DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(enableFloatOutput)
+                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                .setAudioProcessors(arrayOf(nightModeProcessor))
+                .build()
         }
     }
 
@@ -142,6 +199,7 @@ class ExoPlayerWrapper(
             }
 
             // Choose renderers factory based on passthrough mode
+            // All factories now use custom AudioSink with night mode processor
             val renderersFactory = when (audioPassthroughMode) {
                 AudioPassthroughMode.OFF -> {
                     // Use FFmpeg to decode DTS/TrueHD to PCM
@@ -149,23 +207,18 @@ class ExoPlayerWrapper(
                         Log.d(TAG, "Using FFmpeg renderers (passthrough OFF)")
                         FfmpegRenderersFactory(context)
                     } else {
-                        Log.w(TAG, "FFmpeg not available, using default renderers")
-                        DefaultRenderersFactory(context)
-                            .setEnableDecoderFallback(true)
-                            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+                        Log.w(TAG, "FFmpeg not available, using passthrough renderers")
+                        PassthroughRenderersFactory(context, enableDecoderFallback = true)
                     }
                 }
                 AudioPassthroughMode.AUTO, AudioPassthroughMode.ALWAYS -> {
                     // Use platform decoders with passthrough capability for audio
                     // Enable extension renderers for AV1 software decode on devices without hardware AV1
                     Log.d(TAG, "Using passthrough renderers (mode=$audioPassthroughMode)")
-                    DefaultRenderersFactory(context)
-                        .setEnableDecoderFallback(audioPassthroughMode == AudioPassthroughMode.AUTO)
-                        .setExtensionRendererMode(
-                            // PREFER: Use extension renderers (AV1 software) first, then hardware
-                            // This enables AV1 playback on devices like Shield TV without hardware AV1
-                            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-                        )
+                    PassthroughRenderersFactory(
+                        context,
+                        enableDecoderFallback = audioPassthroughMode == AudioPassthroughMode.AUTO,
+                    )
                 }
             }
 
@@ -368,6 +421,26 @@ class ExoPlayerWrapper(
         // Note: For client-side subtitle rendering, apply this to SubtitleView via CaptionStyleCompat
         // in the UI layer. Server-side subtitles are styled by Jellyfin, not the player.
     }
+
+    /**
+     * Enables or disables night mode (dynamic range compression).
+     * Boosts quiet sounds and compresses loud sounds for late-night viewing.
+     * Note: Change takes effect on next seek or track change.
+     */
+    fun setNightModeEnabled(enabled: Boolean) {
+        nightModeProcessor.setEnabled(enabled)
+        Log.d(TAG, "Night mode ${if (enabled) "enabled" else "disabled"} (pending)")
+    }
+
+    /**
+     * Returns whether night mode is currently active.
+     */
+    fun isNightModeEnabled(): Boolean = nightModeProcessor.isEnabled()
+
+    /**
+     * Returns whether night mode is pending to be enabled (takes effect on next seek).
+     */
+    fun isNightModePending(): Boolean = nightModeProcessor.isPendingEnabled()
 
     override fun release() {
         stopPositionTracking()
