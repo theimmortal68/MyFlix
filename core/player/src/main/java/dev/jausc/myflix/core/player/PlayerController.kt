@@ -249,6 +249,57 @@ class PlayerController(
         currentPlayer?.setSubtitleStyle(style)
     }
 
+    // ==================== Audio Delay Control ====================
+
+    /**
+     * Sets the audio delay in milliseconds.
+     * Positive values delay audio (audio plays later than video).
+     * Negative values advance audio (audio plays earlier than video).
+     * Range: -500ms to +500ms.
+     * Note: Change takes effect on next seek or track change.
+     */
+    fun setAudioDelayMs(delayMs: Long) {
+        (currentPlayer as? ExoPlayerWrapper)?.setAudioDelayMs(delayMs)
+    }
+
+    /**
+     * Gets the currently pending audio delay in milliseconds.
+     */
+    fun getAudioDelayMs(): Long {
+        return (currentPlayer as? ExoPlayerWrapper)?.getAudioDelayMs() ?: 0L
+    }
+
+    /**
+     * Adjusts audio delay by the specified increment.
+     * @param incrementMs Amount to adjust (positive or negative)
+     */
+    fun adjustAudioDelay(incrementMs: Long) {
+        (currentPlayer as? ExoPlayerWrapper)?.adjustAudioDelay(incrementMs)
+    }
+
+    /**
+     * Returns whether audio delay is currently being applied.
+     */
+    fun isAudioDelayActive(): Boolean {
+        return (currentPlayer as? ExoPlayerWrapper)?.isAudioDelayActive() ?: false
+    }
+
+    // ==================== Night Mode Control ====================
+
+    /**
+     * Enables or disables night mode (dynamic range compression).
+     */
+    fun setNightModeEnabled(enabled: Boolean) {
+        (currentPlayer as? ExoPlayerWrapper)?.setNightModeEnabled(enabled)
+    }
+
+    /**
+     * Returns whether night mode is currently enabled.
+     */
+    fun isNightModeEnabled(): Boolean {
+        return (currentPlayer as? ExoPlayerWrapper)?.isNightModeEnabled() ?: false
+    }
+
     /**
      * Switch to MPV backend as a fallback when ExoPlayer fails.
      * Returns true if MPV was initialized.

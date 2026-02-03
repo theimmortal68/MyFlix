@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
 import dev.jausc.myflix.core.player.audio.NightModeAudioProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +59,10 @@ enum class AudioPassthroughMode {
  * Night mode (DRC):
  * - When enabled, applies dynamic range compression to reduce volume differences
  * - Boosts quiet dialogue, compresses loud sounds for late-night viewing
+ *
+ * Audio delay:
+ * - Adjustable audio delay from -500ms to +500ms
+ * - Positive delays audio (audio plays later), negative advances audio
  */
 @Suppress("TooManyFunctions")
 @OptIn(UnstableApi::class)
@@ -65,11 +70,17 @@ class ExoPlayerWrapper(
     private val context: Context,
     private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
     nightModeEnabled: Boolean = false,
+    initialAudioDelayMs: Long = 0L,
 ) : UnifiedPlayer {
 
     // Night mode audio processor for dynamic range compression
     private val nightModeProcessor = NightModeAudioProcessor().apply {
         setEnabled(nightModeEnabled)
+    }
+
+    // Audio delay processor for A/V sync adjustment
+    private val delayProcessor = DelayAudioProcessor().apply {
+        setDelayMs(initialAudioDelayMs)
     }
     /**
      * Custom RenderersFactory that uses FFmpeg for audio and video decoding.
@@ -93,7 +104,7 @@ class ExoPlayerWrapper(
             return DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessors(arrayOf(nightModeProcessor))
+                .setAudioProcessors(arrayOf(nightModeProcessor, delayProcessor))
                 .build()
         }
 
@@ -154,7 +165,7 @@ class ExoPlayerWrapper(
             return DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessors(arrayOf(nightModeProcessor))
+                .setAudioProcessors(arrayOf(nightModeProcessor, delayProcessor))
                 .build()
         }
     }
@@ -441,6 +452,43 @@ class ExoPlayerWrapper(
      * Returns whether night mode is pending to be enabled (takes effect on next seek).
      */
     fun isNightModePending(): Boolean = nightModeProcessor.isPendingEnabled()
+
+    /**
+     * Sets the audio delay in milliseconds.
+     * Positive values delay audio (audio plays later than video).
+     * Negative values advance audio (audio plays earlier than video).
+     * Range: -500ms to +500ms.
+     * Note: Change takes effect on next seek or track change.
+     */
+    fun setAudioDelayMs(delayMs: Long) {
+        delayProcessor.setDelayMs(delayMs)
+        Log.d(TAG, "Audio delay set to ${delayMs}ms (pending)")
+    }
+
+    /**
+     * Gets the currently pending audio delay in milliseconds.
+     */
+    fun getAudioDelayMs(): Long = delayProcessor.getPendingDelayMs()
+
+    /**
+     * Gets the currently active audio delay in milliseconds.
+     */
+    fun getActiveAudioDelayMs(): Long = delayProcessor.getActiveDelayMs()
+
+    /**
+     * Returns whether audio delay is currently being applied.
+     */
+    fun isAudioDelayActive(): Boolean = delayProcessor.isDelayActive()
+
+    /**
+     * Adjusts audio delay by the specified increment.
+     * @param incrementMs Amount to adjust (positive or negative)
+     */
+    fun adjustAudioDelay(incrementMs: Long) {
+        val newDelay = (delayProcessor.getPendingDelayMs() + incrementMs)
+            .coerceIn(DelayAudioProcessor.MIN_DELAY_MS, DelayAudioProcessor.MAX_DELAY_MS)
+        setAudioDelayMs(newDelay)
+    }
 
     override fun release() {
         stopPositionTracking()
