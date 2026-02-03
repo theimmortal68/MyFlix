@@ -41,7 +41,6 @@ object NavigationHelper {
     const val SEERR_SEARCH_ROUTE = "seerr/search"
     const val SEERR_REQUESTS_ROUTE = "seerr/requests"
     const val SEERR_TRAILER_ROUTE = "seerr/trailer/{videoKey}/{title}"
-    const val SEERR_TRAILER_FALLBACK_ROUTE = "seerr/trailer/fallback/{videoKey}/{title}"
 
     /**
      * Builds a Seerr discover route for a specific category.
@@ -58,12 +57,6 @@ object NavigationHelper {
      */
     fun buildSeerrTrailerRoute(videoKey: String, title: String?): String =
         "seerr/trailer/${encodeNavArg(videoKey)}/${encodeNavArg(title ?: "")}"
-
-    /**
-     * Builds a Seerr trailer fallback route.
-     */
-    fun buildSeerrTrailerFallbackRoute(videoKey: String, title: String?): String =
-        "seerr/trailer/fallback/${encodeNavArg(videoKey)}/${encodeNavArg(title ?: "")}"
 
     /**
      * Builds a player route with optional start position override.

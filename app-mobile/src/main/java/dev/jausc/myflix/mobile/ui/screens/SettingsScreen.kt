@@ -42,7 +42,6 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Smartphone
@@ -112,7 +111,6 @@ fun SettingsScreen(
 
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
-    val useTrailerFallback by preferences.useTrailerFallback.collectAsState()
     val skipIntroMode by preferences.skipIntroMode.collectAsState()
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
     val skipForwardSeconds by preferences.skipForwardSeconds.collectAsState()
@@ -441,15 +439,6 @@ fun SettingsScreen(
                         iconTint = if (useMpvPlayer) Color(0xFF9C27B0) else MaterialTheme.colorScheme.onSurfaceVariant,
                         checked = useMpvPlayer,
                         onCheckedChange = { preferences.setUseMpvPlayer(it) },
-                    )
-                    SettingsDivider()
-                    ToggleSettingItem(
-                        title = "Use WebView Trailer Fallback",
-                        description = "Use the WebView fallback player for Seerr trailers.",
-                        icon = Icons.Outlined.OndemandVideo,
-                        iconTint = if (useTrailerFallback) Color(0xFF38BDF8) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        checked = useTrailerFallback,
-                        onCheckedChange = { preferences.setUseTrailerFallback(it) },
                     )
                     SettingsDivider()
                     ActionSettingItem(

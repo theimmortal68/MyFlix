@@ -67,9 +67,6 @@ object PreferenceKeys {
         /** Use MPV player instead of ExoPlayer */
         const val USE_MPV_PLAYER = "use_mpv_player"
 
-        /** Use WebView fallback for Seerr trailers */
-        const val USE_TRAILER_FALLBACK = "use_trailer_fallback"
-
         /** Preferred audio language (ISO 639-2/B code like "eng", "jpn", "spa") */
         const val PREFERRED_AUDIO_LANGUAGE = "preferred_audio_language"
 
@@ -209,10 +206,6 @@ object PreferenceKeys {
     object Defaults {
         const val HIDE_WATCHED_FROM_RECENT = false
         const val USE_MPV_PLAYER = false
-
-        // Default to true until PoToken implementation is verified on real device
-        // WebView fallback works but doesn't support remote control (seek/pause)
-        const val USE_TRAILER_FALLBACK = true
 
         /** null means use Jellyfin server's default audio track */
         val PREFERRED_AUDIO_LANGUAGE: String? = null

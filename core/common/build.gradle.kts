@@ -12,6 +12,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+        isCoreLibraryDesugaringEnabled = true
     }
     buildFeatures {
         compose = true
@@ -23,6 +24,9 @@ kotlin {
 }
 
 dependencies {
+    // Core library desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:${rootProject.extra["desugarVersion"]}")
+
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))
 
@@ -34,6 +38,7 @@ dependencies {
 
     // Serialization - exposed to consumers
     api("org.jetbrains.kotlinx:kotlinx-serialization-core:${rootProject.extra["serializationVersion"]}")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:${rootProject.extra["serializationVersion"]}")
 
     // DataStore - for preference key definitions
     api("androidx.datastore:datastore-preferences:1.1.6")
@@ -56,9 +61,7 @@ dependencies {
     api("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // YouTube trailer extraction (NewPipe)
-    // v0.24.8 - matching Wholphin; v0.25.0+ requires PoTokenProvider
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.8")
+    // HTTP client for trailer stream service
     implementation("com.squareup.okhttp3:okhttp:${rootProject.extra["okHttpVersion"]}")
 
     // Testing

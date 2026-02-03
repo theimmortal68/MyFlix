@@ -64,7 +64,6 @@ import dev.jausc.myflix.mobile.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.mobile.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.mobile.ui.screens.SettingsScreen
 import dev.jausc.myflix.mobile.ui.screens.TrailerPlayerScreen
-import dev.jausc.myflix.mobile.ui.screens.TrailerWebViewScreen
 import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
 import java.net.URLDecoder
 
@@ -187,7 +186,6 @@ fun MyFlixMobileContent(
 
     // Collect preferences (only ones used outside HomeScreen)
     val useMpvPlayer by mobilePreferences.useMpvPlayer.collectAsState()
-    val useTrailerFallback by mobilePreferences.useTrailerFallback.collectAsState()
     val seerrEnabled by mobilePreferences.seerrEnabled.collectAsState()
     val seerrUrl by mobilePreferences.seerrUrl.collectAsState()
     val seerrApiKey by mobilePreferences.seerrApiKey.collectAsState()
@@ -518,12 +516,7 @@ fun MyFlixMobileContent(
                     navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
                 },
                 onTrailerClick = { videoKey, title ->
-                    val route = if (useTrailerFallback) {
-                        NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, title)
-                    } else {
-                        NavigationHelper.buildSeerrTrailerRoute(videoKey, title)
-                    }
-                    navController.navigate(route)
+                    navController.navigate(NavigationHelper.buildSeerrTrailerRoute(videoKey, title))
                 },
                 onBack = { navController.popBackStack() },
                 onNavigateToDetail = { relatedItemId ->
@@ -680,11 +673,7 @@ fun MyFlixMobileContent(
                         navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
                     },
                     onTrailerClick = { videoKey, videoTitle ->
-                        if (useTrailerFallback) {
-                            navController.navigate(NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, videoTitle))
-                        } else {
-                            navController.navigate(NavigationHelper.buildSeerrTrailerRoute(videoKey, videoTitle))
-                        }
+                        navController.navigate(NavigationHelper.buildSeerrTrailerRoute(videoKey, videoTitle))
                     },
                     onBack = { navController.popBackStack() },
                     onActorClick = { personId ->
@@ -815,24 +804,6 @@ fun MyFlixMobileContent(
             val videoKey = NavigationHelper.decodeNavArg(videoKeyEncoded)
             val title = NavigationHelper.decodeNavArg(titleEncoded).takeIf { it.isNotBlank() }
             TrailerPlayerScreen(
-                videoKey = videoKey,
-                title = title,
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        composable(
-            route = NavigationHelper.SEERR_TRAILER_FALLBACK_ROUTE,
-            arguments = listOf(
-                navArgument("videoKey") { type = NavType.StringType },
-                navArgument("title") { type = NavType.StringType },
-            ),
-        ) { backStackEntry ->
-            val videoKeyEncoded = backStackEntry.arguments?.getString("videoKey") ?: return@composable
-            val titleEncoded = backStackEntry.arguments?.getString("title") ?: ""
-            val videoKey = NavigationHelper.decodeNavArg(videoKeyEncoded)
-            val title = NavigationHelper.decodeNavArg(titleEncoded).takeIf { it.isNotBlank() }
-            TrailerWebViewScreen(
                 videoKey = videoKey,
                 title = title,
                 onBack = { navController.popBackStack() },

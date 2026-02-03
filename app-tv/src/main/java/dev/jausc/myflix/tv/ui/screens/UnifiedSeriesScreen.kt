@@ -34,17 +34,20 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,14 +76,19 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.JellyfinPerson
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
+import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.ui.IconColors
+import dev.jausc.myflix.core.common.youtube.TrailerStreamService
+import dev.jausc.myflix.core.common.youtube.VideoInfo
 import dev.jausc.myflix.core.network.JellyfinClient
+import kotlinx.coroutines.launch
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.MediaCard
@@ -125,6 +133,7 @@ fun UnifiedSeriesScreen(
     onSeasonClick: (JellyfinItem) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
+    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
 ) {
@@ -150,28 +159,93 @@ fun UnifiedSeriesScreen(
     // Track which tab should receive focus when navigating up from content
     var lastFocusedTab by remember { mutableStateOf(UnifiedSeriesTab.Seasons) }
 
-    // Split special features into trailers and other extras
-    val trailers = remember(state.specialFeatures) {
-        state.specialFeatures.filter {
-            it.type.contains("Trailer", ignoreCase = true) ||
-                it.name.contains("trailer", ignoreCase = true) ||
-                it.name.contains("teaser", ignoreCase = true)
+    // Focus tracking for Trailers tab - track last focused index
+    var lastFocusedTrailerIndex by remember { mutableStateOf(0) }
+    val trailerFocusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
+    fun getTrailerFocusRequester(index: Int): FocusRequester =
+        trailerFocusRequesters.getOrPut(index) { FocusRequester() }
+
+    // Focus tracking for Extras tab - track last focused index
+    var lastFocusedExtraIndex by remember { mutableStateOf(0) }
+    val extrasFocusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
+    fun getExtraFocusRequester(index: Int): FocusRequester =
+        extrasFocusRequesters.getOrPut(index) { FocusRequester() }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Fetch all TMDB videos for trailers and extras
+    var tmdbVideos by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
+
+    LaunchedEffect(series.tmdbId, jellyfinClient.serverUrl) {
+        val tmdbIdStr = series.tmdbId
+        val tmdbId = tmdbIdStr?.toIntOrNull()
+
+        if (tmdbId != null && jellyfinClient.serverUrl != null) {
+            TrailerStreamService.configure(jellyfinClient.serverUrl!!)
+            coroutineScope.launch {
+                val videos = TrailerStreamService.getVideos(tmdbId, "tv")
+                tmdbVideos = videos
+                Log.d("SeriesDetail", "Fetched ${videos.size} TMDB videos for series")
+            }
         }
     }
-    val extras = remember(state.specialFeatures) {
-        state.specialFeatures.filter {
-            !it.type.contains("Trailer", ignoreCase = true) &&
-                !it.name.contains("trailer", ignoreCase = true) &&
-                !it.name.contains("teaser", ignoreCase = true)
+
+    // Split TMDB videos into trailers and extras
+    val trailerVideos = remember(tmdbVideos) {
+        tmdbVideos.filter { video ->
+            video.type.equals("Trailer", ignoreCase = true) ||
+                video.type.equals("Teaser", ignoreCase = true)
+        }.sortedWith(
+            compareBy(
+                { !it.type.equals("Trailer", ignoreCase = true) }, // Trailers first
+                { !it.official }, // Official first
+                { it.name }
+            )
+        )
+    }
+
+    val extrasVideos = remember(tmdbVideos) {
+        val typeOrder = listOf("Clip", "Behind the Scenes", "Bloopers", "Featurette")
+        tmdbVideos.filter { video ->
+            !video.type.equals("Trailer", ignoreCase = true) &&
+                !video.type.equals("Teaser", ignoreCase = true)
+        }.sortedWith(
+            compareBy(
+                { typeOrder.indexOf(it.type).let { idx -> if (idx == -1) typeOrder.size else idx } },
+                { !it.official },
+                { it.name }
+            )
+        )
+    }
+
+    // Best trailer for the hero button
+    val bestTrailer = trailerVideos.firstOrNull()
+    val trailerAction: (() -> Unit)? = bestTrailer?.let { trailer ->
+        { onTrailerClick(trailer.key, trailer.name) }
+    }
+
+    // Prefetch YouTube thumbnails for trailers and extras
+    val context = LocalContext.current
+    LaunchedEffect(tmdbVideos) {
+        if (tmdbVideos.isNotEmpty()) {
+            val imageLoader = ImageLoader(context)
+            tmdbVideos.forEach { video ->
+                val thumbnailUrl = "https://img.youtube.com/vi/${video.key}/mqdefault.jpg"
+                val request = ImageRequest.Builder(context)
+                    .data(thumbnailUrl)
+                    .build()
+                imageLoader.enqueue(request)
+            }
+            Log.d("SeriesDetail", "Prefetching ${tmdbVideos.size} video thumbnails")
         }
     }
 
     // Filter tabs based on available data
-    val availableTabs = remember(trailers, extras) {
+    val availableTabs = remember(trailerVideos, extrasVideos) {
         UnifiedSeriesTab.entries.filter { tab ->
             when (tab) {
-                UnifiedSeriesTab.Trailers -> trailers.isNotEmpty()
-                UnifiedSeriesTab.Extras -> extras.isNotEmpty()
+                UnifiedSeriesTab.Trailers -> trailerVideos.isNotEmpty()
+                UnifiedSeriesTab.Extras -> extrasVideos.isNotEmpty()
                 else -> true
             }
         }
@@ -243,6 +317,7 @@ fun UnifiedSeriesScreen(
                 onShuffleClick = onShuffleClick,
                 onWatchedClick = onWatchedClick,
                 onFavoriteClick = onFavoriteClick,
+                onTrailerClick = trailerAction,
                 onEpisodeClick = { episode ->
                     val startPosition = episode.userData?.playbackPositionTicks?.let { it / 10_000 } ?: 0L
                     onPlayClick()
@@ -336,19 +411,23 @@ fun UnifiedSeriesScreen(
                                 )
                             }
                             UnifiedSeriesTab.Trailers -> {
-                                TrailersTabContent(
-                                    trailers = trailers,
-                                    jellyfinClient = jellyfinClient,
-                                    onTrailerClick = { /* TODO: Handle trailer click */ },
+                                RemoteTrailersTabContent(
+                                    trailers = trailerVideos,
+                                    onTrailerClick = { video -> onTrailerClick(video.key, video.name) },
                                     tabFocusRequester = selectedTabRequester,
+                                    lastFocusedIndex = lastFocusedTrailerIndex,
+                                    onFocusChanged = { index -> lastFocusedTrailerIndex = index },
+                                    getItemFocusRequester = ::getTrailerFocusRequester,
                                 )
                             }
                             UnifiedSeriesTab.Extras -> {
-                                ExtrasTabContent(
-                                    extras = extras,
-                                    jellyfinClient = jellyfinClient,
-                                    onExtraClick = { /* TODO: Handle extra click */ },
+                                RemoteExtrasTabContent(
+                                    extras = extrasVideos,
+                                    onExtraClick = { video -> onTrailerClick(video.key, video.name) },
                                     tabFocusRequester = selectedTabRequester,
+                                    lastFocusedIndex = lastFocusedExtraIndex,
+                                    onFocusChanged = { index -> lastFocusedExtraIndex = index },
+                                    getItemFocusRequester = ::getExtraFocusRequester,
                                 )
                             }
                             UnifiedSeriesTab.Related -> {
@@ -388,6 +467,7 @@ private fun SeriesHeroContent(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onTrailerClick: (() -> Unit)?,
     onEpisodeClick: (JellyfinItem) -> Unit,
     playButtonFocusRequester: FocusRequester,
     firstTabFocusRequester: FocusRequester,
@@ -442,6 +522,7 @@ private fun SeriesHeroContent(
             onShuffleClick = onShuffleClick,
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
+            onTrailerClick = onTrailerClick,
             playButtonFocusRequester = playButtonFocusRequester,
             downFocusRequester = nextUpFocusRequester,
             leftEdgeFocusRequester = leftEdgeFocusRequester,
@@ -570,12 +651,14 @@ private fun SeriesActionButtonsRow(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onTrailerClick: (() -> Unit)?,
     playButtonFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester? = null,
     leftEdgeFocusRequester: FocusRequester? = null,
     updateExitFocus: (FocusRequester) -> Unit = {},
 ) {
     // FocusRequesters for each action button
+    val trailerFocusRequester = remember { FocusRequester() }
     val shuffleFocusRequester = remember { FocusRequester() }
     val watchedFocusRequester = remember { FocusRequester() }
     val favoriteFocusRequester = remember { FocusRequester() }
@@ -607,6 +690,26 @@ private fun SeriesActionButtonsRow(
                     }
                     .onFocusChanged { if (it.hasFocus) updateExitFocus(playButtonFocusRequester) },
             )
+        }
+
+        // Trailer button (only shown if trailer is available)
+        if (onTrailerClick != null) {
+            item("trailer") {
+                ExpandablePlayButton(
+                    title = "Trailer",
+                    icon = Icons.Outlined.Movie,
+                    iconColor = IconColors.Trailer,
+                    onClick = onTrailerClick,
+                    modifier = Modifier
+                        .focusRequester(trailerFocusRequester)
+                        .focusProperties {
+                            if (downFocusRequester != null) {
+                                down = downFocusRequester
+                            }
+                        }
+                        .onFocusChanged { if (it.hasFocus) updateExitFocus(trailerFocusRequester) },
+                )
+            }
         }
 
         // Shuffle button
@@ -1049,64 +1152,179 @@ private fun formatDate(dateString: String): String {
 }
 
 /**
- * Trailers tab content - single row of trailers.
+ * Remote trailers tab content - TMDB videos streamed via YouTube.
  */
 @Composable
-private fun TrailersTabContent(
-    trailers: List<JellyfinItem>,
-    jellyfinClient: JellyfinClient,
-    onTrailerClick: (JellyfinItem) -> Unit,
+private fun RemoteTrailersTabContent(
+    trailers: List<VideoInfo>,
+    onTrailerClick: (VideoInfo) -> Unit,
     tabFocusRequester: FocusRequester? = null,
+    lastFocusedIndex: Int = 0,
+    onFocusChanged: (Int) -> Unit = {},
+    getItemFocusRequester: (Int) -> FocusRequester = { FocusRequester() },
     modifier: Modifier = Modifier,
 ) {
+    if (trailers.isEmpty()) return
+
+    val targetIndex = lastFocusedIndex.coerceIn(0, trailers.lastIndex)
+    val targetFocusRequester = getItemFocusRequester(targetIndex)
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusProperties {
+            enter = { targetFocusRequester }
+        },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        itemsIndexed(trailers, key = { _, trailer -> trailer.id }) { index, trailer ->
-            ExtraVideoCard(
-                item = trailer,
-                jellyfinClient = jellyfinClient,
-                onClick = { onTrailerClick(trailer) },
-                modifier = Modifier.focusProperties {
-                    if (tabFocusRequester != null) {
-                        up = tabFocusRequester
-                    }
-                },
+        itemsIndexed(trailers, key = { _, video -> video.key }) { index, video ->
+            RemoteVideoCard(
+                video = video,
+                onClick = { onTrailerClick(video) },
+                tabFocusRequester = tabFocusRequester,
+                itemFocusRequester = getItemFocusRequester(index),
+                onItemFocused = { onFocusChanged(index) },
             )
         }
     }
 }
 
 /**
- * Extras tab content - single row of featurettes and behind-the-scenes.
+ * Remote extras tab content - TMDB videos streamed via YouTube.
  */
 @Composable
-private fun ExtrasTabContent(
-    extras: List<JellyfinItem>,
-    jellyfinClient: JellyfinClient,
-    onExtraClick: (JellyfinItem) -> Unit,
+private fun RemoteExtrasTabContent(
+    extras: List<VideoInfo>,
+    onExtraClick: (VideoInfo) -> Unit,
     tabFocusRequester: FocusRequester? = null,
+    lastFocusedIndex: Int = 0,
+    onFocusChanged: (Int) -> Unit = {},
+    getItemFocusRequester: (Int) -> FocusRequester = { FocusRequester() },
     modifier: Modifier = Modifier,
 ) {
+    if (extras.isEmpty()) return
+
+    val targetIndex = lastFocusedIndex.coerceIn(0, extras.lastIndex)
+    val targetFocusRequester = getItemFocusRequester(targetIndex)
+
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusProperties {
+            enter = { targetFocusRequester }
+        },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        itemsIndexed(extras, key = { _, extra -> extra.id }) { index, extra ->
-            ExtraVideoCard(
-                item = extra,
-                jellyfinClient = jellyfinClient,
-                onClick = { onExtraClick(extra) },
-                modifier = Modifier.focusProperties {
-                    if (tabFocusRequester != null) {
-                        up = tabFocusRequester
-                    }
-                },
+        itemsIndexed(extras, key = { _, video -> video.key }) { index, video ->
+            RemoteVideoCard(
+                video = video,
+                onClick = { onExtraClick(video) },
+                tabFocusRequester = tabFocusRequester,
+                itemFocusRequester = getItemFocusRequester(index),
+                onItemFocused = { onFocusChanged(index) },
             )
         }
+    }
+}
+
+/**
+ * Video card for remote TMDB videos - uses YouTube thumbnail.
+ */
+@Composable
+private fun RemoteVideoCard(
+    video: VideoInfo,
+    onClick: () -> Unit,
+    tabFocusRequester: FocusRequester? = null,
+    itemFocusRequester: FocusRequester? = null,
+    onItemFocused: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val thumbnailUrl = "https://img.youtube.com/vi/${video.key}/mqdefault.jpg"
+
+    Column(
+        modifier = Modifier
+            .width(180.dp)
+            .focusProperties { if (tabFocusRequester != null) up = tabFocusRequester },
+    ) {
+        Card(
+            onClick = onClick,
+            modifier = modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .then(if (itemFocusRequester != null) Modifier.focusRequester(itemFocusRequester) else Modifier)
+                .onFocusChanged {
+                    isFocused = it.isFocused
+                    if (it.isFocused) onItemFocused()
+                },
+            scale = CardDefaults.scale(focusedScale = 1.05f),
+            border = CardDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = MaterialTheme.shapes.small,
+                ),
+            ),
+        ) {
+            Box {
+                AsyncImage(
+                    model = thumbnailUrl,
+                    contentDescription = video.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                // Play icon overlay
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                            .padding(4.dp),
+                    )
+                }
+
+                // Type badge
+                Text(
+                    text = video.type,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .background(TvColors.BluePrimary.copy(alpha = 0.9f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+
+                // Official badge
+                if (video.official) {
+                    Text(
+                        text = "Official",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .background(Color(0xFF4CAF50).copy(alpha = 0.9f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = video.name,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isFocused) Color.White else TvColors.TextSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }
 
@@ -1118,17 +1336,28 @@ private fun ExtraVideoCard(
     item: JellyfinItem,
     jellyfinClient: JellyfinClient,
     onClick: () -> Unit,
+    tabFocusRequester: FocusRequester? = null,
+    itemFocusRequester: FocusRequester? = null,
+    onItemFocused: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.width(160.dp)) {
+    Column(
+        modifier = Modifier
+            .width(160.dp)
+            .focusProperties { if (tabFocusRequester != null) up = tabFocusRequester },
+    ) {
         Card(
             onClick = onClick,
             modifier = modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .onFocusChanged { isFocused = it.isFocused },
+                .then(if (itemFocusRequester != null) Modifier.focusRequester(itemFocusRequester) else Modifier)
+                .onFocusChanged {
+                    isFocused = it.isFocused
+                    if (it.isFocused) onItemFocused()
+                },
             scale = CardDefaults.scale(focusedScale = 1.05f),
             border = CardDefaults.border(
                 focusedBorder = Border(

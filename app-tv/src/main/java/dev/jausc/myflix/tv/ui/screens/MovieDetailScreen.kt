@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import android.util.Log
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -39,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,15 +67,21 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.ui.getStudioLogoResource
-import dev.jausc.myflix.core.common.util.buildFeatureSections
+import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
+import dev.jausc.myflix.core.common.youtube.TrailerStreamService
+import dev.jausc.myflix.core.common.youtube.VideoInfo
 import dev.jausc.myflix.core.network.JellyfinClient
+import kotlinx.coroutines.launch
 import dev.jausc.myflix.core.viewmodel.DetailUiState
 import dev.jausc.myflix.tv.R
 import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
@@ -154,29 +162,145 @@ fun MovieDetailScreen(
     val trailerItem = remember(state.specialFeatures) {
         findNewestTrailer(state.specialFeatures)
     }
-    val trailerVideo = remember(movie.remoteTrailers) {
-        movie.remoteTrailers
-            ?.lastOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
+
+    // Fetch best trailer from TMDB via ExtrasDownloader plugin
+    var serverTrailer by remember { mutableStateOf<VideoInfo?>(null) }
+    var serverTrailerFetched by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Configure TrailerStreamService and fetch best trailer from server
+    LaunchedEffect(movie.tmdbId, jellyfinClient.serverUrl) {
+        val tmdbIdStr = movie.tmdbId
+        val tmdbId = tmdbIdStr?.toIntOrNull()
+
+        if (tmdbId != null && jellyfinClient.serverUrl != null) {
+            TrailerStreamService.configure(jellyfinClient.serverUrl!!)
+            Log.d("MovieDetail", "Fetching best trailer for TMDB $tmdbId")
+
+            coroutineScope.launch {
+                val trailer = TrailerStreamService.getBestTrailer(tmdbId, "movie")
+                serverTrailer = trailer
+                serverTrailerFetched = true
+                Log.d("MovieDetail", "Server trailer result: ${trailer?.name} (${trailer?.type}, official=${trailer?.official})")
+            }
+        } else {
+            serverTrailerFetched = true // Mark as fetched even if no TMDB ID
+            Log.d("MovieDetail", "No TMDB ID available, skipping server trailer fetch")
+        }
     }
+
+    // Fallback to remoteTrailers if server doesn't return a trailer
+    val fallbackTrailerVideo = remember(movie.remoteTrailers) {
+        val validTrailers = movie.remoteTrailers
+            ?.filter { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
+            ?: emptyList()
+
+        // Score trailers to find the best one (fallback only)
+        fun scoreTrailer(name: String?): Int {
+            val n = name?.lowercase() ?: return 0
+            return when {
+                n.contains("official") && n.contains("trailer") -> 100
+                n.contains("theatrical") && n.contains("trailer") -> 95
+                n.matches(Regex("^trailer\\s*\\d*$")) -> 90
+                n.contains("trailer") && !n.contains("teaser") && !n.contains("tv spot") -> 80
+                n.contains("teaser") -> 50
+                n.contains("tv spot") -> 30
+                else -> 10
+            }
+        }
+
+        validTrailers.maxByOrNull { scoreTrailer(it.name) }
+    }
+
+    // Use server trailer if available, otherwise fall back to remoteTrailers
+    val trailerVideoKey = when {
+        serverTrailer != null -> serverTrailer!!.key
+        serverTrailerFetched -> fallbackTrailerVideo?.url?.let { extractYouTubeVideoKey(it) }
+        else -> null // Still loading from server
+    }
+    val trailerName = serverTrailer?.name ?: fallbackTrailerVideo?.name
+
+    // Log selected trailer
+    LaunchedEffect(trailerVideoKey, serverTrailer, fallbackTrailerVideo) {
+        Log.d("MovieDetail", "Selected trailer: key=$trailerVideoKey, name=$trailerName, " +
+            "source=${if (serverTrailer != null) "server" else "fallback"}")
+    }
+
     val trailerAction: (() -> Unit)? = when {
         trailerItem != null -> {
             { onPlayItemClick(trailerItem.id, null) }
         }
-        trailerVideo?.url != null -> {
-            val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else { { onTrailerClick(key, trailerVideo.name) } }
+        trailerVideoKey != null -> {
+            { onTrailerClick(trailerVideoKey, trailerName) }
         }
         else -> null
     }
 
-    // Build categorized feature sections
-    val featureSections = remember(state.specialFeatures, trailerItem?.id) {
-        buildFeatureSections(state.specialFeatures, trailerItem?.id?.let { setOf(it) } ?: emptySet())
+    // Prefetch YouTube trailer stream URL for instant playback
+    LaunchedEffect(trailerVideoKey, jellyfinClient.serverUrl) {
+        if (trailerVideoKey != null && jellyfinClient.serverUrl != null) {
+            TrailerStreamService.configure(jellyfinClient.serverUrl!!)
+            coroutineScope.launch {
+                TrailerStreamService.prefetch(trailerVideoKey)
+            }
+        }
     }
-    val hasExtras = featureSections.isNotEmpty()
+
+    // Fetch all TMDB videos for extras (featurettes, behind the scenes, etc.)
+    var tmdbVideos by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
+
+    LaunchedEffect(movie.tmdbId, jellyfinClient.serverUrl) {
+        val tmdbIdStr = movie.tmdbId
+        val tmdbId = tmdbIdStr?.toIntOrNull()
+
+        if (tmdbId != null && jellyfinClient.serverUrl != null) {
+            TrailerStreamService.configure(jellyfinClient.serverUrl!!)
+            coroutineScope.launch {
+                val videos = TrailerStreamService.getVideos(tmdbId, "movie")
+                tmdbVideos = videos
+                Log.d("MovieDetail", "Fetched ${videos.size} TMDB videos for extras")
+            }
+        }
+    }
+
+    // Sort extras by type in preferred order: Trailers, Teasers, Clips, Behind the Scenes, Bloopers, Featurettes
+    val extrasVideos = remember(tmdbVideos) {
+        val typeOrder = listOf("Trailer", "Teaser", "Clip", "Behind the Scenes", "Bloopers", "Featurette")
+        tmdbVideos.sortedWith(
+            compareBy(
+                { typeOrder.indexOf(it.type).let { idx -> if (idx == -1) typeOrder.size else idx } },
+                { !it.official }, // Official first within each type
+                { it.name }
+            )
+        )
+    }
+    val hasExtras = extrasVideos.isNotEmpty()
+
+    // Prefetch YouTube thumbnails for extras
+    val context = LocalContext.current
+    LaunchedEffect(extrasVideos) {
+        if (extrasVideos.isNotEmpty()) {
+            val imageLoader = ImageLoader(context)
+            extrasVideos.forEach { video ->
+                val thumbnailUrl = "https://img.youtube.com/vi/${video.key}/mqdefault.jpg"
+                val request = ImageRequest.Builder(context)
+                    .data(thumbnailUrl)
+                    .build()
+                imageLoader.enqueue(request)
+            }
+            Log.d("MovieDetail", "Prefetching ${extrasVideos.size} extra thumbnails")
+        }
+    }
+
+    // Focus tracking for Extras tab - track last focused index
+    var lastFocusedExtraIndex by remember { mutableStateOf(0) }
+    val extrasFocusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
+    fun getExtraFocusRequester(index: Int): FocusRequester =
+        extrasFocusRequesters.getOrPut(index) { FocusRequester() }
 
     // Filter tabs based on available data
-    val availableTabs = remember(movie.chapters, cast, crew, featureSections, state.collections, state.similarItems) {
+    val availableTabs = remember(movie.chapters, cast, crew, extrasVideos, state.collections, state.similarItems) {
         MovieTab.entries.filter { tab ->
             when (tab) {
                 MovieTab.Details -> true
@@ -339,10 +463,14 @@ fun MovieDetailScreen(
                             }
                             MovieTab.Extras -> {
                                 ExtrasTabContent(
-                                    featureSections = featureSections,
-                                    jellyfinClient = jellyfinClient,
-                                    onExtraClick = { item -> onPlayItemClick(item.id, null) },
+                                    extras = extrasVideos,
+                                    onExtraClick = { video ->
+                                        onTrailerClick(video.key, video.name)
+                                    },
                                     tabFocusRequester = selectedTabRequester,
+                                    lastFocusedIndex = lastFocusedExtraIndex,
+                                    onFocusChanged = { index -> lastFocusedExtraIndex = index },
+                                    getItemFocusRequester = ::getExtraFocusRequester,
                                 )
                             }
                             MovieTab.Collections -> {
@@ -937,55 +1065,73 @@ private fun MediaInfoDetailItem(label: String, value: String) {
 }
 
 /**
- * Extras tab - trailers, featurettes, behind the scenes.
- * Uses chapter-card-like layout: thumbnail gets blue border focus, title below.
+ * Extras tab - featurettes, behind the scenes, clips, etc. from TMDB.
+ * Streams videos via YouTube using the ExtrasDownloader plugin.
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun ExtrasTabContent(
-    featureSections: List<dev.jausc.myflix.core.common.util.FeatureSection>,
-    jellyfinClient: JellyfinClient,
-    onExtraClick: (JellyfinItem) -> Unit,
+    extras: List<VideoInfo>,
+    onExtraClick: (VideoInfo) -> Unit,
     tabFocusRequester: FocusRequester? = null,
+    lastFocusedIndex: Int = 0,
+    onFocusChanged: (Int) -> Unit = {},
+    getItemFocusRequester: (Int) -> FocusRequester = { FocusRequester() },
     modifier: Modifier = Modifier,
 ) {
-    // Flatten all sections into a single row
-    val allExtras = featureSections.flatMap { it.items }
+    if (extras.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = "No extras available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TvColors.TextSecondary,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+        return
+    }
+
+    // Get the focus requester for the last focused item (or first if out of bounds)
+    val targetIndex = lastFocusedIndex.coerceIn(0, extras.lastIndex)
+    val targetFocusRequester = getItemFocusRequester(targetIndex)
 
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.focusProperties {
+            // When entering the row from the tab, focus the last focused item
+            enter = { targetFocusRequester }
+        },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        itemsIndexed(allExtras, key = { _, item -> item.id }) { _, item ->
-            // Try primary image first (more likely to exist), then thumb, then backdrop
-            val imageTag = item.imageTags?.primary
-                ?: item.imageTags?.thumb
-                ?: item.backdropImageTags?.firstOrNull()
-            val imageUrl = when {
-                item.imageTags?.primary != null -> jellyfinClient.getPrimaryImageUrl(item.id, imageTag)
-                item.imageTags?.thumb != null -> jellyfinClient.getThumbUrl(item.id, imageTag)
-                else -> jellyfinClient.getBackdropUrl(item.id, imageTag, maxWidth = 400)
-            }
-            ExtraCard(
-                item = item,
-                imageUrl = imageUrl,
-                onClick = { onExtraClick(item) },
+        itemsIndexed(extras, key = { _, video -> video.key }) { index, video ->
+            // YouTube thumbnail URL
+            val thumbnailUrl = "https://img.youtube.com/vi/${video.key}/mqdefault.jpg"
+            RemoteExtraCard(
+                video = video,
+                thumbnailUrl = thumbnailUrl,
+                onClick = { onExtraClick(video) },
                 tabFocusRequester = tabFocusRequester,
+                itemFocusRequester = getItemFocusRequester(index),
+                onItemFocused = { onFocusChanged(index) },
             )
         }
     }
 }
 
 /**
- * Individual extra card with chapter-like layout.
- * Thumbnail gets blue border focus, title displayed below.
+ * Card for remote extra (TMDB video via YouTube).
  */
 @Composable
-private fun ExtraCard(
-    item: JellyfinItem,
-    imageUrl: String,
+private fun RemoteExtraCard(
+    video: VideoInfo,
+    thumbnailUrl: String,
     onClick: () -> Unit,
     tabFocusRequester: FocusRequester? = null,
+    itemFocusRequester: FocusRequester? = null,
+    onItemFocused: () -> Unit = {},
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -1004,7 +1150,12 @@ private fun ExtraCard(
                 focusedContainerColor = Color.Transparent,
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-            modifier = Modifier.onFocusChanged { isFocused = it.isFocused },
+            modifier = Modifier
+                .then(if (itemFocusRequester != null) Modifier.focusRequester(itemFocusRequester) else Modifier)
+                .onFocusChanged {
+                    isFocused = it.isFocused
+                    if (it.isFocused) onItemFocused()
+                },
         ) {
             Box(
                 modifier = Modifier
@@ -1013,8 +1164,8 @@ private fun ExtraCard(
                     .clip(RoundedCornerShape(8.dp)),
             ) {
                 AsyncImage(
-                    model = imageUrl,
-                    contentDescription = item.name,
+                    model = thumbnailUrl,
+                    contentDescription = video.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
@@ -1036,7 +1187,7 @@ private fun ExtraCard(
 
         // Title below thumbnail
         Text(
-            text = item.name,
+            text = video.name,
             style = MaterialTheme.typography.bodySmall,
             color = TvColors.TextPrimary,
             maxLines = 2,
@@ -1045,29 +1196,41 @@ private fun ExtraCard(
         )
 
         // Extra type label (Featurette, Behind the Scenes, etc.)
-        item.extraType?.let { type ->
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = formatExtraType(type),
+                text = formatExtraType(video.type),
                 style = MaterialTheme.typography.labelSmall,
                 color = TvColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 4.dp),
             )
+            if (video.official) {
+                Text(
+                    text = "• Official",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TvColors.BluePrimary,
+                )
+            }
         }
     }
 }
 
 /**
- * Format extra type for display (e.g., "BehindTheScenes" -> "Behind the Scenes").
+ * Format extra type for display (e.g., "Behind the Scenes" is already readable from TMDB).
  */
 private fun formatExtraType(type: String): String {
     return when (type) {
-        "BehindTheScenes" -> "Behind the Scenes"
-        "DeletedScene" -> "Deleted Scene"
-        "ThemeSong" -> "Theme Song"
-        "ThemeVideo" -> "Theme Video"
-        else -> type // Featurette, Trailer, Interview, Clip, etc. are already readable
+        "Behind the Scenes" -> "Behind the Scenes"
+        "Featurette" -> "Featurette"
+        "Clip" -> "Clip"
+        "Bloopers" -> "Bloopers"
+        "Interview" -> "Interview"
+        "Short" -> "Short"
+        else -> type
     }
 }
 

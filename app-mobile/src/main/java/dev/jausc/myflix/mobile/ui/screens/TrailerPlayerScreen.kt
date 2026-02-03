@@ -1,5 +1,6 @@
 package dev.jausc.myflix.mobile.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,19 +40,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
-import dev.jausc.myflix.core.common.youtube.YouTubeStream
-import dev.jausc.myflix.core.common.youtube.YouTubeTrailerResolver
+import dev.jausc.myflix.core.common.youtube.TrailerStreamService
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerUtils
 import kotlinx.coroutines.delay
 
+private const val TAG = "TrailerPlayer"
+
 @Composable
-fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
+fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit) {
     val context = LocalContext.current
     val playerController = remember { PlayerController(context, useMpv = false) }
     val playbackState by playerController.state.collectAsState()
 
-    var resolvedStream by remember { mutableStateOf<YouTubeStream?>(null) }
+    var streamUrl by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showControls by remember { mutableStateOf(true) }
@@ -63,13 +65,27 @@ fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
         onDispose { playerController.release() }
     }
 
+    // Fetch stream URL from ExtrasDownloader plugin
     LaunchedEffect(videoKey) {
+        Log.d(TAG, "Fetching stream URL for videoKey=$videoKey")
         isLoading = true
         errorMessage = null
-        resolvedStream = null
-        YouTubeTrailerResolver.resolveTrailer(context, videoKey)
-            .onSuccess { resolvedStream = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load trailer" }
+        streamUrl = null
+
+        try {
+            val url = TrailerStreamService.getStreamUrl(videoKey)
+            if (url != null) {
+                Log.d(TAG, "Stream URL fetched successfully")
+                streamUrl = url
+            } else {
+                Log.e(TAG, "Failed to get stream URL - null returned")
+                errorMessage = "Failed to load trailer. Server may be unreachable."
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch stream URL", e)
+            errorMessage = e.message ?: "Failed to load trailer"
+        }
+
         isLoading = false
     }
 
@@ -89,16 +105,16 @@ fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
         when {
             isLoading -> { LoadingOverlay(text = "Loading trailer...") }
             errorMessage != null -> { ErrorOverlay(message = errorMessage!!, onBack = onBack) }
-            resolvedStream != null -> {
+            streamUrl != null -> {
                 TrailerVideoSurface(
                     playerController = playerController,
-                    url = resolvedStream!!.url,
+                    url = streamUrl!!,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
         }
 
-        if (showControls && resolvedStream != null && errorMessage == null) {
+        if (showControls && streamUrl != null && errorMessage == null) {
             val duration = playbackState.duration.coerceAtLeast(0)
             val currentPosition = playbackState.position.coerceAtLeast(0)
             val sliderValue = if (isScrubbing) scrubPosition.toFloat() else currentPosition.toFloat()
@@ -115,7 +131,7 @@ fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        text = title ?: resolvedStream?.title ?: "Trailer",
+                        text = title ?: "Trailer",
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold,
@@ -207,7 +223,7 @@ fun TrailerPlayerScreen(videoKey: String, title: String?, onBack: () -> Unit,) {
 }
 
 @Composable
-private fun TrailerVideoSurface(playerController: PlayerController, url: String, modifier: Modifier = Modifier,) {
+private fun TrailerVideoSurface(playerController: PlayerController, url: String, modifier: Modifier = Modifier) {
     LaunchedEffect(url) {
         playerController.play(url, startPositionMs = 0)
     }
