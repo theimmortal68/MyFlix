@@ -106,6 +106,7 @@ fun PreferencesScreen(
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
     val refreshRateMode by preferences.refreshRateMode.collectAsState()
     val audioPassthroughMode by preferences.audioPassthroughMode.collectAsState()
+    val audioNightMode by preferences.audioNightMode.collectAsState()
     val resolutionMatchingMode by preferences.resolutionMatchingMode.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
@@ -193,6 +194,8 @@ fun PreferencesScreen(
                 onEditRefreshRateMode = { showRefreshRateModeDialog = true },
                 audioPassthroughMode = audioPassthroughMode,
                 onEditAudioPassthroughMode = { showAudioPassthroughDialog = true },
+                audioNightMode = audioNightMode,
+                onAudioNightModeChanged = { preferences.setAudioNightMode(it) },
                 resolutionMatchingMode = resolutionMatchingMode,
                 onEditResolutionMatchingMode = { showResolutionMatchingDialog = true },
                 preferredAudioLanguage = preferredAudioLanguage,
@@ -419,6 +422,8 @@ private fun PreferencesContent(
     onEditRefreshRateMode: () -> Unit,
     audioPassthroughMode: String,
     onEditAudioPassthroughMode: () -> Unit,
+    audioNightMode: Boolean,
+    onAudioNightModeChanged: (Boolean) -> Unit,
     resolutionMatchingMode: String,
     onEditResolutionMatchingMode: () -> Unit,
     preferredAudioLanguage: String?,
@@ -708,6 +713,15 @@ private fun PreferencesContent(
                     icon = Icons.Outlined.PlayCircle,
                     iconTint = if (audioPassthroughMode != "OFF") Color(0xFF8B5CF6) else TvColors.TextSecondary,
                     onClick = onEditAudioPassthroughMode,
+                )
+                PreferenceDivider()
+                TogglePreferenceItem(
+                    title = "Night Mode (DRC)",
+                    description = "Compress dynamic range for late-night viewing",
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    iconTint = if (audioNightMode) Color(0xFFF59E0B) else TvColors.TextSecondary,
+                    checked = audioNightMode,
+                    onCheckedChange = onAudioNightModeChanged,
                 )
                 PreferenceDivider()
                 ActionPreferenceItem(

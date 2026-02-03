@@ -91,6 +91,9 @@ object PreferenceKeys {
         /** Audio passthrough mode (OFF, AUTO, ALWAYS) */
         const val AUDIO_PASSTHROUGH_MODE = "audio_passthrough_mode"
 
+        /** Audio night mode (dynamic range compression) enabled */
+        const val AUDIO_NIGHT_MODE = "audio_night_mode"
+
         /** Resolution matching mode (OFF, AUTO) */
         const val RESOLUTION_MATCHING_MODE = "resolution_matching_mode"
 
@@ -236,6 +239,9 @@ object PreferenceKeys {
 
         /** Default audio passthrough mode: OFF (decode via FFmpeg) */
         const val AUDIO_PASSTHROUGH_MODE = "OFF"
+
+        /** Default audio night mode: OFF (no dynamic range compression) */
+        const val AUDIO_NIGHT_MODE = false
 
         /** Default resolution matching mode: OFF (use display native resolution) */
         const val RESOLUTION_MATCHING_MODE = "OFF"

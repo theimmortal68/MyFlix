@@ -100,6 +100,13 @@ abstract class AppPreferences(context: Context) {
     /** Audio passthrough mode: OFF (decode via FFmpeg), AUTO (passthrough if supported), ALWAYS (force passthrough). */
     val audioPassthroughMode: StateFlow<String> by lazy { _audioPassthroughMode.asStateFlow() }
 
+    private val _audioNightMode: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.AUDIO_NIGHT_MODE, PreferenceKeys.Defaults.AUDIO_NIGHT_MODE))
+    }
+
+    /** Audio night mode (dynamic range compression) for late-night viewing. */
+    val audioNightMode: StateFlow<Boolean> by lazy { _audioNightMode.asStateFlow() }
+
     private val _resolutionMatchingMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.RESOLUTION_MATCHING_MODE, PreferenceKeys.Defaults.RESOLUTION_MATCHING_MODE)
@@ -330,6 +337,16 @@ abstract class AppPreferences(context: Context) {
     fun setAudioPassthroughMode(mode: String) {
         prefs.edit().putString(PreferenceKeys.Prefs.AUDIO_PASSTHROUGH_MODE, mode).apply()
         _audioPassthroughMode.value = mode
+    }
+
+    /**
+     * Set audio night mode (dynamic range compression).
+     * When enabled, compresses loud sounds and boosts quiet dialogue for late-night viewing.
+     * Note: Takes effect on next seek or track change during playback.
+     */
+    fun setAudioNightMode(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.AUDIO_NIGHT_MODE, enabled).apply()
+        _audioNightMode.value = enabled
     }
 
     /**

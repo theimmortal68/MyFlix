@@ -116,6 +116,7 @@ fun SettingsScreen(
     val skipForwardSeconds by preferences.skipForwardSeconds.collectAsState()
     val skipBackwardSeconds by preferences.skipBackwardSeconds.collectAsState()
     val refreshRateMode by preferences.refreshRateMode.collectAsState()
+    val audioNightMode by preferences.audioNightMode.collectAsState()
     val showSeasonPremieres by preferences.showSeasonPremieres.collectAsState()
     val showGenreRows by preferences.showGenreRows.collectAsState()
     val enabledGenres by preferences.enabledGenres.collectAsState()
@@ -479,6 +480,15 @@ fun SettingsScreen(
                         icon = Icons.Outlined.Smartphone,
                         iconTint = if (refreshRateMode != "OFF") Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant,
                         onClick = { showRefreshRateModeDialog = true },
+                    )
+                    SettingsDivider()
+                    ToggleSettingItem(
+                        title = "Night Mode (DRC)",
+                        description = "Compress dynamic range for late-night viewing",
+                        icon = Icons.Outlined.PlayCircle,
+                        iconTint = if (audioNightMode) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        checked = audioNightMode,
+                        onCheckedChange = { preferences.setAudioNightMode(it) },
                     )
                 }
             }
