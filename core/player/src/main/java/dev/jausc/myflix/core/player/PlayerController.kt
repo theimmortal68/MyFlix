@@ -300,6 +300,45 @@ class PlayerController(
         return (currentPlayer as? ExoPlayerWrapper)?.isNightModeEnabled() ?: false
     }
 
+    // ==================== Stereo Downmix Control ====================
+
+    /**
+     * Enables or disables stereo downmix.
+     * When enabled, multi-channel audio (5.1, 7.1) is downmixed to stereo
+     * using ITU-R BS.775-1 coefficients.
+     */
+    fun setStereoDownmixEnabled(enabled: Boolean) {
+        (currentPlayer as? ExoPlayerWrapper)?.setStereoDownmixEnabled(enabled)
+    }
+
+    /**
+     * Returns whether stereo downmix is pending to be enabled.
+     */
+    fun isStereoDownmixEnabled(): Boolean {
+        return (currentPlayer as? ExoPlayerWrapper)?.isStereoDownmixEnabled() ?: false
+    }
+
+    /**
+     * Returns whether stereo downmix is currently active.
+     */
+    fun isStereoDownmixActive(): Boolean {
+        return (currentPlayer as? ExoPlayerWrapper)?.isStereoDownmixActive() ?: false
+    }
+
+    /**
+     * Sets whether to include LFE channel in stereo downmix.
+     */
+    fun setStereoDownmixIncludeLfe(include: Boolean) {
+        (currentPlayer as? ExoPlayerWrapper)?.setStereoDownmixIncludeLfe(include)
+    }
+
+    /**
+     * Returns whether LFE is included in stereo downmix.
+     */
+    fun isStereoDownmixLfeIncluded(): Boolean {
+        return (currentPlayer as? ExoPlayerWrapper)?.isStereoDownmixLfeIncluded() ?: false
+    }
+
     /**
      * Switch to MPV backend as a fallback when ExoPlayer fails.
      * Returns true if MPV was initialized.

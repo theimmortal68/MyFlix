@@ -107,6 +107,7 @@ fun PreferencesScreen(
     val refreshRateMode by preferences.refreshRateMode.collectAsState()
     val audioPassthroughMode by preferences.audioPassthroughMode.collectAsState()
     val audioNightMode by preferences.audioNightMode.collectAsState()
+    val stereoDownmixEnabled by preferences.stereoDownmixEnabled.collectAsState()
     val resolutionMatchingMode by preferences.resolutionMatchingMode.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
@@ -196,6 +197,8 @@ fun PreferencesScreen(
                 onEditAudioPassthroughMode = { showAudioPassthroughDialog = true },
                 audioNightMode = audioNightMode,
                 onAudioNightModeChanged = { preferences.setAudioNightMode(it) },
+                stereoDownmixEnabled = stereoDownmixEnabled,
+                onStereoDownmixEnabledChanged = { preferences.setStereoDownmixEnabled(it) },
                 resolutionMatchingMode = resolutionMatchingMode,
                 onEditResolutionMatchingMode = { showResolutionMatchingDialog = true },
                 preferredAudioLanguage = preferredAudioLanguage,
@@ -424,6 +427,8 @@ private fun PreferencesContent(
     onEditAudioPassthroughMode: () -> Unit,
     audioNightMode: Boolean,
     onAudioNightModeChanged: (Boolean) -> Unit,
+    stereoDownmixEnabled: Boolean,
+    onStereoDownmixEnabledChanged: (Boolean) -> Unit,
     resolutionMatchingMode: String,
     onEditResolutionMatchingMode: () -> Unit,
     preferredAudioLanguage: String?,
@@ -722,6 +727,15 @@ private fun PreferencesContent(
                     iconTint = if (audioNightMode) Color(0xFFF59E0B) else TvColors.TextSecondary,
                     checked = audioNightMode,
                     onCheckedChange = onAudioNightModeChanged,
+                )
+                PreferenceDivider()
+                TogglePreferenceItem(
+                    title = "Stereo Downmix",
+                    description = "Downmix surround sound to stereo for headphones/speakers",
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    iconTint = if (stereoDownmixEnabled) Color(0xFF10B981) else TvColors.TextSecondary,
+                    checked = stereoDownmixEnabled,
+                    onCheckedChange = onStereoDownmixEnabledChanged,
                 )
                 PreferenceDivider()
                 ActionPreferenceItem(

@@ -94,6 +94,9 @@ object PreferenceKeys {
         /** Audio night mode (dynamic range compression) enabled */
         const val AUDIO_NIGHT_MODE = "audio_night_mode"
 
+        /** Stereo downmix enabled (downmix multi-channel to stereo) */
+        const val STEREO_DOWNMIX_ENABLED = "stereo_downmix_enabled"
+
         /** Resolution matching mode (OFF, AUTO) */
         const val RESOLUTION_MATCHING_MODE = "resolution_matching_mode"
 
@@ -242,6 +245,9 @@ object PreferenceKeys {
 
         /** Default audio night mode: OFF (no dynamic range compression) */
         const val AUDIO_NIGHT_MODE = false
+
+        /** Default stereo downmix: OFF (preserve multi-channel audio) */
+        const val STEREO_DOWNMIX_ENABLED = false
 
         /** Default resolution matching mode: OFF (use display native resolution) */
         const val RESOLUTION_MATCHING_MODE = "OFF"
