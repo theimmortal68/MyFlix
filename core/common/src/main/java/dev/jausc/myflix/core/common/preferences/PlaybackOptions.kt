@@ -36,6 +36,25 @@ object PlaybackOptions {
     )
 
     /**
+     * Audio passthrough mode options (mode key to display label).
+     * Controls how DTS/TrueHD/Atmos audio is handled.
+     */
+    val AUDIO_PASSTHROUGH_OPTIONS: List<Pair<String, String>> = listOf(
+        "OFF" to "Off (decode to PCM)",
+        "AUTO" to "Auto (passthrough if supported)",
+        "ALWAYS" to "Always (force passthrough)",
+    )
+
+    /**
+     * Resolution matching mode options (mode key to display label).
+     * Controls whether display resolution is changed to match video.
+     */
+    val RESOLUTION_MATCHING_OPTIONS: List<Pair<String, String>> = listOf(
+        "OFF" to "Off (use display native)",
+        "AUTO" to "Auto (match video resolution)",
+    )
+
+    /**
      * Get display label for a bitrate value.
      * @param bitrateMbps Bitrate in Mbps (0 = direct play)
      * @return Human-readable label or the Mbps value if not found
@@ -52,4 +71,20 @@ object PlaybackOptions {
      */
     fun getRefreshRateModeLabel(mode: String): String =
         REFRESH_RATE_MODE_OPTIONS.find { it.first == mode }?.second ?: mode
+
+    /**
+     * Get display label for an audio passthrough mode.
+     * @param mode Mode key (OFF, AUTO, ALWAYS)
+     * @return Human-readable label or the mode key if not found
+     */
+    fun getAudioPassthroughModeLabel(mode: String): String =
+        AUDIO_PASSTHROUGH_OPTIONS.find { it.first == mode }?.second ?: mode
+
+    /**
+     * Get display label for a resolution matching mode.
+     * @param mode Mode key (OFF, AUTO)
+     * @return Human-readable label or the mode key if not found
+     */
+    fun getResolutionMatchingModeLabel(mode: String): String =
+        RESOLUTION_MATCHING_OPTIONS.find { it.first == mode }?.second ?: mode
 }

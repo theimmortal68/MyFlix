@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Category
@@ -104,6 +105,8 @@ fun PreferencesScreen(
     val skipIntroMode by preferences.skipIntroMode.collectAsState()
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
     val refreshRateMode by preferences.refreshRateMode.collectAsState()
+    val audioPassthroughMode by preferences.audioPassthroughMode.collectAsState()
+    val resolutionMatchingMode by preferences.resolutionMatchingMode.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
@@ -133,6 +136,8 @@ fun PreferencesScreen(
     var showSkipIntroModeDialog by remember { mutableStateOf(false) }
     var showSkipCreditsModeDialog by remember { mutableStateOf(false) }
     var showRefreshRateModeDialog by remember { mutableStateOf(false) }
+    var showAudioPassthroughDialog by remember { mutableStateOf(false) }
+    var showResolutionMatchingDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -186,6 +191,10 @@ fun PreferencesScreen(
                 onEditSkipCreditsMode = { showSkipCreditsModeDialog = true },
                 refreshRateMode = refreshRateMode,
                 onEditRefreshRateMode = { showRefreshRateModeDialog = true },
+                audioPassthroughMode = audioPassthroughMode,
+                onEditAudioPassthroughMode = { showAudioPassthroughDialog = true },
+                resolutionMatchingMode = resolutionMatchingMode,
+                onEditResolutionMatchingMode = { showResolutionMatchingDialog = true },
                 preferredAudioLanguage = preferredAudioLanguage,
                 onEditAudioLanguage = { showAudioLanguageDialog = true },
                 preferredSubtitleLanguage = preferredSubtitleLanguage,
@@ -366,6 +375,28 @@ fun PreferencesScreen(
             },
         )
     }
+
+    if (showAudioPassthroughDialog) {
+        AudioPassthroughModeSelectionDialog(
+            currentSelection = audioPassthroughMode,
+            onDismiss = { showAudioPassthroughDialog = false },
+            onSelect = { mode ->
+                preferences.setAudioPassthroughMode(mode)
+                showAudioPassthroughDialog = false
+            },
+        )
+    }
+
+    if (showResolutionMatchingDialog) {
+        ResolutionMatchingModeSelectionDialog(
+            currentSelection = resolutionMatchingMode,
+            onDismiss = { showResolutionMatchingDialog = false },
+            onSelect = { mode ->
+                preferences.setResolutionMatchingMode(mode)
+                showResolutionMatchingDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -386,6 +417,10 @@ private fun PreferencesContent(
     onEditSkipCreditsMode: () -> Unit,
     refreshRateMode: String,
     onEditRefreshRateMode: () -> Unit,
+    audioPassthroughMode: String,
+    onEditAudioPassthroughMode: () -> Unit,
+    resolutionMatchingMode: String,
+    onEditResolutionMatchingMode: () -> Unit,
     preferredAudioLanguage: String?,
     onEditAudioLanguage: () -> Unit,
     preferredSubtitleLanguage: String?,
@@ -660,11 +695,27 @@ private fun PreferencesContent(
                 )
                 PreferenceDivider()
                 ActionPreferenceItem(
-                    title = "Refresh Rate",
+                    title = "Refresh Rate Matching",
                     description = getRefreshRateModeDisplayName(refreshRateMode),
                     icon = Icons.Outlined.Tv,
                     iconTint = if (refreshRateMode != "OFF") Color(0xFF10B981) else TvColors.TextSecondary,
                     onClick = onEditRefreshRateMode,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Audio Passthrough",
+                    description = getAudioPassthroughModeDisplayName(audioPassthroughMode),
+                    icon = Icons.Outlined.PlayCircle,
+                    iconTint = if (audioPassthroughMode != "OFF") Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                    onClick = onEditAudioPassthroughMode,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Resolution Matching",
+                    description = getResolutionMatchingModeDisplayName(resolutionMatchingMode),
+                    icon = Icons.Outlined.AspectRatio,
+                    iconTint = if (resolutionMatchingMode != "OFF") Color(0xFF3B82F6) else TvColors.TextSecondary,
+                    onClick = onEditResolutionMatchingMode,
                 )
             }
         }
@@ -2302,6 +2353,16 @@ private fun getSkipModeDisplayName(mode: String): String = SKIP_MODE_OPTIONS.fin
  */
 private fun getRefreshRateModeDisplayName(mode: String): String = PlaybackOptions.getRefreshRateModeLabel(mode)
 
+/**
+ * Get display name for an audio passthrough mode value.
+ */
+private fun getAudioPassthroughModeDisplayName(mode: String): String = PlaybackOptions.getAudioPassthroughModeLabel(mode)
+
+/**
+ * Get display name for a resolution matching mode value.
+ */
+private fun getResolutionMatchingModeDisplayName(mode: String): String = PlaybackOptions.getResolutionMatchingModeLabel(mode)
+
 @Composable
 private fun SkipModeSelectionDialog(
     title: String,
@@ -2460,7 +2521,7 @@ private fun RefreshRateModeSelectionDialog(
         Column {
             // Title
             Text(
-                text = "Refresh Rate",
+                text = "Refresh Rate Matching",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
@@ -2570,6 +2631,286 @@ private fun RefreshRateModeItem(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) Color(0xFF10B981) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun AudioPassthroughModeSelectionDialog(
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 300.dp,
+        maxWidth = 400.dp,
+    ) {
+        Column {
+            // Title
+            Text(
+                text = "Audio Passthrough",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Subtitle
+            Text(
+                text = "Send raw audio to AVR/soundbar for decoding (preserves Atmos/DTS:X)",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.6f),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Options
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 220.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(PlaybackOptions.AUDIO_PASSTHROUGH_OPTIONS.size) { index ->
+                    val (mode, label) = PlaybackOptions.AUDIO_PASSTHROUGH_OPTIONS[index]
+                    val isSelected = mode == currentSelection
+
+                    AudioPassthroughModeItem(
+                        label = label,
+                        isSelected = isSelected,
+                        onClick = { onSelect(mode) },
+                        modifier = if (index == 0) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioPassthroughModeItem(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFF8B5CF6).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFF8B5CF6), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Mode label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFF8B5CF6) else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun ResolutionMatchingModeSelectionDialog(
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 300.dp,
+        maxWidth = 400.dp,
+    ) {
+        Column {
+            // Title
+            Text(
+                text = "Resolution Matching",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Subtitle
+            Text(
+                text = "Change display resolution to match video source",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.6f),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Options
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 150.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(PlaybackOptions.RESOLUTION_MATCHING_OPTIONS.size) { index ->
+                    val (mode, label) = PlaybackOptions.RESOLUTION_MATCHING_OPTIONS[index]
+                    val isSelected = mode == currentSelection
+
+                    ResolutionMatchingModeItem(
+                        label = label,
+                        isSelected = isSelected,
+                        onClick = { onSelect(mode) },
+                        modifier = if (index == 0) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResolutionMatchingModeItem(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> Color(0xFF3B82F6).copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFF3B82F6), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.size(20.dp))
+        }
+
+        // Mode label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) Color(0xFF3B82F6) else TvColors.TextPrimary,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }

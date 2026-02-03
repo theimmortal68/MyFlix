@@ -88,6 +88,12 @@ object PreferenceKeys {
         /** Refresh rate switching mode (OFF, AUTO, 60, 120) */
         const val REFRESH_RATE_MODE = "refresh_rate_mode"
 
+        /** Audio passthrough mode (OFF, AUTO, ALWAYS) */
+        const val AUDIO_PASSTHROUGH_MODE = "audio_passthrough_mode"
+
+        /** Resolution matching mode (OFF, AUTO) */
+        const val RESOLUTION_MATCHING_MODE = "resolution_matching_mode"
+
         // Media segment preferences (skip intro/credits)
         /** Skip intro behavior: OFF, ASK, AUTO */
         const val SKIP_INTRO_MODE = "skip_intro_mode"
@@ -227,6 +233,12 @@ object PreferenceKeys {
 
         /** Default refresh rate mode: OFF (no switching) */
         const val REFRESH_RATE_MODE = "OFF"
+
+        /** Default audio passthrough mode: OFF (decode via FFmpeg) */
+        const val AUDIO_PASSTHROUGH_MODE = "OFF"
+
+        /** Default resolution matching mode: OFF (use display native resolution) */
+        const val RESOLUTION_MATCHING_MODE = "OFF"
 
         // Media segment defaults (OFF, ASK, AUTO)
         const val SKIP_INTRO_MODE = "ASK"

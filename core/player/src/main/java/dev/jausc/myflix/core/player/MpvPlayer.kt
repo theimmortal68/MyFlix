@@ -40,6 +40,24 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
                 false
             }
         }
+
+        /**
+         * Check if running on an emulator (for development fallback)
+         */
+        fun isEmulator(): Boolean {
+            return (android.os.Build.FINGERPRINT.startsWith("generic") ||
+                android.os.Build.FINGERPRINT.startsWith("unknown") ||
+                android.os.Build.MODEL.contains("google_sdk") ||
+                android.os.Build.MODEL.contains("Emulator") ||
+                android.os.Build.MODEL.contains("Android SDK built for x86") ||
+                android.os.Build.MANUFACTURER.contains("Genymotion") ||
+                android.os.Build.BRAND.startsWith("generic") ||
+                android.os.Build.DEVICE.startsWith("generic") ||
+                android.os.Build.HARDWARE.contains("goldfish") ||
+                android.os.Build.HARDWARE.contains("ranchu") ||
+                android.os.Build.PRODUCT.contains("sdk") ||
+                android.os.Build.PRODUCT.contains("emulator"))
+        }
     }
 
     // Just mark as ready - actual init happens when surface is attached
@@ -49,24 +67,39 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
     private fun initializeMpv(surface: Surface): Boolean {
         if (initialized) return true
 
+        val isEmulator = isEmulator()
+        Log.d(TAG, "Initializing MPV (isEmulator=$isEmulator)")
+
         return try {
             if (!mpvCreated) {
                 MPVLib.create(context)
                 mpvCreated = true
             }
 
-            // Video output - mediacodec_embed for direct hardware rendering
-            // Must set wid (surface) before init for mediacodec_embed to work
-            MPVLib.setOptionString("vo", "mediacodec_embed,gpu")
-            MPVLib.setOptionString("gpu-context", "android")
+            if (isEmulator) {
+                // Emulator: Use GPU-based software rendering (goldfish hw decoder is unreliable)
+                Log.d(TAG, "Using GPU software rendering for emulator")
+                MPVLib.setOptionString("vo", "gpu")
+                MPVLib.setOptionString("gpu-context", "android")
+                MPVLib.setOptionString("hwdec", "no") // Force software decoding
+                
+                // Set the surface as window ID
+                val surfaceId = System.identityHashCode(surface).toLong()
+                MPVLib.setOptionString("wid", surfaceId.toString())
+            } else {
+                // Real device: Use mediacodec_embed for direct hardware rendering
+                // Must set wid (surface) before init for mediacodec_embed to work
+                MPVLib.setOptionString("vo", "mediacodec_embed,gpu")
+                MPVLib.setOptionString("gpu-context", "android")
 
-            // Set the surface as window ID - critical for mediacodec_embed
-            val surfaceId = System.identityHashCode(surface).toLong()
-            MPVLib.setOptionString("wid", surfaceId.toString())
+                // Set the surface as window ID - critical for mediacodec_embed
+                val surfaceId = System.identityHashCode(surface).toLong()
+                MPVLib.setOptionString("wid", surfaceId.toString())
 
-            // Hardware decoding - direct rendering
-            MPVLib.setOptionString("hwdec", "mediacodec")
-            MPVLib.setOptionString("hwdec-codecs", "all")
+                // Hardware decoding - direct rendering
+                MPVLib.setOptionString("hwdec", "mediacodec")
+                MPVLib.setOptionString("hwdec-codecs", "all")
+            }
 
             // Aspect ratio - maintain original, fit within surface
             MPVLib.setOptionString("keepaspect", "yes")
@@ -107,7 +140,7 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             MPVLib.attachSurface(surface)
 
             initialized = true
-            Log.d(TAG, "MPV initialized successfully with mediacodec_embed")
+            Log.d(TAG, "MPV initialized successfully with ${if (isEmulator) "GPU software" else "mediacodec_embed hardware"} rendering")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize MPV", e)
@@ -243,6 +276,29 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
             MPVLib.setPropertyString("sid", "no")
         } else {
             MPVLib.setPropertyInt("sid", trackId)
+        }
+    }
+
+    /**
+     * Add an external audio track from a URL.
+     * Used for YouTube split streams where video and audio are separate.
+     *
+     * @param audioUrl URL of the external audio track
+     * @param select Whether to automatically select this audio track
+     */
+    fun addExternalAudio(audioUrl: String, select: Boolean = true) {
+        if (!initialized) {
+            Log.w(TAG, "Cannot add external audio - MPV not initialized")
+            return
+        }
+        try {
+            // audio-add <url> [flags] [title] [lang]
+            // flags: select, auto, cached
+            val flags = if (select) "select" else "auto"
+            MPVLib.command(arrayOf("audio-add", audioUrl, flags))
+            Log.d(TAG, "Added external audio: $audioUrl (select=$select)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to add external audio", e)
         }
     }
 

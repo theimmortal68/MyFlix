@@ -99,17 +99,22 @@ import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
 import dev.jausc.myflix.core.common.model.subtitleLabel
+import dev.jausc.myflix.core.common.model.audioCodecLabel
+import dev.jausc.myflix.core.common.model.videoCodecLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
+import dev.jausc.myflix.core.common.model.videoRangeLabel
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.PlaystateCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
+import dev.jausc.myflix.core.player.AudioPassthroughMode
 import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerUtils
@@ -178,6 +183,16 @@ fun PlayerScreen(
     // Get refresh rate mode preference
     val refreshRateMode by appPreferences.refreshRateMode.collectAsState()
 
+    // Get audio passthrough mode preference
+    val audioPassthroughModeName by appPreferences.audioPassthroughMode.collectAsState()
+    val audioPassthroughMode = remember(audioPassthroughModeName) {
+        try {
+            AudioPassthroughMode.valueOf(audioPassthroughModeName)
+        } catch (e: IllegalArgumentException) {
+            AudioPassthroughMode.OFF
+        }
+    }
+
     // Get subtitle styling preferences
     val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
     val subtitleFontColorName by appPreferences.subtitleFontColor.collectAsState()
@@ -207,8 +222,14 @@ fun PlayerScreen(
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // Player controller from core module - pass MPV preference
-    val playerController = remember { PlayerController(context, useMpv = useMpvPlayer) }
+    // Player controller from core module - pass MPV preference and audio passthrough mode
+    val playerController = remember(audioPassthroughMode) {
+        PlayerController(
+            context = context,
+            useMpv = useMpvPlayer,
+            audioPassthroughMode = audioPassthroughMode,
+        )
+    }
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
@@ -370,46 +391,101 @@ fun PlayerScreen(
     // Handle WebSocket remote control commands
     LaunchedEffect(webSocketEvents) {
         webSocketEvents?.collect { event ->
-            if (event is WebSocketEvent.PlaystateCommand) {
-                android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
-                when (event.command) {
-                    PlaystateCommandType.PlayPause -> {
-                        playerController.togglePause()
-                    }
-                    PlaystateCommandType.Pause -> {
-                        playerController.pause()
-                    }
-                    PlaystateCommandType.Unpause -> {
-                        playerController.resume()
-                    }
-                    PlaystateCommandType.Stop -> {
-                        viewModel.stopPlayback(playerController.state.value.position)
-                        onBack()
-                    }
-                    PlaystateCommandType.Seek -> {
-                        event.seekPositionTicks?.let { ticks ->
-                            val positionMs = PlayerUtils.ticksToMs(ticks)
-                            playerController.seekTo(positionMs)
+            when (event) {
+                is WebSocketEvent.PlaystateCommand -> {
+                    android.util.Log.d("PlayerScreen", "Remote command: ${event.command}")
+                    when (event.command) {
+                        PlaystateCommandType.PlayPause -> {
+                            playerController.togglePause()
                         }
-                    }
-                    PlaystateCommandType.Rewind -> {
-                        playerController.seekRelative(-skipBackwardMs)
-                    }
-                    PlaystateCommandType.FastForward -> {
-                        playerController.seekRelative(skipForwardMs)
-                    }
-                    PlaystateCommandType.NextTrack -> {
-                        viewModel.playNextNow()
-                    }
-                    PlaystateCommandType.PreviousTrack -> {
-                        // Seek to beginning or previous if at start
-                        if (playerController.state.value.position > 5000) {
-                            playerController.seekTo(0)
+                        PlaystateCommandType.Pause -> {
+                            playerController.pause()
+                        }
+                        PlaystateCommandType.Unpause -> {
+                            playerController.resume()
+                        }
+                        PlaystateCommandType.Stop -> {
+                            viewModel.stopPlayback(playerController.state.value.position)
+                            onBack()
+                        }
+                        PlaystateCommandType.Seek -> {
+                            event.seekPositionTicks?.let { ticks ->
+                                val positionMs = PlayerUtils.ticksToMs(ticks)
+                                playerController.seekTo(positionMs)
+                            }
+                        }
+                        PlaystateCommandType.Rewind -> {
+                            playerController.seekRelative(-skipBackwardMs)
+                        }
+                        PlaystateCommandType.FastForward -> {
+                            playerController.seekRelative(skipForwardMs)
+                        }
+                        PlaystateCommandType.NextTrack -> {
+                            viewModel.playNextNow()
+                        }
+                        PlaystateCommandType.PreviousTrack -> {
+                            // Seek to beginning or previous if at start
+                            if (playerController.state.value.position > 5000) {
+                                playerController.seekTo(0)
+                            }
                         }
                     }
                 }
+                is WebSocketEvent.GeneralCommand -> {
+                    android.util.Log.d("PlayerScreen", "Remote general command: ${event.name}")
+                    when (event.name) {
+                        GeneralCommandType.SetAudioStreamIndex -> {
+                            event.arguments["Index"]?.toIntOrNull()?.let { index ->
+                                viewModel.setAudioStreamIndex(index)
+                                viewModel.updatePlaybackOptions(
+                                    audioStreamIndex = index,
+                                    subtitleStreamIndex = state.selectedSubtitleStreamIndex,
+                                    maxBitrateMbps = currentBitrate,
+                                    startPositionMs = playbackState.position,
+                                )
+                            }
+                        }
+                        GeneralCommandType.SetSubtitleStreamIndex -> {
+                            val index = event.arguments["Index"]?.toIntOrNull()
+                            // Index of -1 means disable subtitles
+                            val subtitleIndex = if (index == -1) null else index
+                            viewModel.setSubtitleStreamIndex(subtitleIndex)
+                            viewModel.updatePlaybackOptions(
+                                audioStreamIndex = state.selectedAudioStreamIndex,
+                                subtitleStreamIndex = subtitleIndex,
+                                maxBitrateMbps = currentBitrate,
+                                startPositionMs = playbackState.position,
+                            )
+                        }
+                        GeneralCommandType.SetMaxStreamingBitrate -> {
+                            event.arguments["MaxBitrate"]?.toLongOrNull()?.let { bitrate ->
+                                // Server sends bitrate in bits/sec, we use Mbps
+                                val bitrateMbps = (bitrate / 1_000_000).toInt()
+                                currentBitrate = bitrateMbps
+                                viewModel.updatePlaybackOptions(
+                                    audioStreamIndex = state.selectedAudioStreamIndex,
+                                    subtitleStreamIndex = state.selectedSubtitleStreamIndex,
+                                    maxBitrateMbps = bitrateMbps,
+                                    startPositionMs = playbackState.position,
+                                )
+                            }
+                        }
+                        GeneralCommandType.ToggleOsd -> {
+                            viewModel.toggleControls()
+                        }
+                        GeneralCommandType.ToggleMute -> {
+                            // Note: Volume is typically handled by TV system, but we can track state
+                            android.util.Log.d("PlayerScreen", "ToggleMute requested (handled by system)")
+                        }
+                        else -> {
+                            // Other general commands handled by MainActivity
+                        }
+                    }
+                }
+                else -> {
+                    // Other events handled by MainActivity
+                }
             }
-            // Other events handled by MainActivity
         }
     }
 
@@ -614,6 +690,7 @@ fun PlayerScreen(
                     } else {
                         null
                     },
+                    transcodeReasons = state.transcodeReasons,
                 )
             }
 
@@ -869,11 +946,13 @@ private fun TvPlayerControlsOverlay(
     itemId: String? = null,
     skipLabel: String? = null,
     onSkipSegment: (() -> Unit)? = null,
+    transcodeReasons: List<String>? = null,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
+    val videoCodec = item?.videoCodecLabel ?: ""
+    val videoRange = item?.videoRangeLabel ?: ""
+    val audioCodec = item?.audioCodecLabel ?: ""
     val playerType = playbackState.playerType
-    val isDV = videoQuality.contains("Dolby Vision")
-    val isHDR = videoQuality.contains("HDR")
     // Slide-out menu state
     var activeMenu by remember { mutableStateOf<PlayerMenuType?>(null) }
     var menuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
@@ -970,6 +1049,7 @@ private fun TvPlayerControlsOverlay(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Player type badge
                 PlayerBadge(
                     text = playerType,
                     backgroundColor = when (playerType) {
@@ -978,23 +1058,57 @@ private fun TvPlayerControlsOverlay(
                         else -> Color.Gray
                     },
                 )
+                // Resolution badge (e.g., "4K", "1080p")
                 if (videoQuality.isNotBlank()) {
                     PlayerBadge(
                         text = videoQuality,
                         backgroundColor = Color.White.copy(alpha = 0.2f),
                     )
                 }
-                when {
-                    isDV -> PlayerBadge(
-                        text = "Dolby Vision",
-                        backgroundColor = Color(0xFF000000),
-                    )
-                    isHDR -> PlayerBadge(
-                        text = "HDR",
-                        backgroundColor = Color(0xFFFFD700),
-                        textColor = Color.Black,
+                // Video codec badge (e.g., "HEVC", "AV1")
+                if (videoCodec.isNotBlank()) {
+                    PlayerBadge(
+                        text = videoCodec,
+                        backgroundColor = Color.White.copy(alpha = 0.2f),
                     )
                 }
+                // Dynamic range badge (e.g., "HDR10", "Dolby Vision")
+                if (videoRange.isNotBlank()) {
+                    PlayerBadge(
+                        text = videoRange,
+                        backgroundColor = when {
+                            videoRange.contains("Dolby Vision") -> Color(0xFF000000)
+                            videoRange.contains("HDR") -> Color(0xFFFFD700)
+                            videoRange == "HLG" -> Color(0xFF4CAF50)
+                            else -> Color.White.copy(alpha = 0.2f)
+                        },
+                        textColor = when {
+                            videoRange.contains("HDR") -> Color.Black
+                            else -> Color.White
+                        },
+                    )
+                }
+                // Audio codec badge (e.g., "TrueHD Atmos", "DTS-HD MA 7.1")
+                if (audioCodec.isNotBlank()) {
+                    PlayerBadge(
+                        text = audioCodec,
+                        backgroundColor = when {
+                            audioCodec.contains("Atmos") -> Color(0xFF1E88E5)
+                            audioCodec.contains("DTS") -> Color(0xFFFF5722)
+                            audioCodec.contains("TrueHD") -> Color(0xFF9C27B0)
+                            else -> Color.White.copy(alpha = 0.2f)
+                        },
+                    )
+                }
+            }
+            // Show transcode reasons if transcoding is happening
+            if (!transcodeReasons.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Transcoding: ${formatTranscodeReasons(transcodeReasons)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFFFB74D), // Amber/orange color to indicate transcoding
+                )
             }
         }
 
@@ -1320,6 +1434,7 @@ private fun TvPlayerControlsOverlay(
                         onUserInteraction()
                         onSeekTo(chapterMs)
                     },
+                    onNavigateUp = { showChaptersRow = false },
                 )
             }
         }
@@ -1686,16 +1801,19 @@ private fun TvActionButton(
             }
             .focusable()
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
-                    onDownPressed?.invoke() == true
-                } else if (event.type == KeyEventType.KeyDown &&
-                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
-                ) {
-                    buttonPosition?.let { onClickWithPosition?.invoke(it) }
-                    onClick?.invoke()
-                    true
-                } else {
-                    false
+                when {
+                    event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown -> {
+                        onDownPressed?.invoke() == true
+                    }
+                    // Handle click on KeyUp to avoid double-dispatch on real TV hardware
+                    // (KeyDown can cause the event to propagate to newly focused menu items)
+                    event.type == KeyEventType.KeyUp &&
+                        (event.key == Key.Enter || event.key == Key.DirectionCenter) -> {
+                        buttonPosition?.let { onClickWithPosition?.invoke(it) }
+                        onClick?.invoke()
+                        true
+                    }
+                    else -> false
                 }
             },
         contentAlignment = Alignment.Center,
@@ -1731,6 +1849,7 @@ private fun ChapterThumbRow(
     upFocusRequester: FocusRequester,
     rowFocusRequester: FocusRequester,
     onChapterSelected: (Long) -> Unit,
+    onNavigateUp: () -> Unit,
 ) {
     if (chapters.isEmpty()) {
         Text(
@@ -1763,6 +1882,12 @@ private fun ChapterThumbRow(
                 itemId = itemId,
                 modifier = Modifier
                     .then(if (isFirst) Modifier.focusRequester(rowFocusRequester) else Modifier)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
+                            onNavigateUp()
+                        }
+                        false // Don't consume - let focus system handle navigation
+                    }
                     .focusProperties { up = upFocusRequester },
                 onClick = { onChapterSelected(startMs) },
             )
@@ -1887,6 +2012,38 @@ private fun PlayerBadge(text: String, backgroundColor: Color, textColor: Color =
             color = textColor,
         )
     }
+}
+
+/**
+ * Format transcode reasons into a human-readable string.
+ * Jellyfin returns machine-readable reason codes that we convert to user-friendly text.
+ */
+private fun formatTranscodeReasons(reasons: List<String>): String {
+    return reasons.map { reason ->
+        when (reason) {
+            "ContainerNotSupported" -> "Container"
+            "VideoCodecNotSupported" -> "Video codec"
+            "AudioCodecNotSupported" -> "Audio codec"
+            "ContainerBitrateExceedsLimit" -> "Bitrate limit"
+            "VideoBitrateNotSupported" -> "Video bitrate"
+            "AudioBitrateNotSupported" -> "Audio bitrate"
+            "VideoProfileNotSupported" -> "Video profile"
+            "VideoLevelNotSupported" -> "Video level"
+            "RefFramesNotSupported" -> "Ref frames"
+            "AudioChannelsNotSupported" -> "Audio channels"
+            "SecondaryAudioNotSupported" -> "Secondary audio"
+            "SubtitleCodecNotSupported" -> "Subtitle codec"
+            "DirectPlayError" -> "Direct play error"
+            "VideoRangeTypeNotSupported" -> "HDR type"
+            "AudioProfileNotSupported" -> "Audio profile"
+            "AudioSampleRateNotSupported" -> "Sample rate"
+            "AudioBitDepthNotSupported" -> "Audio bit depth"
+            "UnknownVideoStreamInfo" -> "Unknown video"
+            "UnknownAudioStreamInfo" -> "Unknown audio"
+            else -> reason.replace(Regex("([A-Z])"), " $1").trim().lowercase()
+                .replaceFirstChar { it.uppercase() }
+        }
+    }.joinToString(", ")
 }
 
 /**

@@ -32,15 +32,31 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
+ * Audio passthrough modes for ExoPlayer.
+ */
+enum class AudioPassthroughMode {
+    /** Decode all audio via FFmpeg to PCM (best compatibility, no spatial audio) */
+    OFF,
+    /** Use passthrough for formats the device reports as supported (preserves Atmos/DTS:X) */
+    AUTO,
+    /** Always attempt passthrough, fallback to decode if unsupported */
+    ALWAYS,
+}
+
+/**
  * ExoPlayer wrapper implementing UnifiedPlayer interface
- * Supports DTS/DTS-HD/DTS:X/TrueHD via Jellyfin's FFmpeg extension
+ * Supports DTS/DTS-HD/DTS:X/TrueHD via Jellyfin's FFmpeg extension or passthrough to AVR.
  *
- * TODO: Add Audio Passthrough option in settings for users with AVR/soundbar
- *       that can decode DTS natively. When enabled, skip FFmpeg decoding and
- *       pass raw bitstream to audio output.
+ * Audio handling:
+ * - OFF: Use FFmpeg to decode DTS/TrueHD to PCM (works on all devices, loses Atmos/DTS:X spatial)
+ * - AUTO: Passthrough to AVR if device reports support, otherwise decode
+ * - ALWAYS: Force passthrough attempt (may fail if AVR doesn't support format)
  */
 @Suppress("TooManyFunctions")
-class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
+class ExoPlayerWrapper(
+    private val context: Context,
+    private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
+) : UnifiedPlayer {
     /**
      * Custom RenderersFactory that uses FFmpeg for audio and video decoding
      * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, HEVC, etc.
@@ -123,28 +139,47 @@ class ExoPlayerWrapper(private val context: Context) : UnifiedPlayer {
                     .build()
             }
 
-            // Use FFmpeg renderers factory for DTS/TrueHD/HEVC software decode
-            // TODO: Add option to use DefaultRenderersFactory with passthrough
-            //       for users with AVR that can decode DTS natively
-            val renderersFactory = if (ffmpegAvailable) {
-                FfmpegRenderersFactory(context)
-            } else {
-                Log.w(TAG, "FFmpeg not available, using default renderers")
-                DefaultRenderersFactory(context)
-                    .setEnableDecoderFallback(true)
-                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            // Choose renderers factory based on passthrough mode
+            val renderersFactory = when (audioPassthroughMode) {
+                AudioPassthroughMode.OFF -> {
+                    // Use FFmpeg to decode DTS/TrueHD to PCM
+                    if (ffmpegAvailable) {
+                        Log.d(TAG, "Using FFmpeg renderers (passthrough OFF)")
+                        FfmpegRenderersFactory(context)
+                    } else {
+                        Log.w(TAG, "FFmpeg not available, using default renderers")
+                        DefaultRenderersFactory(context)
+                            .setEnableDecoderFallback(true)
+                            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+                    }
+                }
+                AudioPassthroughMode.AUTO, AudioPassthroughMode.ALWAYS -> {
+                    // Use platform decoders with passthrough capability
+                    // Don't use FFmpeg - let MediaCodec handle passthrough
+                    Log.d(TAG, "Using passthrough renderers (mode=$audioPassthroughMode)")
+                    DefaultRenderersFactory(context)
+                        .setEnableDecoderFallback(audioPassthroughMode == AudioPassthroughMode.AUTO)
+                        .setExtensionRendererMode(
+                            if (audioPassthroughMode == AudioPassthroughMode.AUTO) {
+                                // Prefer passthrough, fallback to platform decode
+                                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+                            } else {
+                                // Force passthrough only (no extension fallback)
+                                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
+                            }
+                        )
+                }
             }
+
+            // Configure audio attributes for passthrough
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build()
 
             player = ExoPlayer.Builder(context, renderersFactory)
                 .setTrackSelector(trackSelector)
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                        .build(),
-                    // handleAudioFocus=
-                    true,
-                )
+                .setAudioAttributes(audioAttributes, true)
                 .build()
                 .apply {
                     playWhenReady = true

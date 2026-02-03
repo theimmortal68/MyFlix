@@ -327,32 +327,136 @@ val JellyfinItem.is4K: Boolean
     }
 
 /**
- * Get a human-readable video quality string
+ * Get a human-readable video quality string (resolution only)
  */
 val JellyfinItem.videoQualityLabel: String
     get() {
-        val parts = mutableListOf<String>()
+        if (is4K) return "4K"
+        val height = videoStream?.height ?: return ""
+        return when {
+            height >= 1080 -> "1080p"
+            height >= 720 -> "720p"
+            height >= 480 -> "480p"
+            else -> ""
+        }
+    }
 
-        if (is4K) {
-            parts.add("4K")
-        } else {
-            val height = videoStream?.height
-            if (height != null) {
-                when {
-                    height >= 1080 -> parts.add("1080p")
-                    height >= 720 -> parts.add("720p")
-                    height >= 480 -> parts.add("480p")
-                }
+/**
+ * Get the primary audio stream from this item
+ */
+val JellyfinItem.audioStream: MediaStream?
+    get() = mediaSources?.firstOrNull()?.mediaStreams?.find { it.type == "Audio" && it.isDefault }
+        ?: mediaSources?.firstOrNull()?.mediaStreams?.find { it.type == "Audio" }
+
+/**
+ * Get a human-readable video codec label
+ */
+val JellyfinItem.videoCodecLabel: String
+    get() {
+        val codec = videoStream?.codec?.lowercase() ?: return ""
+        return when {
+            codec == "hevc" || codec == "h265" -> "HEVC"
+            codec == "av1" -> "AV1"
+            codec == "h264" || codec == "avc" -> "H.264"
+            codec == "vp9" -> "VP9"
+            codec == "mpeg4" -> "MPEG-4"
+            codec == "mpeg2video" -> "MPEG-2"
+            codec == "vc1" -> "VC-1"
+            else -> codec.uppercase()
+        }
+    }
+
+/**
+ * Get a human-readable dynamic range label (HDR type)
+ */
+val JellyfinItem.videoRangeLabel: String
+    get() {
+        val video = videoStream ?: return ""
+        val rangeType = video.videoRangeType?.lowercase() ?: ""
+        val doViTitle = video.videoDoViTitle
+
+        // Check for Dolby Vision first
+        if (rangeType.contains("dolby") || rangeType.contains("dovi") || rangeType == "dv") {
+            // Include profile info if available (e.g., "DV P8" for profile 8)
+            return if (!doViTitle.isNullOrBlank()) {
+                "Dolby Vision"
+            } else {
+                "Dolby Vision"
             }
         }
 
-        if (isDolbyVision) {
-            parts.add("Dolby Vision")
-        } else if (isHdr) {
-            parts.add("HDR")
+        // Check for HDR10+
+        if (rangeType.contains("hdr10plus") || rangeType.contains("hdr10+")) {
+            return "HDR10+"
         }
 
-        return parts.joinToString(" · ")
+        // Check for HDR10
+        if (rangeType.contains("hdr10") || rangeType == "hdr") {
+            return "HDR10"
+        }
+
+        // Check for HLG
+        if (rangeType.contains("hlg")) {
+            return "HLG"
+        }
+
+        // Fallback to videoRange field
+        val range = video.videoRange?.lowercase() ?: ""
+        return when {
+            range.contains("hdr") -> "HDR"
+            range.contains("hlg") -> "HLG"
+            else -> ""
+        }
+    }
+
+/**
+ * Get a human-readable audio codec label
+ */
+val JellyfinItem.audioCodecLabel: String
+    get() {
+        val audio = audioStream ?: return ""
+        val codec = audio.codec?.lowercase() ?: return ""
+        val profile = audio.profile?.lowercase() ?: ""
+        val channels = audio.channels ?: 0
+        val channelLayout = audio.channelLayout?.lowercase() ?: ""
+
+        // Check for Dolby Atmos (usually in profile or title)
+        val isAtmos = profile.contains("atmos") ||
+            audio.displayTitle?.lowercase()?.contains("atmos") == true
+
+        // Build codec label
+        val codecName = when {
+            codec == "truehd" -> if (isAtmos) "TrueHD Atmos" else "TrueHD"
+            codec == "eac3" || codec == "ec-3" -> if (isAtmos) "DD+ Atmos" else "DD+"
+            codec == "ac3" -> "DD"
+            codec == "dts" -> when {
+                profile.contains("dts-hd ma") || profile.contains("dts:x") -> "DTS-HD MA"
+                profile.contains("dts-hd hra") -> "DTS-HD HRA"
+                profile.contains("dts:x") -> "DTS:X"
+                else -> "DTS"
+            }
+            codec == "flac" -> "FLAC"
+            codec == "aac" -> "AAC"
+            codec == "opus" -> "Opus"
+            codec == "vorbis" -> "Vorbis"
+            codec == "mp3" -> "MP3"
+            codec == "pcm_s16le" || codec == "pcm_s24le" || codec.startsWith("pcm") -> "PCM"
+            else -> codec.uppercase()
+        }
+
+        // Add channel info for surround formats
+        val channelSuffix = when {
+            channels >= 8 || channelLayout.contains("7.1") -> "7.1"
+            channels >= 6 || channelLayout.contains("5.1") -> "5.1"
+            channels == 2 -> "2.0"
+            else -> ""
+        }
+
+        return if (channelSuffix.isNotEmpty() && !codecName.contains("Atmos")) {
+            "$codecName $channelSuffix"
+        } else {
+            codecName
+        }
     }
 
 /**

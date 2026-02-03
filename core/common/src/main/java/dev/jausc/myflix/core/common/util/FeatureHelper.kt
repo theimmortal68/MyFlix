@@ -1,6 +1,7 @@
 package dev.jausc.myflix.core.common.util
 
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.youtube.VideoInfo
 import java.time.Instant
 import java.util.Locale
 
@@ -11,6 +12,85 @@ data class FeatureSection(
     val title: String,
     val items: List<JellyfinItem>,
 )
+
+/**
+ * Unified representation of an extra that can be either local (from Jellyfin library)
+ * or remote (from TMDB via YouTube).
+ */
+sealed class ExtraItem {
+    abstract val name: String
+    abstract val type: String
+
+    /**
+     * Local extra from Jellyfin library (already downloaded).
+     */
+    data class Local(
+        val item: JellyfinItem,
+        override val name: String = item.name,
+        override val type: String = item.extraType ?: "Extra",
+    ) : ExtraItem()
+
+    /**
+     * Remote extra from TMDB (streamed via YouTube).
+     */
+    data class Remote(
+        val videoInfo: VideoInfo,
+        override val name: String = videoInfo.name,
+        override val type: String = videoInfo.type,
+    ) : ExtraItem() {
+        val key: String get() = videoInfo.key
+        val isOfficial: Boolean get() = videoInfo.official
+    }
+}
+
+/**
+ * Build a unified list of extras from local features and remote TMDB videos.
+ * Local extras take priority (shown first), remote extras fill in additional content.
+ *
+ * @param localFeatures Local special features from Jellyfin
+ * @param remoteVideos Remote videos from TMDB
+ * @param excludeTrailers Whether to exclude trailers (since they're shown separately)
+ * @return Combined list of extras
+ */
+fun buildUnifiedExtras(
+    localFeatures: List<JellyfinItem>,
+    remoteVideos: List<VideoInfo>,
+    excludeTrailers: Boolean = true,
+): List<ExtraItem> {
+    val extras = mutableListOf<ExtraItem>()
+
+    // Add local extras first (they have priority)
+    localFeatures
+        .filter { item ->
+            if (excludeTrailers) {
+                !item.name.contains("trailer", ignoreCase = true)
+            } else true
+        }
+        .forEach { item ->
+            extras.add(ExtraItem.Local(item))
+        }
+
+    // Add remote extras that don't duplicate local ones
+    val localNames = localFeatures.map { it.name.lowercase() }.toSet()
+    remoteVideos
+        .filter { video ->
+            // Exclude trailers if requested
+            val isTrailer = video.type.equals("Trailer", ignoreCase = true) ||
+                video.type.equals("Teaser", ignoreCase = true)
+            if (excludeTrailers && isTrailer) return@filter false
+
+            // Don't add duplicates (by similar name)
+            val nameLower = video.name.lowercase()
+            !localNames.any { localName ->
+                nameLower.contains(localName) || localName.contains(nameLower)
+            }
+        }
+        .forEach { video ->
+            extras.add(ExtraItem.Remote(video))
+        }
+
+    return extras
+}
 
 private data class FeatureCategory(
     val title: String,

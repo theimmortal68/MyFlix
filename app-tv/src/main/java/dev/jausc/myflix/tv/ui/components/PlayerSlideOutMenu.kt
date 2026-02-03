@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.components
 
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -145,9 +146,17 @@ fun PlayerSlideOutMenu(
     val listState = rememberLazyListState()
     var focusedIndex by remember { mutableStateOf(0) }
 
+    // Grace period to prevent accidental selection when menu opens
+    // (real TV hardware can route lingering key events to newly focused items)
+    var ignoreSelectUntil by remember { mutableStateOf(0L) }
+    val shouldIgnoreSelect: () -> Boolean = {
+        SystemClock.uptimeMillis() < ignoreSelectUntil
+    }
+
     // Focus first item when menu appears - delay allows AnimatedVisibility to attach nodes
     LaunchedEffect(visible) {
         if (visible && itemFocusRequesters.isNotEmpty()) {
+            ignoreSelectUntil = SystemClock.uptimeMillis() + 250
             delay(200)
             itemFocusRequesters.first().requestFocus()
         }
@@ -315,6 +324,7 @@ fun PlayerSlideOutMenu(
                             rightFocusRequester = rightFocusRequester,
                             onLeftNavigation = onLeftNavigation,
                             onFocused = { focusedIndex = index },
+                            shouldIgnoreSelect = shouldIgnoreSelect,
                             modifier = Modifier.focusRequester(itemFocusRequesters[index]),
                         )
                     }
@@ -356,9 +366,16 @@ fun PlayerSlideOutMenuSectioned(
     }
     var focusedIndex by remember { mutableStateOf(0) }
 
+    // Grace period to prevent accidental selection when menu opens
+    var ignoreSelectUntil by remember { mutableStateOf(0L) }
+    val shouldIgnoreSelect: () -> Boolean = {
+        SystemClock.uptimeMillis() < ignoreSelectUntil
+    }
+
     // Focus first item when menu appears - delay allows AnimatedVisibility to attach nodes
     LaunchedEffect(visible) {
         if (visible && itemFocusRequesters.isNotEmpty()) {
+            ignoreSelectUntil = SystemClock.uptimeMillis() + 250
             delay(200)
             itemFocusRequesters.first().requestFocus()
         }
@@ -563,6 +580,7 @@ fun PlayerSlideOutMenuSectioned(
                                 leftFocusRequester = leftFocusRequester,
                                 rightFocusRequester = rightFocusRequester,
                                 onFocused = { focusedIndex = globalIndex },
+                                shouldIgnoreSelect = shouldIgnoreSelect,
                                 modifier = itemModifier.focusRequester(itemFocusRequesters[globalIndex]),
                             )
                         }
@@ -584,10 +602,14 @@ private fun SlideOutMenuItemRow(
     rightFocusRequester: FocusRequester?,
     onLeftNavigation: (() -> Unit)? = null,
     onFocused: (() -> Unit)?,
+    shouldIgnoreSelect: (() -> Boolean)? = null,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = {
+            // Grace period: ignore clicks right after menu opens to prevent
+            // lingering key events from selecting items on real TV hardware
+            if (shouldIgnoreSelect?.invoke() == true) return@Surface
             item.onClick()
             if (item.dismissOnClick) {
                 onDismiss()

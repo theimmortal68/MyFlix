@@ -90,6 +90,26 @@ abstract class AppPreferences(context: Context) {
     /** Refresh rate mode: OFF (no switching), AUTO (match video), 60 (force 60Hz), 120 (force 120Hz). */
     val refreshRateMode: StateFlow<String> by lazy { _refreshRateMode.asStateFlow() }
 
+    private val _audioPassthroughMode: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.AUDIO_PASSTHROUGH_MODE, PreferenceKeys.Defaults.AUDIO_PASSTHROUGH_MODE)
+                ?: PreferenceKeys.Defaults.AUDIO_PASSTHROUGH_MODE
+        )
+    }
+
+    /** Audio passthrough mode: OFF (decode via FFmpeg), AUTO (passthrough if supported), ALWAYS (force passthrough). */
+    val audioPassthroughMode: StateFlow<String> by lazy { _audioPassthroughMode.asStateFlow() }
+
+    private val _resolutionMatchingMode: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.RESOLUTION_MATCHING_MODE, PreferenceKeys.Defaults.RESOLUTION_MATCHING_MODE)
+                ?: PreferenceKeys.Defaults.RESOLUTION_MATCHING_MODE
+        )
+    }
+
+    /** Resolution matching mode: OFF (use display native), AUTO (match video resolution). */
+    val resolutionMatchingMode: StateFlow<String> by lazy { _resolutionMatchingMode.asStateFlow() }
+
     // Media Segment Preferences (skip intro/credits)
     // Values: "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
     private val _skipIntroMode: MutableStateFlow<String> by lazy {
@@ -301,6 +321,24 @@ abstract class AppPreferences(context: Context) {
     fun setRefreshRateMode(mode: String) {
         prefs.edit().putString(PreferenceKeys.Prefs.REFRESH_RATE_MODE, mode).apply()
         _refreshRateMode.value = mode
+    }
+
+    /**
+     * Set the audio passthrough mode.
+     * @param mode OFF (decode via FFmpeg to PCM), AUTO (passthrough if device supports), ALWAYS (force passthrough)
+     */
+    fun setAudioPassthroughMode(mode: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.AUDIO_PASSTHROUGH_MODE, mode).apply()
+        _audioPassthroughMode.value = mode
+    }
+
+    /**
+     * Set the resolution matching mode.
+     * @param mode OFF (use display native resolution), AUTO (match video resolution)
+     */
+    fun setResolutionMatchingMode(mode: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.RESOLUTION_MATCHING_MODE, mode).apply()
+        _resolutionMatchingMode.value = mode
     }
 
     // Media segment setters

@@ -25,11 +25,17 @@ import kotlin.math.abs
  * - Default: ExoPlayer (best compatibility)
  * - If useMpv=true: MPV for non-DV content (better codec support)
  * - Dolby Vision content + DV-capable device -> Always ExoPlayer
+ *
+ * Audio passthrough:
+ * - OFF: Decode DTS/TrueHD via FFmpeg to PCM (all devices)
+ * - AUTO: Passthrough to AVR if supported, otherwise decode
+ * - ALWAYS: Force passthrough (requires compatible AVR)
  */
 @Suppress("TooManyFunctions")
 class PlayerController(
     private val context: Context,
     private val useMpv: Boolean = false,
+    private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
 ) {
     private var currentPlayer: UnifiedPlayer? = null
     private var _backend: PlayerBackend = PlayerBackend.EXOPLAYER
@@ -157,8 +163,8 @@ class PlayerController(
     }
 
     private fun initializeExoPlayer(): Boolean {
-        Log.d(TAG, "Initializing ExoPlayer backend")
-        val exoPlayerWrapper = ExoPlayerWrapper(context)
+        Log.d(TAG, "Initializing ExoPlayer backend (passthrough=$audioPassthroughMode)")
+        val exoPlayerWrapper = ExoPlayerWrapper(context, audioPassthroughMode)
         return if (exoPlayerWrapper.initialize()) {
             currentPlayer = exoPlayerWrapper
             _backend = PlayerBackend.EXOPLAYER

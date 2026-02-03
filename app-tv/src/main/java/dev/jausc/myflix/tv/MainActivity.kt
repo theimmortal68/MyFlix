@@ -55,6 +55,7 @@ import dev.jausc.myflix.core.viewmodel.DetailViewModel
 import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
+import dev.jausc.myflix.core.network.websocket.PlayCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.tv.ui.components.NavItem
@@ -388,10 +389,41 @@ fun MyFlixTvApp() {
                             }
                         }
                     }
-                    is WebSocketEvent.PlaystateCommand,
+                    is WebSocketEvent.PlaystateCommand -> {
+                        // Handled by PlayerScreen when player is active
+                        android.util.Log.d("WebSocket", "Playstate event: $event")
+                    }
                     is WebSocketEvent.PlayCommand -> {
-                        // These are handled by PlayerViewModel when player is active
-                        android.util.Log.d("WebSocket", "Playback event: $event")
+                        // Handle remote play commands from Jellyfin dashboard
+                        android.util.Log.d("WebSocket", "Play command: ${event.playCommand} items=${event.itemIds}")
+                        when (event.playCommand) {
+                            PlayCommandType.PlayNow -> {
+                                // Play the first item immediately
+                                event.itemIds.firstOrNull()?.let { itemId ->
+                                    val startPosition = event.startPositionTicks?.let { it / 10_000 }
+                                    val route = if (startPosition != null && startPosition > 0) {
+                                        "player/$itemId?startPositionMs=$startPosition"
+                                    } else {
+                                        "player/$itemId"
+                                    }
+                                    navController.navigate(route)
+                                }
+                            }
+                            PlayCommandType.PlayNext,
+                            PlayCommandType.PlayLast -> {
+                                // Queue support could be added here
+                                android.util.Log.d("WebSocket", "Queue command not fully implemented: ${event.playCommand}")
+                                // For now, just play the first item
+                                event.itemIds.firstOrNull()?.let { itemId ->
+                                    navController.navigate("player/$itemId")
+                                }
+                            }
+                            PlayCommandType.PlayInstantMix,
+                            PlayCommandType.PlayShuffle -> {
+                                // Music-related, not implemented for TV/Movies
+                                android.util.Log.d("WebSocket", "Music command not implemented: ${event.playCommand}")
+                            }
+                        }
                     }
                     is WebSocketEvent.LibraryChanged -> {
                         // Refresh library content
