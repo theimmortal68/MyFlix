@@ -107,6 +107,13 @@ abstract class AppPreferences(context: Context) {
     /** Audio night mode (dynamic range compression) for late-night viewing. */
     val audioNightMode: StateFlow<Boolean> by lazy { _audioNightMode.asStateFlow() }
 
+    private val _stereoDownmixEnabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.STEREO_DOWNMIX_ENABLED, PreferenceKeys.Defaults.STEREO_DOWNMIX_ENABLED))
+    }
+
+    /** Stereo downmix: downmix multi-channel audio (5.1/7.1) to stereo for headphones/speakers. */
+    val stereoDownmixEnabled: StateFlow<Boolean> by lazy { _stereoDownmixEnabled.asStateFlow() }
+
     private val _resolutionMatchingMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.RESOLUTION_MATCHING_MODE, PreferenceKeys.Defaults.RESOLUTION_MATCHING_MODE)
@@ -347,6 +354,17 @@ abstract class AppPreferences(context: Context) {
     fun setAudioNightMode(enabled: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.AUDIO_NIGHT_MODE, enabled).apply()
         _audioNightMode.value = enabled
+    }
+
+    /**
+     * Set stereo downmix mode.
+     * When enabled, downmixes multi-channel audio (5.1/7.1) to stereo using ITU-R BS.775-1 coefficients.
+     * Useful for headphones or stereo speakers.
+     * Note: Takes effect on next seek or track change during playback.
+     */
+    fun setStereoDownmixEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.STEREO_DOWNMIX_ENABLED, enabled).apply()
+        _stereoDownmixEnabled.value = enabled
     }
 
     /**

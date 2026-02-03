@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
 import dev.jausc.myflix.core.player.audio.NightModeAudioProcessor
+import dev.jausc.myflix.core.player.audio.StereoDownmixProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -63,6 +64,10 @@ enum class AudioPassthroughMode {
  * Audio delay:
  * - Adjustable audio delay from -500ms to +500ms
  * - Positive delays audio (audio plays later), negative advances audio
+ *
+ * Stereo downmix:
+ * - When enabled, downmixes multi-channel audio to stereo
+ * - Uses ITU-R BS.775-1 coefficients for proper surround downmix
  */
 @Suppress("TooManyFunctions")
 @OptIn(UnstableApi::class)
@@ -71,7 +76,13 @@ class ExoPlayerWrapper(
     private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
     nightModeEnabled: Boolean = false,
     initialAudioDelayMs: Long = 0L,
+    stereoDownmixEnabled: Boolean = false,
 ) : UnifiedPlayer {
+
+    // Stereo downmix processor (must be first - changes channel count)
+    private val stereoDownmixProcessor = StereoDownmixProcessor().apply {
+        setEnabled(stereoDownmixEnabled)
+    }
 
     // Night mode audio processor for dynamic range compression
     private val nightModeProcessor = NightModeAudioProcessor().apply {
@@ -100,11 +111,12 @@ class ExoPlayerWrapper(
             enableFloatOutput: Boolean,
             enableAudioTrackPlaybackParams: Boolean,
         ): AudioSink {
-            // Build AudioSink with night mode processor in the chain
+            // Build AudioSink with audio processors in the chain
+            // Order: stereoDownmix (changes channels) -> nightMode (DRC) -> delay (sync)
             return DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessors(arrayOf(nightModeProcessor, delayProcessor))
+                .setAudioProcessors(arrayOf(stereoDownmixProcessor, nightModeProcessor, delayProcessor))
                 .build()
         }
 
@@ -161,11 +173,12 @@ class ExoPlayerWrapper(
             enableFloatOutput: Boolean,
             enableAudioTrackPlaybackParams: Boolean,
         ): AudioSink {
-            // Build AudioSink with night mode processor in the chain
+            // Build AudioSink with audio processors in the chain
+            // Order: stereoDownmix (changes channels) -> nightMode (DRC) -> delay (sync)
             return DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessors(arrayOf(nightModeProcessor, delayProcessor))
+                .setAudioProcessors(arrayOf(stereoDownmixProcessor, nightModeProcessor, delayProcessor))
                 .build()
         }
     }
@@ -489,6 +502,43 @@ class ExoPlayerWrapper(
             .coerceIn(DelayAudioProcessor.MIN_DELAY_MS, DelayAudioProcessor.MAX_DELAY_MS)
         setAudioDelayMs(newDelay)
     }
+
+    // ==================== Stereo Downmix Control ====================
+
+    /**
+     * Enables or disables stereo downmix.
+     * When enabled, multi-channel audio (5.1, 7.1) is downmixed to stereo
+     * using ITU-R BS.775-1 coefficients.
+     * Change takes effect on next seek or track change.
+     */
+    fun setStereoDownmixEnabled(enabled: Boolean) {
+        stereoDownmixProcessor.setEnabled(enabled)
+        Log.d(TAG, "Stereo downmix set to $enabled (pending)")
+    }
+
+    /**
+     * Returns whether stereo downmix is pending to be enabled.
+     */
+    fun isStereoDownmixEnabled(): Boolean = stereoDownmixProcessor.isPendingEnabled()
+
+    /**
+     * Returns whether stereo downmix is currently active.
+     */
+    fun isStereoDownmixActive(): Boolean = stereoDownmixProcessor.isEnabled()
+
+    /**
+     * Sets whether to include LFE (subwoofer) channel in stereo downmix.
+     * When enabled, LFE is mixed at -10dB to both channels.
+     */
+    fun setStereoDownmixIncludeLfe(include: Boolean) {
+        stereoDownmixProcessor.setIncludeLfe(include)
+        Log.d(TAG, "Stereo downmix LFE set to $include (pending)")
+    }
+
+    /**
+     * Returns whether LFE is included in stereo downmix.
+     */
+    fun isStereoDownmixLfeIncluded(): Boolean = stereoDownmixProcessor.isLfeIncluded()
 
     override fun release() {
         stopPositionTracking()
