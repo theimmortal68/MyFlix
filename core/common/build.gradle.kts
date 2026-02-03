@@ -56,11 +56,6 @@ dependencies {
     api("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // YouTube trailer extraction (NewPipe)
-    // v0.24.8 - matching Wholphin; v0.25.0+ requires PoTokenProvider
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.8")
-    implementation("com.squareup.okhttp3:okhttp:${rootProject.extra["okHttpVersion"]}")
-
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${rootProject.extra["coroutinesVersion"]}")

@@ -24,7 +24,6 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.TmdbContentType
 import dev.jausc.myflix.core.common.model.buildExternalLinks
 import dev.jausc.myflix.core.common.util.buildFeatureSections
-import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
@@ -52,7 +51,6 @@ fun SeriesDetailScreen(
     onShuffleClick: () -> Unit,
     onSeasonClick: (JellyfinItem) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
@@ -68,28 +66,12 @@ fun SeriesDetailScreen(
     val watched = series.userData?.played == true
     val favorite = series.userData?.isFavorite == true
 
+    // Local trailer detection (from specialFeatures only)
     val trailerItem = remember(state.specialFeatures) {
         findNewestTrailer(state.specialFeatures)
     }
-    val trailerVideo = remember(series.remoteTrailers) {
-        series.remoteTrailers
-            ?.lastOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
-    }
-    val trailerAction: (() -> Unit)? = when {
-        trailerItem != null -> {
-            { onPlayItemClick(trailerItem.id, null) }
-        }
-        trailerVideo?.url != null -> {
-            val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) {
-                null
-            } else {
-                { onTrailerClick(key, trailerVideo.name) }
-            }
-        }
-        else -> {
-            null
-        }
+    val trailerAction: (() -> Unit)? = trailerItem?.let {
+        { onPlayItemClick(it.id, null) }
     }
 
     // Cast & crew

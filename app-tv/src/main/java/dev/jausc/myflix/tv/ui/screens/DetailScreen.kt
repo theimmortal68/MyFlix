@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -11,17 +12,22 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.ThemeMusicPlayer
 import dev.jausc.myflix.core.viewmodel.DetailViewModel
 import dev.jausc.myflix.tv.ui.theme.TvColors
+import kotlinx.coroutines.launch
 
 /**
  * Detail screen router that shows MovieDetailScreen or UnifiedSeriesScreen
@@ -36,7 +42,6 @@ fun DetailScreen(
     onPlayClick: (String, Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
     onEpisodeClick: (String) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
@@ -52,6 +57,43 @@ fun DetailScreen(
 
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
+
+    // Context for Toast messages
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Admin status check (cached by JellyfinClient)
+    var isAdmin by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isAdmin = jellyfinClient.isCurrentUserAdmin()
+    }
+
+    // Download extras callback - only used if admin
+    val downloadExtrasCallback: (() -> Unit)? = if (isAdmin) {
+        {
+            scope.launch {
+                Toast.makeText(context, "Downloading extras...", Toast.LENGTH_SHORT).show()
+                jellyfinClient.downloadExtras(itemId)
+                    .onSuccess { response ->
+                        val message = if (response.success) {
+                            "Extras download started for ${response.itemName ?: "item"}"
+                        } else {
+                            response.message
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                    .onFailure { error ->
+                        Toast.makeText(
+                            context,
+                            "Failed to download extras: ${error.message}",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+            }
+        }
+    } else {
+        null
+    }
 
     // Play theme music when available
     LaunchedEffect(state.themeSongUrl) {
@@ -105,7 +147,6 @@ fun DetailScreen(
                         onPlayClick(itemId, startPositionMs)
                     },
                     onPlayItemClick = onPlayItemClick,
-                    onTrailerClick = onTrailerClick,
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {
@@ -113,6 +154,7 @@ fun DetailScreen(
                         viewModel.setItemPlayed(!played)
                     },
                     onFavoriteClick = { viewModel.toggleItemFavorite() },
+                    onDownloadExtrasClick = downloadExtrasCallback,
                     modifier = Modifier.fillMaxSize(),
                     leftEdgeFocusRequester = leftEdgeFocusRequester,
                 )
@@ -154,6 +196,8 @@ fun DetailScreen(
                     },
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
+                    onPlayItemClick = onPlayItemClick,
+                    onDownloadExtrasClick = downloadExtrasCallback,
                     modifier = Modifier.fillMaxSize(),
                     leftEdgeFocusRequester = leftEdgeFocusRequester,
                 )

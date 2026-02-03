@@ -30,7 +30,6 @@ fun DetailScreen(
     onPlayClick: (String, Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
     onEpisodeClick: (String) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     @Suppress("UnusedParameter") onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     @Suppress("UnusedParameter") onNavigateToGenre: (String, String) -> Unit = { _, _ -> },
@@ -83,7 +82,6 @@ fun DetailScreen(
                         onPlayClick(itemId, startPositionMs)
                     },
                     onPlayItemClick = onPlayItemClick,
-                    onTrailerClick = onTrailerClick,
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {
@@ -119,7 +117,6 @@ fun DetailScreen(
                         onNavigateToDetail(season.id)
                     },
                     onPlayItemClick = onPlayItemClick,
-                    onTrailerClick = onTrailerClick,
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
                     onWatchedClick = {

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.Composable
@@ -125,6 +126,8 @@ fun UnifiedSeriesScreen(
     onSeasonClick: (JellyfinItem) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
+    onPlayItemClick: (String, Long?) -> Unit = { _, _ -> },
+    onDownloadExtrasClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
 ) {
@@ -243,6 +246,7 @@ fun UnifiedSeriesScreen(
                 onShuffleClick = onShuffleClick,
                 onWatchedClick = onWatchedClick,
                 onFavoriteClick = onFavoriteClick,
+                onDownloadExtrasClick = onDownloadExtrasClick,
                 onEpisodeClick = { episode ->
                     val startPosition = episode.userData?.playbackPositionTicks?.let { it / 10_000 } ?: 0L
                     onPlayClick()
@@ -339,7 +343,9 @@ fun UnifiedSeriesScreen(
                                 TrailersTabContent(
                                     trailers = trailers,
                                     jellyfinClient = jellyfinClient,
-                                    onTrailerClick = { /* TODO: Handle trailer click */ },
+                                    onTrailerClick = { trailer ->
+                                        onPlayItemClick(trailer.id, null)
+                                    },
                                     tabFocusRequester = selectedTabRequester,
                                 )
                             }
@@ -347,7 +353,9 @@ fun UnifiedSeriesScreen(
                                 ExtrasTabContent(
                                     extras = extras,
                                     jellyfinClient = jellyfinClient,
-                                    onExtraClick = { /* TODO: Handle extra click */ },
+                                    onExtraClick = { extra ->
+                                        onPlayItemClick(extra.id, null)
+                                    },
                                     tabFocusRequester = selectedTabRequester,
                                 )
                             }
@@ -388,6 +396,7 @@ private fun SeriesHeroContent(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onDownloadExtrasClick: (() -> Unit)?,
     onEpisodeClick: (JellyfinItem) -> Unit,
     playButtonFocusRequester: FocusRequester,
     firstTabFocusRequester: FocusRequester,
@@ -442,6 +451,7 @@ private fun SeriesHeroContent(
             onShuffleClick = onShuffleClick,
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
+            onDownloadExtrasClick = onDownloadExtrasClick,
             playButtonFocusRequester = playButtonFocusRequester,
             downFocusRequester = nextUpFocusRequester,
             leftEdgeFocusRequester = leftEdgeFocusRequester,
@@ -558,7 +568,7 @@ private fun SeriesHeroContent(
 }
 
 /**
- * Action buttons row for series: Play, Shuffle, Mark as Watched, Add to Favorites.
+ * Action buttons row for series: Play, Shuffle, Mark as Watched, Add to Favorites, Download Extras.
  */
 @Composable
 private fun SeriesActionButtonsRow(
@@ -570,6 +580,7 @@ private fun SeriesActionButtonsRow(
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onDownloadExtrasClick: (() -> Unit)?,
     playButtonFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester? = null,
     leftEdgeFocusRequester: FocusRequester? = null,
@@ -661,6 +672,27 @@ private fun SeriesActionButtonsRow(
                     }
                     .onFocusChanged { if (it.hasFocus) updateExitFocus(favoriteFocusRequester) },
             )
+        }
+
+        // Download Extras button (only shown if callback is provided - admin only)
+        if (onDownloadExtrasClick != null) {
+            item("downloadExtras") {
+                val downloadExtrasFocusRequester = remember { FocusRequester() }
+                ExpandablePlayButton(
+                    title = "Download Extras",
+                    icon = Icons.Outlined.CloudDownload,
+                    iconColor = IconColors.DownloadExtras,
+                    onClick = onDownloadExtrasClick,
+                    modifier = Modifier
+                        .focusRequester(downloadExtrasFocusRequester)
+                        .focusProperties {
+                            if (downFocusRequester != null) {
+                                down = downFocusRequester
+                            }
+                        }
+                        .onFocusChanged { if (it.hasFocus) updateExitFocus(downloadExtrasFocusRequester) },
+                )
+            }
         }
     }
 }

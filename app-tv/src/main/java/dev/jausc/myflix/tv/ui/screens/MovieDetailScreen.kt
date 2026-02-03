@@ -71,7 +71,6 @@ import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.ui.getStudioLogoResource
 import dev.jausc.myflix.core.common.util.buildFeatureSections
-import dev.jausc.myflix.core.common.util.extractYouTubeVideoKey
 import dev.jausc.myflix.core.common.util.findNewestTrailer
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailUiState
@@ -115,11 +114,11 @@ fun MovieDetailScreen(
     jellyfinClient: JellyfinClient,
     onPlayClick: (Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onDownloadExtrasClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     leftEdgeFocusRequester: FocusRequester? = null,
 ) {
@@ -150,23 +149,12 @@ fun MovieDetailScreen(
     val cast = movie.actors
     val crew = movie.crew
 
-    // Trailer detection
+    // Local trailer detection (from specialFeatures only)
     val trailerItem = remember(state.specialFeatures) {
         findNewestTrailer(state.specialFeatures)
     }
-    val trailerVideo = remember(movie.remoteTrailers) {
-        movie.remoteTrailers
-            ?.lastOrNull { !it.url.isNullOrBlank() && extractYouTubeVideoKey(it.url) != null }
-    }
-    val trailerAction: (() -> Unit)? = when {
-        trailerItem != null -> {
-            { onPlayItemClick(trailerItem.id, null) }
-        }
-        trailerVideo?.url != null -> {
-            val key = extractYouTubeVideoKey(trailerVideo.url) ?: ""
-            if (key.isBlank()) null else { { onTrailerClick(key, trailerVideo.name) } }
-        }
-        else -> null
+    val trailerAction: (() -> Unit)? = trailerItem?.let {
+        { onPlayItemClick(it.id, null) }
     }
 
     // Build categorized feature sections
@@ -241,6 +229,7 @@ fun MovieDetailScreen(
                 onWatchedClick = onWatchedClick,
                 onFavoriteClick = onFavoriteClick,
                 onTrailerClick = trailerAction,
+                onDownloadExtrasClick = onDownloadExtrasClick,
                 playButtonFocusRequester = playButtonFocusRequester,
                 firstTabFocusRequester = getTabFocusRequester(selectedTab),
                 leftEdgeFocusRequester = leftEdgeFocusRequester,
@@ -384,6 +373,7 @@ private fun MovieHeroContent(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onTrailerClick: (() -> Unit)?,
+    onDownloadExtrasClick: (() -> Unit)?,
     playButtonFocusRequester: FocusRequester,
     firstTabFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
@@ -450,6 +440,7 @@ private fun MovieHeroContent(
             onWatchedClick = onWatchedClick,
             onFavoriteClick = onFavoriteClick,
             onTrailerClick = onTrailerClick,
+            onDownloadExtrasClick = onDownloadExtrasClick,
             buttonOnFocusChanged = { focusState ->
                 if (focusState.isFocused) {
                     updateExitFocus(playButtonFocusRequester)

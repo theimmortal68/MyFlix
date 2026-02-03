@@ -104,7 +104,6 @@ fun SeerrDetailScreen(
     tmdbId: Int,
     seerrClient: SeerrClient,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null,
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
@@ -679,63 +678,6 @@ fun SeerrDetailScreen(
                                             onMediaClick(targetType, item.tmdbId ?: item.id)
                                         },
                                     )
-                                }
-                            }
-                        }
-                    }
-
-                    // Videos - organized by category
-                    val youtubeVideos = currentMedia.relatedVideos?.filter { video ->
-                        video.site?.equals("YouTube", ignoreCase = true) == true
-                    } ?: emptyList()
-
-                    // Get the official trailer (last one, usually newest) - excluded from video sections
-                    val officialTrailer = youtubeVideos
-                        .filter { it.type?.equals("Trailer", ignoreCase = true) == true }
-                        .lastOrNull()
-
-                    val videoCategories = listOf(
-                        "Trailer" to "Trailers",
-                        "Teaser" to "Teasers",
-                        "Clip" to "Clips",
-                        "Featurette" to "Featurettes",
-                        "Behind the Scenes" to "Behind the Scenes",
-                        "Blooper" to "Bloopers",
-                    )
-
-                    videoCategories.forEach { (apiType, displayTitle) ->
-                        val videosInCategory = youtubeVideos.filter { video ->
-                            video.type?.equals(apiType, ignoreCase = true) == true &&
-                                // Exclude the official trailer from the Trailers section
-                                (apiType != "Trailer" || video.key != officialTrailer?.key)
-                        }
-
-                        if (videosInCategory.isNotEmpty()) {
-                            item {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text(
-                                    text = displayTitle,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-
-                            item {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    items(videosInCategory, key = { it.key ?: it.name ?: "" }) { video ->
-                                        MobileSeerrVideoCard(
-                                            video = video,
-                                            onClick = { key, name ->
-                                                onTrailerClick(key, name)
-                                            },
-                                        )
-                                    }
                                 }
                             }
                         }

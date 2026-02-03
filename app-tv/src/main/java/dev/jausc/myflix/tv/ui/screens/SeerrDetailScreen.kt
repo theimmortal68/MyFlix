@@ -102,7 +102,6 @@ fun SeerrDetailScreen(
     seerrClient: SeerrClient,
     onPlayInJellyfin: ((String) -> Unit)? = null, // Jellyfin item ID if available
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onBack: () -> Unit,
     onActorClick: ((Int) -> Unit)? = null, // Person ID
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
@@ -539,21 +538,6 @@ fun SeerrDetailScreen(
                                             enabled = !isBlacklisting,
                                             isLoading = isBlacklisting,
                                         )
-
-                                        // Trailer button (use newest trailer - last in list)
-                                        val trailer = currentMedia.relatedVideos
-                                            ?.filter { it.type == "Trailer" && it.site == "YouTube" }
-                                            ?.lastOrNull()
-                                        trailer?.key?.let { videoKey ->
-                                            TvIconTextButton(
-                                                icon = Icons.Outlined.PlayArrow,
-                                                text = "Trailer",
-                                                onClick = {
-                                                    onTrailerClick(videoKey, trailer.name ?: trailer.type)
-                                                },
-                                                containerColor = Color(0xFFFF0000),
-                                            )
-                                        }
                                     }
 
                                     val quotaText = buildQuotaText(quotaDetails)
@@ -846,63 +830,6 @@ fun SeerrDetailScreen(
                         }
                     }
 
-                    // Videos - organized by category
-                    val youtubeVideos = currentMedia.relatedVideos?.filter { video ->
-                        video.site?.equals("YouTube", ignoreCase = true) == true
-                    } ?: emptyList()
-
-                    // Get the official trailer (last one, usually newest) for the hero button
-                    val officialTrailer = youtubeVideos
-                        .filter { it.type?.equals("Trailer", ignoreCase = true) == true }
-                        .lastOrNull()
-
-                    val videoCategories = listOf(
-                        "Trailer" to "Trailers",
-                        "Teaser" to "Teasers",
-                        "Clip" to "Clips",
-                        "Featurette" to "Featurettes",
-                        "Behind the Scenes" to "Behind the Scenes",
-                        "Blooper" to "Bloopers",
-                    )
-
-                    videoCategories.forEach { (apiType, displayTitle) ->
-                        val videosInCategory = youtubeVideos.filter { video ->
-                            video.type?.equals(apiType, ignoreCase = true) == true &&
-                                // Exclude the official trailer from the Trailers section
-                                (apiType != "Trailer" || video.key != officialTrailer?.key)
-                        }
-
-                        if (videosInCategory.isNotEmpty()) {
-                            item {
-                                Column(modifier = Modifier.padding(vertical = 16.dp)) {
-                                    Text(
-                                        text = displayTitle,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TvColors.TextPrimary,
-                                        modifier = Modifier.padding(horizontal = 48.dp),
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    LazyRow(
-                                        contentPadding = PaddingValues(horizontal = 48.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        items(
-                                            videosInCategory,
-                                            key = { it.key ?: it.name ?: "" },
-                                        ) { video ->
-                                            TvSeerrVideoCard(
-                                                video = video,
-                                                onClick = { key, name ->
-                                                    onTrailerClick(key, name)
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
 
                 // Success message

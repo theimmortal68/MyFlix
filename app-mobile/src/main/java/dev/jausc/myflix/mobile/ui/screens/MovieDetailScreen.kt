@@ -65,7 +65,6 @@ fun MovieDetailScreen(
     jellyfinClient: JellyfinClient,
     onPlayClick: (Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
-    onTrailerClick: (videoKey: String, title: String?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToPerson: (String) -> Unit,
     onWatchedClick: () -> Unit,

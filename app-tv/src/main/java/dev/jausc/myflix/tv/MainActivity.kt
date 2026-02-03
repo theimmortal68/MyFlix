@@ -88,8 +88,6 @@ import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
-import dev.jausc.myflix.tv.ui.screens.TrailerPlayerScreen
-import dev.jausc.myflix.tv.ui.screens.TrailerWebViewScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -707,12 +705,6 @@ fun MyFlixTvApp() {
                     onMediaClick = { relatedMediaType, relatedTmdbId ->
                         navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
                     },
-                    onTrailerClick = { videoKey, videoTitle ->
-                        // Use WebView player for trailers (NewPipeExtractor has issues with YouTube)
-                        val route = NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, videoTitle)
-                        android.util.Log.d("MainActivity", "onTrailerClick: navigating to WebView player, videoKey=$videoKey")
-                        navController.navigate(route)
-                    },
                     onBack = { navController.popBackStack() },
                     onActorClick = { personId ->
                         navController.navigate("seerr/person/$personId")
@@ -804,43 +796,6 @@ fun MyFlixTvApp() {
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
-                )
-            }
-
-            composable(
-                route = NavigationHelper.SEERR_TRAILER_ROUTE,
-                arguments = listOf(
-                    navArgument("videoKey") { type = NavType.StringType },
-                    navArgument("title") { type = NavType.StringType },
-                ),
-            ) { backStackEntry ->
-                val videoKeyEncoded = backStackEntry.arguments?.getString("videoKey") ?: return@composable
-                val titleEncoded = backStackEntry.arguments?.getString("title") ?: ""
-                val videoKey = NavigationHelper.decodeNavArg(videoKeyEncoded)
-                val title = NavigationHelper.decodeNavArg(titleEncoded).takeIf { it.isNotBlank() }
-                TrailerPlayerScreen(
-                    videoKey = videoKey,
-                    title = title,
-                    onBack = { navController.popBackStack() },
-                    useMpvPlayer = useMpvPlayer,
-                )
-            }
-
-            composable(
-                route = NavigationHelper.SEERR_TRAILER_FALLBACK_ROUTE,
-                arguments = listOf(
-                    navArgument("videoKey") { type = NavType.StringType },
-                    navArgument("title") { type = NavType.StringType },
-                ),
-            ) { backStackEntry ->
-                val videoKeyEncoded = backStackEntry.arguments?.getString("videoKey") ?: return@composable
-                val titleEncoded = backStackEntry.arguments?.getString("title") ?: ""
-                val videoKey = NavigationHelper.decodeNavArg(videoKeyEncoded)
-                val title = NavigationHelper.decodeNavArg(titleEncoded).takeIf { it.isNotBlank() }
-                TrailerWebViewScreen(
-                    videoKey = videoKey,
-                    title = title,
-                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -1034,12 +989,6 @@ fun MyFlixTvApp() {
                 },
                 onEpisodeClick = { episodeId ->
                     navController.navigate(NavigationHelper.buildPlayerRoute(episodeId))
-                },
-                onTrailerClick = { videoKey, title ->
-                    // Use WebView player for trailers (NewPipeExtractor has issues with YouTube)
-                    val route = NavigationHelper.buildSeerrTrailerFallbackRoute(videoKey, title)
-                    android.util.Log.d("MainActivity", "onTrailerClick (MovieDetail): navigating to WebView player, videoKey=$videoKey")
-                    navController.navigate(route)
                 },
                 onBack = { navController.popBackStack() },
                 onNavigateToDetail = { relatedItemId ->
