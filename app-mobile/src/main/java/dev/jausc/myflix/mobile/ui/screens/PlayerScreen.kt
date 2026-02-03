@@ -96,6 +96,7 @@ import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.TrickplayProvider
+import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import dev.jausc.myflix.mobile.ui.components.AutoPlayCountdown
 import kotlinx.coroutines.delay
@@ -206,6 +207,9 @@ fun PlayerScreen(
     // Current bitrate - can be changed during playback (0 = no limit / direct play)
     var currentBitrate by remember { mutableIntStateOf(maxStreamingBitrate) }
     var didFallbackToMpv by remember { mutableStateOf(false) }
+
+    // Audio delay adjustment state
+    var audioDelayMs by remember { mutableLongStateOf(0L) }
 
     // Update active state and aspect ratio for PiP
     LaunchedEffect(playbackState.videoWidth, playbackState.videoHeight) {
@@ -523,6 +527,11 @@ fun PlayerScreen(
                             startPositionMs = playbackState.position,
                         )
                     },
+                    audioDelayMs = audioDelayMs,
+                    onAudioDelayChanged = { delayMs ->
+                        audioDelayMs = delayMs
+                        playerController.setAudioDelayMs(delayMs)
+                    },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onBack = onBack,
                     trickplayProvider = state.trickplayProvider,
@@ -778,6 +787,8 @@ private fun MobilePlayerControls(
     onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
     currentBitrate: Int,
     onBitrateChanged: (Int) -> Unit,
+    audioDelayMs: Long,
+    onAudioDelayChanged: (Long) -> Unit,
     onUserInteraction: () -> Unit,
     onBack: () -> Unit,
     trickplayProvider: TrickplayProvider? = null,
@@ -1192,6 +1203,11 @@ private fun MobilePlayerControls(
                     onBitrateChanged(it)
                     activeSheet = null
                 },
+                audioDelayMs = audioDelayMs,
+                onAudioDelayChanged = {
+                    onUserInteraction()
+                    onAudioDelayChanged(it)
+                },
                 onChapterSelected = { chapterMs ->
                     onUserInteraction()
                     onSeekTo(chapterMs)
@@ -1277,15 +1293,18 @@ private fun MobilePlayerSheetContent(
     onDisplayModeSelected: (PlayerDisplayMode) -> Unit,
     currentBitrate: Int,
     onBitrateSelected: (Int) -> Unit,
+    audioDelayMs: Long,
+    onAudioDelayChanged: (Long) -> Unit,
     onChapterSelected: (Long) -> Unit,
 ) {
     when (sheet) {
         PlayerSheet.AUDIO -> {
-            SheetHeader(title = "Audio Tracks")
-            if (audioStreams.isEmpty()) {
-                SheetEmptyState(message = "No audio tracks available.")
-            } else {
-                LazyColumn {
+            LazyColumn {
+                // Audio Tracks section
+                item { SheetHeader(title = "Audio Tracks") }
+                if (audioStreams.isEmpty()) {
+                    item { SheetEmptyState(message = "No audio tracks available.") }
+                } else {
                     items(audioStreams, key = { it.index }) { stream ->
                         SheetRow(
                             title = stream.audioLabel(),
@@ -1293,6 +1312,42 @@ private fun MobilePlayerSheetContent(
                             onClick = { onAudioSelected(stream.index) },
                         )
                     }
+                }
+                // Audio Sync section
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item { SheetHeader(title = "Audio Sync") }
+                item {
+                    SheetRow(
+                        title = if (audioDelayMs == 0L) "No delay" else "${audioDelayMs}ms",
+                        selected = audioDelayMs == 0L,
+                        onClick = { onAudioDelayChanged(0L) },
+                    )
+                }
+                item {
+                    SheetRow(
+                        title = "Delay +${DelayAudioProcessor.DELAY_INCREMENT_MS}ms",
+                        selected = false,
+                        enabled = audioDelayMs < DelayAudioProcessor.MAX_DELAY_MS,
+                        onClick = {
+                            onAudioDelayChanged(
+                                (audioDelayMs + DelayAudioProcessor.DELAY_INCREMENT_MS)
+                                    .coerceAtMost(DelayAudioProcessor.MAX_DELAY_MS),
+                            )
+                        },
+                    )
+                }
+                item {
+                    SheetRow(
+                        title = "Delay -${DelayAudioProcessor.DELAY_INCREMENT_MS}ms",
+                        selected = false,
+                        enabled = audioDelayMs > DelayAudioProcessor.MIN_DELAY_MS,
+                        onClick = {
+                            onAudioDelayChanged(
+                                (audioDelayMs - DelayAudioProcessor.DELAY_INCREMENT_MS)
+                                    .coerceAtLeast(DelayAudioProcessor.MIN_DELAY_MS),
+                            )
+                        },
+                    )
                 }
             }
         }
@@ -1469,11 +1524,19 @@ private fun SheetRow(
     selected: Boolean,
     onClick: () -> Unit,
     subtitle: String? = null,
+    enabled: Boolean = true,
 ) {
+    val alpha = if (enabled) 1f else 0.4f
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .then(
+                if (enabled) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = 20.dp, vertical = 12.dp)
             .then(
                 if (selected) {
@@ -1485,9 +1548,17 @@ private fun SheetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = title,
+                color = Color.White.copy(alpha = alpha),
+                style = MaterialTheme.typography.bodyMedium,
+            )
             subtitle?.let {
-                Text(text = it, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = it,
+                    color = Color.White.copy(alpha = 0.6f * alpha),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
         if (selected) {

@@ -58,6 +58,8 @@ import androidx.compose.material.icons.outlined.ClosedCaptionOff
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Timer
+import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -248,6 +250,9 @@ fun PlayerScreen(
     // Current bitrate - can be changed during playback (0 = no limit / direct play)
     var currentBitrate by remember { mutableIntStateOf(maxStreamingBitrate) }
     var didFallbackToMpv by remember { mutableStateOf(false) }
+
+    // Audio delay adjustment state
+    var audioDelayMs by remember { mutableLongStateOf(0L) }
 
     val selectedAudioIndex = state.selectedAudioStreamIndex
     val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
@@ -664,6 +669,11 @@ fun PlayerScreen(
                             startPositionMs = playbackState.position,
                         )
                     },
+                    audioDelayMs = audioDelayMs,
+                    onAudioDelayChanged = { delayMs ->
+                        audioDelayMs = delayMs
+                        playerController.setAudioDelayMs(delayMs)
+                    },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onMenuOpenChanged = { isOpen ->
                         if (isOpen) {
@@ -938,6 +948,8 @@ private fun TvPlayerControlsOverlay(
     onDisplayModeChanged: (PlayerDisplayMode) -> Unit,
     currentBitrate: Int,
     onBitrateChanged: (Int) -> Unit,
+    audioDelayMs: Long,
+    onAudioDelayChanged: (Long) -> Unit,
     onUserInteraction: () -> Unit,
     onMenuOpenChanged: (Boolean) -> Unit,
     playPauseFocusRequester: FocusRequester,
@@ -1440,35 +1452,86 @@ private fun TvPlayerControlsOverlay(
         }
     }
 
-    // Audio track popup menu
-    PlayerSlideOutMenu(
+    // Audio settings popup menu (track selection + audio sync)
+    PlayerSlideOutMenuSectioned(
         visible = activeMenu == PlayerMenuType.Audio,
         title = "Audio",
-        items = if (audioStreams.isEmpty()) {
-            listOf(
-                SlideOutMenuItem(
-                    text = "No audio tracks",
-                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                    iconTint = ActionColors.Audio,
-                    enabled = false,
-                    onClick = {},
+        sections = listOfNotNull(
+            // Audio Track section
+            SlideOutMenuSection(
+                title = "Audio Track",
+                items = if (audioStreams.isEmpty()) {
+                    listOf(
+                        SlideOutMenuItem(
+                            text = "No audio tracks",
+                            icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                            iconTint = ActionColors.Audio,
+                            enabled = false,
+                            onClick = {},
+                        ),
+                    )
+                } else {
+                    audioStreams.map { stream ->
+                        val isSelected = stream.index == selectedAudioIndex
+                        SlideOutMenuItem(
+                            text = stream.audioLabel(),
+                            icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                            iconTint = ActionColors.Audio,
+                            selected = isSelected,
+                            onClick = {
+                                onUserInteraction()
+                                onAudioSelected(stream.index)
+                            },
+                        )
+                    }
+                },
+            ),
+            // Audio Sync section
+            SlideOutMenuSection(
+                title = "Audio Sync",
+                items = listOf(
+                    SlideOutMenuItem(
+                        text = if (audioDelayMs == 0L) "No delay" else "${audioDelayMs}ms",
+                        icon = Icons.Outlined.Timer,
+                        iconTint = ActionColors.Audio,
+                        selected = audioDelayMs == 0L,
+                        dismissOnClick = false,
+                        onClick = {
+                            onUserInteraction()
+                            onAudioDelayChanged(0L)
+                        },
+                    ),
+                    SlideOutMenuItem(
+                        text = "Delay +${DelayAudioProcessor.DELAY_INCREMENT_MS}ms",
+                        icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                        iconTint = ActionColors.Audio,
+                        enabled = audioDelayMs < DelayAudioProcessor.MAX_DELAY_MS,
+                        dismissOnClick = false,
+                        onClick = {
+                            onUserInteraction()
+                            onAudioDelayChanged(
+                                (audioDelayMs + DelayAudioProcessor.DELAY_INCREMENT_MS)
+                                    .coerceAtMost(DelayAudioProcessor.MAX_DELAY_MS),
+                            )
+                        },
+                    ),
+                    SlideOutMenuItem(
+                        text = "Delay -${DelayAudioProcessor.DELAY_INCREMENT_MS}ms",
+                        icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                        iconTint = ActionColors.Audio,
+                        enabled = audioDelayMs > DelayAudioProcessor.MIN_DELAY_MS,
+                        dismissOnClick = false,
+                        onClick = {
+                            onUserInteraction()
+                            onAudioDelayChanged(
+                                (audioDelayMs - DelayAudioProcessor.DELAY_INCREMENT_MS)
+                                    .coerceAtLeast(DelayAudioProcessor.MIN_DELAY_MS),
+                            )
+                        },
+                    ),
                 ),
-            )
-        } else {
-            audioStreams.map { stream ->
-                val isSelected = stream.index == selectedAudioIndex
-                SlideOutMenuItem(
-                    text = stream.audioLabel(),
-                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                    iconTint = ActionColors.Audio,
-                    selected = isSelected,
-                    onClick = {
-                        onUserInteraction()
-                        onAudioSelected(stream.index)
-                    },
-                )
-            }
-        },
+            ),
+        ),
         onDismiss = { activeMenu = null },
         anchor = menuAnchor,
     )
