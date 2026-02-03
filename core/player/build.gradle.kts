@@ -55,4 +55,8 @@ dependencies {
     // Jellyfin's FFmpeg extension for DTS/DTS-HD/DTS:X/TrueHD audio decoding
     // Version must match Media3 version
     implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1")
+
+    // AV1 software decoder (libgav1) for devices without hardware AV1 support
+    // Shield TV and many Android TV devices need this for AV1 playback
+    implementation(project(":decoder-av1"))
 }

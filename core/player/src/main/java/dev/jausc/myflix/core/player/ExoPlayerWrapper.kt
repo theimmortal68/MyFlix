@@ -123,8 +123,10 @@ class ExoPlayerWrapper(
         return try {
             // Log capabilities
             val ffmpegAvailable = isFfmpegAvailable()
+            val av1Available = isAv1Available()
             val passthroughFormats = getPassthroughCapabilities(context)
             Log.d(TAG, "FFmpeg available: $ffmpegAvailable")
+            Log.d(TAG, "AV1 software decoder available: $av1Available")
             Log.d(TAG, "Passthrough capabilities: $passthroughFormats")
 
             // Configure track selector with fallback options
@@ -154,19 +156,15 @@ class ExoPlayerWrapper(
                     }
                 }
                 AudioPassthroughMode.AUTO, AudioPassthroughMode.ALWAYS -> {
-                    // Use platform decoders with passthrough capability
-                    // Don't use FFmpeg - let MediaCodec handle passthrough
+                    // Use platform decoders with passthrough capability for audio
+                    // Enable extension renderers for AV1 software decode on devices without hardware AV1
                     Log.d(TAG, "Using passthrough renderers (mode=$audioPassthroughMode)")
                     DefaultRenderersFactory(context)
                         .setEnableDecoderFallback(audioPassthroughMode == AudioPassthroughMode.AUTO)
                         .setExtensionRendererMode(
-                            if (audioPassthroughMode == AudioPassthroughMode.AUTO) {
-                                // Prefer passthrough, fallback to platform decode
-                                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-                            } else {
-                                // Force passthrough only (no extension fallback)
-                                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
-                            }
+                            // PREFER: Use extension renderers (AV1 software) first, then hardware
+                            // This enables AV1 playback on devices like Shield TV without hardware AV1
+                            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
                         )
                 }
             }
@@ -394,6 +392,21 @@ class ExoPlayerWrapper(
                 isAvailable
             } catch (e: Exception) {
                 Log.w(TAG, "FFmpeg library not found: ${e.message}")
+                false
+            }
+        }
+
+        /**
+         * Check if AV1 software decoder (libgav1) is available
+         */
+        fun isAv1Available(): Boolean {
+            return try {
+                val av1Lib = Class.forName("androidx.media3.decoder.av1.Gav1Library")
+                val isAvailable = av1Lib.getMethod("isAvailable").invoke(null) as Boolean
+                Log.d(TAG, "AV1 (libgav1) library available: $isAvailable")
+                isAvailable
+            } catch (e: Exception) {
+                Log.w(TAG, "AV1 library not found: ${e.message}")
                 false
             }
         }

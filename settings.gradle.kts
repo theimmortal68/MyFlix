@@ -33,6 +33,9 @@ include(":core:player")
 include(":core:seerr")
 include(":core:viewmodel")
 
+// Decoder modules
+include(":decoder-av1")
+
 // UI modules
 include(":ui:common")
 include(":ui:tv")
