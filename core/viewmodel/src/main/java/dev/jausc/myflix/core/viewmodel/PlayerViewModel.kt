@@ -9,8 +9,13 @@ import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.syncplay.SyncPlayManager
+import dev.jausc.myflix.core.network.syncplay.SyncPlayPlayerController
+import dev.jausc.myflix.core.network.syncplay.SyncPlayState
+import dev.jausc.myflix.core.network.syncplay.SyncPlayUtils
 import dev.jausc.myflix.core.player.PlaybackStateRepository
 import dev.jausc.myflix.core.player.PlayQueueManager
+import dev.jausc.myflix.core.player.PlayerController
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.TrickplayProvider
 import kotlinx.coroutines.Job
@@ -129,7 +134,7 @@ class PlayerViewModel(
     private var startPositionOverrideMs: Long? = null,
     private val preferHdrOverDv: Boolean = false,
     private val playbackStopCallback: PlaybackStopCallback? = null,
-) : ViewModel() {
+) : ViewModel(), SyncPlayPlayerController {
 
     /**
      * Factory for creating PlayerViewModel with manual dependency injection.
@@ -162,6 +167,12 @@ class PlayerViewModel(
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    // SyncPlay integration
+    private var syncPlayManager: SyncPlayManager? = null
+    private var playerController: PlayerController? = null
+    private val _syncPlayState = MutableStateFlow(SyncPlayState())
+    val syncPlayState: StateFlow<SyncPlayState> = _syncPlayState.asStateFlow()
 
     // Internal tracking
     private var currentItemId: String = itemId
@@ -854,10 +865,119 @@ class PlayerViewModel(
         return provider.thumbnailWidth to provider.thumbnailHeight
     }
 
+    // ==================== SyncPlay Integration ====================
+
+    /**
+     * Set the player controller for SyncPlay integration.
+     * Must be called from the composable layer when the controller is available.
+     */
+    fun setPlayerController(controller: PlayerController) {
+        playerController = controller
+    }
+
+    /**
+     * Initialize SyncPlay integration.
+     * Called by the composable layer when SyncPlayManager is available.
+     */
+    fun initializeSyncPlay(manager: SyncPlayManager) {
+        syncPlayManager = manager
+        manager.setPlayerController(this)
+
+        // Observe SyncPlay state
+        viewModelScope.launch {
+            manager.state.collect { state ->
+                _syncPlayState.value = state
+            }
+        }
+    }
+
+    /**
+     * Cleanup SyncPlay when leaving playback.
+     */
+    fun cleanupSyncPlay() {
+        syncPlayManager?.setPlayerController(null)
+        syncPlayManager = null
+    }
+
+    // ==================== SyncPlayPlayerController Implementation ====================
+
+    override fun getCurrentPositionTicks(): Long {
+        val positionMs = playerController?.state?.value?.position ?: 0L
+        return SyncPlayUtils.msToTicks(positionMs)
+    }
+
+    override fun isPlaying(): Boolean {
+        return playerController?.state?.value?.isPlaying == true
+    }
+
+    override fun setPlaybackSpeed(speed: Float) {
+        playerController?.setSpeed(speed)
+    }
+
+    override fun seekTo(positionTicks: Long) {
+        val positionMs = SyncPlayUtils.ticksToMs(positionTicks)
+        playerController?.seekTo(positionMs)
+    }
+
+    override fun pause() {
+        playerController?.pause()
+    }
+
+    override fun play() {
+        playerController?.resume()
+    }
+
+    // ==================== SyncPlay-Aware Playback Commands ====================
+
+    /**
+     * Request play - routes through SyncPlay if active.
+     */
+    fun requestPlay() {
+        val manager = syncPlayManager
+        if (manager != null && _syncPlayState.value.enabled) {
+            viewModelScope.launch {
+                manager.requestPlay()
+            }
+        } else {
+            playerController?.resume()
+        }
+    }
+
+    /**
+     * Request pause - routes through SyncPlay if active.
+     */
+    fun requestPause() {
+        val manager = syncPlayManager
+        if (manager != null && _syncPlayState.value.enabled) {
+            viewModelScope.launch {
+                manager.requestPause()
+            }
+        } else {
+            playerController?.pause()
+        }
+    }
+
+    /**
+     * Request seek - routes through SyncPlay if active.
+     */
+    fun requestSeek(positionMs: Long) {
+        val manager = syncPlayManager
+        if (manager != null && _syncPlayState.value.enabled) {
+            viewModelScope.launch {
+                manager.requestSeek(SyncPlayUtils.msToTicks(positionMs))
+            }
+        } else {
+            playerController?.seekTo(positionMs)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         controlsHideJob?.cancel()
         countdownJob?.cancel()
+
+        // Cleanup SyncPlay
+        cleanupSyncPlay()
 
         // Report playback stopped if not already done via stopPlayback()
         if (playbackStarted && lastKnownPositionMs > 0) {

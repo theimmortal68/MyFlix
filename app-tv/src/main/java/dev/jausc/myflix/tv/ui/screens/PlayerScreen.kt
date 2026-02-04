@@ -113,9 +113,15 @@ import dev.jausc.myflix.core.common.preferences.PlaybackOptions
 import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.network.syncplay.GroupState
+import dev.jausc.myflix.core.network.syncplay.SyncPlayState
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.PlaystateCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
+import dev.jausc.myflix.tv.ui.components.syncplay.SyncPlayDialog
+import dev.jausc.myflix.tv.ui.components.syncplay.SyncPlayGroupOverlay
+import dev.jausc.myflix.tv.ui.components.syncplay.SyncPlayStatusBar
+import dev.jausc.myflix.tv.ui.components.syncplay.SyncStatus
 import dev.jausc.myflix.core.player.MediaInfo
 import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
@@ -159,6 +165,7 @@ private sealed class PlayerMenuType {
     data object Speed : PlayerMenuType()
     data object DisplayMode : PlayerMenuType()
     data object Quality : PlayerMenuType()
+    data object SyncPlay : PlayerMenuType()
 }
 
 @Composable
@@ -273,6 +280,11 @@ fun PlayerScreen(
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
 
+    // SyncPlay state
+    val syncPlayState by viewModel.syncPlayState.collectAsState()
+    var showSyncPlayDialog by remember { mutableStateOf(false) }
+    var showSyncPlayOverlay by remember { mutableStateOf(false) }
+
     // Player controller from core module - pass MPV preference and audio passthrough mode
     val playerController = remember(audioPassthroughMode, passthroughConfig) {
         PlayerController(
@@ -281,6 +293,11 @@ fun PlayerScreen(
             audioPassthroughMode = audioPassthroughMode,
             passthroughConfig = passthroughConfig,
         )
+    }
+
+    // Set player controller on ViewModel for SyncPlay integration
+    LaunchedEffect(playerController) {
+        viewModel.setPlayerController(playerController)
     }
 
     // Collect player state
@@ -863,6 +880,58 @@ fun PlayerScreen(
                         .padding(end = 48.dp, bottom = 48.dp),
                 )
             }
+
+            // SyncPlay status bar at top (visible when SyncPlay is enabled and controls are shown)
+            if (syncPlayState.enabled) {
+                SyncPlayStatusBar(
+                    groupName = syncPlayState.groupName,
+                    memberCount = syncPlayState.members.size,
+                    syncStatus = when (syncPlayState.groupState) {
+                        GroupState.PLAYING -> SyncStatus.SYNCED
+                        GroupState.BUFFERING, GroupState.WAITING -> SyncStatus.BUFFERING
+                        else -> SyncStatus.SYNCED
+                    },
+                    visible = state.showControls,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 16.dp, start = 24.dp),
+                )
+            }
+
+            // SyncPlay Dialog
+            SyncPlayDialog(
+                visible = showSyncPlayDialog,
+                availableGroups = emptyList(), // TODO: Wire to SyncPlayManager
+                isLoading = false,
+                onCreateGroup = { name ->
+                    // TODO: viewModel.createSyncPlayGroup(name)
+                    showSyncPlayDialog = false
+                },
+                onJoinGroup = { groupId ->
+                    // TODO: viewModel.joinSyncPlayGroup(groupId)
+                    showSyncPlayDialog = false
+                },
+                onRefresh = {
+                    // TODO: viewModel.refreshSyncPlayGroups()
+                },
+                onDismiss = { showSyncPlayDialog = false },
+            )
+
+            // SyncPlay Group Overlay
+            SyncPlayGroupOverlay(
+                visible = showSyncPlayOverlay,
+                groupName = syncPlayState.groupName,
+                members = syncPlayState.members,
+                onAddToQueue = {
+                    // TODO: Add current item to queue
+                    showSyncPlayOverlay = false
+                },
+                onLeaveGroup = {
+                    // TODO: viewModel.leaveSyncPlayGroup()
+                    showSyncPlayOverlay = false
+                },
+                onDismiss = { showSyncPlayOverlay = false },
+            )
         }
     }
 }
