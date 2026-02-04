@@ -19,6 +19,8 @@ import dev.jausc.myflix.core.common.model.ServerInfo
 import dev.jausc.myflix.core.common.model.SubtitleProfile
 import dev.jausc.myflix.core.common.model.TranscodingProfile
 import dev.jausc.myflix.core.common.util.MediaCodecCapabilities
+import dev.jausc.myflix.core.network.syncplay.SyncPlayGroup
+import dev.jausc.myflix.core.network.syncplay.UtcTimeResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -2606,6 +2608,256 @@ class JellyfinClient(
             android.util.Log.e("JellyfinClient", "downloadRemoteSubtitle failed: $errorBody")
             throw Exception("Failed to download subtitle: ${response.status}")
         }
+    }
+
+    // ==================== SyncPlay API ====================
+
+    /**
+     * Get available SyncPlay groups.
+     */
+    suspend fun syncPlayGetGroups(): Result<List<SyncPlayGroup>> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayGetGroups: GET $baseUrl/SyncPlay/List")
+        val response = httpClient.get("$baseUrl/SyncPlay/List") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to get SyncPlay groups: ${response.status}")
+        }
+        response.body<List<SyncPlayGroup>>()
+    }
+
+    /**
+     * Create a new SyncPlay group.
+     */
+    suspend fun syncPlayCreateGroup(groupName: String): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayCreateGroup: POST $baseUrl/SyncPlay/New")
+        val response = httpClient.post("$baseUrl/SyncPlay/New") {
+            header("Authorization", authHeader())
+            setBody(mapOf("GroupName" to groupName))
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to create SyncPlay group: ${response.status}")
+        }
+    }
+
+    /**
+     * Join an existing SyncPlay group.
+     */
+    suspend fun syncPlayJoinGroup(groupId: String): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayJoinGroup: POST $baseUrl/SyncPlay/Join")
+        val response = httpClient.post("$baseUrl/SyncPlay/Join") {
+            header("Authorization", authHeader())
+            setBody(mapOf("GroupId" to groupId))
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to join SyncPlay group: ${response.status}")
+        }
+    }
+
+    /**
+     * Leave the current SyncPlay group.
+     */
+    suspend fun syncPlayLeaveGroup(): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayLeaveGroup: POST $baseUrl/SyncPlay/Leave")
+        val response = httpClient.post("$baseUrl/SyncPlay/Leave") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to leave SyncPlay group: ${response.status}")
+        }
+    }
+
+    /**
+     * Request group to start/resume playback.
+     */
+    suspend fun syncPlayPlay(): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayPlay: POST $baseUrl/SyncPlay/Unpause")
+        val response = httpClient.post("$baseUrl/SyncPlay/Unpause") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to request SyncPlay play: ${response.status}")
+        }
+    }
+
+    /**
+     * Request group to pause playback.
+     */
+    suspend fun syncPlayPause(): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayPause: POST $baseUrl/SyncPlay/Pause")
+        val response = httpClient.post("$baseUrl/SyncPlay/Pause") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to request SyncPlay pause: ${response.status}")
+        }
+    }
+
+    /**
+     * Request group to seek to position.
+     */
+    suspend fun syncPlaySeek(positionTicks: Long): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlaySeek: POST $baseUrl/SyncPlay/Seek position=$positionTicks")
+        val response = httpClient.post("$baseUrl/SyncPlay/Seek") {
+            header("Authorization", authHeader())
+            setBody(mapOf("PositionTicks" to positionTicks))
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to request SyncPlay seek: ${response.status}")
+        }
+    }
+
+    /**
+     * Request group to stop playback.
+     */
+    suspend fun syncPlayStop(): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayStop: POST $baseUrl/SyncPlay/Stop")
+        val response = httpClient.post("$baseUrl/SyncPlay/Stop") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to request SyncPlay stop: ${response.status}")
+        }
+    }
+
+    /**
+     * Set the group's play queue.
+     */
+    suspend fun syncPlaySetQueue(
+        itemIds: List<String>,
+        startIndex: Int = 0,
+        startPositionTicks: Long = 0,
+    ): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlaySetQueue: POST $baseUrl/SyncPlay/SetNewQueue items=${itemIds.size}")
+        val response = httpClient.post("$baseUrl/SyncPlay/SetNewQueue") {
+            header("Authorization", authHeader())
+            setBody(
+                mapOf(
+                    "PlayingQueue" to itemIds,
+                    "PlayingItemPosition" to startIndex,
+                    "StartPositionTicks" to startPositionTicks,
+                ),
+            )
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to set SyncPlay queue: ${response.status}")
+        }
+    }
+
+    /**
+     * Add items to the group's play queue.
+     */
+    suspend fun syncPlayQueueAdd(itemIds: List<String>): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayQueueAdd: POST $baseUrl/SyncPlay/Queue items=${itemIds.size}")
+        val response = httpClient.post("$baseUrl/SyncPlay/Queue") {
+            header("Authorization", authHeader())
+            setBody(mapOf("ItemIds" to itemIds))
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to add to SyncPlay queue: ${response.status}")
+        }
+    }
+
+    /**
+     * Request group to play next item in queue.
+     */
+    suspend fun syncPlayQueueNext(): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayQueueNext: POST $baseUrl/SyncPlay/NextItem")
+        val response = httpClient.post("$baseUrl/SyncPlay/NextItem") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to request SyncPlay next: ${response.status}")
+        }
+    }
+
+    /**
+     * Request group to play previous item in queue.
+     */
+    suspend fun syncPlayQueuePrevious(): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayQueuePrevious: POST $baseUrl/SyncPlay/PreviousItem")
+        val response = httpClient.post("$baseUrl/SyncPlay/PreviousItem") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to request SyncPlay previous: ${response.status}")
+        }
+    }
+
+    /**
+     * Report buffering state to group.
+     */
+    suspend fun syncPlayBuffering(
+        positionTicks: Long,
+        isPlaying: Boolean,
+        playlistItemId: String,
+    ): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayBuffering: POST $baseUrl/SyncPlay/Buffering")
+        val serverTime = java.time.Instant.now().toString()
+        val response = httpClient.post("$baseUrl/SyncPlay/Buffering") {
+            header("Authorization", authHeader())
+            setBody(
+                mapOf(
+                    "When" to serverTime,
+                    "PositionTicks" to positionTicks,
+                    "IsPlaying" to isPlaying,
+                    "PlaylistItemId" to playlistItemId,
+                ),
+            )
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to report SyncPlay buffering: ${response.status}")
+        }
+    }
+
+    /**
+     * Report ready state to group.
+     */
+    suspend fun syncPlayReady(
+        positionTicks: Long,
+        isPlaying: Boolean,
+        playlistItemId: String,
+    ): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "syncPlayReady: POST $baseUrl/SyncPlay/Ready")
+        val serverTime = java.time.Instant.now().toString()
+        val response = httpClient.post("$baseUrl/SyncPlay/Ready") {
+            header("Authorization", authHeader())
+            setBody(
+                mapOf(
+                    "When" to serverTime,
+                    "PositionTicks" to positionTicks,
+                    "IsPlaying" to isPlaying,
+                    "PlaylistItemId" to playlistItemId,
+                ),
+            )
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to report SyncPlay ready: ${response.status}")
+        }
+    }
+
+    /**
+     * Send ping to server for latency tracking.
+     */
+    suspend fun syncPlayPing(ping: Long): Result<Unit> = runCatching {
+        httpClient.post("$baseUrl/SyncPlay/Ping") {
+            header("Authorization", authHeader())
+            setBody(mapOf("Ping" to ping))
+        }
+        // Ping failures are non-critical, don't throw
+    }
+
+    /**
+     * Get UTC time from server for time synchronization.
+     */
+    suspend fun getUtcTime(): Result<UtcTimeResponse> = runCatching {
+        val response = httpClient.get("$baseUrl/GetUtcTime") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to get UTC time: ${response.status}")
+        }
+        response.body<UtcTimeResponse>()
     }
 }
 

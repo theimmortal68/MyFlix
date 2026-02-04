@@ -67,6 +67,84 @@ sealed class WebSocketEvent {
         val userId: String,
         val itemId: String,
     ) : WebSocketEvent()
+
+    // ==================== SyncPlay Events ====================
+
+    /**
+     * SyncPlay playback command from server.
+     */
+    data class SyncPlayCommand(
+        val command: SyncPlayCommandType,
+        val positionTicks: Long,
+        val whenUtc: String,
+        val playlistItemId: String? = null,
+    ) : WebSocketEvent()
+
+    /**
+     * Successfully joined a SyncPlay group.
+     */
+    data class SyncPlayGroupJoined(
+        val groupId: String,
+        val groupName: String,
+        val state: String,
+        val participants: List<String>,
+    ) : WebSocketEvent()
+
+    /**
+     * Left the SyncPlay group.
+     */
+    data object SyncPlayGroupLeft : WebSocketEvent()
+
+    /**
+     * SyncPlay group state changed.
+     */
+    data class SyncPlayGroupStateUpdate(
+        val state: String,
+        val reason: String? = null,
+        val positionTicks: Long = 0,
+        val whenUtc: String? = null,
+    ) : WebSocketEvent()
+
+    /**
+     * SyncPlay play queue updated.
+     */
+    data class SyncPlayPlayQueueUpdate(
+        val playlistItemIds: List<String>,
+        val startPositionTicks: Long,
+        val playingItemIndex: Int,
+        val reason: String,
+    ) : WebSocketEvent()
+
+    /**
+     * A user joined the SyncPlay group.
+     */
+    data class SyncPlayUserJoined(
+        val userId: String,
+        val userName: String,
+    ) : WebSocketEvent()
+
+    /**
+     * A user left the SyncPlay group.
+     */
+    data class SyncPlayUserLeft(
+        val userId: String,
+        val userName: String,
+    ) : WebSocketEvent()
+}
+
+/**
+ * SyncPlay command types.
+ */
+enum class SyncPlayCommandType {
+    Unpause,
+    Pause,
+    Seek,
+    Stop,
+    ;
+
+    companion object {
+        fun fromString(value: String): SyncPlayCommandType? = entries.find { it.name.equals(value, ignoreCase = true) }
+    }
 }
 
 /**
