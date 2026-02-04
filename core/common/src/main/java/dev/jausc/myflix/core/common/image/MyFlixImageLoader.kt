@@ -56,8 +56,6 @@ object MyFlixImageLoader {
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)
-            // Ignore cache headers from server - we manage our own cache lifecycle
-            .respectCacheHeaders(false)
             .build()
     }
 

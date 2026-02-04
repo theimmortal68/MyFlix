@@ -833,7 +833,7 @@ private fun PreferencesContent(
                     } else {
                         "Use Dolby Vision when available"
                     },
-                    icon = Icons.Outlined.Contrast,
+                    icon = Icons.Outlined.Lightbulb,
                     iconTint = if (preferHdrOverDv) Color(0xFFF59E0B) else TvColors.TextSecondary,
                     checked = preferHdrOverDv,
                     onCheckedChange = onPreferHdrOverDvChanged,

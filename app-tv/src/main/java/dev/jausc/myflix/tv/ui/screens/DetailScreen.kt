@@ -154,6 +154,7 @@ fun DetailScreen(
                     },
                     onNavigateToDetail = onNavigateToDetail,
                     onNavigateToPerson = onNavigateToPerson,
+                    onTrailerClick = onTrailerClick,
                     modifier = Modifier.fillMaxSize(),
                     leftEdgeFocusRequester = leftEdgeFocusRequester,
                 )
