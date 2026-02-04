@@ -27,6 +27,7 @@ data class SyncPlayState(
     val queue: List<QueueItem> = emptyList(),
     val currentQueueIndex: Int = 0,
     val lastSyncTime: Long = 0L,
+    val lastSyncPositionTicks: Long = 0L,
     val localTimeOffset: Long = 0L,
 )
 
