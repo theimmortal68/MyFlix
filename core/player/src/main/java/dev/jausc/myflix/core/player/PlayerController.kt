@@ -284,6 +284,49 @@ class PlayerController(
         return (currentPlayer as? ExoPlayerWrapper)?.isAudioDelayActive() ?: false
     }
 
+    // ==================== Subtitle Delay Control ====================
+
+    /**
+     * Sets the subtitle delay in milliseconds.
+     * Positive values delay subtitles (show later).
+     * Negative values advance subtitles (show earlier, best effort).
+     * Range: -10000ms to +10000ms.
+     *
+     * Works with both ExoPlayer and MPV backends.
+     */
+    fun setSubtitleDelayMs(delayMs: Long) {
+        currentPlayer?.setSubtitleDelayMs(delayMs)
+    }
+
+    /**
+     * Gets the current subtitle delay in milliseconds.
+     * Returns 0 if not set or not supported.
+     */
+    fun getSubtitleDelayMs(): Long {
+        return when (val player = currentPlayer) {
+            is ExoPlayerWrapper -> player.getSubtitleDelayMs()
+            // MPV doesn't have a getter, so return 0 (delay is tracked at UI level)
+            else -> 0L
+        }
+    }
+
+    /**
+     * Adjusts subtitle delay by the specified increment.
+     * @param incrementMs Amount to adjust (positive or negative)
+     */
+    fun adjustSubtitleDelay(incrementMs: Long) {
+        val currentDelay = getSubtitleDelayMs()
+        val newDelay = (currentDelay + incrementMs).coerceIn(-10_000L, 10_000L)
+        setSubtitleDelayMs(newDelay)
+    }
+
+    /**
+     * Get the subtitle cues StateFlow for ExoPlayer.
+     * Returns null for MPV (uses native subtitle rendering).
+     */
+    val subtitleCues: kotlinx.coroutines.flow.StateFlow<List<androidx.media3.common.text.Cue>>?
+        get() = (currentPlayer as? ExoPlayerWrapper)?.subtitleCues
+
     // ==================== Night Mode Control ====================
 
     /**

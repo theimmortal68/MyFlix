@@ -124,9 +124,11 @@ import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.core.player.SubtitleColor
+import dev.jausc.myflix.core.player.SubtitleDelayRepository
 import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.TrickplayProvider
+import dev.jausc.myflix.tv.ui.components.SubtitleDelayControl
 import dev.jausc.myflix.core.viewmodel.PlaybackStopCallback
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import dev.jausc.myflix.tv.channels.WatchNextManager
@@ -301,6 +303,10 @@ fun PlayerScreen(
     // Audio delay adjustment state
     var audioDelayMs by remember { mutableLongStateOf(0L) }
 
+    // Subtitle delay adjustment state (persisted per-media)
+    val subtitleDelayRepository = remember { SubtitleDelayRepository(context) }
+    var subtitleDelayMs by remember { mutableLongStateOf(0L) }
+
     val selectedAudioIndex = state.selectedAudioStreamIndex
     val selectedSubtitleIndex = state.selectedSubtitleStreamIndex
     // Use the stream URL from ViewModel (which uses PlaybackInfo API with transcoding support)
@@ -424,6 +430,27 @@ fun PlayerScreen(
     LaunchedEffect(subtitleStyle, playerController.isInitialized) {
         if (playerController.isInitialized) {
             playerController.setSubtitleStyle(subtitleStyle)
+        }
+    }
+
+    // Load saved subtitle delay when item changes
+    LaunchedEffect(state.item?.id) {
+        val itemId = state.item?.id
+        if (itemId != null) {
+            val savedDelay = subtitleDelayRepository.getDelayMs(itemId)
+            subtitleDelayMs = savedDelay
+            if (playerController.isInitialized) {
+                playerController.setSubtitleDelayMs(savedDelay)
+            }
+        } else {
+            subtitleDelayMs = 0L
+        }
+    }
+
+    // Apply subtitle delay when it changes
+    LaunchedEffect(subtitleDelayMs, playerController.isInitialized) {
+        if (playerController.isInitialized) {
+            playerController.setSubtitleDelayMs(subtitleDelayMs)
         }
     }
 
@@ -723,6 +750,13 @@ fun PlayerScreen(
                         audioDelayMs = delayMs
                         playerController.setAudioDelayMs(delayMs)
                     },
+                    subtitleDelayMs = subtitleDelayMs,
+                    onSubtitleDelayChanged = { delayMs ->
+                        subtitleDelayMs = delayMs
+                        state.item?.id?.let { itemId ->
+                            subtitleDelayRepository.setDelayMs(itemId, delayMs)
+                        }
+                    },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onMenuOpenChanged = { isOpen ->
                         if (isOpen) {
@@ -999,6 +1033,8 @@ private fun TvPlayerControlsOverlay(
     onBitrateChanged: (Int) -> Unit,
     audioDelayMs: Long,
     onAudioDelayChanged: (Long) -> Unit,
+    subtitleDelayMs: Long,
+    onSubtitleDelayChanged: (Long) -> Unit,
     onUserInteraction: () -> Unit,
     onMenuOpenChanged: (Boolean) -> Unit,
     playPauseFocusRequester: FocusRequester,
@@ -1172,6 +1208,21 @@ private fun TvPlayerControlsOverlay(
                 )
             }
         }
+
+        // Subtitle delay control (visible only when subtitles are active)
+        val subtitlesActive = selectedSubtitleIndex != null &&
+            selectedSubtitleIndex != PlayerConstants.TRACK_DISABLED
+        SubtitleDelayControl(
+            visible = subtitlesActive,
+            delayMs = subtitleDelayMs,
+            onDelayChange = { newDelay ->
+                onUserInteraction()
+                onSubtitleDelayChanged(newDelay)
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = 24.dp),
+        )
 
         // Playback state for controls
         val chapters = item?.chapters.orEmpty()

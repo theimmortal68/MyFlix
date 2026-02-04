@@ -10,6 +10,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -96,6 +98,9 @@ class ExoPlayerWrapper(
     private val delayProcessor = DelayAudioProcessor().apply {
         setDelayMs(initialAudioDelayMs)
     }
+
+    // Subtitle delay controller for subtitle timing adjustment
+    private val subtitleDelayController = SubtitleDelayController()
     /**
      * Custom RenderersFactory that uses FFmpeg for audio and video decoding.
      * This enables software decode of DTS, DTS-HD, DTS:X, TrueHD, HEVC, etc.
@@ -346,6 +351,10 @@ class ExoPlayerWrapper(
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             Log.d(TAG, "Video size: ${videoSize.width}x${videoSize.height}")
         }
+
+        override fun onCues(cueGroup: CueGroup) {
+            subtitleDelayController.onCues(cueGroup)
+        }
     }
 
     override fun attachSurface(surface: Surface) {
@@ -477,6 +486,24 @@ class ExoPlayerWrapper(
     }
 
     /**
+     * Delayed subtitle cues to display.
+     * Observe this in the UI layer instead of the player's cues directly
+     * when subtitle delay is enabled.
+     */
+    val subtitleCues: StateFlow<List<Cue>>
+        get() = subtitleDelayController.cues
+
+    override fun setSubtitleDelayMs(delayMs: Long) {
+        subtitleDelayController.setDelayMs(delayMs)
+        Log.d(TAG, "Subtitle delay set to ${delayMs}ms")
+    }
+
+    /**
+     * Returns the current subtitle delay in milliseconds.
+     */
+    fun getSubtitleDelayMs(): Long = subtitleDelayController.getDelayMs()
+
+    /**
      * Enables or disables night mode (dynamic range compression).
      * Boosts quiet sounds and compresses loud sounds for late-night viewing.
      * Note: Change takes effect on next seek or track change.
@@ -572,6 +599,7 @@ class ExoPlayerWrapper(
 
     override fun release() {
         stopPositionTracking()
+        subtitleDelayController.release()
         scope.cancel()
         player?.release()
         player = null
