@@ -113,6 +113,9 @@ object PreferenceKeys {
         /** Resolution matching mode (OFF, AUTO) */
         const val RESOLUTION_MATCHING_MODE = "resolution_matching_mode"
 
+        /** Prefer HDR10 over Dolby Vision (for devices with buggy DV support) */
+        const val PREFER_HDR_OVER_DV = "prefer_hdr_over_dv"
+
         // Media segment preferences (skip intro/credits)
         /** Skip intro behavior: OFF, ASK, AUTO */
         const val SKIP_INTRO_MODE = "skip_intro_mode"
@@ -277,6 +280,9 @@ object PreferenceKeys {
 
         /** Default resolution matching mode: OFF (use display native resolution) */
         const val RESOLUTION_MATCHING_MODE = "OFF"
+
+        /** Default prefer HDR over DV: false (use Dolby Vision if available) */
+        const val PREFER_HDR_OVER_DV = false
 
         // Media segment defaults (OFF, ASK, AUTO)
         const val SKIP_INTRO_MODE = "ASK"

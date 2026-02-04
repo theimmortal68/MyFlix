@@ -1759,7 +1759,10 @@ class JellyfinClient(
      * Build a DeviceProfile dynamically based on device codec capabilities.
      * This tells the server what the device can play directly vs what needs transcoding.
      */
-    private fun buildDeviceProfile(maxStreamingBitrate: Int?): DeviceProfile {
+    private fun buildDeviceProfile(
+        maxStreamingBitrate: Int?,
+        preferHdrOverDolbyVision: Boolean = false,
+    ): DeviceProfile {
         val caps = mediaCodecCapabilities
 
         // Log capabilities on first use
@@ -1820,6 +1823,27 @@ class JellyfinClient(
                             ),
                         )
                     }
+                }
+            }
+
+            if (preferHdrOverDolbyVision) {
+                val dvRangeTypes =
+                    "DOVIInvalid|DOVI|DOVIWithHDR10|DOVIWithHDR10Plus|DOVIWithEL|DOVIWithELHDR10Plus"
+                val dvCondition = ProfileCondition(
+                    condition = "NotEquals",
+                    property = "VideoRangeType",
+                    value = dvRangeTypes,
+                    isRequired = false,
+                )
+                val dvRestrictedCodecs = listOf("hevc", "av1").filter { it in videoCodecs }
+                dvRestrictedCodecs.forEach { codec ->
+                    add(
+                        CodecProfile(
+                            type = "Video",
+                            codec = codec,
+                            conditions = listOf(dvCondition),
+                        ),
+                    )
                 }
             }
 
@@ -1935,12 +1959,16 @@ class JellyfinClient(
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
         maxBitrateMbps: Int? = null,
+        preferHdrOverDolbyVision: Boolean = false,
     ): Result<PlaybackInfoResponse> = runCatching {
         val isDirectPlay = maxBitrateMbps == null || maxBitrateMbps == 0
         val bitrateBps = if (isDirectPlay) null else maxBitrateMbps * 1_000_000
 
         // Build device profile dynamically based on device codec capabilities
-        val deviceProfile = buildDeviceProfile(bitrateBps)
+        val deviceProfile = buildDeviceProfile(
+            maxStreamingBitrate = bitrateBps,
+            preferHdrOverDolbyVision = preferHdrOverDolbyVision,
+        )
 
         val request = PlaybackInfoRequest(
             mediaSourceId = mediaSourceId,
@@ -2099,6 +2127,7 @@ class JellyfinClient(
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
         maxBitrateMbps: Int? = null,
+        preferHdrOverDolbyVision: Boolean = false,
     ): Result<StreamUrlResult> = runCatching {
         val isTranscoding = maxBitrateMbps != null && maxBitrateMbps > 0
 
@@ -2108,6 +2137,7 @@ class JellyfinClient(
             audioStreamIndex = audioStreamIndex,
             subtitleStreamIndex = subtitleStreamIndex,
             maxBitrateMbps = maxBitrateMbps,
+            preferHdrOverDolbyVision = preferHdrOverDolbyVision,
         ).getOrThrow()
 
         val source = playbackInfo.mediaSources.firstOrNull()

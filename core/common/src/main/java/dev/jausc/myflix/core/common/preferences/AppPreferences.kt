@@ -153,6 +153,13 @@ abstract class AppPreferences(context: Context) {
     /** Resolution matching mode: OFF (use display native), AUTO (match video resolution). */
     val resolutionMatchingMode: StateFlow<String> by lazy { _resolutionMatchingMode.asStateFlow() }
 
+    private val _preferHdrOverDv: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.PREFER_HDR_OVER_DV, PreferenceKeys.Defaults.PREFER_HDR_OVER_DV))
+    }
+
+    /** Prefer HDR10 over Dolby Vision. Useful for devices with buggy DV support. */
+    val preferHdrOverDv: StateFlow<Boolean> by lazy { _preferHdrOverDv.asStateFlow() }
+
     // Media Segment Preferences (skip intro/credits)
     // Values: "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
     private val _skipIntroMode: MutableStateFlow<String> by lazy {
@@ -443,6 +450,16 @@ abstract class AppPreferences(context: Context) {
     fun setResolutionMatchingMode(mode: String) {
         prefs.edit().putString(PreferenceKeys.Prefs.RESOLUTION_MATCHING_MODE, mode).apply()
         _resolutionMatchingMode.value = mode
+    }
+
+    /**
+     * Set whether to prefer HDR10 over Dolby Vision.
+     * Enable this if your device has buggy Dolby Vision support (e.g., DV Profile 5 vs Profile 7 issues).
+     * When enabled, the server will be asked to provide HDR10 versions instead of Dolby Vision.
+     */
+    fun setPreferHdrOverDv(prefer: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.PREFER_HDR_OVER_DV, prefer).apply()
+        _preferHdrOverDv.value = prefer
     }
 
     // Media segment setters

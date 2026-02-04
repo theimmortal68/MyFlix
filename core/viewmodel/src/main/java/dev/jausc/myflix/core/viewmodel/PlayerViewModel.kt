@@ -116,6 +116,7 @@ class PlayerViewModel(
     private val preferredSubtitleLanguage: String? = null,
     private val maxStreamingBitrateMbps: Int = 0,
     private var startPositionOverrideMs: Long? = null,
+    private val preferHdrOverDv: Boolean = false,
 ) : ViewModel() {
 
     /**
@@ -129,6 +130,7 @@ class PlayerViewModel(
         private val preferredSubtitleLanguage: String? = null,
         private val maxStreamingBitrateMbps: Int = 0,
         private val startPositionMs: Long? = null,
+        private val preferHdrOverDv: Boolean = false,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -140,6 +142,7 @@ class PlayerViewModel(
                 preferredSubtitleLanguage,
                 maxStreamingBitrateMbps,
                 startPositionMs,
+                preferHdrOverDv,
             ) as T
     }
 
@@ -188,6 +191,7 @@ class PlayerViewModel(
                         audioStreamIndex = selectedAudioIndex,
                         subtitleStreamIndex = selectedSubtitleIndex,
                         maxBitrateMbps = maxBitrate,
+                        preferHdrOverDolbyVision = preferHdrOverDv,
                     ).getOrElse {
                         // Fallback to simple URL on error
                         android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
@@ -419,6 +423,7 @@ class PlayerViewModel(
                 audioStreamIndex = audioStreamIndex,
                 subtitleStreamIndex = subtitleStreamIndex,
                 maxBitrateMbps = maxBitrate,
+                preferHdrOverDolbyVision = preferHdrOverDv,
             ).getOrElse {
                 android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
                 JellyfinClient.StreamUrlResult(
@@ -604,6 +609,7 @@ class PlayerViewModel(
                         audioStreamIndex = selectedAudioIndex,
                         subtitleStreamIndex = selectedSubtitleIndex,
                         maxBitrateMbps = maxBitrate,
+                        preferHdrOverDolbyVision = preferHdrOverDv,
                     ).getOrElse {
                         android.util.Log.w("PlayerViewModel", "PlaybackInfo failed, using fallback URL", it)
                         JellyfinClient.StreamUrlResult(
