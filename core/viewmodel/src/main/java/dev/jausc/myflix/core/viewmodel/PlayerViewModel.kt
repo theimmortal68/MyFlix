@@ -9,6 +9,7 @@ import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.videoStream
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.PlaybackStateRepository
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.TrickplayProvider
@@ -301,6 +302,22 @@ class PlayerViewModel(
 
             // Persist active session for crash recovery
             appPreferences?.setActivePlaybackSession(currentItemId, positionTicks, state.mediaSourceId)
+
+            // Update global playback state for Dream Service
+            state.item?.let { item ->
+                val posterUrl = item.imageTags?.primary?.let {
+                    jellyfinClient.getPrimaryImageUrl(item.id, it)
+                }
+                val backdropUrl = item.backdropImageTags?.firstOrNull()?.let {
+                    jellyfinClient.getBackdropUrl(item.id, it)
+                }
+                PlaybackStateRepository.startPlayback(
+                    item = item,
+                    durationMs = (item.runTimeTicks ?: 0L) / TICKS_PER_MS,
+                    posterUrl = posterUrl,
+                    backdropUrl = backdropUrl,
+                )
+            }
         }
     }
 
@@ -313,6 +330,9 @@ class PlayerViewModel(
 
         // Track position for cleanup reporting
         lastKnownPositionMs = positionMs
+
+        // Update global playback state for Dream Service
+        PlaybackStateRepository.updateProgress(positionMs, isPaused)
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
@@ -340,6 +360,9 @@ class PlayerViewModel(
      */
     fun onPauseStateChanged(positionMs: Long, isPaused: Boolean) {
         if (!playbackStarted) return
+
+        // Update global playback state for Dream Service
+        PlaybackStateRepository.updateProgress(positionMs, isPaused)
 
         viewModelScope.launch {
             val positionTicks = positionMs * TICKS_PER_MS
@@ -393,6 +416,9 @@ class PlayerViewModel(
         state.item?.let { item ->
             playbackStopCallback?.onPlaybackStopped(item, positionMs)
         }
+
+        // Clear global playback state for Dream Service
+        PlaybackStateRepository.stopPlayback()
 
         // Clear persisted session since we properly reported stop
         appPreferences?.clearActivePlaybackSession()

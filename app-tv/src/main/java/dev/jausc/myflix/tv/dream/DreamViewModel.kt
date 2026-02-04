@@ -16,11 +16,16 @@ import coil3.request.bitmapConfig
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.data.ServerManager
 import dev.jausc.myflix.core.network.JellyfinClient
+import dev.jausc.myflix.core.player.NowPlayingState
+import dev.jausc.myflix.core.player.PlaybackStateRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -29,6 +34,7 @@ import java.time.format.DateTimeFormatter
 private const val TAG = "DreamViewModel"
 private const val ROTATION_INTERVAL_MS = 25_000L
 private const val CLOCK_UPDATE_INTERVAL_MS = 1_000L
+private const val PLAYBACK_UPDATE_INTERVAL_MS = 1_000L
 private const val ITEMS_TO_FETCH = 50
 private const val MIN_ITEMS_FOR_ROTATION = 5
 
@@ -37,6 +43,7 @@ private const val MIN_ITEMS_FOR_ROTATION = 5
  *
  * Manages the rotation of library content with preloaded images
  * and provides a clock that updates every second.
+ * Also observes global playback state to show "Now Playing" info.
  */
 class DreamViewModel(
     private val context: Context,
@@ -45,41 +52,100 @@ class DreamViewModel(
     private val imageLoader = ImageLoader.Builder(context).build()
     private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 
-    private val _content = MutableStateFlow<DreamContent>(DreamContent.Logo())
-    val content: StateFlow<DreamContent> = _content.asStateFlow()
+    // Library showcase content (rotating backdrops)
+    private val _libraryContent = MutableStateFlow<DreamContent?>(null)
+
+    // Now playing content (from active playback)
+    private val _nowPlayingContent = MutableStateFlow<DreamContent.NowPlaying?>(null)
+
+    // Combined content: NowPlaying takes priority over LibraryShowcase
+    val content: StateFlow<DreamContent> = combine(
+        _nowPlayingContent,
+        _libraryContent,
+    ) { nowPlaying, library ->
+        nowPlaying ?: library ?: DreamContent.Logo()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = DreamContent.Logo(),
+    )
 
     private val _currentTime = MutableStateFlow(formatCurrentTime())
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
     private var rotationJob: Job? = null
     private var clockJob: Job? = null
+    private var playbackObserverJob: Job? = null
 
     private var items: List<JellyfinItem> = emptyList()
     private var currentIndex = 0
 
+    // Cache for now playing images to avoid reloading on every progress update
+    private var cachedNowPlayingItemId: String? = null
+    private var cachedPosterBitmap: Bitmap? = null
+    private var cachedBackdropBitmap: Bitmap? = null
+
     init {
         startClock()
+        observePlaybackState()
         loadContent()
+    }
+
+    /**
+     * Observe global playback state and update Now Playing content.
+     */
+    private fun observePlaybackState() {
+        playbackObserverJob?.cancel()
+        playbackObserverJob = viewModelScope.launch {
+            PlaybackStateRepository.state.collect { state ->
+                when (state) {
+                    is NowPlayingState.Playing -> {
+                        // Load images if item changed
+                        if (state.item.id != cachedNowPlayingItemId) {
+                            cachedNowPlayingItemId = state.item.id
+                            cachedPosterBitmap = state.posterUrl?.let { loadBitmap(it) }
+                            cachedBackdropBitmap = state.backdropUrl?.let { loadBitmap(it) }
+                        }
+
+                        _nowPlayingContent.value = DreamContent.NowPlaying(
+                            item = state.item,
+                            positionMs = state.positionMs,
+                            durationMs = state.durationMs,
+                            isPaused = state.isPaused,
+                            posterBitmap = cachedPosterBitmap,
+                            backdropBitmap = cachedBackdropBitmap,
+                        )
+                    }
+                    is NowPlayingState.None -> {
+                        // Clear now playing state
+                        _nowPlayingContent.value = null
+                        cachedNowPlayingItemId = null
+                        cachedPosterBitmap = null
+                        cachedBackdropBitmap = null
+                    }
+                }
+            }
+        }
     }
 
     private fun loadContent() {
         viewModelScope.launch {
             if (!jellyfinClient.isAuthenticated) {
                 Log.d(TAG, "Not authenticated, showing logo")
-                _content.value = DreamContent.Logo("Not signed in")
+                _libraryContent.value = DreamContent.Logo("Not signed in")
                 return@launch
             }
 
             try {
                 // First show logo while loading
-                _content.value = DreamContent.Logo()
+                _libraryContent.value = DreamContent.Logo()
 
                 // Get all libraries
                 val libraries = jellyfinClient.getLibraries().getOrNull() ?: emptyList()
                 Log.d(TAG, "Found ${libraries.size} libraries")
 
                 if (libraries.isEmpty()) {
-                    _content.value = DreamContent.Logo("No libraries found")
+                    _libraryContent.value = DreamContent.Logo("No libraries found")
                     return@launch
                 }
 
@@ -106,7 +172,7 @@ class DreamViewModel(
                 Log.d(TAG, "Fetched ${items.size} items with backdrops")
 
                 if (items.size < MIN_ITEMS_FOR_ROTATION) {
-                    _content.value = DreamContent.Logo("Not enough content")
+                    _libraryContent.value = DreamContent.Logo("Not enough content")
                     return@launch
                 }
 
@@ -114,7 +180,7 @@ class DreamViewModel(
                 startRotation()
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading content", e)
-                _content.value = DreamContent.Error(e.message ?: "Failed to load content")
+                _libraryContent.value = DreamContent.Error(e.message ?: "Failed to load content")
             }
         }
     }
@@ -153,7 +219,7 @@ class DreamViewModel(
             val rating = item.communityRating
             val genres = item.genres ?: emptyList()
 
-            _content.value = DreamContent.LibraryShowcase(
+            _libraryContent.value = DreamContent.LibraryShowcase(
                 backdrop = backdropBitmap,
                 logo = logoBitmap,
                 title = item.name,
@@ -204,6 +270,7 @@ class DreamViewModel(
         super.onCleared()
         rotationJob?.cancel()
         clockJob?.cancel()
+        playbackObserverJob?.cancel()
     }
 
     /**

@@ -11,14 +11,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,6 +45,7 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.tv.dream.components.ZoomBox
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import dev.jausc.myflix.core.common.R as CommonR
 
 private const val CROSSFADE_DURATION_MS = 1000
@@ -71,6 +77,7 @@ fun DreamScreen(viewModel: DreamViewModel) {
             when (currentContent) {
                 is DreamContent.Logo -> LogoScreen(currentContent.message)
                 is DreamContent.LibraryShowcase -> ShowcaseScreen(currentContent)
+                is DreamContent.NowPlaying -> NowPlayingScreen(currentContent)
                 is DreamContent.Error -> ErrorScreen(currentContent.message)
             }
         }
@@ -221,6 +228,151 @@ private fun ShowcaseScreen(content: DreamContent.LibraryShowcase) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Now Playing screen - shows what's currently playing.
+ * Displays poster, title, subtitle, progress bar, and time remaining.
+ */
+@Composable
+private fun NowPlayingScreen(content: DreamContent.NowPlaying) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Background - use backdrop if available, otherwise dark background
+        if (content.backdropBitmap != null) {
+            ZoomBox(modifier = Modifier.fillMaxSize()) {
+                Image(
+                    bitmap = content.backdropBitmap.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            VignetteOverlay()
+        }
+
+        // Dark overlay for better text readability
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f)),
+        )
+
+        // Now Playing content
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(48.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            // Poster thumbnail
+            if (content.posterBitmap != null) {
+                Image(
+                    bitmap = content.posterBitmap.asImageBitmap(),
+                    contentDescription = content.displayTitle,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(width = 120.dp, height = 180.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+            }
+
+            // Title, subtitle, and progress
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // "Now Playing" label with play/pause indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = if (content.isPaused) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (content.isPaused) "Paused" else "Playing",
+                        tint = TvColors.BluePrimary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = if (content.isPaused) "Paused" else "Now Playing",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TvColors.BluePrimary,
+                    )
+                }
+
+                // Title
+                Text(
+                    text = content.displayTitle,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = Color.White,
+                    maxLines = 2,
+                )
+
+                // Subtitle (series name for episodes, year for movies)
+                content.displaySubtitle?.let { subtitle ->
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TvColors.TextSecondary,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Custom progress bar (TV Material3 doesn't have LinearProgressIndicator)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.2f)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(content.progress)
+                            .fillMaxHeight()
+                            .background(TvColors.BluePrimary),
+                    )
+                }
+
+                // Time info
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = formatDuration(content.positionMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TvColors.TextSecondary,
+                    )
+                    Text(
+                        text = "-${formatDuration(content.remainingMs)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TvColors.TextSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Format milliseconds to "H:MM:SS" or "MM:SS" format.
+ */
+private fun formatDuration(ms: Long): String {
+    val hours = TimeUnit.MILLISECONDS.toHours(ms)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
+    return if (hours > 0) {
+        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.US, "%d:%02d", minutes, seconds)
     }
 }
 
