@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.ClosedCaptionOff
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Timer
 import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
@@ -131,6 +132,7 @@ import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.TrickplayProvider
 import dev.jausc.myflix.tv.ui.components.SubtitleDelayControl
+import dev.jausc.myflix.tv.ui.components.SubtitleSearchDialog
 import dev.jausc.myflix.core.viewmodel.PlaybackStopCallback
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
 import dev.jausc.myflix.tv.channels.WatchNextManager
@@ -810,6 +812,17 @@ fun PlayerScreen(
                         null
                     },
                     transcodeReasons = state.transcodeReasons,
+                    onSubtitleDownloaded = {
+                        // Refresh playback options to get updated subtitle streams
+                        // The downloaded subtitle should appear after server indexes it
+                        currentStartPositionMs = playbackState.position
+                        viewModel.updatePlaybackOptions(
+                            audioStreamIndex = selectedAudioIndex,
+                            subtitleStreamIndex = selectedSubtitleIndex,
+                            maxBitrateMbps = currentBitrate,
+                            startPositionMs = playbackState.position,
+                        )
+                    },
                 )
             }
 
@@ -1070,6 +1083,7 @@ private fun TvPlayerControlsOverlay(
     skipLabel: String? = null,
     onSkipSegment: (() -> Unit)? = null,
     transcodeReasons: List<String>? = null,
+    onSubtitleDownloaded: (() -> Unit)? = null,
 ) {
     val videoQuality = item?.videoQualityLabel ?: ""
     val videoCodec = item?.videoCodecLabel ?: ""
@@ -1085,6 +1099,7 @@ private fun TvPlayerControlsOverlay(
         onMenuOpenChanged(activeMenu != null)
     }
     var showChaptersRow by remember { mutableStateOf(false) }
+    var showSubtitleSearchDialog by remember { mutableStateOf(false) }
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }
 
@@ -1662,6 +1677,19 @@ private fun TvPlayerControlsOverlay(
         anchor = menuAnchor,
     )
 
+    // Search subtitle menu item (shown at end of both empty and non-empty lists)
+    val searchSubtitleItem = SlideOutMenuItem(
+        text = "Search Subtitles...",
+        icon = Icons.Outlined.Search,
+        iconTint = ActionColors.Subtitles,
+        dismissOnClick = false,
+        onClick = {
+            onUserInteraction()
+            activeMenu = null
+            showSubtitleSearchDialog = true
+        },
+    )
+
     // Subtitles popup menu
     PlayerSlideOutMenu(
         visible = activeMenu == PlayerMenuType.Subtitles,
@@ -1675,6 +1703,7 @@ private fun TvPlayerControlsOverlay(
                     enabled = false,
                     onClick = {},
                 ),
+                searchSubtitleItem,
             )
         } else {
             listOf(
@@ -1700,7 +1729,7 @@ private fun TvPlayerControlsOverlay(
                         onSubtitleSelected(stream.index)
                     },
                 )
-            }
+            } + searchSubtitleItem
         },
         onDismiss = { activeMenu = null },
         anchor = menuAnchor,
@@ -1820,6 +1849,21 @@ private fun TvPlayerControlsOverlay(
         onDismiss = { activeMenu = null },
         anchor = menuAnchor,
     )
+
+    // Subtitle search dialog (requires OpenSubtitles plugin on server)
+    if (showSubtitleSearchDialog && jellyfinClient != null && itemId != null) {
+        SubtitleSearchDialog(
+            itemId = itemId,
+            itemName = item?.name ?: "Unknown",
+            jellyfinClient = jellyfinClient,
+            onDismiss = { showSubtitleSearchDialog = false },
+            onSubtitleDownloaded = {
+                showSubtitleSearchDialog = false
+                // Notify parent to refresh subtitle streams
+                onSubtitleDownloaded?.invoke()
+            },
+        )
+    }
 }
 
 @Composable

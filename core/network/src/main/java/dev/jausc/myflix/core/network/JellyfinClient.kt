@@ -2560,6 +2560,53 @@ class JellyfinClient(
         // Invalidate caches that depend on playback state
         invalidateCache(CacheKeys.Patterns.RESUME, CacheKeys.Patterns.NEXT_UP, CacheKeys.item(itemId))
     }
+
+    // ==================== Remote Subtitle Search ====================
+
+    /**
+     * Search for remote subtitles for an item using the server's OpenSubtitles plugin.
+     * Requires the OpenSubtitles plugin to be installed and configured on the server.
+     *
+     * @param itemId The item ID to search subtitles for
+     * @param language Two-letter ISO language code (e.g., "en", "es", "fr")
+     * @return List of available remote subtitles sorted by rating and download count
+     */
+    suspend fun searchRemoteSubtitles(
+        itemId: String,
+        language: String,
+    ): Result<List<RemoteSubtitleInfo>> = runCatching {
+        android.util.Log.d("JellyfinClient", "searchRemoteSubtitles: itemId=$itemId language=$language")
+        val response: List<RemoteSubtitleInfo> = httpClient.get("$baseUrl/Items/$itemId/RemoteSearch/Subtitles/$language") {
+            header("Authorization", authHeader())
+        }.body()
+        // Sort by rating then download count
+        response.sortedWith(
+            compareByDescending<RemoteSubtitleInfo> { it.communityRating ?: 0.0 }
+                .thenByDescending { it.downloadCount ?: 0 },
+        )
+    }
+
+    /**
+     * Download a remote subtitle to the server for an item.
+     * The server will download the subtitle and add it to the item's available streams.
+     *
+     * @param itemId The item ID to add the subtitle to
+     * @param subtitleId The remote subtitle ID (from search results)
+     */
+    suspend fun downloadRemoteSubtitle(
+        itemId: String,
+        subtitleId: String,
+    ): Result<Unit> = runCatching {
+        android.util.Log.d("JellyfinClient", "downloadRemoteSubtitle: itemId=$itemId subtitleId=$subtitleId")
+        val response = httpClient.post("$baseUrl/Items/$itemId/RemoteSearch/Subtitles/$subtitleId") {
+            header("Authorization", authHeader())
+        }
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            android.util.Log.e("JellyfinClient", "downloadRemoteSubtitle failed: $errorBody")
+            throw Exception("Failed to download subtitle: ${response.status}")
+        }
+    }
 }
 
 // ==================== Session Capabilities ====================
@@ -2653,3 +2700,23 @@ sealed class QuickConnectFlowState {
     data class Authenticated(val authResponse: AuthResponse) : QuickConnectFlowState()
     data class Error(val message: String) : QuickConnectFlowState()
 }
+
+/**
+ * Remote subtitle information from OpenSubtitles or other providers.
+ */
+@Serializable
+data class RemoteSubtitleInfo(
+    @SerialName("ThreeLetterISOLanguageName") val threeLetterIsoLanguageName: String? = null,
+    @SerialName("Id") val id: String? = null,
+    @SerialName("ProviderName") val providerName: String? = null,
+    @SerialName("Name") val name: String? = null,
+    @SerialName("Format") val format: String? = null,
+    @SerialName("Author") val author: String? = null,
+    @SerialName("Comment") val comment: String? = null,
+    @SerialName("DateCreated") val dateCreated: String? = null,
+    @SerialName("CommunityRating") val communityRating: Double? = null,
+    @SerialName("DownloadCount") val downloadCount: Int? = null,
+    @SerialName("IsHashMatch") val isHashMatch: Boolean? = null,
+    @SerialName("IsForced") val isForced: Boolean? = null,
+    @SerialName("IsHearingImpaired") val isHearingImpaired: Boolean? = null,
+)
