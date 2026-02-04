@@ -597,10 +597,14 @@ private fun MobileSeerrRequestCard(
                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
                     contentAlignment = androidx.compose.ui.Alignment.Center,
                 ) {
-                    // Use request media title as fallback, show first letter or "?"
-                    val displayChar = mediaDetails?.displayTitle?.firstOrNull()
-                        ?: request.media?.name?.firstOrNull()
-                        ?: '?'
+                    // Use available metadata as fallback, show first letter or "?"
+                    val fallbackTitle = mediaDetails?.displayTitle
+                        ?: when (mediaType) {
+                            "tv" -> "TV"
+                            "movie" -> "Movie"
+                            else -> tmdbId?.toString()
+                        }
+                    val displayChar = fallbackTitle?.firstOrNull() ?: '?'
                     Text(
                         text = displayChar.toString(),
                         style = MaterialTheme.typography.headlineMedium,

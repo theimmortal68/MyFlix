@@ -40,6 +40,8 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.TmdbContentType
 import dev.jausc.myflix.core.common.model.buildExternalLinks
+import dev.jausc.myflix.core.common.model.imdbId
+import dev.jausc.myflix.core.common.model.tmdbId
 import dev.jausc.myflix.core.common.model.videoQualityLabel
 import dev.jausc.myflix.core.common.util.buildFeatureSections
 import dev.jausc.myflix.core.network.JellyfinClient
