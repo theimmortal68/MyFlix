@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -124,6 +125,7 @@ fun SettingsScreen(
     val pinnedCollections by preferences.pinnedCollections.collectAsState()
     val showSuggestions by preferences.showSuggestions.collectAsState()
     val showSeerrRecentRequests by preferences.showSeerrRecentRequests.collectAsState()
+    val themePreset by preferences.themePreset.collectAsState()
 
     // Available genres and collections from server
     var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -137,6 +139,7 @@ fun SettingsScreen(
     var showSkipForwardDialog by remember { mutableStateOf(false) }
     var showSkipBackwardDialog by remember { mutableStateOf(false) }
     var showRefreshRateModeDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     // Load available options when needed
     LaunchedEffect(showGenreRows, showCollections) {
@@ -266,6 +269,18 @@ fun SettingsScreen(
             onSelect = { mode ->
                 preferences.setRefreshRateMode(mode)
                 showRefreshRateModeDialog = false
+            },
+        )
+    }
+
+    // Theme selection dialog
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentSelection = themePreset,
+            onDismiss = { showThemeDialog = false },
+            onSelect = { preset ->
+                preferences.setThemePreset(preset)
+                showThemeDialog = false
             },
         )
     }
@@ -426,6 +441,18 @@ fun SettingsScreen(
                         iconTint = if (hideWatched) Color(0xFF34D399) else MaterialTheme.colorScheme.onSurfaceVariant,
                         checked = hideWatched,
                         onCheckedChange = { preferences.setHideWatchedFromRecent(it) },
+                    )
+                    SettingsDivider()
+                    ActionSettingItem(
+                        title = "Theme",
+                        description = getThemeDisplayName(themePreset),
+                        icon = Icons.Outlined.Palette,
+                        iconTint = when (themePreset) {
+                            "OLED_DARK" -> Color(0xFF6366F1)
+                            "HIGH_CONTRAST" -> Color(0xFFFFFFFF)
+                            else -> MaterialTheme.colorScheme.primary
+                        },
+                        onClick = { showThemeDialog = true },
                     )
                 }
             }
@@ -1389,6 +1416,19 @@ private fun getSkipModeDisplayName(mode: String): String = SKIP_MODE_OPTIONS.fin
  */
 private fun getRefreshRateModeDisplayName(mode: String): String = PlaybackOptions.getRefreshRateModeLabel(mode)
 
+// Theme preset options
+private val THEME_OPTIONS = listOf(
+    "DEFAULT" to "Default",
+    "OLED_DARK" to "OLED Dark",
+    "HIGH_CONTRAST" to "High Contrast",
+)
+
+/**
+ * Get display name for a theme preset value.
+ */
+private fun getThemeDisplayName(preset: String): String =
+    THEME_OPTIONS.find { it.first == preset }?.second ?: preset
+
 @Composable
 private fun SkipModeSelectionDialog(
     title: String,
@@ -1623,6 +1663,114 @@ private fun SkipDurationSelectionDialog(
                             color = if (isSelected) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+private fun ThemeSelectionDialog(
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Theme",
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "Choose a color theme for the app",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                THEME_OPTIONS.forEach { (preset, label) ->
+                    val isSelected = preset == currentSelection
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                } else {
+                                    Color.Transparent
+                                }
+                            )
+                            .clickable { onSelect(preset) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Theme color preview
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    when (preset) {
+                                        "OLED_DARK" -> Color(0xFF000000)
+                                        "HIGH_CONTRAST" -> Color(0xFFFFFFFF)
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
+                                    RoundedCornerShape(4.dp),
+                                )
+                                .then(
+                                    if (preset == "OLED_DARK") {
+                                        Modifier.background(
+                                            Color.White.copy(alpha = 0.2f),
+                                            RoundedCornerShape(4.dp),
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
+                        )
+
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                        )
+
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        RoundedCornerShape(10.dp),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "✓",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        }
                     }
                 }
             }

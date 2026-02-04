@@ -252,6 +252,17 @@ abstract class AppPreferences(context: Context) {
     /** Enable trailer autoplay on detail screens. When enabled, trailers play automatically after 3s delay. */
     val trailerAutoplayEnabled: StateFlow<Boolean> by lazy { _trailerAutoplayEnabled.asStateFlow() }
 
+    // Theme Preference
+    private val _themePreset: MutableStateFlow<String> by lazy {
+        MutableStateFlow(
+            prefs.getString(PreferenceKeys.Prefs.THEME_PRESET, PreferenceKeys.Defaults.THEME_PRESET)
+                ?: PreferenceKeys.Defaults.THEME_PRESET
+        )
+    }
+
+    /** Theme preset: DEFAULT, OLED_DARK, or HIGH_CONTRAST. */
+    val themePreset: StateFlow<String> by lazy { _themePreset.asStateFlow() }
+
     // Seerr Integration Preferences
     private val _seerrEnabled: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, PreferenceKeys.Defaults.SEERR_ENABLED))
@@ -602,6 +613,15 @@ abstract class AppPreferences(context: Context) {
     fun setTrailerAutoplayEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.TRAILER_AUTOPLAY_ENABLED, enabled).apply()
         _trailerAutoplayEnabled.value = enabled
+    }
+
+    /**
+     * Set the theme preset.
+     * @param preset ThemePreset enum name (DEFAULT, OLED_DARK, HIGH_CONTRAST)
+     */
+    fun setThemePreset(preset: String) {
+        prefs.edit().putString(PreferenceKeys.Prefs.THEME_PRESET, preset).apply()
+        _themePreset.value = preset
     }
 
     // Seerr setters

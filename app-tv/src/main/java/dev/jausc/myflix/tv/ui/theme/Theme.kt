@@ -1,6 +1,8 @@
 package dev.jausc.myflix.tv.ui.theme
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -8,20 +10,32 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Typography
 import androidx.tv.material3.darkColorScheme
 import dev.jausc.myflix.core.common.ui.MyFlixFonts
+import dev.jausc.myflix.core.common.ui.theme.ThemeColorSchemes
+import dev.jausc.myflix.core.common.ui.theme.ThemeColors
+import dev.jausc.myflix.core.common.ui.theme.ThemePreset
 
-private val DarkColorScheme = darkColorScheme(
-    primary = TvColors.BluePrimary,
-    onPrimary = TvColors.TextPrimary,
-    secondary = TvColors.BlueLight,
-    onSecondary = TvColors.TextPrimary,
-    background = TvColors.Background,
-    onBackground = TvColors.TextPrimary,
-    surface = TvColors.Surface,
-    onSurface = TvColors.TextPrimary,
-    surfaceVariant = TvColors.SurfaceLight,
-    onSurfaceVariant = TvColors.TextSecondary,
-    error = TvColors.Error,
-    onError = TvColors.TextPrimary,
+/**
+ * CompositionLocal for accessing the current theme colors directly.
+ * This provides access to MyFlix-specific colors not mapped to Material Theme.
+ */
+val LocalMyFlixColors = staticCompositionLocalOf { ThemeColorSchemes.Default }
+
+/**
+ * Create a TV Material color scheme from our theme colors.
+ */
+private fun createColorScheme(colors: ThemeColors) = darkColorScheme(
+    primary = colors.primary,
+    onPrimary = colors.textPrimary,
+    secondary = colors.primaryLight,
+    onSecondary = colors.textPrimary,
+    background = colors.background,
+    onBackground = colors.textPrimary,
+    surface = colors.surface,
+    onSurface = colors.textPrimary,
+    surfaceVariant = colors.surfaceLight,
+    onSurfaceVariant = colors.textSecondary,
+    error = colors.error,
+    onError = colors.textPrimary,
 )
 
 private val MyFlixTypography = Typography(
@@ -117,11 +131,25 @@ private val MyFlixTypography = Typography(
     ),
 )
 
+/**
+ * MyFlix TV theme with support for theme presets.
+ *
+ * @param themePreset The theme preset to use (DEFAULT, OLED_DARK, HIGH_CONTRAST)
+ * @param content The composable content to theme
+ */
 @Composable
-fun MyFlixTvTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = MyFlixTypography,
-        content = content,
-    )
+fun MyFlixTvTheme(
+    themePreset: ThemePreset = ThemePreset.DEFAULT,
+    content: @Composable () -> Unit,
+) {
+    val colors = ThemeColorSchemes.forPreset(themePreset)
+    val colorScheme = createColorScheme(colors)
+
+    CompositionLocalProvider(LocalMyFlixColors provides colors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MyFlixTypography,
+            content = content,
+        )
+    }
 }

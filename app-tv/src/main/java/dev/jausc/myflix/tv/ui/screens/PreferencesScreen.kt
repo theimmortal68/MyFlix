@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.runtime.*
@@ -80,6 +81,7 @@ import dev.jausc.myflix.tv.ui.components.TvCenteredPopup
 import dev.jausc.myflix.tv.ui.components.TvTextButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
+import dev.jausc.myflix.core.common.ui.theme.ThemePreset
 import kotlinx.coroutines.launch
 
 /**
@@ -129,6 +131,7 @@ fun PreferencesScreen(
     val showDiscoverNav by preferences.showDiscoverNav.collectAsState()
     val showSuggestions by preferences.showSuggestions.collectAsState()
     val showSeerrRecentRequests by preferences.showSeerrRecentRequests.collectAsState()
+    val themePreset by preferences.themePreset.collectAsState()
 
     // Available genres and collections for selection dialogs
     var availableGenres by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -146,6 +149,7 @@ fun PreferencesScreen(
     var showRefreshRateModeDialog by remember { mutableStateOf(false) }
     var showAudioPassthroughDialog by remember { mutableStateOf(false) }
     var showResolutionMatchingDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     // Focus requesters for navigation
     val contentFocusRequester = remember { FocusRequester() }
@@ -193,6 +197,8 @@ fun PreferencesScreen(
                 onHideWatchedChanged = { preferences.setHideWatchedFromRecent(it) },
                 trailerAutoplayEnabled = trailerAutoplayEnabled,
                 onTrailerAutoplayEnabledChanged = { preferences.setTrailerAutoplayEnabled(it) },
+                themePreset = themePreset,
+                onEditTheme = { showThemeDialog = true },
                 useMpvPlayer = useMpvPlayer,
                 onUseMpvPlayerChanged = { preferences.setUseMpvPlayer(it) },
                 skipIntroMode = skipIntroMode,
@@ -421,6 +427,17 @@ fun PreferencesScreen(
             },
         )
     }
+
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentSelection = themePreset,
+            onDismiss = { showThemeDialog = false },
+            onSelect = { preset ->
+                preferences.setThemePreset(preset)
+                showThemeDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -435,6 +452,8 @@ private fun PreferencesContent(
     onHideWatchedChanged: (Boolean) -> Unit,
     trailerAutoplayEnabled: Boolean,
     onTrailerAutoplayEnabledChanged: (Boolean) -> Unit,
+    themePreset: String,
+    onEditTheme: () -> Unit,
     useMpvPlayer: Boolean,
     onUseMpvPlayerChanged: (Boolean) -> Unit,
     skipIntroMode: String,
@@ -671,6 +690,18 @@ private fun PreferencesContent(
                     iconTint = if (trailerAutoplayEnabled) Color(0xFFE11D48) else TvColors.TextSecondary,
                     checked = trailerAutoplayEnabled,
                     onCheckedChange = onTrailerAutoplayEnabledChanged,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Theme",
+                    description = getThemeDisplayName(themePreset),
+                    icon = Icons.Outlined.Palette,
+                    iconTint = when (themePreset) {
+                        "OLED_DARK" -> Color(0xFF000000)
+                        "HIGH_CONTRAST" -> Color(0xFFFFFFFF)
+                        else -> TvColors.BluePrimary
+                    },
+                    onClick = onEditTheme,
                 )
             }
         }
@@ -2491,6 +2522,19 @@ private fun getAudioPassthroughModeDisplayName(mode: String): String = PlaybackO
  */
 private fun getResolutionMatchingModeDisplayName(mode: String): String = PlaybackOptions.getResolutionMatchingModeLabel(mode)
 
+// Theme preset options
+private val THEME_OPTIONS = listOf(
+    "DEFAULT" to "Default",
+    "OLED_DARK" to "OLED Dark",
+    "HIGH_CONTRAST" to "High Contrast",
+)
+
+/**
+ * Get display name for a theme preset value.
+ */
+private fun getThemeDisplayName(preset: String): String =
+    THEME_OPTIONS.find { it.first == preset }?.second ?: preset
+
 @Composable
 private fun SkipModeSelectionDialog(
     title: String,
@@ -3041,5 +3085,169 @@ private fun ResolutionMatchingModeItem(
             color = if (isSelected) Color(0xFF3B82F6) else TvColors.TextPrimary,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
         )
+    }
+}
+
+@Composable
+private fun ThemeSelectionDialog(
+    currentSelection: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        firstItemFocusRequester.requestFocus()
+    }
+
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 280.dp,
+        maxWidth = 350.dp,
+    ) {
+        Column {
+            // Title
+            Text(
+                text = "Theme",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Subtitle
+            Text(
+                text = "Choose a color theme for the app",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.6f),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Theme list
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 220.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(THEME_OPTIONS.size) { index ->
+                    val (preset, label) = THEME_OPTIONS[index]
+                    val isSelected = preset == currentSelection
+
+                    ThemeItem(
+                        label = label,
+                        preset = preset,
+                        isSelected = isSelected,
+                        onClick = { onSelect(preset) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TvTextButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeItem(
+    label: String,
+    preset: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    // Color indicator for the theme
+    val themeColor = when (preset) {
+        "OLED_DARK" -> Color(0xFF000000)
+        "HIGH_CONTRAST" -> Color(0xFFFFFFFF)
+        else -> TvColors.BluePrimary
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isFocused -> TvColors.FocusedSurface
+                    isSelected -> TvColors.BluePrimary.copy(alpha = 0.2f)
+                    else -> Color.Transparent
+                },
+            )
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Theme color preview
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .background(
+                    themeColor,
+                    RoundedCornerShape(4.dp),
+                )
+                .then(
+                    if (preset == "OLED_DARK") {
+                        Modifier.background(
+                            Color.White.copy(alpha = 0.2f),
+                            RoundedCornerShape(4.dp),
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
+        )
+
+        // Theme label
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSelected) TvColors.BluePrimary else TvColors.TextPrimary,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f),
+        )
+
+        // Checkmark for selected item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(TvColors.BluePrimary, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        }
     }
 }
