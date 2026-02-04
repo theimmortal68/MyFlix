@@ -114,6 +114,8 @@ import dev.jausc.myflix.core.common.ui.ActionColors
 import dev.jausc.myflix.core.common.ui.util.SubsetTransformation
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.syncplay.GroupState
+import dev.jausc.myflix.core.network.syncplay.SyncPlayGroup
+import dev.jausc.myflix.core.network.syncplay.SyncPlayManager
 import dev.jausc.myflix.core.network.syncplay.SyncPlayState
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.PlaystateCommandType
@@ -151,8 +153,10 @@ import dev.jausc.myflix.tv.ui.components.PlayerSlideOutMenuSectioned
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuItem
 import dev.jausc.myflix.tv.ui.components.SlideOutMenuSection
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.compose.ui.geometry.Size as ComposeSize
 
 /**
@@ -176,9 +180,11 @@ fun PlayerScreen(
     appPreferences: AppPreferences,
     useMpvPlayer: Boolean = false,
     webSocketEvents: SharedFlow<WebSocketEvent>? = null,
+    syncPlayManager: SyncPlayManager? = null,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
 
@@ -280,10 +286,14 @@ fun PlayerScreen(
     // Collect UI state from ViewModel
     val state by viewModel.uiState.collectAsState()
 
-    // SyncPlay state
-    val syncPlayState by viewModel.syncPlayState.collectAsState()
+    // SyncPlay state - collect from manager if available
+    val syncPlayState by (syncPlayManager?.state ?: MutableStateFlow(SyncPlayState())).collectAsState()
     var showSyncPlayDialog by remember { mutableStateOf(false) }
     var showSyncPlayOverlay by remember { mutableStateOf(false) }
+
+    // Available groups for dialog
+    var availableGroups by remember { mutableStateOf<List<SyncPlayGroup>>(emptyList()) }
+    var isLoadingGroups by remember { mutableStateOf(false) }
 
     // Player controller from core module - pass MPV preference and audio passthrough mode
     val playerController = remember(audioPassthroughMode, passthroughConfig) {
@@ -298,6 +308,25 @@ fun PlayerScreen(
     // Set player controller on ViewModel for SyncPlay integration
     LaunchedEffect(playerController) {
         viewModel.setPlayerController(playerController)
+    }
+
+    // Initialize SyncPlay with PlayerViewModel
+    LaunchedEffect(syncPlayManager) {
+        syncPlayManager?.let { manager ->
+            viewModel.initializeSyncPlay(manager)
+        }
+    }
+
+    // Collect available groups when dialog is shown
+    LaunchedEffect(showSyncPlayDialog) {
+        if (showSyncPlayDialog && syncPlayManager != null) {
+            isLoadingGroups = true
+            syncPlayManager.refreshGroups()
+            syncPlayManager.availableGroups.collect { groups ->
+                availableGroups = groups
+                isLoadingGroups = false
+            }
+        }
     }
 
     // Collect player state
@@ -901,18 +930,25 @@ fun PlayerScreen(
             // SyncPlay Dialog
             SyncPlayDialog(
                 visible = showSyncPlayDialog,
-                availableGroups = emptyList(), // TODO: Wire to SyncPlayManager
-                isLoading = false,
+                availableGroups = availableGroups,
+                isLoading = isLoadingGroups,
                 onCreateGroup = { name ->
-                    // TODO: viewModel.createSyncPlayGroup(name)
+                    scope.launch {
+                        syncPlayManager?.createGroup(name)
+                    }
                     showSyncPlayDialog = false
                 },
                 onJoinGroup = { groupId ->
-                    // TODO: viewModel.joinSyncPlayGroup(groupId)
+                    scope.launch {
+                        syncPlayManager?.joinGroup(groupId)
+                    }
                     showSyncPlayDialog = false
                 },
                 onRefresh = {
-                    // TODO: viewModel.refreshSyncPlayGroups()
+                    scope.launch {
+                        isLoadingGroups = true
+                        syncPlayManager?.refreshGroups()
+                    }
                 },
                 onDismiss = { showSyncPlayDialog = false },
             )
@@ -923,11 +959,16 @@ fun PlayerScreen(
                 groupName = syncPlayState.groupName,
                 members = syncPlayState.members,
                 onAddToQueue = {
-                    // TODO: Add current item to queue
+                    // Add current item to queue
+                    scope.launch {
+                        syncPlayManager?.addToQueue(listOf(itemId))
+                    }
                     showSyncPlayOverlay = false
                 },
                 onLeaveGroup = {
-                    // TODO: viewModel.leaveSyncPlayGroup()
+                    scope.launch {
+                        syncPlayManager?.leaveGroup()
+                    }
                     showSyncPlayOverlay = false
                 },
                 onDismiss = { showSyncPlayOverlay = false },

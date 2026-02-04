@@ -56,6 +56,8 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailViewModel
 import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.jausc.myflix.core.network.syncplay.SyncPlayManager
+import dev.jausc.myflix.core.network.syncplay.TimeSyncManager
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.PlayCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
@@ -185,6 +187,23 @@ private fun MyFlixTvApp(
     val appState = remember { AppState(context, jellyfinClient) }
     val tvPreferences = remember { TvPreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
+
+    // SyncPlay infrastructure
+    val syncPlayScope = rememberCoroutineScope()
+    val timeSyncManager = remember {
+        TimeSyncManager(
+            syncTimeProvider = {
+                jellyfinClient.getUtcTime().getOrThrow()
+            },
+        )
+    }
+    val syncPlayManager = remember(jellyfinClient) {
+        SyncPlayManager(
+            jellyfinClient = jellyfinClient,
+            timeSyncManager = timeSyncManager,
+            scope = syncPlayScope,
+        )
+    }
 
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
@@ -436,6 +455,21 @@ private fun MyFlixTvApp(
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
             appState.webSocket.events.collect { event ->
+                // Route SyncPlay events to SyncPlayManager
+                when (event) {
+                    is WebSocketEvent.SyncPlayCommand,
+                    is WebSocketEvent.SyncPlayGroupJoined,
+                    is WebSocketEvent.SyncPlayGroupLeft,
+                    is WebSocketEvent.SyncPlayGroupStateUpdate,
+                    is WebSocketEvent.SyncPlayPlayQueueUpdate,
+                    is WebSocketEvent.SyncPlayUserJoined,
+                    is WebSocketEvent.SyncPlayUserLeft -> {
+                        syncPlayManager.onSyncPlayEvent(event)
+                    }
+                    else -> {}
+                }
+
+                // Existing event handling
                 when (event) {
                     is WebSocketEvent.GeneralCommand -> {
                         when (event.name) {
@@ -1351,6 +1385,7 @@ private fun MyFlixTvApp(
                     appPreferences = tvPreferences,
                     useMpvPlayer = useMpvPlayer,
                     webSocketEvents = appState.webSocket.events,
+                    syncPlayManager = syncPlayManager,
                     onBack = { navController.popBackStack() },
                 )
             }
