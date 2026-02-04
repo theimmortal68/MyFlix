@@ -118,6 +118,7 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.AudioPassthroughMode
 import dev.jausc.myflix.core.player.PlayerController
+import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerUtils
 import dev.jausc.myflix.core.player.SubtitleColor
@@ -195,6 +196,25 @@ fun PlayerScreen(
         }
     }
 
+    // Get per-codec passthrough preferences
+    val passthroughDtsEnabled by appPreferences.passthroughDtsEnabled.collectAsState()
+    val passthroughTruehdEnabled by appPreferences.passthroughTruehdEnabled.collectAsState()
+    val passthroughEac3Enabled by appPreferences.passthroughEac3Enabled.collectAsState()
+    val passthroughAc3Enabled by appPreferences.passthroughAc3Enabled.collectAsState()
+    val passthroughConfig = remember(
+        passthroughDtsEnabled,
+        passthroughTruehdEnabled,
+        passthroughEac3Enabled,
+        passthroughAc3Enabled,
+    ) {
+        PassthroughConfig(
+            dtsEnabled = passthroughDtsEnabled,
+            truehdEnabled = passthroughTruehdEnabled,
+            eac3Enabled = passthroughEac3Enabled,
+            ac3Enabled = passthroughAc3Enabled,
+        )
+    }
+
     // Get subtitle styling preferences
     val subtitleFontSizeName by appPreferences.subtitleFontSize.collectAsState()
     val subtitleFontColorName by appPreferences.subtitleFontColor.collectAsState()
@@ -225,11 +245,12 @@ fun PlayerScreen(
     val state by viewModel.uiState.collectAsState()
 
     // Player controller from core module - pass MPV preference and audio passthrough mode
-    val playerController = remember(audioPassthroughMode) {
+    val playerController = remember(audioPassthroughMode, passthroughConfig) {
         PlayerController(
             context = context,
             useMpv = useMpvPlayer,
             audioPassthroughMode = audioPassthroughMode,
+            passthroughConfig = passthroughConfig,
         )
     }
 

@@ -106,6 +106,10 @@ fun PreferencesScreen(
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
     val refreshRateMode by preferences.refreshRateMode.collectAsState()
     val audioPassthroughMode by preferences.audioPassthroughMode.collectAsState()
+    val passthroughDtsEnabled by preferences.passthroughDtsEnabled.collectAsState()
+    val passthroughTruehdEnabled by preferences.passthroughTruehdEnabled.collectAsState()
+    val passthroughEac3Enabled by preferences.passthroughEac3Enabled.collectAsState()
+    val passthroughAc3Enabled by preferences.passthroughAc3Enabled.collectAsState()
     val audioNightMode by preferences.audioNightMode.collectAsState()
     val stereoDownmixEnabled by preferences.stereoDownmixEnabled.collectAsState()
     val resolutionMatchingMode by preferences.resolutionMatchingMode.collectAsState()
@@ -195,6 +199,14 @@ fun PreferencesScreen(
                 onEditRefreshRateMode = { showRefreshRateModeDialog = true },
                 audioPassthroughMode = audioPassthroughMode,
                 onEditAudioPassthroughMode = { showAudioPassthroughDialog = true },
+                passthroughDtsEnabled = passthroughDtsEnabled,
+                onPassthroughDtsEnabledChanged = { preferences.setPassthroughDtsEnabled(it) },
+                passthroughTruehdEnabled = passthroughTruehdEnabled,
+                onPassthroughTruehdEnabledChanged = { preferences.setPassthroughTruehdEnabled(it) },
+                passthroughEac3Enabled = passthroughEac3Enabled,
+                onPassthroughEac3EnabledChanged = { preferences.setPassthroughEac3Enabled(it) },
+                passthroughAc3Enabled = passthroughAc3Enabled,
+                onPassthroughAc3EnabledChanged = { preferences.setPassthroughAc3Enabled(it) },
                 audioNightMode = audioNightMode,
                 onAudioNightModeChanged = { preferences.setAudioNightMode(it) },
                 stereoDownmixEnabled = stereoDownmixEnabled,
@@ -425,6 +437,14 @@ private fun PreferencesContent(
     onEditRefreshRateMode: () -> Unit,
     audioPassthroughMode: String,
     onEditAudioPassthroughMode: () -> Unit,
+    passthroughDtsEnabled: Boolean,
+    onPassthroughDtsEnabledChanged: (Boolean) -> Unit,
+    passthroughTruehdEnabled: Boolean,
+    onPassthroughTruehdEnabledChanged: (Boolean) -> Unit,
+    passthroughEac3Enabled: Boolean,
+    onPassthroughEac3EnabledChanged: (Boolean) -> Unit,
+    passthroughAc3Enabled: Boolean,
+    onPassthroughAc3EnabledChanged: (Boolean) -> Unit,
     audioNightMode: Boolean,
     onAudioNightModeChanged: (Boolean) -> Unit,
     stereoDownmixEnabled: Boolean,
@@ -719,6 +739,51 @@ private fun PreferencesContent(
                     iconTint = if (audioPassthroughMode != "OFF") Color(0xFF8B5CF6) else TvColors.TextSecondary,
                     onClick = onEditAudioPassthroughMode,
                 )
+
+                // Per-codec passthrough toggles (only show when passthrough is enabled)
+                if (audioPassthroughMode != "OFF") {
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "DTS / DTS-HD",
+                        description = "Passthrough DTS and DTS-HD audio",
+                        icon = null,
+                        iconTint = if (passthroughDtsEnabled) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                        checked = passthroughDtsEnabled,
+                        onCheckedChange = onPassthroughDtsEnabledChanged,
+                        indented = true,
+                    )
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "TrueHD / Atmos",
+                        description = "Passthrough Dolby TrueHD and TrueHD Atmos",
+                        icon = null,
+                        iconTint = if (passthroughTruehdEnabled) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                        checked = passthroughTruehdEnabled,
+                        onCheckedChange = onPassthroughTruehdEnabledChanged,
+                        indented = true,
+                    )
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "E-AC3 / DD+ Atmos",
+                        description = "Passthrough Dolby Digital Plus and Atmos",
+                        icon = null,
+                        iconTint = if (passthroughEac3Enabled) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                        checked = passthroughEac3Enabled,
+                        onCheckedChange = onPassthroughEac3EnabledChanged,
+                        indented = true,
+                    )
+                    PreferenceDivider()
+                    TogglePreferenceItem(
+                        title = "AC3 (Dolby Digital)",
+                        description = "Passthrough standard Dolby Digital",
+                        icon = null,
+                        iconTint = if (passthroughAc3Enabled) Color(0xFF8B5CF6) else TvColors.TextSecondary,
+                        checked = passthroughAc3Enabled,
+                        onCheckedChange = onPassthroughAc3EnabledChanged,
+                        indented = true,
+                    )
+                }
+
                 PreferenceDivider()
                 TogglePreferenceItem(
                     title = "Night Mode (DRC)",
@@ -875,10 +940,11 @@ private fun PreferencesSection(title: String, content: @Composable ColumnScope.(
 private fun TogglePreferenceItem(
     title: String,
     description: String,
-    icon: ImageVector,
+    icon: ImageVector?,
     iconTint: Color,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    indented: Boolean = false,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -900,17 +966,19 @@ private fun TogglePreferenceItem(
                     false
                 }
             }
-            .padding(16.dp),
+            .padding(start = if (indented) 48.dp else 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Icon
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(28.dp),
-            tint = iconTint,
-        )
+        // Icon (optional - hidden when indented)
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = iconTint,
+            )
+        }
 
         // Text content
         Column(
