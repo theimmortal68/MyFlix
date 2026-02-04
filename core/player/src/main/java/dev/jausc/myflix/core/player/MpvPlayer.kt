@@ -324,6 +324,18 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
         }
     }
 
+    override fun setSubtitleDelayMs(delayMs: Long) {
+        if (!initialized) return
+        try {
+            // MPV sub-delay is in seconds, positive = delay subtitles (show later)
+            val delaySeconds = delayMs / 1000.0
+            MPVLib.setPropertyDouble("sub-delay", delaySeconds)
+            Log.d(TAG, "Subtitle delay set to ${delayMs}ms (${delaySeconds}s)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set subtitle delay", e)
+        }
+    }
+
     override fun release() {
         if (initialized) {
             MPVLib.removeObserver(this)

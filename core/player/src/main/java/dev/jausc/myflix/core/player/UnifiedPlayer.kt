@@ -54,6 +54,7 @@ interface UnifiedPlayer {
     fun setAudioTrack(trackId: Int) {}
     fun setSubtitleTrack(trackId: Int) {}
     fun setSubtitleStyle(style: SubtitleStyle) {}
+    fun setSubtitleDelayMs(delayMs: Long) {}
 
     // Surface management
     fun attachSurface(surface: android.view.Surface)
