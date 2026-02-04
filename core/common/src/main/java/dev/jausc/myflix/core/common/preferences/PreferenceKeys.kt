@@ -161,6 +161,9 @@ object PreferenceKeys {
         /** Show Discover (Seerr) in navigation bar */
         const val SHOW_DISCOVER_NAV = "show_discover_nav"
 
+        /** Enable trailer autoplay on detail screens */
+        const val TRAILER_AUTOPLAY_ENABLED = "trailer_autoplay_enabled"
+
         // Seerr integration preferences
         /** Whether Seerr integration is enabled */
         const val SEERR_ENABLED = "seerr_enabled"
@@ -302,5 +305,8 @@ object PreferenceKeys {
         const val SEERR_ENABLED = false
         const val SEERR_AUTO_DETECTED = false
         const val HAS_SEEN_NAV_BAR_TIP = false
+
+        /** Enable trailer autoplay on detail screens by default */
+        const val TRAILER_AUTOPLAY_ENABLED = true
     }
 }

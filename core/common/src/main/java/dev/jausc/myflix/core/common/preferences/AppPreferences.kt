@@ -244,6 +244,14 @@ abstract class AppPreferences(context: Context) {
     }
     val showDiscoverNav: StateFlow<Boolean> by lazy { _showDiscoverNav.asStateFlow() }
 
+    // Trailer Autoplay Preference
+    private val _trailerAutoplayEnabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.TRAILER_AUTOPLAY_ENABLED, PreferenceKeys.Defaults.TRAILER_AUTOPLAY_ENABLED))
+    }
+
+    /** Enable trailer autoplay on detail screens. When enabled, trailers play automatically after 3s delay. */
+    val trailerAutoplayEnabled: StateFlow<Boolean> by lazy { _trailerAutoplayEnabled.asStateFlow() }
+
     // Seerr Integration Preferences
     private val _seerrEnabled: MutableStateFlow<Boolean> by lazy {
         MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.SEERR_ENABLED, PreferenceKeys.Defaults.SEERR_ENABLED))
@@ -585,6 +593,15 @@ abstract class AppPreferences(context: Context) {
     fun setShowDiscoverNav(enabled: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.SHOW_DISCOVER_NAV, enabled).apply()
         _showDiscoverNav.value = enabled
+    }
+
+    /**
+     * Set whether trailer autoplay is enabled on detail screens.
+     * When enabled, trailers automatically play (muted) after 3 seconds on movie/series detail screens.
+     */
+    fun setTrailerAutoplayEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.TRAILER_AUTOPLAY_ENABLED, enabled).apply()
+        _trailerAutoplayEnabled.value = enabled
     }
 
     // Seerr setters

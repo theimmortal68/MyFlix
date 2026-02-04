@@ -1130,6 +1130,7 @@ private fun MyFlixTvApp(
             DetailScreen(
                 itemId = itemId,
                 jellyfinClient = jellyfinClient,
+                appPreferences = tvPreferences,
                 themeMusicPlayer = appState.themeMusicPlayer,
                 onPlayClick = { id, startPositionMs ->
                     navController.navigate(NavigationHelper.buildPlayerRoute(id, startPositionMs))

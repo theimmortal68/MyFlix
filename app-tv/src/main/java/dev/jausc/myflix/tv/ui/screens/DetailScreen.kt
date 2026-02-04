@@ -18,6 +18,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
+import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.ThemeMusicPlayer
 import dev.jausc.myflix.core.viewmodel.DetailViewModel
@@ -32,6 +33,7 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 fun DetailScreen(
     itemId: String,
     jellyfinClient: JellyfinClient,
+    appPreferences: AppPreferences,
     themeMusicPlayer: ThemeMusicPlayer?,
     onPlayClick: (String, Long?) -> Unit,
     onPlayItemClick: (String, Long?) -> Unit,
@@ -101,6 +103,7 @@ fun DetailScreen(
                 MovieDetailScreen(
                     state = state,
                     jellyfinClient = jellyfinClient,
+                    appPreferences = appPreferences,
                     onPlayClick = { startPositionMs ->
                         onPlayClick(itemId, startPositionMs)
                     },
@@ -123,6 +126,7 @@ fun DetailScreen(
                 UnifiedSeriesScreen(
                     state = state,
                     jellyfinClient = jellyfinClient,
+                    appPreferences = appPreferences,
                     onPlayClick = {
                         // Play next up episode or first episode
                         val nextUp = state.nextUpEpisode

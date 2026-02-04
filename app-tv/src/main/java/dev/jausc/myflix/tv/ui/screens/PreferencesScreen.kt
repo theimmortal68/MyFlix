@@ -101,6 +101,7 @@ fun PreferencesScreen(
     var showServerDialog by remember { mutableStateOf(false) }
 
     val hideWatched by preferences.hideWatchedFromRecent.collectAsState()
+    val trailerAutoplayEnabled by preferences.trailerAutoplayEnabled.collectAsState()
     val useMpvPlayer by preferences.useMpvPlayer.collectAsState()
     val skipIntroMode by preferences.skipIntroMode.collectAsState()
     val skipCreditsMode by preferences.skipCreditsMode.collectAsState()
@@ -190,6 +191,8 @@ fun PreferencesScreen(
                 // Home screen settings
                 hideWatched = hideWatched,
                 onHideWatchedChanged = { preferences.setHideWatchedFromRecent(it) },
+                trailerAutoplayEnabled = trailerAutoplayEnabled,
+                onTrailerAutoplayEnabledChanged = { preferences.setTrailerAutoplayEnabled(it) },
                 useMpvPlayer = useMpvPlayer,
                 onUseMpvPlayerChanged = { preferences.setUseMpvPlayer(it) },
                 skipIntroMode = skipIntroMode,
@@ -430,6 +433,8 @@ private fun PreferencesContent(
     // Playback settings
     hideWatched: Boolean,
     onHideWatchedChanged: (Boolean) -> Unit,
+    trailerAutoplayEnabled: Boolean,
+    onTrailerAutoplayEnabledChanged: (Boolean) -> Unit,
     useMpvPlayer: Boolean,
     onUseMpvPlayerChanged: (Boolean) -> Unit,
     skipIntroMode: String,
@@ -657,6 +662,15 @@ private fun PreferencesContent(
                     iconTint = if (hideWatched) Color(0xFF34D399) else TvColors.TextSecondary,
                     checked = hideWatched,
                     onCheckedChange = onHideWatchedChanged,
+                )
+                PreferenceDivider()
+                TogglePreferenceItem(
+                    title = "Trailer Autoplay",
+                    description = "Automatically play trailers on movie and series detail screens",
+                    icon = Icons.Outlined.PlayCircle,
+                    iconTint = if (trailerAutoplayEnabled) Color(0xFFE11D48) else TvColors.TextSecondary,
+                    checked = trailerAutoplayEnabled,
+                    onCheckedChange = onTrailerAutoplayEnabledChanged,
                 )
             }
         }
