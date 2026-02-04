@@ -27,12 +27,14 @@ object PlaybackOptions {
 
     /**
      * Refresh rate mode options (mode key to display label).
+     * - OFF: No refresh rate switching, uses system default
+     * - SEAMLESS: Only switches if same resolution, uses Surface.setFrameRate for API 30+
+     * - ALWAYS: Switches even if resolution differs, may cause HDMI handshake/black screen
      */
     val REFRESH_RATE_MODE_OPTIONS: List<Pair<String, String>> = listOf(
         "OFF" to "Off (system default)",
-        "AUTO" to "Auto (match video)",
-        "60" to "60 Hz",
-        "120" to "120 Hz",
+        "SEAMLESS" to "Seamless (match video, no black screen)",
+        "ALWAYS" to "Always (match video, may cause black screen)",
     )
 
     /**
@@ -66,7 +68,7 @@ object PlaybackOptions {
 
     /**
      * Get display label for a refresh rate mode.
-     * @param mode Mode key (OFF, AUTO, 60, 120)
+     * @param mode Mode key (OFF, SEAMLESS, ALWAYS)
      * @return Human-readable label or the mode key if not found
      */
     fun getRefreshRateModeLabel(mode: String): String =
