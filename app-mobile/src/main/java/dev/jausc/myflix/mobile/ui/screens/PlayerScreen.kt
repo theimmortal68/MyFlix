@@ -201,6 +201,9 @@ fun PlayerScreen(
         )
     }
 
+    // Get HDR preference (prefer HDR10 over Dolby Vision)
+    val preferHdrOverDv by appPreferences.preferHdrOverDv.collectAsState()
+
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
         key = itemId,
@@ -212,6 +215,7 @@ fun PlayerScreen(
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             maxStreamingBitrateMbps = maxStreamingBitrate,
             startPositionMs = startPositionMs,
+            preferHdrOverDv = preferHdrOverDv,
         ),
     )
 

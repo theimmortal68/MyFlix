@@ -113,6 +113,7 @@ fun PreferencesScreen(
     val audioNightMode by preferences.audioNightMode.collectAsState()
     val stereoDownmixEnabled by preferences.stereoDownmixEnabled.collectAsState()
     val resolutionMatchingMode by preferences.resolutionMatchingMode.collectAsState()
+    val preferHdrOverDv by preferences.preferHdrOverDv.collectAsState()
     val preferredAudioLanguage by preferences.preferredAudioLanguage.collectAsState()
     val preferredSubtitleLanguage by preferences.preferredSubtitleLanguage.collectAsState()
     val maxStreamingBitrate by preferences.maxStreamingBitrate.collectAsState()
@@ -213,6 +214,8 @@ fun PreferencesScreen(
                 onStereoDownmixEnabledChanged = { preferences.setStereoDownmixEnabled(it) },
                 resolutionMatchingMode = resolutionMatchingMode,
                 onEditResolutionMatchingMode = { showResolutionMatchingDialog = true },
+                preferHdrOverDv = preferHdrOverDv,
+                onPreferHdrOverDvChanged = { preferences.setPreferHdrOverDv(it) },
                 preferredAudioLanguage = preferredAudioLanguage,
                 onEditAudioLanguage = { showAudioLanguageDialog = true },
                 preferredSubtitleLanguage = preferredSubtitleLanguage,
@@ -451,6 +454,8 @@ private fun PreferencesContent(
     onStereoDownmixEnabledChanged: (Boolean) -> Unit,
     resolutionMatchingMode: String,
     onEditResolutionMatchingMode: () -> Unit,
+    preferHdrOverDv: Boolean,
+    onPreferHdrOverDvChanged: (Boolean) -> Unit,
     preferredAudioLanguage: String?,
     onEditAudioLanguage: () -> Unit,
     preferredSubtitleLanguage: String?,
@@ -820,6 +825,19 @@ private fun PreferencesContent(
 
             PreferencesSection(title = "Device") {
                 DeviceCapabilityItem(capabilities = capabilities)
+                PreferenceDivider()
+                TogglePreferenceItem(
+                    title = "Prefer HDR10 over Dolby Vision",
+                    description = if (preferHdrOverDv) {
+                        "Server will provide HDR10 instead of DV"
+                    } else {
+                        "Use Dolby Vision when available"
+                    },
+                    icon = Icons.Outlined.Contrast,
+                    iconTint = if (preferHdrOverDv) Color(0xFFF59E0B) else TvColors.TextSecondary,
+                    checked = preferHdrOverDv,
+                    onCheckedChange = onPreferHdrOverDvChanged,
+                )
             }
         }
 
