@@ -93,6 +93,9 @@ import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.tv.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
+import dev.jausc.myflix.tv.channels.ChannelSyncWorker
+import dev.jausc.myflix.tv.channels.TvChannelManager
+import dev.jausc.myflix.tv.channels.WatchNextManager
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.LocalExitFocusState
@@ -235,8 +238,21 @@ private fun MyFlixTvApp(
                 tvPreferences.clearActivePlaybackSession()
                 android.util.Log.d("MyFlix", "Crash recovery: Reported playback stopped")
             }
+
+            // Initialize TV home screen channel sync
+            ChannelSyncWorker.schedule(context)
+            ChannelSyncWorker.syncNow(context)
+
+            // Request channel to be browsable (user must approve)
+            val channelManager = TvChannelManager.getInstance(context)
+            val channelId = channelManager.getOrCreateChannel()
+            channelManager.requestChannelBrowsable(channelId)
         } else {
             libraries = emptyList()
+
+            // Cancel channel sync and clear Watch Next on logout
+            ChannelSyncWorker.cancel(context)
+            WatchNextManager.getInstance(context).clearAll()
         }
     }
 
