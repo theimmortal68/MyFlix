@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,6 +40,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import dev.jausc.myflix.mobile.ui.components.QuickConnectAuthorizationDialog
 import dev.jausc.myflix.mobile.ui.screens.DetailScreen
 import dev.jausc.myflix.mobile.ui.screens.HomeScreen
@@ -597,7 +599,11 @@ fun MyFlixMobileContent(
                     onBack = { navController.popBackStack() },
                 )
             } else {
+                val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
+                    factory = SeerrHomeViewModel.Factory(seerrClient),
+                )
                 SeerrHomeScreen(
+                    viewModel = seerrHomeViewModel,
                     seerrClient = seerrClient,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
