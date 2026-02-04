@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +37,7 @@ class PlayerController(
     private val context: Context,
     private val useMpv: Boolean = false,
     private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
+    private val passthroughConfig: PassthroughConfig = PassthroughConfig(),
 ) {
     private var currentPlayer: UnifiedPlayer? = null
     private var _backend: PlayerBackend = PlayerBackend.EXOPLAYER
@@ -163,8 +165,8 @@ class PlayerController(
     }
 
     private fun initializeExoPlayer(): Boolean {
-        Log.d(TAG, "Initializing ExoPlayer backend (passthrough=$audioPassthroughMode)")
-        val exoPlayerWrapper = ExoPlayerWrapper(context, audioPassthroughMode)
+        Log.d(TAG, "Initializing ExoPlayer backend (passthrough=$audioPassthroughMode, config=$passthroughConfig)")
+        val exoPlayerWrapper = ExoPlayerWrapper(context, audioPassthroughMode, passthroughConfig)
         return if (exoPlayerWrapper.initialize()) {
             currentPlayer = exoPlayerWrapper
             _backend = PlayerBackend.EXOPLAYER

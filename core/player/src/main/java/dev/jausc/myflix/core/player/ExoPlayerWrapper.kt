@@ -23,6 +23,8 @@ import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
 import dev.jausc.myflix.core.player.audio.NightModeAudioProcessor
+import dev.jausc.myflix.core.player.audio.PassthroughConfig
+import dev.jausc.myflix.core.player.audio.PassthroughHelper
 import dev.jausc.myflix.core.player.audio.StereoDownmixProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +76,7 @@ enum class AudioPassthroughMode {
 class ExoPlayerWrapper(
     private val context: Context,
     private val audioPassthroughMode: AudioPassthroughMode = AudioPassthroughMode.OFF,
+    private val passthroughConfig: PassthroughConfig = PassthroughConfig(),
     nightModeEnabled: Boolean = false,
     initialAudioDelayMs: Long = 0L,
     stereoDownmixEnabled: Boolean = false,
@@ -155,12 +158,15 @@ class ExoPlayerWrapper(
 
     /**
      * Custom RenderersFactory for passthrough mode.
+     * Uses PassthroughHelper to build custom AudioCapabilities based on per-codec settings.
      * Injects the night mode audio processor for dynamic range compression.
      */
     private inner class PassthroughRenderersFactory(
-        context: Context,
+        private val factoryContext: Context,
         enableDecoderFallback: Boolean,
-    ) : DefaultRenderersFactory(context) {
+        private val mode: AudioPassthroughMode,
+        private val config: PassthroughConfig,
+    ) : DefaultRenderersFactory(factoryContext) {
         init {
             setEnableDecoderFallback(enableDecoderFallback)
             // PREFER: Use extension renderers (AV1 software) first, then hardware
@@ -173,12 +179,25 @@ class ExoPlayerWrapper(
             enableFloatOutput: Boolean,
             enableAudioTrackPlaybackParams: Boolean,
         ): AudioSink {
+            // Build custom AudioCapabilities based on passthrough mode and per-codec settings
+            val customCapabilities = PassthroughHelper.buildAudioCapabilities(
+                factoryContext,
+                mode,
+                config,
+            )
+
             // Build AudioSink with audio processors in the chain
             // Order: stereoDownmix (changes channels) -> nightMode (DRC) -> delay (sync)
             return DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                 .setAudioProcessors(arrayOf(stereoDownmixProcessor, nightModeProcessor, delayProcessor))
+                .apply {
+                    // Set custom audio capabilities for selective passthrough
+                    if (customCapabilities != null) {
+                        setAudioCapabilities(customCapabilities)
+                    }
+                }
                 .build()
         }
     }
@@ -232,16 +251,27 @@ class ExoPlayerWrapper(
                         FfmpegRenderersFactory(context)
                     } else {
                         Log.w(TAG, "FFmpeg not available, using passthrough renderers")
-                        PassthroughRenderersFactory(context, enableDecoderFallback = true)
+                        PassthroughRenderersFactory(
+                            context,
+                            enableDecoderFallback = true,
+                            mode = AudioPassthroughMode.OFF,
+                            config = passthroughConfig,
+                        )
                     }
                 }
                 AudioPassthroughMode.AUTO, AudioPassthroughMode.ALWAYS -> {
                     // Use platform decoders with passthrough capability for audio
                     // Enable extension renderers for AV1 software decode on devices without hardware AV1
                     Log.d(TAG, "Using passthrough renderers (mode=$audioPassthroughMode)")
+                    Log.d(TAG, "Passthrough config: DTS=${passthroughConfig.dtsEnabled}, " +
+                        "TrueHD=${passthroughConfig.truehdEnabled}, " +
+                        "E-AC3=${passthroughConfig.eac3Enabled}, " +
+                        "AC3=${passthroughConfig.ac3Enabled}")
                     PassthroughRenderersFactory(
                         context,
                         enableDecoderFallback = audioPassthroughMode == AudioPassthroughMode.AUTO,
+                        mode = audioPassthroughMode,
+                        config = passthroughConfig,
                     )
                 }
             }

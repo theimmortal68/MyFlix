@@ -97,6 +97,19 @@ object PreferenceKeys {
         /** Stereo downmix enabled (downmix multi-channel to stereo) */
         const val STEREO_DOWNMIX_ENABLED = "stereo_downmix_enabled"
 
+        // Per-codec passthrough toggles (used when passthrough mode is AUTO or ALWAYS)
+        /** DTS/DTS-HD passthrough enabled */
+        const val PASSTHROUGH_DTS_ENABLED = "passthrough_dts_enabled"
+
+        /** Dolby TrueHD passthrough enabled */
+        const val PASSTHROUGH_TRUEHD_ENABLED = "passthrough_truehd_enabled"
+
+        /** E-AC3/Atmos passthrough enabled */
+        const val PASSTHROUGH_EAC3_ENABLED = "passthrough_eac3_enabled"
+
+        /** AC3 (Dolby Digital) passthrough enabled */
+        const val PASSTHROUGH_AC3_ENABLED = "passthrough_ac3_enabled"
+
         /** Resolution matching mode (OFF, AUTO) */
         const val RESOLUTION_MATCHING_MODE = "resolution_matching_mode"
 
@@ -248,6 +261,19 @@ object PreferenceKeys {
 
         /** Default stereo downmix: OFF (preserve multi-channel audio) */
         const val STEREO_DOWNMIX_ENABLED = false
+
+        // Per-codec passthrough defaults (all enabled by default when passthrough is on)
+        /** Default DTS/DTS-HD passthrough: enabled */
+        const val PASSTHROUGH_DTS_ENABLED = true
+
+        /** Default TrueHD passthrough: enabled */
+        const val PASSTHROUGH_TRUEHD_ENABLED = true
+
+        /** Default E-AC3/Atmos passthrough: enabled */
+        const val PASSTHROUGH_EAC3_ENABLED = true
+
+        /** Default AC3 passthrough: enabled */
+        const val PASSTHROUGH_AC3_ENABLED = true
 
         /** Default resolution matching mode: OFF (use display native resolution) */
         const val RESOLUTION_MATCHING_MODE = "OFF"

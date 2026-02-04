@@ -114,6 +114,35 @@ abstract class AppPreferences(context: Context) {
     /** Stereo downmix: downmix multi-channel audio (5.1/7.1) to stereo for headphones/speakers. */
     val stereoDownmixEnabled: StateFlow<Boolean> by lazy { _stereoDownmixEnabled.asStateFlow() }
 
+    // Per-codec passthrough toggles
+    private val _passthroughDtsEnabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.PASSTHROUGH_DTS_ENABLED, PreferenceKeys.Defaults.PASSTHROUGH_DTS_ENABLED))
+    }
+
+    /** DTS/DTS-HD passthrough enabled (when passthrough mode is AUTO or ALWAYS). */
+    val passthroughDtsEnabled: StateFlow<Boolean> by lazy { _passthroughDtsEnabled.asStateFlow() }
+
+    private val _passthroughTruehdEnabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.PASSTHROUGH_TRUEHD_ENABLED, PreferenceKeys.Defaults.PASSTHROUGH_TRUEHD_ENABLED))
+    }
+
+    /** Dolby TrueHD passthrough enabled (when passthrough mode is AUTO or ALWAYS). */
+    val passthroughTruehdEnabled: StateFlow<Boolean> by lazy { _passthroughTruehdEnabled.asStateFlow() }
+
+    private val _passthroughEac3Enabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.PASSTHROUGH_EAC3_ENABLED, PreferenceKeys.Defaults.PASSTHROUGH_EAC3_ENABLED))
+    }
+
+    /** E-AC3/Atmos passthrough enabled (when passthrough mode is AUTO or ALWAYS). */
+    val passthroughEac3Enabled: StateFlow<Boolean> by lazy { _passthroughEac3Enabled.asStateFlow() }
+
+    private val _passthroughAc3Enabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.PASSTHROUGH_AC3_ENABLED, PreferenceKeys.Defaults.PASSTHROUGH_AC3_ENABLED))
+    }
+
+    /** AC3 (Dolby Digital) passthrough enabled (when passthrough mode is AUTO or ALWAYS). */
+    val passthroughAc3Enabled: StateFlow<Boolean> by lazy { _passthroughAc3Enabled.asStateFlow() }
+
     private val _resolutionMatchingMode: MutableStateFlow<String> by lazy {
         MutableStateFlow(
             prefs.getString(PreferenceKeys.Prefs.RESOLUTION_MATCHING_MODE, PreferenceKeys.Defaults.RESOLUTION_MATCHING_MODE)
@@ -365,6 +394,46 @@ abstract class AppPreferences(context: Context) {
     fun setStereoDownmixEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.STEREO_DOWNMIX_ENABLED, enabled).apply()
         _stereoDownmixEnabled.value = enabled
+    }
+
+    /**
+     * Set DTS/DTS-HD passthrough enabled.
+     * When enabled (and passthrough mode is AUTO or ALWAYS), DTS audio will be sent
+     * directly to the receiver without decoding.
+     */
+    fun setPassthroughDtsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.PASSTHROUGH_DTS_ENABLED, enabled).apply()
+        _passthroughDtsEnabled.value = enabled
+    }
+
+    /**
+     * Set Dolby TrueHD passthrough enabled.
+     * When enabled (and passthrough mode is AUTO or ALWAYS), TrueHD audio will be sent
+     * directly to the receiver without decoding.
+     */
+    fun setPassthroughTruehdEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.PASSTHROUGH_TRUEHD_ENABLED, enabled).apply()
+        _passthroughTruehdEnabled.value = enabled
+    }
+
+    /**
+     * Set E-AC3/Atmos passthrough enabled.
+     * When enabled (and passthrough mode is AUTO or ALWAYS), E-AC3 and Atmos audio will be sent
+     * directly to the receiver without decoding.
+     */
+    fun setPassthroughEac3Enabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.PASSTHROUGH_EAC3_ENABLED, enabled).apply()
+        _passthroughEac3Enabled.value = enabled
+    }
+
+    /**
+     * Set AC3 (Dolby Digital) passthrough enabled.
+     * When enabled (and passthrough mode is AUTO or ALWAYS), AC3 audio will be sent
+     * directly to the receiver without decoding.
+     */
+    fun setPassthroughAc3Enabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.PASSTHROUGH_AC3_ENABLED, enabled).apply()
+        _passthroughAc3Enabled.value = enabled
     }
 
     /**
