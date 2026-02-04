@@ -21,6 +21,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
+ * Callback interface for playback stop events.
+ * Used by TV app to update Watch Next row.
+ */
+interface PlaybackStopCallback {
+    suspend fun onPlaybackStopped(item: JellyfinItem, positionMs: Long)
+}
+
+/**
  * Ticks per millisecond for Jellyfin time conversion.
  */
 private const val TICKS_PER_MS = 10_000L
@@ -117,6 +125,7 @@ class PlayerViewModel(
     private val maxStreamingBitrateMbps: Int = 0,
     private var startPositionOverrideMs: Long? = null,
     private val preferHdrOverDv: Boolean = false,
+    private val playbackStopCallback: PlaybackStopCallback? = null,
 ) : ViewModel() {
 
     /**
@@ -131,6 +140,7 @@ class PlayerViewModel(
         private val maxStreamingBitrateMbps: Int = 0,
         private val startPositionMs: Long? = null,
         private val preferHdrOverDv: Boolean = false,
+        private val playbackStopCallback: PlaybackStopCallback? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -143,6 +153,7 @@ class PlayerViewModel(
                 maxStreamingBitrateMbps,
                 startPositionMs,
                 preferHdrOverDv,
+                playbackStopCallback,
             ) as T
     }
 
@@ -375,6 +386,11 @@ class PlayerViewModel(
             mediaSourceId = state.mediaSourceId,
             liveStreamId = state.liveStreamId,
         )
+
+        // Notify callback for Watch Next updates (TV)
+        state.item?.let { item ->
+            playbackStopCallback?.onPlaybackStopped(item, positionMs)
+        }
 
         // Clear persisted session since we properly reported stop
         appPreferences?.clearActivePlaybackSession()

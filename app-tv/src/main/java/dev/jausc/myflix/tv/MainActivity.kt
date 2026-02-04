@@ -11,7 +11,9 @@
 
 package dev.jausc.myflix.tv
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -91,23 +93,83 @@ import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.tv.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
+import dev.jausc.myflix.tv.channels.ChannelSyncWorker
+import dev.jausc.myflix.tv.channels.TvChannelManager
+import dev.jausc.myflix.tv.channels.WatchNextManager
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.LocalExitFocusState
 
+/**
+ * Deep link types for deferred navigation from TV home screen.
+ */
+private sealed class DeepLink {
+    data class Play(val itemId: String, val startPositionMs: Long?) : DeepLink()
+    data object Home : DeepLink()
+}
+
 class MainActivity : ComponentActivity() {
+    /**
+     * Pending deep link to process after login is confirmed.
+     * Deep links from TV home screen (Watch Next, custom channels) are stored here
+     * and processed once the user is logged in and the home screen is ready.
+     */
+    private var pendingDeepLink: DeepLink? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MyFlixTvTheme {
-                MyFlixTvApp()
+                MyFlixTvApp(
+                    pendingDeepLink = pendingDeepLink,
+                    onDeepLinkConsumed = { pendingDeepLink = null },
+                )
             }
+        }
+        // Handle deep link from launch intent
+        handleDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    /**
+     * Handle deep links from Android TV home screen.
+     * Format: myflix://play/{itemId}?startPositionMs={position}
+     *         myflix://home
+     */
+    private fun handleDeepLink(intent: Intent?): Boolean {
+        val uri = intent?.data ?: return false
+        if (uri.scheme != "myflix") return false
+
+        Log.d("MainActivity", "Handling deep link: $uri")
+
+        return when (uri.host) {
+            "play" -> {
+                val itemId = uri.pathSegments.firstOrNull()
+                if (itemId != null) {
+                    val startPositionMs = uri.getQueryParameter("startPositionMs")?.toLongOrNull()
+                    pendingDeepLink = DeepLink.Play(itemId, startPositionMs)
+                    true
+                } else {
+                    false
+                }
+            }
+            "home" -> {
+                pendingDeepLink = DeepLink.Home
+                true
+            }
+            else -> false
         }
     }
 }
 
 @Composable
-fun MyFlixTvApp() {
+private fun MyFlixTvApp(
+    pendingDeepLink: DeepLink? = null,
+    onDeepLinkConsumed: () -> Unit = {},
+) {
     val context = LocalContext.current
 
     val jellyfinClient = remember { JellyfinClient(context) }
@@ -176,8 +238,21 @@ fun MyFlixTvApp() {
                 tvPreferences.clearActivePlaybackSession()
                 android.util.Log.d("MyFlix", "Crash recovery: Reported playback stopped")
             }
+
+            // Initialize TV home screen channel sync
+            ChannelSyncWorker.schedule(context)
+            ChannelSyncWorker.syncNow(context)
+
+            // Request channel to be browsable (user must approve)
+            val channelManager = TvChannelManager.getInstance(context)
+            val channelId = channelManager.getOrCreateChannel()
+            channelManager.requestChannelBrowsable(channelId)
         } else {
             libraries = emptyList()
+
+            // Cancel channel sync and clear Watch Next on logout
+            ChannelSyncWorker.cancel(context)
+            WatchNextManager.getInstance(context).clearAll()
         }
     }
 
@@ -539,6 +614,27 @@ fun MyFlixTvApp() {
             }
 
             composable("home") {
+                // Process pending deep link from TV home screen (Watch Next, custom channels)
+                LaunchedEffect(pendingDeepLink) {
+                    pendingDeepLink?.let { deepLink ->
+                        onDeepLinkConsumed()
+                        when (deepLink) {
+                            is DeepLink.Play -> {
+                                val route = if (deepLink.startPositionMs != null) {
+                                    "player/${deepLink.itemId}?startPositionMs=${deepLink.startPositionMs}"
+                                } else {
+                                    "player/${deepLink.itemId}"
+                                }
+                                Log.d("MainActivity", "Processing deep link: navigating to $route")
+                                navController.navigate(route)
+                            }
+                            is DeepLink.Home -> {
+                                // Already at home, do nothing
+                                Log.d("MainActivity", "Processing deep link: already at home")
+                            }
+                        }
+                    }
+                }
                 HomeScreen(
                     jellyfinClient = jellyfinClient,
                     preferences = tvPreferences,

@@ -125,7 +125,9 @@ import dev.jausc.myflix.core.player.SubtitleColor
 import dev.jausc.myflix.core.player.SubtitleFontSize
 import dev.jausc.myflix.core.player.SubtitleStyle
 import dev.jausc.myflix.core.player.TrickplayProvider
+import dev.jausc.myflix.core.viewmodel.PlaybackStopCallback
 import dev.jausc.myflix.core.viewmodel.PlayerViewModel
+import dev.jausc.myflix.tv.channels.WatchNextManager
 import dev.jausc.myflix.tv.ui.components.AutoPlayCountdown
 import dev.jausc.myflix.tv.ui.components.MenuAnchor
 import dev.jausc.myflix.tv.ui.components.MenuAnchorAlignment
@@ -164,6 +166,20 @@ fun PlayerScreen(
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
+
+    // WatchNextManager for updating Android TV Watch Next row
+    val watchNextManager = remember { WatchNextManager.getInstance(context) }
+    val playbackStopCallback = remember(watchNextManager, jellyfinClient) {
+        object : PlaybackStopCallback {
+            override suspend fun onPlaybackStopped(item: JellyfinItem, positionMs: Long) {
+                watchNextManager.onPlaybackStopped(
+                    item = item,
+                    positionMs = positionMs,
+                    serverUrl = jellyfinClient.serverUrl ?: "",
+                )
+            }
+        }
+    }
 
     // Get preferred audio and subtitle language from preferences
     val preferredAudioLanguage by appPreferences.preferredAudioLanguage.collectAsState()
@@ -242,6 +258,7 @@ fun PlayerScreen(
             maxStreamingBitrateMbps = maxStreamingBitrate,
             startPositionMs = startPositionMs,
             preferHdrOverDv = preferHdrOverDv,
+            playbackStopCallback = playbackStopCallback,
         ),
     )
 

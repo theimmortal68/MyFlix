@@ -106,6 +106,11 @@ dependencies {
     val tvVersion = rootProject.extra["tvComposeVersion"] as String
     implementation("androidx.tv:tv-material:$tvVersion")
 
+    // Android TV home screen integration
+    implementation("androidx.tvprovider:tvprovider:1.0.0")
+    // WorkManager for periodic channel sync
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     // Coil 3 for image loading
     implementation("io.coil-kt.coil3:coil:${rootProject.extra["coilVersion"]}")
     implementation("io.coil-kt.coil3:coil-core:${rootProject.extra["coilVersion"]}")
