@@ -90,9 +90,8 @@ import dev.jausc.myflix.tv.ui.components.detail.CastCrewSection
 import dev.jausc.myflix.tv.ui.components.detail.ChaptersRow
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparator
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButtons
+import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
 import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
-import dev.jausc.myflix.tv.ui.components.detail.TrailerBackdrop
-import dev.jausc.myflix.tv.ui.components.detail.TrailerBackdropState
 import dev.jausc.myflix.tv.ui.components.detail.MediaBadgesRow
 import dev.jausc.myflix.tv.ui.components.detail.RatingBadge
 import dev.jausc.myflix.tv.ui.components.detail.StarRating
@@ -136,9 +135,6 @@ fun MovieDetailScreen(
     leftEdgeFocusRequester: FocusRequester? = null,
 ) {
     val movie = state.item ?: return
-
-    // Collect trailer autoplay preference
-    val trailerAutoplayEnabled by appPreferences.trailerAutoplayEnabled.collectAsState()
 
     // Focus requesters for NavRail restoration
     val playButtonFocusRequester = remember { FocusRequester() }
@@ -254,22 +250,6 @@ fun MovieDetailScreen(
         }
     }
 
-    // Inline trailer autoplay - fetch stream URL for background playback
-    var inlineTrailerUrl by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(trailerVideoKey, jellyfinClient.serverUrl) {
-        if (trailerVideoKey != null && jellyfinClient.serverUrl != null) {
-            TrailerStreamService.configure(jellyfinClient.serverUrl!!)
-            coroutineScope.launch {
-                val streamUrl = TrailerStreamService.getStreamUrl(trailerVideoKey)
-                inlineTrailerUrl = streamUrl
-                Log.d("MovieDetail", "Inline trailer stream URL: ${streamUrl?.take(50)}...")
-            }
-        } else {
-            inlineTrailerUrl = null
-        }
-    }
-
     // Fetch all TMDB videos for extras (featurettes, behind the scenes, etc.)
     var tmdbVideos by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
 
@@ -360,14 +340,9 @@ fun MovieDetailScreen(
             .background(TvColors.Background)
             .focusGroup(),
     ) {
-        // Layer 1: Trailer backdrop with Ken Burns fallback (top-right)
-        TrailerBackdrop(
-            backdropUrl = backdropUrl,
-            state = TrailerBackdropState(
-                trailerUrl = inlineTrailerUrl,
-                trailersEnabled = trailerAutoplayEnabled,
-                showUnmuteButton = true,
-            ),
+        // Layer 1: Ken Burns animated backdrop (top-right)
+        KenBurnsBackdrop(
+            imageUrl = backdropUrl,
             fadePreset = KenBurnsFadePreset.MOVIE,
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -417,7 +392,7 @@ fun MovieDetailScreen(
                             ),
                         ),
                     )
-                    .padding(top = 12.dp),
+                    .padding(top = 42.dp),
             ) {
                 Column {
                     // Tab row
@@ -448,12 +423,12 @@ fun MovieDetailScreen(
                     )
 
                     // Tab content area - navigates up to last focused tab
-                    // Height of 150dp accommodates Details content and compact cards
+                    // Height of 123dp accommodates Details content and compact cards
                     val selectedTabRequester = getTabFocusRequester(lastFocusedTab)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(153.dp)
+                            .height(123.dp)
                             .padding(start = 2.dp)
                             .focusProperties {
                                 up = selectedTabRequester
@@ -781,7 +756,7 @@ private fun MovieDetailsTabContent(
         horizontalArrangement = Arrangement.spacedBy(48.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
-        // Column 1: Tagline first, then basic info
+        // Column 1: Basic info
         item("column1") {
             Box(
                 modifier = Modifier
@@ -790,9 +765,6 @@ private fun MovieDetailsTabContent(
                     .focusable(),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    movie.taglines?.firstOrNull()?.let { tagline ->
-                        DetailItem("Tagline", "\"$tagline\"")
-                    }
                     DetailItem("Genres", movie.genres?.joinToString(", ") ?: "—")
                     DetailItem("Released", movie.premiereDate?.let { formatDate(it) } ?: "—")
                     DetailItem(
@@ -1026,7 +998,7 @@ private fun MediaInfoTabContent(
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        subtitleStreams.take(6).forEach { stream ->
+                        subtitleStreams.take(5).forEach { stream ->
                             Text(
                                 text = stream.displayTitle ?: stream.language?.uppercase() ?: "Unknown",
                                 style = MaterialTheme.typography.bodySmall,
@@ -1035,9 +1007,9 @@ private fun MediaInfoTabContent(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        if (subtitleStreams.size > 6) {
+                        if (subtitleStreams.size > 5) {
                             Text(
-                                text = "+${subtitleStreams.size - 6} more",
+                                text = "+${subtitleStreams.size - 5} more",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TvColors.TextSecondary.copy(alpha = 0.7f),
                             )
@@ -1165,7 +1137,7 @@ private fun RemoteExtraCard(
 
     Column(
         modifier = Modifier
-            .width(210.dp)
+            .width(139.dp)
             .focusProperties { if (tabFocusRequester != null) up = tabFocusRequester },
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -1188,7 +1160,7 @@ private fun RemoteExtraCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(108.dp)
+                    .height(78.dp)
                     .clip(RoundedCornerShape(8.dp)),
             ) {
                 AsyncImage(
@@ -1293,8 +1265,8 @@ private fun CompactPosterCard(
         ) {
             Box(
                 modifier = Modifier
-                    .width(83.dp)
-                    .height(125.dp)
+                    .width(63.dp)
+                    .height(95.dp)
                     .clip(RoundedCornerShape(6.dp)),
             ) {
                 AsyncImage(

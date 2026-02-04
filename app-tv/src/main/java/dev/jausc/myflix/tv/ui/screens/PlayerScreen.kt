@@ -291,6 +291,9 @@ fun PlayerScreen(
     var showSyncPlayDialog by remember { mutableStateOf(false) }
     var showSyncPlayOverlay by remember { mutableStateOf(false) }
 
+    // Track if any slide-out menu is open (so back button closes menu instead of exiting player)
+    var isMenuOpen by remember { mutableStateOf(false) }
+
     // Available groups for dialog
     var availableGroups by remember { mutableStateOf<List<SyncPlayGroup>>(emptyList()) }
     var isLoadingGroups by remember { mutableStateOf(false) }
@@ -628,6 +631,10 @@ fun PlayerScreen(
             .focusable()
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
+                    // If a menu is open, let the BackHandler in the menu handle back presses
+                    if (event.key == Key.Back && isMenuOpen) {
+                        return@onKeyEvent false
+                    }
                     if (state.showControls) {
                         if (event.key == Key.Back) {
                             if (state.showAutoPlayCountdown) {
@@ -833,6 +840,7 @@ fun PlayerScreen(
                     },
                     onUserInteraction = { viewModel.resetControlsHideTimer() },
                     onMenuOpenChanged = { isOpen ->
+                        isMenuOpen = isOpen
                         if (isOpen) {
                             viewModel.cancelControlsHideTimer()
                         } else {
@@ -1213,6 +1221,14 @@ private fun TvPlayerControlsOverlay(
     val settingsRowFocusRequester = remember { FocusRequester() }
     val chaptersRowFocusRequester = remember { FocusRequester() }
 
+    // Individual focus requesters for each menu button (for focus restoration after menu close)
+    val audioButtonFocusRequester = remember { FocusRequester() }
+    val subtitlesButtonFocusRequester = remember { FocusRequester() }
+    val subStyleButtonFocusRequester = remember { FocusRequester() }
+    val speedButtonFocusRequester = remember { FocusRequester() }
+    val displayModeButtonFocusRequester = remember { FocusRequester() }
+    val qualityButtonFocusRequester = remember { FocusRequester() }
+
     // Request focus on chapters row after it becomes visible
     LaunchedEffect(showChaptersRow) {
         if (showChaptersRow) {
@@ -1467,7 +1483,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Audio",
                         icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                        focusRequester = settingsRowFocusRequester,
+                        focusRequester = audioButtonFocusRequester,
                         anchorAlignment = MenuAnchorAlignment.BottomStart,
                         onDownPressed = {
                             if (!showChaptersRow) {
@@ -1486,6 +1502,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Subtitles",
                         icon = Icons.Outlined.ClosedCaption,
+                        focusRequester = subtitlesButtonFocusRequester,
                         anchorAlignment = MenuAnchorAlignment.BottomStart,
                         onDownPressed = {
                             if (!showChaptersRow) {
@@ -1504,6 +1521,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Sub Style",
                         icon = Icons.Outlined.FormatSize,
+                        focusRequester = subStyleButtonFocusRequester,
                         anchorAlignment = MenuAnchorAlignment.BottomStart,
                         onDownPressed = {
                             if (!showChaptersRow) {
@@ -1629,6 +1647,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Speed",
                         icon = Icons.Outlined.Speed,
+                        focusRequester = speedButtonFocusRequester,
                         anchorAlignment = MenuAnchorAlignment.BottomEnd,
                         onDownPressed = {
                             if (!showChaptersRow) {
@@ -1647,6 +1666,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Display",
                         icon = Icons.Outlined.AspectRatio,
+                        focusRequester = displayModeButtonFocusRequester,
                         anchorAlignment = MenuAnchorAlignment.BottomEnd,
                         onDownPressed = {
                             if (!showChaptersRow) {
@@ -1665,6 +1685,7 @@ private fun TvPlayerControlsOverlay(
                     TvActionButton(
                         label = "Quality",
                         icon = Icons.Outlined.HighQuality,
+                        focusRequester = qualityButtonFocusRequester,
                         anchorAlignment = MenuAnchorAlignment.BottomEnd,
                         onDownPressed = {
                             if (!showChaptersRow) {
@@ -1691,7 +1712,7 @@ private fun TvPlayerControlsOverlay(
                     trickplayProvider = trickplayProvider,
                     jellyfinClient = jellyfinClient,
                     itemId = itemId,
-                    upFocusRequester = settingsRowFocusRequester,
+                    upFocusRequester = audioButtonFocusRequester,
                     rowFocusRequester = chaptersRowFocusRequester,
                     onChapterSelected = { chapterMs ->
                         onUserInteraction()
@@ -1783,7 +1804,10 @@ private fun TvPlayerControlsOverlay(
                 ),
             ),
         ),
-        onDismiss = { activeMenu = null },
+        onDismiss = {
+            activeMenu = null
+            audioButtonFocusRequester.requestFocus()
+        },
         anchor = menuAnchor,
     )
 
@@ -1841,7 +1865,10 @@ private fun TvPlayerControlsOverlay(
                 )
             } + searchSubtitleItem
         },
-        onDismiss = { activeMenu = null },
+        onDismiss = {
+            activeMenu = null
+            subtitlesButtonFocusRequester.requestFocus()
+        },
         anchor = menuAnchor,
     )
 
@@ -1896,7 +1923,10 @@ private fun TvPlayerControlsOverlay(
                 },
             ),
         ),
-        onDismiss = { activeMenu = null },
+        onDismiss = {
+            activeMenu = null
+            subStyleButtonFocusRequester.requestFocus()
+        },
         anchor = menuAnchor,
     )
 
@@ -1916,7 +1946,10 @@ private fun TvPlayerControlsOverlay(
                 },
             )
         },
-        onDismiss = { activeMenu = null },
+        onDismiss = {
+            activeMenu = null
+            speedButtonFocusRequester.requestFocus()
+        },
         anchor = menuAnchor,
     )
 
@@ -1936,7 +1969,10 @@ private fun TvPlayerControlsOverlay(
                 },
             )
         },
-        onDismiss = { activeMenu = null },
+        onDismiss = {
+            activeMenu = null
+            displayModeButtonFocusRequester.requestFocus()
+        },
         anchor = menuAnchor,
     )
 
@@ -1956,7 +1992,10 @@ private fun TvPlayerControlsOverlay(
                 },
             )
         },
-        onDismiss = { activeMenu = null },
+        onDismiss = {
+            activeMenu = null
+            qualityButtonFocusRequester.requestFocus()
+        },
         anchor = menuAnchor,
     )
 

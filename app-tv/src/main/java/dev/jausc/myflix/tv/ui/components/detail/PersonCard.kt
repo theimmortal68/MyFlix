@@ -46,7 +46,7 @@ fun PersonCard(
 
     Surface(
         onClick = onClick,
-        modifier = modifier.width(100.dp),
+        modifier = modifier.width(70.dp),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = TvColors.Surface.copy(alpha = 0.5f),
@@ -62,7 +62,7 @@ fun PersonCard(
             // Circular person image
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(50.dp)
                     .clip(CircleShape)
                     .background(TvColors.SurfaceElevated),
                 contentAlignment = Alignment.Center,
@@ -73,7 +73,7 @@ fun PersonCard(
                         contentDescription = person.name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(50.dp)
                             .clip(CircleShape),
                     )
                 } else {
