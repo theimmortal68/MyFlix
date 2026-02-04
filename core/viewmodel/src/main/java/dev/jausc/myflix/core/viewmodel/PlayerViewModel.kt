@@ -95,6 +95,7 @@ data class PlayerUiState(
                 width = videoStream?.width ?: 0,
                 height = videoStream?.height ?: 0,
                 bitrate = videoStream?.bitRate ?: 0,
+                frameRate = videoStream?.frameRate,
             )
         }
 }
@@ -110,6 +111,7 @@ data class PlayerMediaInfo(
     val width: Int,
     val height: Int,
     val bitrate: Long,
+    val frameRate: Float?,
 )
 
 /**
