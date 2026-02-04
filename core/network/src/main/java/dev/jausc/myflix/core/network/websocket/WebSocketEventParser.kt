@@ -7,6 +7,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 
 /**
@@ -38,6 +39,14 @@ class WebSocketEventParser(
                 "GeneralCommand" -> { parseGeneralCommand(data) }
                 "LibraryChanged" -> { parseLibraryChanged(data) }
                 "UserDataChanged" -> { parseUserDataChanged(data) }
+                // SyncPlay events
+                "SyncPlayCommand" -> { parseSyncPlayCommand(data) }
+                "SyncPlayGroupJoined" -> { parseSyncPlayGroupJoined(data) }
+                "SyncPlayGroupLeft" -> { WebSocketEvent.SyncPlayGroupLeft }
+                "SyncPlayGroupUpdate" -> { parseSyncPlayGroupUpdate(data) }
+                "SyncPlayPlayQueueUpdate" -> { parseSyncPlayPlayQueueUpdate(data) }
+                "SyncPlayUserJoined" -> { parseSyncPlayUserJoined(data) }
+                "SyncPlayUserLeft" -> { parseSyncPlayUserLeft(data) }
                 else -> {
                     Log.d(TAG, "Ignoring unknown message type: $messageType")
                     null
@@ -129,6 +138,75 @@ class WebSocketEventParser(
         return WebSocketEvent.UserDataChanged(
             userId = userId,
             itemId = itemId,
+        )
+    }
+
+    // ==================== SyncPlay Parsing ====================
+
+    private fun parseSyncPlayCommand(data: JsonObject?): WebSocketEvent.SyncPlayCommand? {
+        data ?: return null
+        val commandStr = data["Command"]?.jsonPrimitive?.contentOrNull ?: return null
+        val command = SyncPlayCommandType.fromString(commandStr)
+        if (command == null) {
+            Log.w(TAG, "Unknown SyncPlay command: $commandStr")
+            return null
+        }
+        return WebSocketEvent.SyncPlayCommand(
+            command = command,
+            positionTicks = data["PositionTicks"]?.jsonPrimitive?.longOrNull ?: 0L,
+            whenUtc = data["When"]?.jsonPrimitive?.contentOrNull ?: "",
+            playlistItemId = data["PlaylistItemId"]?.jsonPrimitive?.contentOrNull,
+        )
+    }
+
+    private fun parseSyncPlayGroupJoined(data: JsonObject?): WebSocketEvent.SyncPlayGroupJoined? {
+        data ?: return null
+        return WebSocketEvent.SyncPlayGroupJoined(
+            groupId = data["GroupId"]?.jsonPrimitive?.contentOrNull ?: return null,
+            groupName = data["GroupName"]?.jsonPrimitive?.contentOrNull ?: "",
+            state = data["State"]?.jsonPrimitive?.contentOrNull ?: "Idle",
+            participants = data["Participants"]?.jsonArray?.mapNotNull {
+                it.jsonPrimitive.contentOrNull
+            } ?: emptyList(),
+        )
+    }
+
+    private fun parseSyncPlayGroupUpdate(data: JsonObject?): WebSocketEvent.SyncPlayGroupStateUpdate? {
+        data ?: return null
+        return WebSocketEvent.SyncPlayGroupStateUpdate(
+            state = data["State"]?.jsonPrimitive?.contentOrNull ?: "Idle",
+            reason = data["Reason"]?.jsonPrimitive?.contentOrNull,
+            positionTicks = data["PositionTicks"]?.jsonPrimitive?.longOrNull ?: 0L,
+            whenUtc = data["When"]?.jsonPrimitive?.contentOrNull,
+        )
+    }
+
+    private fun parseSyncPlayPlayQueueUpdate(data: JsonObject?): WebSocketEvent.SyncPlayPlayQueueUpdate? {
+        data ?: return null
+        val playlist = data["Playlist"]?.jsonArray?.mapNotNull { item ->
+            item.jsonObject["ItemId"]?.jsonPrimitive?.contentOrNull
+        } ?: emptyList()
+        return WebSocketEvent.SyncPlayPlayQueueUpdate(
+            playlistItemIds = playlist,
+            startPositionTicks = data["StartPositionTicks"]?.jsonPrimitive?.longOrNull ?: 0L,
+            playingItemIndex = data["PlayingItemIndex"]?.jsonPrimitive?.intOrNull ?: 0,
+            reason = data["Reason"]?.jsonPrimitive?.contentOrNull ?: "",
+        )
+    }
+
+    private fun parseSyncPlayUserJoined(data: JsonObject?): WebSocketEvent.SyncPlayUserJoined? {
+        data ?: return null
+        return WebSocketEvent.SyncPlayUserJoined(
+            userId = data["UserId"]?.jsonPrimitive?.contentOrNull ?: return null,
+            userName = data["UserName"]?.jsonPrimitive?.contentOrNull ?: "",
+        )
+    }
+
+    private fun parseSyncPlayUserLeft(data: JsonObject?): WebSocketEvent.SyncPlayUserLeft? {
+        data ?: return null
+        return WebSocketEvent.SyncPlayUserLeft(
+            userId = data["UserId"]?.jsonPrimitive?.contentOrNull ?: return null,
+            userName = data["UserName"]?.jsonPrimitive?.contentOrNull ?: "",
         )
     }
 
