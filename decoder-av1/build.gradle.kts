@@ -21,6 +21,11 @@ android {
                 // Release build for better performance
                 arguments("-DCMAKE_BUILD_TYPE=Release")
                 arguments("-DBUILD_TESTING=OFF")
+                // libgav1: Use std::mutex instead of abseil (abseil not bundled)
+                arguments("-DLIBGAV1_THREADPOOL_USE_STD_MUTEX=1")
+                // libgav1: Disable examples and tests (not needed, avoids abseil dep)
+                arguments("-DLIBGAV1_ENABLE_EXAMPLES=0")
+                arguments("-DLIBGAV1_ENABLE_TESTS=0")
                 targets("gav1JNI")
             }
         }
