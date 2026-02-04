@@ -1,6 +1,5 @@
 package dev.jausc.myflix.core.player
 
-import android.app.Activity
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -8,16 +7,15 @@ import android.view.Display
 import android.view.Surface
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
+import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 /**
  * PlayerController - manages player backend selection and provides unified interface
@@ -467,179 +465,38 @@ class PlayerController(
             return display.hdrCapabilities?.supportedHdrTypes ?: intArrayOf()
         }
 
-        // ==================== Refresh Rate Management ====================
+        // ==================== Refresh Rate Debugging ====================
 
         /**
-         * Get available display modes with their refresh rates.
+         * Get available display modes with their refresh rates for debugging.
          * Requires API 23+ (Marshmallow).
+         *
+         * Note: For actual refresh rate switching, use RefreshRateManager.
          */
-        fun getAvailableRefreshRates(context: Context): List<RefreshRateInfo> {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                return emptyList()
-            }
-
+        @RequiresApi(Build.VERSION_CODES.M)
+        fun getAvailableRefreshRates(context: Context): List<String> {
             return try {
-                val display = getDisplay(context) ?: return emptyList()
+                val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    context.display
+                } else {
+                    val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                    @Suppress("DEPRECATION")
+                    windowManager.defaultDisplay
+                } ?: return emptyList()
+
                 val modes = display.supportedModes
+                val currentModeId = display.mode.modeId
 
                 modes.map { mode ->
-                    RefreshRateInfo(
-                        modeId = mode.modeId,
-                        refreshRate = mode.refreshRate,
-                        width = mode.physicalWidth,
-                        height = mode.physicalHeight,
-                    )
-                }.distinctBy { it.refreshRate.toInt() }
-                    .sortedBy { it.refreshRate }
+                    val current = if (mode.modeId == currentModeId) " (current)" else ""
+                    "${mode.physicalWidth}x${mode.physicalHeight} @ ${mode.refreshRate}Hz$current"
+                }.sortedBy { it }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to get available refresh rates", e)
                 emptyList()
             }
         }
-
-        /**
-         * Apply refresh rate based on the mode setting.
-         *
-         * @param activity The activity whose window will be modified
-         * @param mode Refresh rate mode: "OFF", "AUTO", "60", "120"
-         * @param videoFrameRate Video frame rate for AUTO mode (e.g., 23.976, 24, 25, 30, 60)
-         */
-        fun applyRefreshRate(activity: Activity, mode: String, videoFrameRate: Float = 0f) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                Log.d(TAG, "Refresh rate switching not supported below API 23")
-                return
-            }
-
-            when (mode) {
-                "OFF" -> resetRefreshRate(activity)
-                "AUTO" -> setRefreshRateForVideo(activity, videoFrameRate)
-                "60" -> setRefreshRate(activity, 60f)
-                "120" -> setRefreshRate(activity, 120f)
-                else -> Log.w(TAG, "Unknown refresh rate mode: $mode")
-            }
-        }
-
-        /**
-         * Set display to a specific refresh rate.
-         * Finds the best matching display mode for the target refresh rate.
-         */
-        @RequiresApi(Build.VERSION_CODES.M)
-        fun setRefreshRate(activity: Activity, targetHz: Float) {
-            try {
-                val display = getDisplay(activity) ?: return
-                val currentMode = display.mode
-                val modes = display.supportedModes
-
-                // Find mode with same resolution but target refresh rate
-                val targetMode = modes
-                    .filter {
-                        it.physicalWidth == currentMode.physicalWidth &&
-                            it.physicalHeight == currentMode.physicalHeight
-                    }
-                    .minByOrNull { abs(it.refreshRate - targetHz) }
-
-                if (targetMode != null && abs(targetMode.refreshRate - targetHz) < 5f) {
-                    Log.d(TAG, "Setting refresh rate to ${targetMode.refreshRate}Hz (mode ${targetMode.modeId})")
-                    setPreferredDisplayMode(activity, targetMode.modeId)
-                } else {
-                    Log.d(TAG, "No suitable mode found for ${targetHz}Hz, available: ${modes.map { it.refreshRate }}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to set refresh rate to ${targetHz}Hz", e)
-            }
-        }
-
-        /**
-         * Set refresh rate based on video frame rate.
-         * Matches video FPS to optimal display refresh rate.
-         */
-        @RequiresApi(Build.VERSION_CODES.M)
-        private fun setRefreshRateForVideo(activity: Activity, videoFps: Float) {
-            if (videoFps <= 0f) {
-                Log.d(TAG, "Invalid video FPS: $videoFps, skipping refresh rate adjustment")
-                return
-            }
-
-            val targetHz = getOptimalRefreshRate(videoFps)
-            Log.d(TAG, "Video FPS: $videoFps -> Target refresh rate: ${targetHz}Hz")
-            setRefreshRate(activity, targetHz)
-        }
-
-        /**
-         * Reset display to system default refresh rate.
-         */
-        fun resetRefreshRate(activity: Activity) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-
-            try {
-                Log.d(TAG, "Resetting refresh rate to system default")
-                setPreferredDisplayMode(activity, 0) // 0 = system default
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to reset refresh rate", e)
-            }
-        }
-
-        /**
-         * Calculate optimal refresh rate for a given video frame rate.
-         */
-        private fun getOptimalRefreshRate(videoFps: Float): Float {
-            return when {
-                // 23.976 / 24 fps -> 24Hz (or 48Hz if available)
-                videoFps in 23.5f..24.5f -> 24f
-                // 25 fps (PAL) -> 50Hz
-                videoFps in 24.5f..25.5f -> 50f
-                // 29.97 / 30 fps -> 60Hz
-                videoFps in 29.5f..30.5f -> 60f
-                // 50 fps -> 50Hz
-                videoFps in 49.5f..50.5f -> 50f
-                // 59.94 / 60 fps -> 60Hz
-                videoFps in 59.5f..60.5f -> 60f
-                // 120 fps -> 120Hz
-                videoFps in 119.5f..120.5f -> 120f
-                // Default to 60Hz for other frame rates
-                else -> 60f
-            }
-        }
-
-        /**
-         * Set the preferred display mode on the activity window.
-         */
-        private fun setPreferredDisplayMode(activity: Activity, modeId: Int) {
-            activity.runOnUiThread {
-                val params = activity.window.attributes
-                params.preferredDisplayModeId = modeId
-                activity.window.attributes = params
-            }
-        }
-
-        /**
-         * Get the display for the given context.
-         */
-        @RequiresApi(Build.VERSION_CODES.M)
-        private fun getDisplay(context: Context): Display? {
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                context.display
-            } else {
-                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                @Suppress("DEPRECATION")
-                windowManager.defaultDisplay
-            }
-        }
     }
-}
-
-/**
- * Information about a display refresh rate mode.
- */
-data class RefreshRateInfo(
-    val modeId: Int,
-    val refreshRate: Float,
-    val width: Int,
-    val height: Int,
-) {
-    /** Display-friendly label for this refresh rate */
-    val label: String
-        get() = "${refreshRate.toInt()}Hz"
 }
 
 /**
