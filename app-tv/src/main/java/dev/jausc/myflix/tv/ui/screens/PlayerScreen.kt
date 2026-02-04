@@ -118,6 +118,8 @@ import dev.jausc.myflix.core.player.PlayerBackend
 import dev.jausc.myflix.core.player.PlayerConstants
 import dev.jausc.myflix.core.player.AudioPassthroughMode
 import dev.jausc.myflix.core.player.PlayerController
+import dev.jausc.myflix.core.player.display.RefreshRateManager
+import dev.jausc.myflix.core.player.display.RefreshRateSwitchMode
 import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import dev.jausc.myflix.core.player.PlayerDisplayMode
 import dev.jausc.myflix.core.player.PlayerUtils
@@ -277,6 +279,9 @@ fun PlayerScreen(
 
     // Collect player state
     val playbackState by playerController.state.collectAsState()
+
+    // Refresh rate manager for matching display refresh to video frame rate
+    val refreshRateManager = remember { RefreshRateManager(context) }
     var displayMode by remember(displayModeName) {
         mutableStateOf(
             try {
@@ -390,25 +395,27 @@ fun PlayerScreen(
             viewModel.stopPlayback(playerController.state.value.position)
             playerController.stop()
             playerController.release()
-            // Reset refresh rate when leaving player
+            // Restore original refresh rate when leaving player
             (context as? Activity)?.let { activity ->
-                PlayerController.resetRefreshRate(activity)
+                refreshRateManager.restoreOriginalMode(activity)
             }
         }
     }
 
     // Apply refresh rate when playback starts or mode changes
-    LaunchedEffect(playbackState.isPlaying, refreshRateMode, playbackState.videoWidth) {
+    LaunchedEffect(playbackState.isPlaying, refreshRateMode, state.mediaInfo?.frameRate) {
         if (playbackState.isPlaying && playbackState.videoWidth > 0) {
             (context as? Activity)?.let { activity ->
-                // Use video frame rate if available, otherwise estimate from common frame rates
-                val videoFps = if (playbackState.videoHeight > 0) {
-                    // Most content is 24fps (movies) or 30fps (TV), default to 24 for cinematic content
-                    24f
-                } else {
-                    0f
+                // Use actual video frame rate from media info, fallback to 24fps for cinematic content
+                val frameRate = state.mediaInfo?.frameRate ?: 24f
+                val mode = when (refreshRateMode) {
+                    "SEAMLESS" -> RefreshRateSwitchMode.SEAMLESS
+                    "ALWAYS" -> RefreshRateSwitchMode.ALWAYS
+                    else -> RefreshRateSwitchMode.OFF
                 }
-                PlayerController.applyRefreshRate(activity, refreshRateMode, videoFps)
+                if (mode != RefreshRateSwitchMode.OFF) {
+                    refreshRateManager.applyRefreshRate(activity, mode, frameRate, surface = null)
+                }
             }
         }
     }
