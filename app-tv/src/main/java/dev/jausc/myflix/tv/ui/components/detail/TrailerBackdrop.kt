@@ -6,7 +6,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,7 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
@@ -32,7 +38,7 @@ import androidx.tv.material3.IconButton
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import kotlinx.coroutines.delay
 
-private const val TRAILER_START_DELAY_MS = 3000L
+private const val TRAILER_START_DELAY_MS = 10000L
 private const val CROSSFADE_DURATION_MS = 800
 
 /**
@@ -127,32 +133,68 @@ fun TrailerBackdrop(
             )
         }
 
-        // Inline trailer player (fades in when playing)
+        // Inline trailer player (fades in when playing) - full size matching backdrop
+        // SurfaceView bypasses Compose drawing, so we use gradient overlays instead of DstIn masking
         if (canShowTrailer) {
-            InlineTrailerPlayer(
-                state = InlineTrailerState(
-                    streamUrl = state.trailerUrl,
-                    shouldPlay = shouldPlayTrailer,
-                    isMuted = isMuted,
-                ),
-                alpha = trailerAlpha,
-                modifier = Modifier.fillMaxSize(),
-                onPlaybackStarted = {
-                    isTrailerPlaying = true
-                },
-                onPlaybackEnded = {
-                    // Loop the trailer by resetting and replaying
-                    isTrailerPlaying = false
-                    shouldPlayTrailer = false
-                    // Restart after a brief pause
-                    // Note: For now, just fade back to backdrop when trailer ends
-                },
-                onError = {
-                    trailerFailed = true
-                    isTrailerPlaying = false
-                    shouldPlayTrailer = false
-                },
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = trailerAlpha },
+            ) {
+                // Video player layer
+                InlineTrailerPlayer(
+                    state = InlineTrailerState(
+                        streamUrl = state.trailerUrl,
+                        shouldPlay = shouldPlayTrailer,
+                        isMuted = isMuted,
+                    ),
+                    alpha = 1f,
+                    modifier = Modifier.fillMaxSize(),
+                    onPlaybackStarted = {
+                        isTrailerPlaying = true
+                    },
+                    onPlaybackEnded = {
+                        isTrailerPlaying = false
+                        shouldPlayTrailer = false
+                    },
+                    onError = {
+                        trailerFailed = true
+                        isTrailerPlaying = false
+                        shouldPlayTrailer = false
+                    },
+                )
+
+                // Left edge fade overlay (gradient from background to transparent)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to TvColors.Background,
+                                    0.12f to TvColors.Background.copy(alpha = 0.5f),
+                                    0.28f to Color.Transparent,
+                                    1.0f to Color.Transparent,
+                                ),
+                            ),
+                        ),
+                )
+
+                // Bottom edge fade overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent,
+                                    0.55f to Color.Transparent,
+                                    1.0f to TvColors.Background,
+                                ),
+                            ),
+                        ),
+                )
+            }
         }
 
         // Unmute button (bottom-right corner, only when trailer is playing)

@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
@@ -166,6 +167,10 @@ class ExoPlayerWrapper(
      * Custom RenderersFactory for passthrough mode.
      * Uses PassthroughHelper to build custom AudioCapabilities based on per-codec settings.
      * Injects the night mode audio processor for dynamic range compression.
+     *
+     * IMPORTANT: Uses EXTENSION_RENDERER_MODE_PREFER for video (AV1 software decode)
+     * but explicitly excludes FFmpeg audio renderers to ensure audio passthrough works.
+     * FFmpeg would decode E-AC3/TrueHD to PCM instead of passing through.
      */
     private inner class PassthroughRenderersFactory(
         private val factoryContext: Context,
@@ -177,6 +182,7 @@ class ExoPlayerWrapper(
             setEnableDecoderFallback(enableDecoderFallback)
             // PREFER: Use extension renderers (AV1 software) first, then hardware
             // This enables AV1 playback on devices like Shield TV without hardware AV1
+            // Note: We override buildAudioRenderers to exclude FFmpeg for audio passthrough
             setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
         }
 
@@ -194,6 +200,7 @@ class ExoPlayerWrapper(
 
             // Build AudioSink with audio processors in the chain
             // Order: stereoDownmix (changes channels) -> nightMode (DRC) -> delay (sync)
+            // Note: For passthrough, these processors are bypassed as the bitstream goes directly through
             return DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
@@ -205,6 +212,32 @@ class ExoPlayerWrapper(
                     }
                 }
                 .build()
+        }
+
+        override fun buildAudioRenderers(
+            context: Context,
+            extensionRendererMode: Int,
+            mediaCodecSelector: MediaCodecSelector,
+            enableDecoderFallback: Boolean,
+            audioSink: AudioSink,
+            eventHandler: Handler,
+            eventListener: AudioRendererEventListener,
+            out: ArrayList<Renderer>,
+        ) {
+            // For passthrough mode, only use MediaCodecAudioRenderer (not FFmpeg)
+            // FFmpeg would decode E-AC3/TrueHD to PCM instead of passing through to receiver/TV
+            // The MediaCodecAudioRenderer with proper AudioCapabilities will handle passthrough
+            out.add(
+                MediaCodecAudioRenderer(
+                    context,
+                    mediaCodecSelector,
+                    enableDecoderFallback,
+                    eventHandler,
+                    eventListener,
+                    audioSink,
+                ),
+            )
+            Log.d(TAG, "Audio renderers built for passthrough (MediaCodec only, no FFmpeg)")
         }
     }
 
@@ -502,6 +535,12 @@ class ExoPlayerWrapper(
         player?.setPlaybackSpeed(speed)
         _state.value = _state.value.copy(speed = speed)
     }
+
+    override fun setMuted(muted: Boolean) {
+        player?.volume = if (muted) 0f else 1f
+    }
+
+    override fun isMuted(): Boolean = player?.volume == 0f
 
     /**
      * Current subtitle style configuration.

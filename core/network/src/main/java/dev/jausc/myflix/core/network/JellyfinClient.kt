@@ -9,6 +9,7 @@ import dev.jausc.myflix.core.common.model.DirectPlayProfile
 import dev.jausc.myflix.core.common.model.ItemsResponse
 import dev.jausc.myflix.core.common.model.JellyfinGenre
 import dev.jausc.myflix.core.common.model.JellyfinItem
+import dev.jausc.myflix.core.common.model.LyricDto
 import dev.jausc.myflix.core.common.model.MediaSegment
 import dev.jausc.myflix.core.common.model.MediaSegmentsResponse
 import dev.jausc.myflix.core.common.model.MediaSource
@@ -96,6 +97,7 @@ class JellyfinClient(
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
+        encodeDefaults = true // Required for DeviceProfile - server expects all fields
     }
 
     // DNS cache to prevent intermittent resolution failures during Quick Connect polling
@@ -1600,6 +1602,34 @@ class JellyfinClient(
     }
 
     /**
+     * Get lyrics for an audio item.
+     * Requires Jellyfin 10.9+ with lyrics support.
+     *
+     * @param itemId The audio item ID
+     * @return LyricDto with metadata and lyric lines, or null if no lyrics
+     */
+    suspend fun getLyrics(itemId: String): Result<LyricDto?> {
+        val key = CacheKeys.lyrics(itemId)
+        getCached<LyricDto>(key, CacheKeys.Ttl.ITEM_DETAILS)?.let { return Result.success(it) }
+        return runCatching {
+            try {
+                val response = httpClient.get("$baseUrl/Audio/$itemId/Lyrics") {
+                    header("Authorization", authHeader())
+                }
+                if (response.status.value == 404) {
+                    // No lyrics available
+                    null
+                } else {
+                    response.body<LyricDto>().also { putCache(key, it) }
+                }
+            } catch (e: io.ktor.client.plugins.ClientRequestException) {
+                // 404 means no lyrics
+                if (e.response.status.value == 404) null else throw e
+            }
+        }
+    }
+
+    /**
      * Get items featuring a specific person (filmography).
      */
     suspend fun getItemsByPerson(personId: String, limit: Int = 30): Result<List<JellyfinItem>> {
@@ -1778,17 +1808,36 @@ class JellyfinClient(
             android.util.Log.d(
                 "JellyfinClient",
                 "Device capabilities: HEVC=${it.supportsHevc()} HEVC10=${it.supportsHevcMain10()} " +
-                    "AV1=${it.supportsAv1()} AV110=${it.supportsAv1Main10()}",
+                    "HDR10=${it.supportsHevcHdr10()} HDR10+=${it.supportsHevcHdr10Plus()} " +
+                    "AV1=${it.supportsAv1()} AV110=${it.supportsAv1Main10()} DV=${it.supportsDolbyVision()}",
             )
         }
 
+        // Check HDR/DV capabilities
+        val supportsHevc = caps?.supportsHevc() == true
+        val supportsHevcMain10 = caps?.supportsHevcMain10() == true
+        val supportsHevcHdr10 = caps?.supportsHevcHdr10() == true
+        val supportsHevcHdr10Plus = caps?.supportsHevcHdr10Plus() == true
+        val supportsHevcDolbyVision = caps?.supportsDolbyVision() == true
+        val supportsAv1 = caps?.supportsAv1() == true
+        val supportsAv1Main10 = caps?.supportsAv1Main10() == true
+        val supportsAv1Hdr10 = caps?.supportsAv1Hdr10() == true
+
         // Build list of supported video codecs for direct play
+        // Note: Don't add dvh1/dvhe - DV content uses hevc codec with DOVI VideoRangeType
+        // DV support is controlled via CodecProfile VideoRangeType conditions below
         val videoCodecs = buildList {
             add("h264") // H.264 is universally supported
-            if (caps?.supportsHevc() == true) add("hevc")
+            if (supportsHevc) add("hevc")
             if (caps?.supportsVp8() == true) add("vp8")
             if (caps?.supportsVp9() == true) add("vp9")
-            if (caps?.supportsAv1() == true) add("av1")
+            if (supportsAv1) add("av1")
+            // VC-1 for older WMV/ASF content (common in DVD rips)
+            if (caps?.supportsVc1() == true) add("vc1")
+            // MPEG-2 for DVD content
+            add("mpeg2video")
+            // MPEG-4 Part 2 (DivX/Xvid)
+            add("mpeg4")
         }.ifEmpty { listOf("h264", "hevc", "vp8", "vp9", "av1") } // Fallback if no caps
 
         // Build codec profiles to restrict to supported profiles
@@ -1834,25 +1883,114 @@ class JellyfinClient(
                 }
             }
 
-            if (preferHdrOverDolbyVision) {
-                val dvRangeTypes =
-                    "DOVIInvalid|DOVI|DOVIWithHDR10|DOVIWithHDR10Plus|DOVIWithEL|DOVIWithELHDR10Plus"
-                val dvCondition = ProfileCondition(
-                    condition = "NotEquals",
-                    property = "VideoRangeType",
-                    value = dvRangeTypes,
-                    isRequired = false,
-                )
-                val dvRestrictedCodecs = listOf("hevc", "av1").filter { it in videoCodecs }
-                dvRestrictedCodecs.forEach { codec ->
-                    add(
-                        CodecProfile(
-                            type = "Video",
-                            codec = codec,
-                            conditions = listOf(dvCondition),
-                        ),
-                    )
+            // VideoRangeType support for HEVC
+            // Following the official Jellyfin client pattern:
+            // - Build list of unsupported range types
+            // - Use NotEquals + applyConditions to tell server what we DON'T support
+            // - Key insight: DOVIWithHDR10 can be played via HDR10 fallback even if DV decoder
+            //   doesn't support the specific DV profile (e.g., Profile 8.6)
+            val unsupportedHevcRangeTypes = buildSet {
+                add("DOVIInvalid") // Always exclude invalid DV
+
+                // If no DV decoder at all, exclude all DV types EXCEPT those with fallback support
+                if (!supportsHevcDolbyVision) {
+                    add("DOVI") // Pure DV with no fallback - requires DV decoder
+                    // DOVIWithHDR10 can still play via HDR10 if we support HDR10
+                    if (!supportsHevcHdr10) add("DOVIWithHDR10")
+                    // DOVIWithHDR10Plus can still play via HDR10+ if we support HDR10+
+                    if (!supportsHevcHdr10Plus) add("DOVIWithHDR10Plus")
                 }
+
+                // Enhancement Layer DV always requires specialized decoder (Profile 7)
+                // Our simple supportsDolbyVision check doesn't verify EL support
+                add("DOVIWithEL")
+                add("DOVIWithELHDR10Plus")
+
+                // HLG DV requires both DV and HLG support
+                if (!supportsHevcDolbyVision) add("DOVIWithHLG")
+
+                // HDR10+ support
+                if (!supportsHevcHdr10Plus) {
+                    add("HDR10Plus")
+                    // Also exclude HDR10 if we don't support it
+                    if (!supportsHevcHdr10) add("HDR10")
+                }
+            }
+
+            android.util.Log.d(
+                "JellyfinClient",
+                "HEVC unsupported VideoRangeTypes: $unsupportedHevcRangeTypes",
+            )
+
+            if (unsupportedHevcRangeTypes.isNotEmpty() && supportsHevc) {
+                val rangeTypeValue = unsupportedHevcRangeTypes.joinToString("|")
+                add(
+                    CodecProfile(
+                        type = "Video",
+                        codec = "hevc",
+                        conditions = listOf(
+                            ProfileCondition(
+                                condition = "NotEquals",
+                                property = "VideoRangeType",
+                                value = rangeTypeValue,
+                                isRequired = false,
+                            ),
+                        ),
+                        applyConditions = listOf(
+                            ProfileCondition(
+                                condition = "EqualsAny",
+                                property = "VideoRangeType",
+                                value = rangeTypeValue,
+                                isRequired = false,
+                            ),
+                        ),
+                    ),
+                )
+            }
+
+            // VideoRangeType support for AV1
+            val unsupportedAv1RangeTypes = buildSet {
+                add("DOVIInvalid")
+
+                // For AV1, we don't have granular DV detection, so be conservative
+                add("DOVI")
+                add("DOVIWithHDR10")
+                add("DOVIWithHDR10Plus")
+                add("DOVIWithEL")
+                add("DOVIWithELHDR10Plus")
+                add("DOVIWithHLG")
+
+                // HDR support
+                if (!supportsAv1Hdr10) {
+                    add("HDR10")
+                    add("HDR10Plus")
+                }
+            }
+
+            if (unsupportedAv1RangeTypes.isNotEmpty() && supportsAv1) {
+                val rangeTypeValue = unsupportedAv1RangeTypes.joinToString("|")
+                add(
+                    CodecProfile(
+                        type = "Video",
+                        codec = "av1",
+                        conditions = listOf(
+                            ProfileCondition(
+                                condition = "NotEquals",
+                                property = "VideoRangeType",
+                                value = rangeTypeValue,
+                                isRequired = false,
+                            ),
+                        ),
+                        applyConditions = listOf(
+                            ProfileCondition(
+                                condition = "EqualsAny",
+                                property = "VideoRangeType",
+                                value = rangeTypeValue,
+                                isRequired = false,
+                            ),
+                        ),
+                    ),
+                )
             }
 
             // AV1 profile restrictions
@@ -1894,6 +2032,101 @@ class JellyfinClient(
                     )
                 }
             }
+
+            // Audio codec profiles - advertise channel support for Atmos/high-channel audio
+            // TrueHD (lossless Atmos) - typically 8 channels (7.1)
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "truehd",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "8",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
+
+            // E-AC3/DD+ (Atmos/JOC) - supports up to 16 channels for object-based audio
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "eac3",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "16",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
+
+            // AC3 (Dolby Digital) - up to 6 channels (5.1)
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "ac3",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "6",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
+
+            // DTS and DCA - up to 8 channels (DTS-HD MA supports 7.1)
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "dts",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "8",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "dca",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "8",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
+
+            // FLAC - up to 8 channels
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "flac",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "8",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
         }
 
         // Build transcoding profile - prefer HEVC if supported, otherwise H.264
@@ -1903,27 +2136,45 @@ class JellyfinClient(
             "h264"
         }
 
+        // Match official Jellyfin client container and codec lists
+        val videoContainers = "asf,hls,m4v,mkv,mov,mp4,ogm,ogv,ts,vob,webm,wmv,xvid"
+        val audioContainers = "aac,flac,m4a,mp3,ogg,opus,wav,wma"
+        val audioCodecs = "aac,aac_latm,ac3,alac,dca,dts,eac3,flac,mlp,mp2,mp3,opus,pcm_alaw,pcm_mulaw,pcm_s16le,pcm_s20le,pcm_s24le,truehd,vorbis"
+
         return DeviceProfile(
             name = "MyFlix-Android",
             maxStreamingBitrate = maxStreamingBitrate,
             directPlayProfiles = listOf(
                 DirectPlayProfile(
                     type = "Video",
-                    container = "mp4,mkv,webm,m4v,mov,ts",
+                    container = videoContainers,
                     videoCodec = videoCodecs.joinToString(","),
-                    audioCodec = "aac,mp3,ac3,eac3,flac,opus,vorbis,pcm",
+                    audioCodec = audioCodecs,
                 ),
                 DirectPlayProfile(
                     type = "Audio",
-                    container = "mp3,aac,flac,m4a,ogg,opus,wav",
+                    container = audioContainers,
+                    audioCodec = audioCodecs,
                 ),
             ),
             transcodingProfiles = listOf(
+                // MPEG-TS HLS for broad compatibility
                 TranscodingProfile(
                     type = "Video",
                     container = "ts",
                     videoCodec = transcodingVideoCodec,
-                    audioCodec = "aac,mp3,ac3",
+                    audioCodec = "aac,ac3,eac3,mp3",
+                    protocol = "hls",
+                    context = "Streaming",
+                    copyTimestamps = false,
+                    enableSubtitlesInManifest = true,
+                ),
+                // fMP4 HLS for advanced audio codecs (matches official client)
+                TranscodingProfile(
+                    type = "Video",
+                    container = "mp4",
+                    videoCodec = transcodingVideoCodec,
+                    audioCodec = "aac,ac3,eac3,mp3,alac,flac,opus,dts,truehd",
                     protocol = "hls",
                     context = "Streaming",
                     copyTimestamps = false,
@@ -1938,10 +2189,43 @@ class JellyfinClient(
                     context = "Streaming",
                 ),
             ),
+            // Match official Jellyfin client subtitle profiles
             subtitleProfiles = listOf(
+                // WebVTT - works with HLS
                 SubtitleProfile(format = "vtt", method = "Embed"),
+                SubtitleProfile(format = "vtt", method = "Hls"),
+                SubtitleProfile(format = "vtt", method = "External"),
+                SubtitleProfile(format = "webvtt", method = "Embed"),
+                SubtitleProfile(format = "webvtt", method = "Hls"),
+                SubtitleProfile(format = "webvtt", method = "External"),
+                // SRT/SUBRIP
+                SubtitleProfile(format = "srt", method = "Embed"),
                 SubtitleProfile(format = "srt", method = "External"),
+                SubtitleProfile(format = "subrip", method = "Embed"),
+                SubtitleProfile(format = "subrip", method = "External"),
+                // TTML
+                SubtitleProfile(format = "ttml", method = "Embed"),
+                SubtitleProfile(format = "ttml", method = "External"),
+                // Image-based subtitles - ExoPlayer supports these natively (v0.19+ parity)
+                // VobSub (DVD subtitles)
+                SubtitleProfile(format = "dvdsub", method = "Embed"),
+                SubtitleProfile(format = "dvdsub", method = "External"),
+                SubtitleProfile(format = "vobsub", method = "Embed"),
+                SubtitleProfile(format = "vobsub", method = "External"),
+                SubtitleProfile(format = "idx", method = "External"),
+                SubtitleProfile(format = "sub", method = "External"),
+                // DVB subtitles (broadcast)
+                SubtitleProfile(format = "dvbsub", method = "Embed"),
+                SubtitleProfile(format = "dvbsub", method = "External"),
+                // PGS (Blu-ray subtitles)
+                SubtitleProfile(format = "pgs", method = "Embed"),
+                SubtitleProfile(format = "pgs", method = "External"),
+                SubtitleProfile(format = "pgssub", method = "Embed"),
+                SubtitleProfile(format = "pgssub", method = "External"),
+                // ASS/SSA - ExoPlayer has basic support, fallback to encode for complex styling
+                SubtitleProfile(format = "ass", method = "Embed"),
                 SubtitleProfile(format = "ass", method = "External"),
+                SubtitleProfile(format = "ssa", method = "Embed"),
                 SubtitleProfile(format = "ssa", method = "External"),
             ),
             codecProfiles = codecProfiles,
@@ -1997,11 +2281,33 @@ class JellyfinClient(
             deviceProfile = deviceProfile,
         )
 
+        // Log full DeviceProfile for debugging
         android.util.Log.d(
             "JellyfinClient",
             "getPlaybackInfo: POST $baseUrl/Items/$itemId/PlaybackInfo " +
-                "directPlay=$isDirectPlay bitrate=$bitrateBps",
+                "directPlay=$isDirectPlay bitrate=$bitrateBps " +
+                "videoCodecs=${deviceProfile.directPlayProfiles.firstOrNull()?.videoCodec}",
         )
+
+        // Log CodecProfiles for VideoRangeType debugging
+        deviceProfile.codecProfiles.forEach { profile ->
+            if (profile.conditions.any { it.property == "VideoRangeType" }) {
+                android.util.Log.d(
+                    "JellyfinClient",
+                    "VideoRangeType CodecProfile: codec=${profile.codec} " +
+                        "conditions=${profile.conditions.map { "${it.condition}:${it.property}=${it.value}" }} " +
+                        "applyConditions=${profile.applyConditions.map { "${it.condition}:${it.property}=${it.value}" }}",
+                )
+            }
+        }
+
+        // Log full DeviceProfile JSON for comparison with official client
+        try {
+            val profileJson = json.encodeToString(DeviceProfile.serializer(), deviceProfile)
+            android.util.Log.d("JellyfinClient", "DeviceProfile JSON: $profileJson")
+        } catch (e: Exception) {
+            android.util.Log.e("JellyfinClient", "Failed to serialize DeviceProfile: ${e.message}")
+        }
 
         val response = httpClient.post("$baseUrl/Items/$itemId/PlaybackInfo") {
             header("Authorization", authHeader())
@@ -2046,6 +2352,8 @@ class JellyfinClient(
         val liveStreamId: String?,
         val playMethod: String,
         val transcodeReasons: List<String>? = null,
+        /** VideoRangeType from the selected media source (e.g., "DOVIWithHDR10", "HDR10", "SDR") */
+        val videoRangeType: String? = null,
     )
 
     /**
@@ -2289,11 +2597,16 @@ class JellyfinClient(
             null
         }
 
+        // Get VideoRangeType from the video stream for DV-aware player selection
+        val videoRangeType = source.mediaStreams
+            ?.firstOrNull { it.type == "Video" }
+            ?.videoRangeType
+
         android.util.Log.d(
             "JellyfinClient",
             "getStreamUrlWithSession: playMethod=$playMethod supportsDirectPlay=${source.supportsDirectPlay} " +
                 "supportsDirectStream=${source.supportsDirectStream} transcodingUrl=${transcodingUrl != null} " +
-                "transcodeReasons=$finalTranscodeReasons",
+                "transcodeReasons=$finalTranscodeReasons videoRangeType=$videoRangeType",
         )
         StreamUrlResult(
             streamUrl = streamUrl,
@@ -2301,6 +2614,7 @@ class JellyfinClient(
             liveStreamId = source.liveStreamId,
             playMethod = playMethod,
             transcodeReasons = finalTranscodeReasons,
+            videoRangeType = videoRangeType,
         )
     }
 

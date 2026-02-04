@@ -56,6 +56,10 @@ interface UnifiedPlayer {
     fun setSubtitleStyle(style: SubtitleStyle) {}
     fun setSubtitleDelayMs(delayMs: Long) {}
 
+    // Volume control for segment mute feature
+    fun setMuted(muted: Boolean) {}
+    fun isMuted(): Boolean = false
+
     // External subtitle support
     /**
      * Load an external subtitle from URL.

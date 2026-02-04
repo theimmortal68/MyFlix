@@ -152,6 +152,9 @@ object CacheKeys {
     /** Media segments for an item (intro, outro, etc.) */
     fun mediaSegments(itemId: String): String = "segments:$itemId"
 
+    /** Lyrics for an audio item */
+    fun lyrics(itemId: String): String = "lyrics:$itemId"
+
     // ==================== Invalidation Patterns ====================
 
     /**

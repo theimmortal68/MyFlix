@@ -1,9 +1,10 @@
 package dev.jausc.myflix.tv.ui.components.detail
 
-import android.view.SurfaceView
+import android.content.Context
+import android.graphics.Matrix
+import android.graphics.RectF
+import android.view.TextureView
 import androidx.annotation.OptIn
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -13,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -22,8 +22,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import kotlin.math.max
 
 /**
  * State holder for inline trailer playback.
@@ -67,6 +69,8 @@ fun InlineTrailerPlayer(
             .build()
     }
 
+    var videoSize by remember { mutableStateOf(VideoSize.UNKNOWN) }
+
     // Track if we've started rendering video
     var hasStartedRendering by remember { mutableStateOf(false) }
 
@@ -89,9 +93,16 @@ fun InlineTrailerPlayer(
                     else -> {}
                 }
             }
+
+            override fun onVideoSizeChanged(size: VideoSize) {
+                videoSize = size
+            }
         }
         player.addListener(listener)
-        onDispose { player.removeListener(listener) }
+        onDispose {
+            player.removeListener(listener)
+            player.clearVideoSurface()
+        }
     }
 
     // Lifecycle management - pause on stop, release on destroy
@@ -132,6 +143,7 @@ fun InlineTrailerPlayer(
             player.prepare()
         } else {
             player.clearMediaItems()
+            player.clearVideoSurface()
             hasStartedRendering = false
         }
     }
@@ -146,24 +158,28 @@ fun InlineTrailerPlayer(
         player.volume = if (state.isMuted) 0f else 1f
     }
 
-    // Only render if we have a URL and alpha > 0
-    if (state.streamUrl != null && alpha > 0f) {
-        Box(
+    // Always render if we have a URL (even at alpha=0) so the player can start and trigger onRenderedFirstFrame
+    // The graphicsLayer alpha makes it invisible until isTrailerPlaying is true
+    if (state.streamUrl != null) {
+        AndroidView(
+            factory = { ctx ->
+                // Use plain TextureView - it will stretch to fill by default (no aspect ratio preservation)
+                TextureView(ctx).apply {
+                    isOpaque = false
+                }.also { view ->
+                    player.setVideoTextureView(view)
+                }
+            },
+            update = { view ->
+                // Ensure player is attached to the view
+                if (view.isAvailable) {
+                    player.setVideoTextureView(view)
+                }
+            },
             modifier = modifier
                 .fillMaxSize()
-                .graphicsLayer { this.alpha = alpha }
-                .background(Color.Black),
-        ) {
-            // Use SurfaceView for video rendering (more efficient for video)
-            AndroidView(
-                factory = { ctx ->
-                    SurfaceView(ctx).also { surfaceView ->
-                        player.setVideoSurfaceView(surfaceView)
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+                .graphicsLayer { this.alpha = alpha },
+        )
     }
 }
 
@@ -178,5 +194,39 @@ fun rememberInlineTrailerState(
 ): InlineTrailerState {
     return remember(streamUrl, shouldPlay, isMuted) {
         InlineTrailerState(streamUrl, shouldPlay, isMuted)
+    }
+}
+
+private class CenterCropTextureView(context: Context) : TextureView(context) {
+    var videoSize: VideoSize = VideoSize.UNKNOWN
+        set(value) {
+            field = value
+            updateTransform()
+        }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateTransform()
+    }
+
+    private fun updateTransform() {
+        val viewWidth = width.toFloat()
+        val viewHeight = height.toFloat()
+        if (viewWidth == 0f || viewHeight == 0f) return
+
+        val videoWidth = videoSize.width.toFloat() * videoSize.pixelWidthHeightRatio
+        val videoHeight = videoSize.height.toFloat()
+        if (videoWidth <= 0f || videoHeight <= 0f) return
+
+        // Apply a single center-crop (fill) transform from buffer to view.
+        val scale = max(viewWidth / videoWidth, viewHeight / videoHeight)
+        val dx = (viewWidth - videoWidth * scale) / 2f
+        val dy = (viewHeight - videoHeight * scale) / 2f
+
+        val matrix = Matrix()
+        matrix.setScale(scale, scale)
+        matrix.postTranslate(dx, dy)
+
+        setTransform(matrix)
     }
 }

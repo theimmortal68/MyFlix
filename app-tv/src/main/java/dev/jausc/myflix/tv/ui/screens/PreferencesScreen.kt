@@ -6,6 +6,7 @@
     "WildcardImport",
     "NoWildcardImports",
 )
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
 
 package dev.jausc.myflix.tv.ui.screens
 
@@ -37,6 +38,8 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Speaker
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Translate
@@ -54,6 +57,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -866,10 +870,15 @@ private fun PreferencesContent(
         // Device Section
         item {
             val context = LocalContext.current
-            val capabilities = remember { PlayerController.getDeviceHdrCapabilities(context) }
+            val hdrCapabilities = remember { PlayerController.getDeviceHdrCapabilities(context) }
+            val audioCapabilities = remember { PlayerController.getDeviceAudioCapabilities(context) }
+            var showCapabilityReport by remember { mutableStateOf(false) }
+            val clipboardManager = LocalClipboardManager.current
 
             PreferencesSection(title = "Device") {
-                DeviceCapabilityItem(capabilities = capabilities)
+                DeviceCapabilityItem(capabilities = hdrCapabilities)
+                PreferenceDivider()
+                AudioCapabilityItem(capabilities = audioCapabilities)
                 PreferenceDivider()
                 TogglePreferenceItem(
                     title = "Prefer HDR10 over Dolby Vision",
@@ -882,6 +891,26 @@ private fun PreferencesContent(
                     iconTint = if (preferHdrOverDv) Color(0xFFF59E0B) else TvColors.TextSecondary,
                     checked = preferHdrOverDv,
                     onCheckedChange = onPreferHdrOverDvChanged,
+                )
+                PreferenceDivider()
+                ActionPreferenceItem(
+                    title = "Export Capability Report",
+                    description = "Copy device capabilities to clipboard",
+                    icon = Icons.Outlined.Share,
+                    iconTint = TvColors.TextSecondary,
+                    onClick = {
+                        val report = buildCapabilityReport(hdrCapabilities, audioCapabilities)
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(report))
+                        showCapabilityReport = true
+                    },
+                )
+            }
+
+            if (showCapabilityReport) {
+                CapabilityReportDialog(
+                    hdrCapabilities = hdrCapabilities,
+                    audioCapabilities = audioCapabilities,
+                    onDismiss = { showCapabilityReport = false },
                 )
             }
         }
@@ -1476,6 +1505,69 @@ private fun CapabilityChip(label: String, supported: Boolean, activeColor: Color
             color = if (supported) activeColor else TvColors.TextSecondary.copy(alpha = 0.5f),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
+    }
+}
+
+// Audio format colors
+private val DolbyAudioColor = Color(0xFFB8860B) // Dark goldenrod for Dolby formats
+private val DtsAudioColor = Color(0xFF9370DB) // Medium purple for DTS formats
+
+@androidx.media3.common.util.UnstableApi
+@Composable
+private fun AudioCapabilityItem(
+    capabilities: dev.jausc.myflix.core.player.audio.AudioCapabilityDetector.DeviceAudioCapabilities,
+) {
+    Column(
+        modifier = Modifier.padding(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Speaker,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = TvColors.TextSecondary,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = "Audio Capability",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = TvColors.TextPrimary,
+                )
+                Text(
+                    text = "Audio formats supported for passthrough (max ${capabilities.maxChannelCount}ch)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextSecondary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+
+        // Audio format chips - Row 1: Dolby formats
+        Row(
+            modifier = Modifier.padding(top = 12.dp, start = 44.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CapabilityChip("AC3", capabilities.supportsAc3, DolbyAudioColor)
+            CapabilityChip("E-AC3", capabilities.supportsEac3, DolbyAudioColor)
+            CapabilityChip("Atmos", capabilities.supportsEac3Joc, DolbyVisionOrange)
+            CapabilityChip("TrueHD", capabilities.supportsTruehd, DolbyAudioColor)
+        }
+
+        // Audio format chips - Row 2: DTS formats
+        Row(
+            modifier = Modifier.padding(top = 8.dp, start = 44.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CapabilityChip("DTS", capabilities.supportsDts, DtsAudioColor)
+            CapabilityChip("DTS-HD", capabilities.supportsDtsHd, DtsAudioColor)
+        }
     }
 }
 
@@ -2495,11 +2587,12 @@ private fun SkipDurationItem(
     }
 }
 
-// Skip mode options (OFF, ASK, AUTO)
+// Skip mode options (OFF, ASK, AUTO, MUTE)
 private val SKIP_MODE_OPTIONS = listOf(
     "OFF" to "Off",
     "ASK" to "Ask (show button)",
     "AUTO" to "Auto (skip automatically)",
+    "MUTE" to "Mute (silence audio)",
 )
 
 /**
@@ -3248,6 +3341,113 @@ private fun ThemeItem(
                     color = Color.White,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Build a text report of device capabilities for debugging/sharing.
+ */
+@androidx.media3.common.util.UnstableApi
+private fun buildCapabilityReport(
+    hdr: DeviceHdrCapabilities,
+    audio: dev.jausc.myflix.core.player.audio.AudioCapabilityDetector.DeviceAudioCapabilities,
+): String = buildString {
+    appendLine("=== MyFlix Device Capability Report ===")
+    appendLine()
+    appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+    appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+    appendLine()
+    appendLine("=== Video Capabilities ===")
+    appendLine("Dolby Vision: ${if (hdr.supportsDolbyVision) "Yes" else "No"}")
+    appendLine("HDR10: ${if (hdr.supportsHdr10) "Yes" else "No"}")
+    appendLine("HDR10+: ${if (hdr.supportsHdr10Plus) "Yes" else "No"}")
+    appendLine("HLG: ${if (hdr.supportsHlg) "Yes" else "No"}")
+    appendLine()
+    appendLine("=== Audio Capabilities ===")
+    appendLine("Max Channels: ${audio.maxChannelCount}")
+    appendLine()
+    appendLine("Dolby Formats:")
+    appendLine("  AC3 (DD): ${if (audio.supportsAc3) "Yes" else "No"}")
+    appendLine("  E-AC3 (DD+): ${if (audio.supportsEac3) "Yes" else "No"}")
+    appendLine("  E-AC3 JOC (Atmos): ${if (audio.supportsEac3Joc) "Yes" else "No"}")
+    appendLine("  TrueHD: ${if (audio.supportsTruehd) "Yes" else "No"}")
+    appendLine()
+    appendLine("DTS Formats:")
+    appendLine("  DTS: ${if (audio.supportsDts) "Yes" else "No"}")
+    appendLine("  DTS-HD: ${if (audio.supportsDtsHd) "Yes" else "No"}")
+    appendLine()
+    appendLine("Generated by MyFlix ${dev.jausc.myflix.tv.BuildConfig.VERSION_NAME}")
+}
+
+/**
+ * Dialog showing the capability report with a "Copied to clipboard" message.
+ */
+@androidx.media3.common.util.UnstableApi
+@Composable
+private fun CapabilityReportDialog(
+    hdrCapabilities: DeviceHdrCapabilities,
+    audioCapabilities: dev.jausc.myflix.core.player.audio.AudioCapabilityDetector.DeviceAudioCapabilities,
+    onDismiss: () -> Unit,
+) {
+    val report = remember { buildCapabilityReport(hdrCapabilities, audioCapabilities) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    TvCenteredPopup(
+        visible = true,
+        onDismiss = onDismiss,
+        minWidth = 400.dp,
+        maxWidth = 500.dp,
+    ) {
+        Column {
+            Text(
+                text = "Capability Report",
+                style = MaterialTheme.typography.titleLarge,
+                color = TvColors.TextPrimary,
+                modifier = Modifier.padding(16.dp),
+            )
+
+            Text(
+                text = "Copied to clipboard!",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF22C55E),
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Show report preview
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 300.dp)
+                    .padding(horizontal = 16.dp)
+                    .background(Color(0xFF1A1A2E), RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+            ) {
+                Text(
+                    text = report,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextSecondary,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Close button
+            TvTextButton(
+                text = "Close",
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .focusRequester(focusRequester)
+                    .padding(bottom = 16.dp),
+            )
         }
     }
 }

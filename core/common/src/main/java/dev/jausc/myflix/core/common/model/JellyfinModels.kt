@@ -724,12 +724,18 @@ data class SubtitleProfile(
 /**
  * Defines codec-specific conditions for direct play.
  * Used to limit what codecs can be played based on properties like bit depth, resolution, etc.
+ *
+ * @param conditions Conditions that must be met for direct play
+ * @param applyConditions Conditions that determine WHEN this profile applies.
+ *        Used for VideoRangeType exclusion: applyConditions matches content with unsupported
+ *        range types, then conditions (NotEquals) fails the check, triggering transcode.
  */
 @Serializable
 data class CodecProfile(
     @SerialName("Type") val type: String = "Video",
     @SerialName("Codec") val codec: String? = null,
     @SerialName("Conditions") val conditions: List<ProfileCondition> = emptyList(),
+    @SerialName("ApplyConditions") val applyConditions: List<ProfileCondition> = emptyList(),
 )
 
 /**
@@ -761,3 +767,47 @@ data class TrickplayInfo(
     /** Number of thumbnails per tile grid image */
     val thumbnailsPerTile: Int get() = tileWidth * tileHeight
 }
+
+// ==================== Lyrics Models ====================
+
+/**
+ * Lyrics response from /Audio/{itemId}/Lyrics endpoint.
+ */
+@Serializable
+data class LyricDto(
+    @SerialName("Metadata") val metadata: LyricMetadata? = null,
+    @SerialName("Lyrics") val lyrics: List<LyricLine> = emptyList(),
+)
+
+/**
+ * A single lyric line with optional timing.
+ */
+@Serializable
+data class LyricLine(
+    @SerialName("Text") val text: String = "",
+    /** Start time in ticks (10,000,000 ticks per second). Null for unsynced lyrics. */
+    @SerialName("Start") val startTicks: Long? = null,
+) {
+    /** Start time in milliseconds */
+    val startMs: Long? get() = startTicks?.let { it / TickConstants.TICKS_PER_MS }
+
+    /** Whether this line has timing information */
+    val isSynced: Boolean get() = startTicks != null
+}
+
+/**
+ * Metadata about the lyrics (artist, album, title, etc.)
+ */
+@Serializable
+data class LyricMetadata(
+    @SerialName("Artist") val artist: String? = null,
+    @SerialName("Album") val album: String? = null,
+    @SerialName("Title") val title: String? = null,
+    @SerialName("Author") val author: String? = null,
+    @SerialName("Length") val lengthTicks: Long? = null,
+    @SerialName("By") val createdBy: String? = null,
+    @SerialName("Offset") val offsetTicks: Long? = null,
+    @SerialName("Creator") val creator: String? = null,
+    @SerialName("Version") val version: String? = null,
+    @SerialName("IsSynced") val isSynced: Boolean? = null,
+)

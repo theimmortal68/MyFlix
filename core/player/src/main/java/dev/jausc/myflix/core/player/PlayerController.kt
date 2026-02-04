@@ -7,6 +7,7 @@ import android.view.Display
 import android.view.Surface
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
+import dev.jausc.myflix.core.player.audio.AudioCapabilityDetector
 import dev.jausc.myflix.core.player.audio.PassthroughConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -237,6 +238,12 @@ class PlayerController(
         currentPlayer?.setSpeed(speed)
     }
 
+    fun setMuted(muted: Boolean) {
+        currentPlayer?.setMuted(muted)
+    }
+
+    fun isMuted(): Boolean = currentPlayer?.isMuted() ?: false
+
     fun cycleAudio() {
         currentPlayer?.cycleAudio()
     }
@@ -406,10 +413,15 @@ class PlayerController(
 
     /**
      * Switch to MPV backend as a fallback when ExoPlayer fails.
+     * Only falls back if MPV was enabled by the user (useMpv=true).
      * Returns true if MPV was initialized.
      */
     fun switchToMpvForError(reason: String? = null): Boolean {
         if (currentPlayer is MpvPlayer) return true
+        if (!useMpv) {
+            Log.d(TAG, "MPV fallback disabled (user preference)")
+            return false
+        }
         if (!MpvPlayer.isAvailable()) return false
 
         val isDvContent = currentMediaInfo?.isDolbyVision == true
@@ -559,6 +571,23 @@ class PlayerController(
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to get available refresh rates", e)
                 emptyList()
+            }
+        }
+
+        // ==================== Audio Capabilities ====================
+
+        /**
+         * Get device audio passthrough/decoding capabilities.
+         * Detects support for surround sound formats like AC3, E-AC3, DTS, TrueHD, and Atmos.
+         */
+        @androidx.media3.common.util.UnstableApi
+        fun getDeviceAudioCapabilities(context: Context): AudioCapabilityDetector.DeviceAudioCapabilities {
+            return try {
+                val detector = AudioCapabilityDetector(context)
+                detector.detectCapabilities()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to detect audio capabilities", e)
+                AudioCapabilityDetector.DeviceAudioCapabilities()
             }
         }
     }

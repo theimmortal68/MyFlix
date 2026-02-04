@@ -86,9 +86,13 @@ data class PlayerUiState(
     val activeSegment: MediaSegment? = null,
     // Trickplay (seek preview thumbnails)
     val trickplayProvider: TrickplayProvider? = null,
+    // Override VideoRangeType from PlaybackInfo (may differ from item when switching bitrates)
+    val videoRangeTypeOverride: String? = null,
 ) {
     /**
      * MediaInfo for content-aware player selection.
+     * Uses videoRangeTypeOverride when available (e.g., after switching bitrate)
+     * to ensure DV-aware player selection works correctly.
      */
     val mediaInfo: PlayerMediaInfo?
         get() = item?.let { loadedItem ->
@@ -97,7 +101,8 @@ data class PlayerUiState(
                 title = loadedItem.name,
                 videoCodec = videoStream?.codec,
                 videoProfile = videoStream?.profile,
-                videoRangeType = videoStream?.videoRangeType,
+                // Use override if available (set when switching bitrates)
+                videoRangeType = videoRangeTypeOverride ?: videoStream?.videoRangeType,
                 width = videoStream?.width ?: 0,
                 height = videoStream?.height ?: 0,
                 bitrate = videoStream?.bitRate ?: 0,
@@ -500,6 +505,8 @@ class PlayerViewModel(
                     playMethod = streamResult.playMethod,
                     maxStreamingBitrate = maxBitrate?.let { bitrate -> bitrate.toLong() * 1_000_000L },
                     transcodeReasons = streamResult.transcodeReasons,
+                    // Update videoRangeType to trigger DV-aware player reinitialization
+                    videoRangeTypeOverride = streamResult.videoRangeType,
                 )
             }
         }

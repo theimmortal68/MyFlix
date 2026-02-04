@@ -370,8 +370,9 @@ fun PlayerScreen(
         currentStartPositionMs = state.startPositionMs
     }
 
-    // Initialize player when item is loaded
-    LaunchedEffect(state.item, effectiveStreamUrl) {
+    // Initialize player when item is loaded or video range type changes (e.g., DV <-> HDR)
+    // Include videoRangeTypeOverride in key to ensure DV-aware player reinit when switching bitrates
+    LaunchedEffect(state.item, effectiveStreamUrl, state.videoRangeTypeOverride) {
         val mediaInfo = state.mediaInfo
         if (mediaInfo != null && effectiveStreamUrl != null) {
             // Create MediaInfo for DV-aware player selection
@@ -384,6 +385,7 @@ fun PlayerScreen(
                 height = mediaInfo.height,
                 bitrate = mediaInfo.bitrate,
             )
+            android.util.Log.d("PlayerScreen", "Initializing player: videoRangeType=${mediaInfo.videoRangeType}")
             viewModel.setPlayerReady(playerController.initializeForMedia(coreMediaInfo))
             focusRequester.requestFocus()
         }
@@ -898,6 +900,26 @@ fun PlayerScreen(
                     viewModel.getSkipTargetMs()?.let { targetMs ->
                         playerController.seekTo(targetMs)
                     }
+                }
+            }
+
+            // Mute mode: mute audio when entering a segment and unmute when leaving
+            LaunchedEffect(activeSegment?.id, currentSkipMode) {
+                if (currentSkipMode == "MUTE") {
+                    if (activeSegment != null) {
+                        // Entering a segment - mute
+                        playerController.setMuted(true)
+                    } else {
+                        // Leaving a segment - unmute
+                        playerController.setMuted(false)
+                    }
+                }
+            }
+
+            // Ensure unmute when skip mode changes away from MUTE
+            LaunchedEffect(currentSkipMode) {
+                if (currentSkipMode != "MUTE" && playerController.isMuted()) {
+                    playerController.setMuted(false)
                 }
             }
 
