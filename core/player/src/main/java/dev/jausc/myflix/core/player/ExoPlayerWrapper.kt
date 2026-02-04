@@ -1,6 +1,7 @@
 package dev.jausc.myflix.core.player
 
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.util.Log
 import android.view.Surface
@@ -218,6 +219,13 @@ class ExoPlayerWrapper(
     private var pendingUrl: String? = null
     private var pendingStartPosition: Long = 0
 
+    // External subtitle state
+    private var currentVideoUrl: String? = null
+    private var externalSubtitleUrl: String? = null
+    private var externalSubtitleMimeType: String? = null
+    private var externalSubtitleLanguage: String? = null
+    private var externalSubtitleLabel: String? = null
+
     val exoPlayer: ExoPlayer?
         get() = player
 
@@ -385,8 +393,9 @@ class ExoPlayerWrapper(
     }
 
     private fun playInternal(url: String, startPositionMs: Long) {
+        currentVideoUrl = url
         player?.apply {
-            setMediaItem(MediaItem.fromUri(url))
+            setMediaItem(buildMediaItem(url))
             prepare()
 
             if (startPositionMs > 0) {
@@ -404,6 +413,32 @@ class ExoPlayerWrapper(
         )
 
         startPositionTracking()
+    }
+
+    /**
+     * Build a MediaItem with optional external subtitle configuration.
+     */
+    private fun buildMediaItem(videoUrl: String): MediaItem {
+        val builder = MediaItem.Builder().setUri(videoUrl)
+
+        // Add external subtitle if configured
+        val subtitleUrl = externalSubtitleUrl
+        val mimeType = externalSubtitleMimeType
+        if (subtitleUrl != null && mimeType != null) {
+            val subtitleConfig = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
+                .setMimeType(mimeType)
+                .apply {
+                    externalSubtitleLanguage?.let { setLanguage(it) }
+                    externalSubtitleLabel?.let { setLabel(it) }
+                }
+                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                .setId("external")
+                .build()
+            builder.setSubtitleConfigurations(listOf(subtitleConfig))
+            Log.d(TAG, "MediaItem built with external subtitle: $subtitleUrl")
+        }
+
+        return builder.build()
     }
 
     private fun startPositionTracking() {
@@ -502,6 +537,69 @@ class ExoPlayerWrapper(
      * Returns the current subtitle delay in milliseconds.
      */
     fun getSubtitleDelayMs(): Long = subtitleDelayController.getDelayMs()
+
+    // ==================== External Subtitle Support ====================
+
+    /**
+     * Load an external subtitle from URL.
+     * This triggers a soft restart to reload the media with the subtitle sideloaded.
+     *
+     * @param url The subtitle file URL
+     * @param mimeType The MIME type (e.g., "application/x-subrip", "text/x-ssa")
+     * @param language Optional language code
+     * @param label Optional display label
+     */
+    override fun addExternalSubtitle(url: String, mimeType: String, language: String?, label: String?) {
+        Log.d(TAG, "Adding external subtitle: $url (mimeType: $mimeType)")
+        externalSubtitleUrl = url
+        externalSubtitleMimeType = mimeType
+        externalSubtitleLanguage = language
+        externalSubtitleLabel = label
+
+        // Perform soft restart if currently playing
+        val videoUrl = currentVideoUrl
+        if (videoUrl != null && player != null) {
+            softRestartWithSubtitle()
+        }
+    }
+
+    /**
+     * Clear any loaded external subtitle.
+     * This triggers a soft restart to reload the media without the subtitle.
+     */
+    override fun clearExternalSubtitle() {
+        Log.d(TAG, "Clearing external subtitle")
+        externalSubtitleUrl = null
+        externalSubtitleMimeType = null
+        externalSubtitleLanguage = null
+        externalSubtitleLabel = null
+
+        // Perform soft restart if currently playing
+        val videoUrl = currentVideoUrl
+        if (videoUrl != null && player != null) {
+            softRestartWithSubtitle()
+        }
+    }
+
+    /**
+     * Soft restart: rebuild MediaItem and re-prepare while preserving position.
+     */
+    private fun softRestartWithSubtitle() {
+        val videoUrl = currentVideoUrl ?: return
+        val currentPosition = player?.currentPosition ?: 0L
+        val wasPlaying = player?.isPlaying == true
+
+        Log.d(TAG, "Soft restart at position ${currentPosition}ms, wasPlaying=$wasPlaying")
+
+        player?.apply {
+            setMediaItem(buildMediaItem(videoUrl))
+            prepare()
+            if (currentPosition > 0) {
+                seekTo(currentPosition)
+            }
+            playWhenReady = wasPlaying
+        }
+    }
 
     /**
      * Enables or disables night mode (dynamic range compression).

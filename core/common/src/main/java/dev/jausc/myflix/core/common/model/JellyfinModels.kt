@@ -143,6 +143,10 @@ data class MediaStream(
     @SerialName("IsForced") val isForced: Boolean = false,
     @SerialName("IsExternal") val isExternal: Boolean = false,
     @SerialName("IsHearingImpaired") val isHearingImpaired: Boolean = false,
+    // External subtitle delivery fields
+    @SerialName("DeliveryMethod") val deliveryMethod: String? = null, // "External", "Encode", "Embed"
+    @SerialName("DeliveryUrl") val deliveryUrl: String? = null,       // Full URL for external subs
+    @SerialName("Path") val path: String? = null,                     // Server-side file path
     // Video-specific fields for HDR/DV detection
     @SerialName("Profile") val profile: String? = null,
     @SerialName("VideoRange") val videoRange: String? = null,

@@ -278,6 +278,12 @@ class JellyfinClient(
 
     private val baseUrl: String get() = serverUrl ?: error("Server URL not set")
 
+    /**
+     * Get the configured server base URL.
+     * Used for building URLs for external resources like subtitles.
+     */
+    fun getServerBaseUrl(): String = baseUrl
+
     private fun authHeader(token: String? = accessToken): String {
         val base = """MediaBrowser Client="MyFlix", Device="Android TV", DeviceId="$deviceId", Version="1.0.0""""
         return if (token != null) """$base, Token="$token"""" else base

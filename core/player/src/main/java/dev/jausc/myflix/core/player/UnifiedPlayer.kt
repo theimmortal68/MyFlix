@@ -56,6 +56,21 @@ interface UnifiedPlayer {
     fun setSubtitleStyle(style: SubtitleStyle) {}
     fun setSubtitleDelayMs(delayMs: Long) {}
 
+    // External subtitle support
+    /**
+     * Load an external subtitle from URL.
+     * @param url The subtitle file URL
+     * @param mimeType The MIME type (e.g., "application/x-subrip", "text/x-ssa")
+     * @param language Optional language code
+     * @param label Optional display label
+     */
+    fun addExternalSubtitle(url: String, mimeType: String, language: String? = null, label: String? = null) {}
+
+    /**
+     * Clear any loaded external subtitle.
+     */
+    fun clearExternalSubtitle() {}
+
     // Surface management
     fun attachSurface(surface: android.view.Surface)
     fun detachSurface()

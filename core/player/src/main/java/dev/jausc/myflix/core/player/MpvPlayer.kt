@@ -336,6 +336,35 @@ class MpvPlayer(private val context: Context) : UnifiedPlayer, MPVLib.EventObser
         }
     }
 
+    override fun addExternalSubtitle(url: String, mimeType: String, language: String?, label: String?) {
+        if (!initialized) {
+            Log.w(TAG, "Cannot add external subtitle - MPV not initialized")
+            return
+        }
+        try {
+            // sub-add <url> [flags] [title] [lang]
+            // flags: select, auto, cached
+            // MPV handles ASS/SSA/SRT natively, mimeType is ignored
+            val title = label ?: ""
+            val lang = language ?: ""
+            MPVLib.command(arrayOf("sub-add", url, "select", title, lang))
+            Log.d(TAG, "Added external subtitle: $url (language=$language, label=$label)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to add external subtitle", e)
+        }
+    }
+
+    override fun clearExternalSubtitle() {
+        if (!initialized) return
+        try {
+            // Disable subtitle track entirely
+            MPVLib.setPropertyString("sid", "no")
+            Log.d(TAG, "External subtitle cleared")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear external subtitle", e)
+        }
+    }
+
     override fun release() {
         if (initialized) {
             MPVLib.removeObserver(this)

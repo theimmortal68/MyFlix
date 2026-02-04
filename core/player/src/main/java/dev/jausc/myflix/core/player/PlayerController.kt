@@ -249,6 +249,28 @@ class PlayerController(
         currentPlayer?.setSubtitleStyle(style)
     }
 
+    // ==================== External Subtitle Support ====================
+
+    /**
+     * Add an external subtitle from URL.
+     * Supports SRT, ASS/SSA, VTT formats.
+     *
+     * @param url The subtitle file URL
+     * @param mimeType The MIME type (e.g., "application/x-subrip", "text/x-ssa")
+     * @param language Optional language code
+     * @param label Optional display label
+     */
+    fun addExternalSubtitle(url: String, mimeType: String, language: String? = null, label: String? = null) {
+        currentPlayer?.addExternalSubtitle(url, mimeType, language, label)
+    }
+
+    /**
+     * Clear any loaded external subtitle.
+     */
+    fun clearExternalSubtitle() {
+        currentPlayer?.clearExternalSubtitle()
+    }
+
     // ==================== Audio Delay Control ====================
 
     /**

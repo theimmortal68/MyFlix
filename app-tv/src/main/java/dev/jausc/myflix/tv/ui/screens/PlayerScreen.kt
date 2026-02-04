@@ -100,7 +100,9 @@ import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.MediaSegmentType
 import dev.jausc.myflix.core.common.model.MediaStream
 import dev.jausc.myflix.core.common.model.audioLabel
+import dev.jausc.myflix.core.common.model.isExternalSubtitle
 import dev.jausc.myflix.core.common.model.subtitleLabel
+import dev.jausc.myflix.core.common.model.subtitleMimeType
 import dev.jausc.myflix.core.common.model.audioCodecLabel
 import dev.jausc.myflix.core.common.model.videoCodecLabel
 import dev.jausc.myflix.core.common.model.videoQualityLabel
@@ -709,12 +711,36 @@ fun PlayerScreen(
                     onSubtitleSelected = { index ->
                         currentStartPositionMs = playbackState.position
                         viewModel.setSubtitleStreamIndex(index)
-                        viewModel.updatePlaybackOptions(
-                            audioStreamIndex = selectedAudioIndex,
-                            subtitleStreamIndex = index,
-                            maxBitrateMbps = currentBitrate,
-                            startPositionMs = playbackState.position,
-                        )
+
+                        // Check if this is an external subtitle
+                        val selectedStream = state.subtitleStreams.find { it.index == index }
+                        if (selectedStream != null && selectedStream.isExternalSubtitle) {
+                            // External subtitle - load via player's external subtitle support
+                            val subtitleUrl = selectedStream.deliveryUrl
+                            if (subtitleUrl != null) {
+                                // Build full URL if relative
+                                val fullUrl = if (subtitleUrl.startsWith("http")) {
+                                    subtitleUrl
+                                } else {
+                                    jellyfinClient.getServerBaseUrl() + subtitleUrl
+                                }
+                                playerController.addExternalSubtitle(
+                                    url = fullUrl,
+                                    mimeType = selectedStream.subtitleMimeType,
+                                    language = selectedStream.language,
+                                    label = selectedStream.subtitleLabel(),
+                                )
+                            }
+                        } else {
+                            // Embedded subtitle or disabled - clear any external subtitle
+                            playerController.clearExternalSubtitle()
+                            viewModel.updatePlaybackOptions(
+                                audioStreamIndex = selectedAudioIndex,
+                                subtitleStreamIndex = index,
+                                maxBitrateMbps = currentBitrate,
+                                startPositionMs = playbackState.position,
+                            )
+                        }
                     },
                     subtitleStyle = subtitleStyle,
                     onSubtitleStyleChanged = { newStyle ->
