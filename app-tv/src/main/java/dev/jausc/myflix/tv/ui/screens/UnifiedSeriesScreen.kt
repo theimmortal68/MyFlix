@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +82,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.model.JellyfinPerson
+import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.common.model.actors
 import dev.jausc.myflix.core.common.model.crew
 import dev.jausc.myflix.core.common.model.tmdbId
@@ -94,8 +96,9 @@ import dev.jausc.myflix.tv.ui.components.CardSizes
 import dev.jausc.myflix.tv.ui.components.MediaCard
 import dev.jausc.myflix.tv.ui.components.detail.DotSeparator
 import dev.jausc.myflix.tv.ui.components.detail.ExpandablePlayButton
-import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
 import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
+import dev.jausc.myflix.tv.ui.components.detail.TrailerBackdrop
+import dev.jausc.myflix.tv.ui.components.detail.TrailerBackdropState
 import dev.jausc.myflix.tv.ui.components.detail.PersonCard
 import dev.jausc.myflix.tv.ui.components.detail.RatingBadge
 import dev.jausc.myflix.tv.ui.components.detail.StarRating
@@ -126,6 +129,7 @@ private enum class UnifiedSeriesTab {
 fun UnifiedSeriesScreen(
     state: DetailUiState,
     jellyfinClient: JellyfinClient,
+    appPreferences: AppPreferences,
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit,
     onWatchedClick: () -> Unit,
@@ -140,6 +144,9 @@ fun UnifiedSeriesScreen(
     val series = state.item ?: return
     val isWatched = series.userData?.played == true
     val isFavorite = series.userData?.isFavorite == true
+
+    // Collect trailer autoplay preference
+    val trailerAutoplayEnabled by appPreferences.trailerAutoplayEnabled.collectAsState()
 
     // Focus requesters for NavRail restoration
     val playButtonFocusRequester = remember { FocusRequester() }
@@ -224,6 +231,24 @@ fun UnifiedSeriesScreen(
         { onTrailerClick(trailer.key, trailer.name) }
     }
 
+    // Inline trailer autoplay - fetch stream URL for background playback
+    var inlineTrailerUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(bestTrailer?.key, jellyfinClient.serverUrl) {
+        val videoKey = bestTrailer?.key
+        if (videoKey != null && jellyfinClient.serverUrl != null) {
+            TrailerStreamService.configure(jellyfinClient.serverUrl!!)
+            coroutineScope.launch {
+                TrailerStreamService.prefetch(videoKey)
+                val streamUrl = TrailerStreamService.getStreamUrl(videoKey)
+                inlineTrailerUrl = streamUrl
+                Log.d("SeriesDetail", "Inline trailer stream URL: ${streamUrl?.take(50)}...")
+            }
+        } else {
+            inlineTrailerUrl = null
+        }
+    }
+
     // Prefetch YouTube thumbnails for trailers and extras
     val context = LocalContext.current
     LaunchedEffect(tmdbVideos) {
@@ -288,9 +313,15 @@ fun UnifiedSeriesScreen(
             .background(TvColors.Background)
             .focusGroup(),
     ) {
-        // Layer 1: Ken Burns animated backdrop (top-right)
-        KenBurnsBackdrop(
-            imageUrl = backdropUrl,
+        // Layer 1: Trailer backdrop with Ken Burns fallback (top-right)
+        TrailerBackdrop(
+            backdropUrl = backdropUrl,
+            state = TrailerBackdropState(
+                trailerUrl = inlineTrailerUrl,
+                trailersEnabled = trailerAutoplayEnabled,
+                showUnmuteButton = true,
+            ),
+            fadePreset = KenBurnsFadePreset.SERIES_DETAIL,
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.85f)
