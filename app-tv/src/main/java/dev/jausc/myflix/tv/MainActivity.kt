@@ -99,6 +99,7 @@ import dev.jausc.myflix.tv.channels.WatchNextManager
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.LocalExitFocusState
+import dev.jausc.myflix.core.common.ui.theme.ThemePreset
 
 /**
  * Deep link types for deferred navigation from TV home screen.
@@ -118,7 +119,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MyFlixTvTheme {
+            // Collect theme preference at top level for proper theming
+            val context = LocalContext.current
+            val tvPreferences = remember { TvPreferences.getInstance(context) }
+            val themePresetName by tvPreferences.themePreset.collectAsState()
+            val themePreset = remember(themePresetName) {
+                ThemePreset.fromName(themePresetName)
+            }
+
+            MyFlixTvTheme(themePreset = themePreset) {
                 MyFlixTvApp(
                     pendingDeepLink = pendingDeepLink,
                     onDeepLinkConsumed = { pendingDeepLink = null },

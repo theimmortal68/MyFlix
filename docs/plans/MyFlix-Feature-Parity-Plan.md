@@ -22,10 +22,10 @@
 | 11 | [Complete Dream Service](#11-complete-dream-service) | ✅ Done |
 | 12 | [Inline Trailer Autoplay](#12-inline-trailer-autoplay) | ✅ Done |
 | 13 | [OpenSubtitles Search](#13-opensubtitles-search) | ✅ Done |
-| 14 | [Multiple Themes](#14-multiple-themes) | ⬜ Todo |
+| 14 | [Multiple Themes](#14-multiple-themes) | ✅ Done |
 | 15 | [SyncPlay](#15-syncplay) | ⬜ Todo |
 
-**Progress: 13/15 complete (87%)**
+**Progress: 14/15 complete (93%)**
 
 ---
 
@@ -140,24 +140,19 @@
 
 ---
 
-## ⬜ Remaining Features
-
 ### 14. Multiple Themes
+**Commit:** Pending - Feb 4, 2026
 
-**Status:** Not implemented  
-**Effort:** 3-4 days
-
-| Action | Path |
-|--------|------|
-| Add | `core/common/src/main/java/dev/jausc/myflix/core/common/ui/theme/ThemePresets.kt` |
-| Modify | `app-tv/src/main/java/dev/jausc/myflix/tv/ui/theme/Theme.kt` |
-| Modify | `app-mobile/src/main/java/dev/jausc/myflix/mobile/ui/theme/Theme.kt` |
-
-**References:** DUNE theme, Wholphin theme
-
-**Notes:** Default, OLED Dark (#000000), High Contrast presets
+- `ThemePresets.kt` - Central color scheme definitions (ThemePreset enum, ThemeColors data class)
+- Three presets: DEFAULT (original blue), OLED_DARK (pure black), HIGH_CONTRAST (accessibility)
+- `LocalMyFlixColors` CompositionLocal for accessing theme-specific colors
+- TV and Mobile Theme.kt updated with `createColorScheme()` helper
+- TV PreferencesScreen and Mobile SettingsScreen theme selector dialogs
+- Preference persistence via `themePreset` in AppPreferences
 
 ---
+
+## ⬜ Remaining Features
 
 ### 15. SyncPlay
 
@@ -180,7 +175,7 @@
 
 | Status | Count | Features |
 |--------|-------|----------|
-| ✅ Done | 13 | Image Caching, Night Mode, Audio Delay, Stereo Downmix, Passthrough, HDR Fallback, TV Channels, Refresh Rate, Subtitle Delay, External Subs, Dream Service, Trailer Autoplay, OpenSubtitles |
-| ⬜ Todo | 2 | Themes, SyncPlay |
+| ✅ Done | 14 | Image Caching, Night Mode, Audio Delay, Stereo Downmix, Passthrough, HDR Fallback, TV Channels, Refresh Rate, Subtitle Delay, External Subs, Dream Service, Trailer Autoplay, OpenSubtitles, Themes |
+| ⬜ Todo | 1 | SyncPlay |
 
-**Recommended next:** Multiple Themes (3-4 days) - Default, OLED Dark, High Contrast presets
+**Recommended next:** SyncPlay (2-3 weeks) - WebSocket sync, time drift compensation

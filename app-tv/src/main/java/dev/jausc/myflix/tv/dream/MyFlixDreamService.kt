@@ -1,6 +1,11 @@
 package dev.jausc.myflix.tv.dream
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModelProvider
+import dev.jausc.myflix.core.common.ui.theme.ThemePreset
+import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.theme.MyFlixTvTheme
 
 /**
@@ -34,7 +39,14 @@ class MyFlixDreamService : DreamServiceCompat() {
 
         // Set Compose content
         setContent {
-            MyFlixTvTheme {
+            // Collect theme preference
+            val tvPreferences = remember { TvPreferences.getInstance(applicationContext) }
+            val themePresetName by tvPreferences.themePreset.collectAsState()
+            val themePreset = remember(themePresetName) {
+                ThemePreset.fromName(themePresetName)
+            }
+
+            MyFlixTvTheme(themePreset = themePreset) {
                 DreamScreen(viewModel = viewModel)
             }
         }

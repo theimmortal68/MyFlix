@@ -67,6 +67,7 @@ import dev.jausc.myflix.mobile.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.mobile.ui.screens.SettingsScreen
 import dev.jausc.myflix.mobile.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.mobile.ui.theme.MyFlixMobileTheme
+import dev.jausc.myflix.core.common.ui.theme.ThemePreset
 import java.net.URLDecoder
 
 /**
@@ -126,7 +127,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            MyFlixMobileTheme {
+            // Collect theme preference at top level for proper theming
+            val context = LocalContext.current
+            val mobilePreferences = remember { MobilePreferences.getInstance(context) }
+            val themePresetName by mobilePreferences.themePreset.collectAsState()
+            val themePreset = remember(themePresetName) {
+                ThemePreset.fromName(themePresetName)
+            }
+
+            MyFlixMobileTheme(themePreset = themePreset) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,

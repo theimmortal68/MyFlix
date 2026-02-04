@@ -164,6 +164,9 @@ object PreferenceKeys {
         /** Enable trailer autoplay on detail screens */
         const val TRAILER_AUTOPLAY_ENABLED = "trailer_autoplay_enabled"
 
+        /** Theme preset (DEFAULT, OLED_DARK, HIGH_CONTRAST) */
+        const val THEME_PRESET = "theme_preset"
+
         // Seerr integration preferences
         /** Whether Seerr integration is enabled */
         const val SEERR_ENABLED = "seerr_enabled"
@@ -308,5 +311,8 @@ object PreferenceKeys {
 
         /** Enable trailer autoplay on detail screens by default */
         const val TRAILER_AUTOPLAY_ENABLED = true
+
+        /** Default theme preset */
+        const val THEME_PRESET = "DEFAULT"
     }
 }

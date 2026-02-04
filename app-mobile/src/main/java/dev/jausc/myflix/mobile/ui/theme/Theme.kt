@@ -4,21 +4,40 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.jausc.myflix.core.common.ui.MyFlixFonts
+import dev.jausc.myflix.core.common.ui.theme.ThemeColorSchemes
+import dev.jausc.myflix.core.common.ui.theme.ThemeColors
+import dev.jausc.myflix.core.common.ui.theme.ThemePreset
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF2563EB),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF1D4ED8),
-    secondary = Color(0xFF3B82F6),
-    background = Color(0xFF0F172A),
-    surface = Color(0xFF1E293B),
-    onBackground = Color(0xFFF8FAFC),
-    onSurface = Color(0xFFF8FAFC),
+/**
+ * CompositionLocal for accessing the current theme colors directly.
+ * This provides access to MyFlix-specific colors not mapped to Material Theme.
+ */
+val LocalMyFlixColors = staticCompositionLocalOf { ThemeColorSchemes.Default }
+
+/**
+ * Create a Mobile Material color scheme from our theme colors.
+ */
+private fun createColorScheme(colors: ThemeColors) = darkColorScheme(
+    primary = colors.primary,
+    onPrimary = colors.textPrimary,
+    primaryContainer = colors.primaryVariant,
+    secondary = colors.primaryLight,
+    onSecondary = colors.textPrimary,
+    background = colors.background,
+    onBackground = colors.textPrimary,
+    surface = colors.surface,
+    onSurface = colors.textPrimary,
+    surfaceVariant = colors.surfaceLight,
+    onSurfaceVariant = colors.textSecondary,
+    error = colors.error,
+    onError = colors.textPrimary,
 )
 
 private val MyFlixTypography = Typography(
@@ -114,11 +133,25 @@ private val MyFlixTypography = Typography(
     ),
 )
 
+/**
+ * MyFlix Mobile theme with support for theme presets.
+ *
+ * @param themePreset The theme preset to use (DEFAULT, OLED_DARK, HIGH_CONTRAST)
+ * @param content The composable content to theme
+ */
 @Composable
-fun MyFlixMobileTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = MyFlixTypography,
-        content = content,
-    )
+fun MyFlixMobileTheme(
+    themePreset: ThemePreset = ThemePreset.DEFAULT,
+    content: @Composable () -> Unit,
+) {
+    val colors = ThemeColorSchemes.forPreset(themePreset)
+    val colorScheme = createColorScheme(colors)
+
+    CompositionLocalProvider(LocalMyFlixColors provides colors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MyFlixTypography,
+            content = content,
+        )
+    }
 }
