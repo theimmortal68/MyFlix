@@ -211,18 +211,23 @@ class SeerrHomeViewModel(
                 SeerrRowType.OTHER -> return@launch // Custom rows don't paginate via this method
             }
 
-            result.onSuccess { response ->
-                val existingItems = row.items.toMutableList()
-                val newItems = response.results.filterDiscoverable()
-                // Avoid duplicates by checking IDs
-                val uniqueNewItems = newItems.filter { newItem ->
-                    existingItems.none { existing -> existing.id == newItem.id }
-                }
-                existingItems.addAll(uniqueNewItems)
+            result
+                .onSuccess { response ->
+                    val existingItems = row.items.toMutableList()
+                    val newItems = response.results.filterDiscoverable()
+                    // Avoid duplicates by checking IDs
+                    val uniqueNewItems = newItems.filter { newItem ->
+                        existingItems.none { existing -> existing.id == newItem.id }
+                    }
+                    existingItems.addAll(uniqueNewItems)
 
-                currentRows[rowIndex] = row.copy(items = existingItems)
-                _uiState.update { it.copy(rows = currentRows) }
-            }
+                    currentRows[rowIndex] = row.copy(items = existingItems)
+                    _uiState.update { it.copy(rows = currentRows) }
+                }
+                .onFailure { error ->
+                    // Log error but don't show to user - pagination failures are not critical
+                    android.util.Log.w("SeerrHomeViewModel", "Failed to load more items: ${error.message}")
+                }
         }
     }
 
