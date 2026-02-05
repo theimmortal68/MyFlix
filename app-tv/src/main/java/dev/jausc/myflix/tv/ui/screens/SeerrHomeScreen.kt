@@ -11,6 +11,7 @@
 package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
@@ -341,6 +344,9 @@ fun SeerrHomeScreen(
                             val upcomingTvRow = uiState.upcomingTvRow
                             val otherRows = uiState.otherRows
 
+                            // Track pagination state for each row
+                            val rowPages = remember { mutableStateMapOf<String, Int>() }
+
                             // Helper to render a content row
                             @Composable
                             fun RenderContentRow(
@@ -355,6 +361,7 @@ fun SeerrHomeScreen(
                                     SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
                                     else -> null
                                 }
+                                val currentPage = rowPages[row.key] ?: 1
                                 SeerrContentRow(
                                     title = row.title,
                                     items = row.items,
@@ -377,6 +384,13 @@ fun SeerrHomeScreen(
                                         updateExitFocus(firstTrendingItemFocusRequester)
                                     },
                                     onViewAll = onViewAll,
+                                    onLoadMore = if (row.rowType != SeerrRowType.OTHER) {
+                                        {
+                                            val nextPage = currentPage + 1
+                                            rowPages[row.key] = nextPage
+                                            viewModel.loadMoreForRow(row.key, nextPage)
+                                        }
+                                    } else null,
                                     firstItemFocusRequester = firstItemFocusRequester,
                                 )
                             }
@@ -754,8 +768,20 @@ private fun SeerrContentRow(
     onItemLongClick: ((SeerrMedia) -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
     onViewAll: (() -> Unit)? = null,
+    onLoadMore: (() -> Unit)? = null,
     firstItemFocusRequester: FocusRequester? = null,
 ) {
+    val rowState = rememberLazyListState()
+
+    // Pagination: load more when near end of list
+    LaunchedEffect(rowState.firstVisibleItemIndex, items.size) {
+        val lastVisibleIndex = rowState.firstVisibleItemIndex +
+            rowState.layoutInfo.visibleItemsInfo.size
+        if (lastVisibleIndex >= items.size - 3 && items.size >= 10) {
+            onLoadMore?.invoke()
+        }
+    }
+
     Column(
         modifier = Modifier.padding(vertical = 8.dp),
     ) {
@@ -781,6 +807,7 @@ private fun SeerrContentRow(
 
         // Cards
         LazyRow(
+            state = rowState,
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -817,61 +844,89 @@ private fun SeerrMediaCard(
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        onClick = onClick,
-        onLongClick = onLongClick,
+    var isFocused by remember { mutableStateOf(false) }
+
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.6f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "cardHaloAlpha",
+    )
+
+    Box(
         modifier = modifier
             .width(120.dp)
-            .aspectRatio(2f / 3f)
-            .onFocusChanged { focusState ->
-                if (focusState.isFocused) {
-                    onItemFocused?.invoke(media)
-                }
-            },
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
+            .aspectRatio(2f / 3f),
+    ) {
+        // Halo glow (blurred background) - render BEHIND the card
+        if (haloAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .blur(12.dp)
+                    .background(
+                        TvColors.BluePrimary.copy(alpha = haloAlpha),
+                        MaterialTheme.shapes.medium,
+                    ),
+            )
+        }
+
+        // Actual card content
+        Surface(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            modifier = Modifier
+                .fillMaxSize()
+                .onFocusChanged { focusState ->
+                    isFocused = focusState.isFocused
+                    if (focusState.isFocused) {
+                        onItemFocused?.invoke(media)
+                    }
+                },
+            shape = ClickableSurfaceDefaults.shape(
                 shape = MaterialTheme.shapes.medium,
             ),
-        ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
-        ),
-    ) {
-        Box {
-            AsyncImage(
-                model = seerrRepository.getPosterUrl(media.posterPath),
-                contentDescription = media.displayTitle,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(MaterialTheme.shapes.medium),
-                contentScale = ContentScale.Crop,
-            )
-
-            // Availability badge
-            val badgeColor = when (media.availabilityStatus) {
-                SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
-                SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
-                SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
-                else -> null
-            }
-
-            badgeColor?.let { color ->
-                Box(
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = TvColors.Surface,
+                focusedContainerColor = TvColors.FocusedSurface,
+            ),
+            border = ClickableSurfaceDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = MaterialTheme.shapes.medium,
+                ),
+            ),
+            scale = ClickableSurfaceDefaults.scale(
+                focusedScale = 1f,
+            ),
+        ) {
+            Box {
+                AsyncImage(
+                    model = seerrRepository.getPosterUrl(media.posterPath),
+                    contentDescription = media.displayTitle,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(12.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(color),
+                        .fillMaxSize()
+                        .clip(MaterialTheme.shapes.medium),
+                    contentScale = ContentScale.Crop,
                 )
+
+                // Availability badge
+                val badgeColor = when (media.availabilityStatus) {
+                    SeerrMediaStatus.AVAILABLE -> Color(0xFF22C55E)
+                    SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> Color(0xFFFBBF24)
+                    SeerrMediaStatus.PARTIALLY_AVAILABLE -> Color(0xFF60A5FA)
+                    else -> null
+                }
+
+                badgeColor?.let { color ->
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(12.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(color),
+                    )
+                }
             }
         }
     }
