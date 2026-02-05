@@ -506,7 +506,7 @@ private fun buildSeerrDialogItems(media: SeerrMedia, actions: SeerrMediaActions,
  * Backdrop layer for Seerr media - displays behind content with edge fading.
  */
 @Composable
-private fun SeerrBackdropLayer(media: SeerrMedia?, seerrRepository: SeerrClient, modifier: Modifier = Modifier,) {
+private fun SeerrBackdropLayer(media: SeerrMedia?, seerrRepository: SeerrRepository, modifier: Modifier = Modifier,) {
     if (media == null) return
 
     Box(modifier = modifier) {
@@ -748,7 +748,7 @@ private fun SeerrHeroSection(
 private fun SeerrContentRow(
     title: String,
     items: List<SeerrMedia>,
-    seerrRepository: SeerrClient,
+    seerrRepository: SeerrRepository,
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
     onItemLongClick: ((SeerrMedia) -> Unit)? = null,
@@ -811,7 +811,7 @@ private fun SeerrContentRow(
 @Composable
 private fun SeerrMediaCard(
     media: SeerrMedia,
-    seerrRepository: SeerrClient,
+    seerrRepository: SeerrRepository,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
