@@ -12,6 +12,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.common.text.Cue
@@ -27,7 +28,9 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import dev.jausc.myflix.core.player.audio.DelayAudioProcessor
 import dev.jausc.myflix.core.player.audio.NightModeAudioProcessor
 import dev.jausc.myflix.core.player.audio.PassthroughConfig
@@ -360,8 +363,21 @@ class ExoPlayerWrapper(
                 .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                 .build()
 
+            // Configure HTTP data source with longer timeouts for slow NAS/HDD spin-up
+            // Default is 8 seconds which can timeout while waiting for HDDs to wake from sleep
+            val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                .setConnectTimeoutMs(HTTP_CONNECT_TIMEOUT_MS)
+                .setReadTimeoutMs(HTTP_READ_TIMEOUT_MS)
+                .setAllowCrossProtocolRedirects(true)
+
+            // Configure media source factory with retry policy for intermittent failures
+            val mediaSourceFactory = DefaultMediaSourceFactory(context)
+                .setDataSourceFactory(httpDataSourceFactory)
+                .setLoadErrorHandlingPolicy(createLoadErrorHandlingPolicy())
+
             player = ExoPlayer.Builder(context, renderersFactory)
                 .setTrackSelector(trackSelector)
+                .setMediaSourceFactory(mediaSourceFactory)
                 .setAudioAttributes(audioAttributes, true)
                 .build()
                 .apply {
@@ -923,8 +939,55 @@ class ExoPlayerWrapper(
         Log.d(TAG, "ExoPlayer released")
     }
 
+    /**
+     * Creates a LoadErrorHandlingPolicy that retries on transient errors.
+     * This helps with NAS/HDD spin-up delays where the first request may timeout
+     * while waiting for drives to wake from sleep, but subsequent retries succeed.
+     */
+    private fun createLoadErrorHandlingPolicy(): LoadErrorHandlingPolicy {
+        return object : LoadErrorHandlingPolicy {
+            override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+                val exception = loadErrorInfo.exception
+                val errorCount = loadErrorInfo.errorCount
+
+                // Retry on transient IO errors (network/timeout) up to MAX_LOAD_RETRIES times
+                // This handles HDD spin-up delays where the first request may timeout
+                return if (errorCount <= MAX_LOAD_RETRIES) {
+                    Log.w(TAG, "Load error (attempt $errorCount/$MAX_LOAD_RETRIES): ${exception.message}, retrying in ${RETRY_DELAY_MS}ms")
+                    RETRY_DELAY_MS
+                } else {
+                    // Max retries exceeded, give up
+                    Log.e(TAG, "Load error: max retries ($MAX_LOAD_RETRIES) exceeded, giving up: ${exception.message}")
+                    C.TIME_UNSET
+                }
+            }
+
+            override fun getMinimumLoadableRetryCount(dataType: Int): Int {
+                // Allow retries for all data types (manifest, media, etc.)
+                return MAX_LOAD_RETRIES
+            }
+
+            override fun getFallbackSelectionFor(
+                fallbackOptions: LoadErrorHandlingPolicy.FallbackOptions,
+                loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo,
+            ): LoadErrorHandlingPolicy.FallbackSelection? {
+                // Use default fallback behavior (try alternative tracks if available)
+                return null
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "ExoPlayerWrapper"
+
+        // Extended timeouts for NAS/HDD spin-up (drives going to sleep)
+        // Default ExoPlayer timeout is 8 seconds, which can fail while waiting for HDDs to wake
+        private const val HTTP_CONNECT_TIMEOUT_MS = 30_000 // 30 seconds
+        private const val HTTP_READ_TIMEOUT_MS = 30_000 // 30 seconds
+
+        // Retry configuration for intermittent network/storage failures
+        private const val MAX_LOAD_RETRIES = 3
+        private const val RETRY_DELAY_MS = 1000L // 1 second between retries
 
         /**
          * Check if FFmpeg audio decoder is available

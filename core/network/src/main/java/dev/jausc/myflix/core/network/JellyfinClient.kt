@@ -2024,8 +2024,29 @@ class JellyfinClient(
                 )
             }
 
-            // H.264 level restrictions
+            // H.264 profile and level restrictions
             caps?.let {
+                // Profile restriction - exclude High 10 if device doesn't support 10-bit H.264
+                // High 10 is very rare but some older anime encodes use it
+                val supportedAvcProfiles = it.getSupportedAvcProfiles()
+                if (supportedAvcProfiles.isNotEmpty() && !it.supportsAvcHigh10()) {
+                    add(
+                        CodecProfile(
+                            type = "Video",
+                            codec = "h264",
+                            conditions = listOf(
+                                ProfileCondition(
+                                    condition = "EqualsAny",
+                                    property = "VideoProfile",
+                                    value = supportedAvcProfiles.joinToString("|"),
+                                    isRequired = true,
+                                ),
+                            ),
+                        ),
+                    )
+                }
+
+                // Level restriction
                 val avcLevel = it.getAvcMainLevel()
                 if (avcLevel > 0) {
                     add(
@@ -2150,7 +2171,7 @@ class JellyfinClient(
         }
 
         // Match official Jellyfin client container and codec lists
-        val videoContainers = "asf,hls,m4v,mkv,mov,mp4,ogm,ogv,ts,vob,webm,wmv,xvid"
+        val videoContainers = "asf,avi,hls,m4v,mkv,mov,mp4,ogm,ogv,ts,vob,webm,wmv,xvid"
         val audioContainers = "aac,flac,m4a,mp3,ogg,opus,wav,wma"
         // Audio codecs for DIRECT PLAY - includes TrueHD/MLP for local FFmpeg decode
         val directPlayAudioCodecs = "aac,aac_latm,ac3,alac,dca,dts,eac3,flac,mlp,mp2,mp3,opus,pcm_alaw,pcm_mulaw,pcm_s16le,pcm_s20le,pcm_s24le,truehd,vorbis"
