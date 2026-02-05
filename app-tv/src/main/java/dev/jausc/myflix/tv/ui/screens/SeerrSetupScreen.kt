@@ -56,7 +56,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.ui.SeerrAuthMode
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.TvIconButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
@@ -75,7 +75,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SeerrSetupScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     preferences: TvPreferences,
     jellyfinUsername: String? = null,
     jellyfinPassword: String? = null,
@@ -181,7 +181,7 @@ fun SeerrSetupScreen(
         for (url in urlsToTry) {
             statusMessage = "Trying $url..."
 
-            val result = seerrClient.connectToServer(url)
+            val result = seerrRepository.connectToServer(url)
             if (result.isSuccess) {
                 foundUrl = url
                 break
@@ -198,13 +198,12 @@ fun SeerrSetupScreen(
                 statusMessage = "Logging in as $jellyfinUsername..."
                 currentStep = 2
 
-                seerrClient.loginWithJellyfin(jellyfinUsername.orEmpty(), jellyfinPassword.orEmpty())
-                    .onSuccess { user ->
+                seerrRepository.loginWithJellyfin(jellyfinUsername.orEmpty(), jellyfinPassword.orEmpty())
+                    .onSuccess { _ ->
                         preferences.setSeerrUrl(foundUrl)
                         preferences.setSeerrEnabled(true)
                         preferences.setSeerrAutoDetected(true)
-                        user.apiKey?.let { preferences.setSeerrApiKey(it) }
-                        seerrClient.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
+                        seerrRepository.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
                         currentStep = 3
                     }
                     .onFailure {
@@ -257,23 +256,22 @@ fun SeerrSetupScreen(
             }
             url = url.trimEnd('/')
 
-            seerrClient.connectToServer(url)
+            seerrRepository.connectToServer(url)
                 .onSuccess {
                     serverUrl = url
                     currentStep = 2
 
                     val authResult = if (authMode == SeerrAuthMode.LOCAL) {
-                        seerrClient.loginWithLocal(creds.first, creds.second)
+                        seerrRepository.loginWithLocal(creds.first, creds.second)
                     } else {
-                        seerrClient.loginWithJellyfin(creds.first, creds.second)
+                        seerrRepository.loginWithJellyfin(creds.first, creds.second)
                     }
                     authResult
-                        .onSuccess { user ->
+                        .onSuccess { _ ->
                             preferences.setSeerrUrl(url)
                             preferences.setSeerrEnabled(true)
                             preferences.setSeerrAutoDetected(false)
-                            user.apiKey?.let { preferences.setSeerrApiKey(it) }
-                            seerrClient.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
+                            seerrRepository.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
                             currentStep = 3
                         }
                         .onFailure {
@@ -302,13 +300,12 @@ fun SeerrSetupScreen(
             errorMessage = null
             currentStep = 2
 
-            seerrClient.loginWithJellyfin(creds.first, creds.second)
-                .onSuccess { user ->
+            seerrRepository.loginWithJellyfin(creds.first, creds.second)
+                .onSuccess { _ ->
                     preferences.setSeerrUrl(serverUrl)
                     preferences.setSeerrEnabled(true)
                     preferences.setSeerrAutoDetected(serverUrl.isNotBlank())
-                    user.apiKey?.let { preferences.setSeerrApiKey(it) }
-                    seerrClient.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
+                    seerrRepository.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
                     currentStep = 3
                 }
                 .onFailure {

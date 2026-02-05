@@ -59,7 +59,7 @@ import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.DiscoverFilterConfig
 import dev.jausc.myflix.core.seerr.MediaTypeFilter
 import dev.jausc.myflix.core.seerr.ReleaseStatusFilter
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrDiscoverResult
 import dev.jausc.myflix.core.seerr.SeerrGenre
 import dev.jausc.myflix.core.seerr.SeerrMedia
@@ -87,14 +87,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SeerrDiscoverTrendingScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     SeerrFilterableMediaGridScreen(
         title = "Trending",
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showMediaTypeFilter = true,
@@ -102,21 +102,21 @@ fun SeerrDiscoverTrendingScreen(
             showReleaseStatusFilter = true,
         ),
         loadItems = { page, mediaType, genreIds, releaseStatus, _, _, _, _ ->
-            loadTrendingWithFilters(seerrClient, page, mediaType, genreIds, releaseStatus)
+            loadTrendingWithFilters(seerrRepository, page, mediaType, genreIds, releaseStatus)
         },
     )
 }
 
 @Composable
 fun SeerrDiscoverMoviesScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     SeerrFilterableMediaGridScreen(
         title = "Discover Movies",
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
@@ -124,7 +124,7 @@ fun SeerrDiscoverMoviesScreen(
             defaultMediaType = MediaTypeFilter.MOVIES,
         ),
         loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
-            loadMoviesWithFilters(seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
+            loadMoviesWithFilters(seerrRepository, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
         },
         genreMediaType = "movie",
     )
@@ -132,14 +132,14 @@ fun SeerrDiscoverMoviesScreen(
 
 @Composable
 fun SeerrDiscoverTvScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     SeerrFilterableMediaGridScreen(
         title = "Discover TV",
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
@@ -147,7 +147,7 @@ fun SeerrDiscoverTvScreen(
             defaultMediaType = MediaTypeFilter.TV_SHOWS,
         ),
         loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
-            loadTvWithFilters(seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
+            loadTvWithFilters(seerrRepository, page, genreIds, releaseStatus, sort, rating, fromYear, toYear)
         },
         genreMediaType = "tv",
     )
@@ -155,21 +155,21 @@ fun SeerrDiscoverTvScreen(
 
 @Composable
 fun SeerrDiscoverUpcomingMoviesScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     SeerrFilterableMediaGridScreen(
         title = "Upcoming Movies",
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
             defaultMediaType = MediaTypeFilter.MOVIES,
         ),
         loadItems = { page, _, genreIds, _, _, _, _, _ ->
-            loadUpcomingWithFilters(seerrClient, page, MediaTypeFilter.MOVIES, genreIds)
+            loadUpcomingWithFilters(seerrRepository, page, MediaTypeFilter.MOVIES, genreIds)
         },
         genreMediaType = "movie",
     )
@@ -177,21 +177,21 @@ fun SeerrDiscoverUpcomingMoviesScreen(
 
 @Composable
 fun SeerrDiscoverUpcomingTvScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
     SeerrFilterableMediaGridScreen(
         title = "Upcoming TV",
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
             defaultMediaType = MediaTypeFilter.TV_SHOWS,
         ),
         loadItems = { page, _, genreIds, _, _, _, _, _ ->
-            loadUpcomingWithFilters(seerrClient, page, MediaTypeFilter.TV_SHOWS, genreIds)
+            loadUpcomingWithFilters(seerrRepository, page, MediaTypeFilter.TV_SHOWS, genreIds)
         },
         genreMediaType = "tv",
     )
@@ -199,7 +199,7 @@ fun SeerrDiscoverUpcomingTvScreen(
 
 @Composable
 fun SeerrDiscoverByGenreScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     mediaType: String,
     genreId: Int,
     genreName: String,
@@ -209,7 +209,7 @@ fun SeerrDiscoverByGenreScreen(
     SeerrFilterableMediaGridScreen(
         title = genreName,
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showReleaseStatusFilter = true,
@@ -217,9 +217,9 @@ fun SeerrDiscoverByGenreScreen(
         ),
         loadItems = { page, _, _, releaseStatus, sort, rating, fromYear, toYear ->
             if (mediaType == "movie") {
-                loadMoviesWithFilters(seerrClient, page, setOf(genreId), releaseStatus, sort, rating, fromYear, toYear)
+                loadMoviesWithFilters(seerrRepository, page, setOf(genreId), releaseStatus, sort, rating, fromYear, toYear)
             } else {
-                loadTvWithFilters(seerrClient, page, setOf(genreId), releaseStatus, sort, rating, fromYear, toYear)
+                loadTvWithFilters(seerrRepository, page, setOf(genreId), releaseStatus, sort, rating, fromYear, toYear)
             }
         },
         genreMediaType = mediaType,
@@ -228,7 +228,7 @@ fun SeerrDiscoverByGenreScreen(
 
 @Composable
 fun SeerrDiscoverByStudioScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     studioId: Int,
     studioName: String,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
@@ -237,7 +237,7 @@ fun SeerrDiscoverByStudioScreen(
     SeerrFilterableMediaGridScreen(
         title = studioName,
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
@@ -246,7 +246,7 @@ fun SeerrDiscoverByStudioScreen(
         ),
         loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
             loadMoviesWithFilters(
-                seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear,
+                seerrRepository, page, genreIds, releaseStatus, sort, rating, fromYear, toYear,
                 companyId = studioId,
             )
         },
@@ -256,7 +256,7 @@ fun SeerrDiscoverByStudioScreen(
 
 @Composable
 fun SeerrDiscoverByNetworkScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     networkId: Int,
     networkName: String,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
@@ -265,7 +265,7 @@ fun SeerrDiscoverByNetworkScreen(
     SeerrFilterableMediaGridScreen(
         title = networkName,
         onBack = onBack,
-        seerrClient = seerrClient,
+        seerrRepository = seerrRepository,
         onMediaClick = onMediaClick,
         filterConfig = DiscoverFilterConfig(
             showGenreFilter = true,
@@ -274,7 +274,7 @@ fun SeerrDiscoverByNetworkScreen(
         ),
         loadItems = { page, _, genreIds, releaseStatus, sort, rating, fromYear, toYear ->
             loadTvWithFilters(
-                seerrClient, page, genreIds, releaseStatus, sort, rating, fromYear, toYear,
+                seerrRepository, page, genreIds, releaseStatus, sort, rating, fromYear, toYear,
                 networkId = networkId,
             )
         },
@@ -288,7 +288,7 @@ private fun SeerrMediaGridScreen(
     title: String,
     onBack: () -> Unit,
     loadItems: suspend (page: Int) -> Result<SeerrDiscoverResult>,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
 ) {
     val gridState = rememberLazyGridState()
@@ -311,21 +311,21 @@ private fun SeerrMediaGridScreen(
     var dialogVisible by remember { mutableStateOf(false) }
 
     // Seerr actions for context menu
-    val seerrActions = remember(onMediaClick, scope, seerrClient) {
+    val seerrActions = remember(onMediaClick, scope, seerrRepository) {
         SeerrMediaActions(
             onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
             onRequest = { media ->
                 scope.launch {
                     if (media.isMovie) {
-                        seerrClient.requestMovie(media.tmdbId ?: media.id)
+                        seerrRepository.requestMovie(media.tmdbId ?: media.id)
                     } else {
-                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
+                        seerrRepository.requestTVShow(media.tmdbId ?: media.id)
                     }
                 }
             },
             onBlacklist = { media ->
                 scope.launch {
-                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
+                    seerrRepository.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
                 }
             },
         )
@@ -463,7 +463,7 @@ private fun SeerrMediaGridScreen(
                     ) { index, media ->
                         SeerrTvPosterCard(
                             media = media,
-                            seerrClient = seerrClient,
+                            seerrRepository = seerrRepository,
                             modifier = (if (index == 0) {
                                 Modifier.focusRequester(firstItemFocusRequester)
                             } else {
@@ -535,12 +535,12 @@ private fun buildSeerrDialogItems(media: SeerrMedia, actions: SeerrMediaActions,
 @Composable
 private fun SeerrTvPosterCard(
     media: SeerrMedia,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val posterUrl = seerrClient.getPosterUrl(media.posterPath)
+    val posterUrl = seerrRepository.getPosterUrl(media.posterPath)
 
     Surface(
         onClick = onClick,
@@ -594,7 +594,7 @@ private fun SeerrTvPosterCard(
 private fun SeerrFilterableMediaGridScreen(
     title: String,
     onBack: () -> Unit,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     filterConfig: DiscoverFilterConfig,
     loadItems: suspend (
@@ -650,21 +650,21 @@ private fun SeerrFilterableMediaGridScreen(
     var sortAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
 
     // Seerr actions for context menu
-    val seerrActions = remember(onMediaClick, scope, seerrClient) {
+    val seerrActions = remember(onMediaClick, scope, seerrRepository) {
         SeerrMediaActions(
             onGoTo = { mediaType, tmdbId -> onMediaClick(mediaType, tmdbId) },
             onRequest = { media ->
                 scope.launch {
                     if (media.isMovie) {
-                        seerrClient.requestMovie(media.tmdbId ?: media.id)
+                        seerrRepository.requestMovie(media.tmdbId ?: media.id)
                     } else {
-                        seerrClient.requestTVShow(media.tmdbId ?: media.id)
+                        seerrRepository.requestTVShow(media.tmdbId ?: media.id)
                     }
                 }
             },
             onBlacklist = { media ->
                 scope.launch {
-                    seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
+                    seerrRepository.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
                 }
             },
         )
@@ -703,9 +703,9 @@ private fun SeerrFilterableMediaGridScreen(
                 else -> "movie"
             }
             val genreResult = if (genreType == "tv") {
-                seerrClient.getTVGenres()
+                seerrRepository.getTVGenres()
             } else {
-                seerrClient.getMovieGenres()
+                seerrRepository.getMovieGenres()
             }
             genreResult.onSuccess { genres = it }
         }
@@ -852,7 +852,7 @@ private fun SeerrFilterableMediaGridScreen(
                     ) { index, media ->
                         SeerrTvPosterCard(
                             media = media,
-                            seerrClient = seerrClient,
+                            seerrRepository = seerrRepository,
                             modifier = (if (index == 0) {
                                 Modifier.focusRequester(firstItemFocusRequester)
                             } else {
@@ -963,14 +963,14 @@ private fun SeerrFilterableMediaGridScreen(
 
 @Suppress("UnusedParameter")
 private suspend fun loadTrendingWithFilters(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     page: Int,
     mediaType: MediaTypeFilter,
     genreIds: Set<Int>,
     releaseStatus: ReleaseStatusFilter,
 ): Result<SeerrDiscoverResult> {
     // Trending endpoint doesn't support filters, so we need to post-filter
-    return seerrClient.getTrending(page).map { result ->
+    return seerrRepository.getTrending(page).map { result ->
         var filtered = result.results
 
         // Filter by media type
@@ -989,7 +989,7 @@ private suspend fun loadTrendingWithFilters(
 }
 
 private suspend fun loadMoviesWithFilters(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     page: Int,
     genreIds: Set<Int>,
     releaseStatus: ReleaseStatusFilter,
@@ -1034,14 +1034,14 @@ private suspend fun loadMoviesWithFilters(
     }
 
     return if (params.isEmpty()) {
-        seerrClient.discoverMovies(page = page)
+        seerrRepository.discoverMovies(page = page)
     } else {
-        seerrClient.discoverMoviesWithParams(params, page)
+        seerrRepository.discoverMoviesWithParams(params, page)
     }
 }
 
 private suspend fun loadTvWithFilters(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     page: Int,
     genreIds: Set<Int>,
     releaseStatus: ReleaseStatusFilter,
@@ -1086,14 +1086,14 @@ private suspend fun loadTvWithFilters(
     }
 
     return if (params.isEmpty()) {
-        seerrClient.discoverTV(page = page)
+        seerrRepository.discoverTV(page = page)
     } else {
-        seerrClient.discoverTVWithParams(params, page)
+        seerrRepository.discoverTVWithParams(params, page)
     }
 }
 
 private suspend fun loadUpcomingWithFilters(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     page: Int,
     mediaType: MediaTypeFilter,
     genreIds: Set<Int>,
@@ -1107,7 +1107,7 @@ private suspend fun loadUpcomingWithFilters(
             if (genreIds.isNotEmpty()) {
                 params["genre"] = genreIds.joinToString(",")
             }
-            seerrClient.discoverMoviesWithParams(params, page)
+            seerrRepository.discoverMoviesWithParams(params, page)
         }
         MediaTypeFilter.TV_SHOWS -> {
             val params = mutableMapOf<String, String>()
@@ -1115,7 +1115,7 @@ private suspend fun loadUpcomingWithFilters(
             if (genreIds.isNotEmpty()) {
                 params["genre"] = genreIds.joinToString(",")
             }
-            seerrClient.discoverTVWithParams(params, page)
+            seerrRepository.discoverTVWithParams(params, page)
         }
     }
 }

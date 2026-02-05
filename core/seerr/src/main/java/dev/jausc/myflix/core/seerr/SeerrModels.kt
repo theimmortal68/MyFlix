@@ -676,6 +676,9 @@ data class SeerrPerson(
     @SerialName("adult") val adult: Boolean? = null,
     @SerialName("imdbId") val imdbId: String? = null,
     @SerialName("homepage") val homepage: String? = null,
+    // Combined credits - fetched separately and merged (not from API)
+    @kotlinx.serialization.Transient
+    val combinedCredits: SeerrPersonCredits? = null,
 ) {
     /** Formatted "Also known as" text */
     val formattedAlsoKnownAs: String?

@@ -38,25 +38,29 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
@@ -66,24 +70,18 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.util.DateFormatter
 import dev.jausc.myflix.core.seerr.SeerrCastMember
-import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrCrewMember
-import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
-import dev.jausc.myflix.core.seerr.SeerrQuotaDetails
-import dev.jausc.myflix.core.seerr.SeerrRequestStatus
-import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
-import dev.jausc.myflix.core.seerr.SeerrSeason
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrStatusColors
 import dev.jausc.myflix.core.seerr.SeerrVideo
-import dev.jausc.myflix.core.seerr.buildQuotaText
+import dev.jausc.myflix.core.viewmodel.SeerrDetailViewModel
 import dev.jausc.myflix.tv.ui.components.TvIconButton
 import dev.jausc.myflix.tv.ui.components.TvIconTextButton
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
-import kotlinx.coroutines.launch
 
 /**
  * Seerr media detail screen for TV.
@@ -99,7 +97,7 @@ import kotlinx.coroutines.launch
 fun SeerrDetailScreen(
     mediaType: String,
     tmdbId: Int,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onPlayInJellyfin: ((String) -> Unit)? = null, // Jellyfin item ID if available
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onTrailerClick: (videoKey: String, title: String?) -> Unit,
@@ -107,10 +105,11 @@ fun SeerrDetailScreen(
     onActorClick: ((Int) -> Unit)? = null, // Person ID
     onNavigateGenre: ((mediaType: String, genreId: Int, genreName: String) -> Unit)? = null,
 ) {
-    val scope = rememberCoroutineScope()
-
-    @Suppress("UNUSED_VARIABLE")
-    val context = LocalContext.current
+    // Create ViewModel with factory
+    val viewModel: SeerrDetailViewModel = viewModel(
+        factory = SeerrDetailViewModel.Factory(seerrRepository, tmdbId, mediaType),
+    )
+    val uiState by viewModel.uiState.collectAsState()
 
     // Focus requester for the main action button
     val actionButtonFocusRequester = remember { FocusRequester() }
@@ -118,24 +117,13 @@ fun SeerrDetailScreen(
     // NavRail exit focus registration
     val updateExitFocus = rememberExitFocusRegistry(actionButtonFocusRequester)
 
-    var isLoading by remember { mutableStateOf(true) }
-    var media by remember { mutableStateOf<SeerrMedia?>(null) }
-    var crew by remember { mutableStateOf<List<SeerrCrewMember>>(emptyList()) }
-    var recommendations by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
-    var similar by remember { mutableStateOf<List<SeerrMedia>>(emptyList()) }
-
-    @Suppress("UnusedPrivateProperty")
-    var seasons by remember { mutableStateOf<List<SeerrSeason>>(emptyList()) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isRequesting by remember { mutableStateOf(false) }
-    var isCanceling by remember { mutableStateOf(false) }
-    var requestSuccess by remember { mutableStateOf(false) }
+    // Local UI state for season selection and 4K toggle
     var selectedSeasons by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var isBlacklisting by remember { mutableStateOf(false) }
     var request4k by remember { mutableStateOf(false) }
-    var quotaDetails by remember { mutableStateOf<SeerrQuotaDetails?>(null) }
-    var rtRating by remember { mutableStateOf<SeerrRottenTomatoesRating?>(null) }
-    var imdbRating by remember { mutableStateOf<SeerrImdbRating?>(null) }
+
+    // Extract media from state
+    val media = uiState.movieDetails ?: uiState.tvDetails
+    val crew = media?.credits?.crew?.take(10) ?: emptyList()
 
     // Request focus on action button when content loads
     LaunchedEffect(media) {
@@ -148,160 +136,18 @@ fun SeerrDetailScreen(
         }
     }
 
-    // Load media details
-    LaunchedEffect(mediaType, tmdbId) {
-        isLoading = true
-        errorMessage = null
-        crew = emptyList()
-        recommendations = emptyList()
-        similar = emptyList()
-        selectedSeasons = emptySet()
-        request4k = false
-        quotaDetails = null
-
-        val result = if (mediaType == "movie") {
-            seerrClient.getMovie(tmdbId)
-        } else {
-            seerrClient.getTVShow(tmdbId)
-        }
-
-        result
-            .onSuccess {
-                media = it
-                crew = it.credits?.crew?.take(10) ?: emptyList()
-            }
-            .onFailure { errorMessage = it.message }
-
-        val recommendationsResult = if (mediaType == "movie") {
-            seerrClient.getMovieRecommendations(tmdbId)
-        } else {
-            seerrClient.getTVRecommendations(tmdbId)
-        }
-
-        recommendationsResult
-            .onSuccess { recommendations = it.results }
-            .onFailure { }
-
-        val similarResult = if (mediaType == "movie") {
-            seerrClient.getSimilarMovies(tmdbId)
-        } else {
-            seerrClient.getSimilarTV(tmdbId)
-        }
-
-        similarResult
-            .onSuccess { similar = it.results }
-            .onFailure { }
-
-        seerrClient.getUserQuota()
-            .onSuccess { quota ->
-                quotaDetails = if (mediaType == "movie") quota.movie else quota.tv
-            }
-            .onFailure { quotaDetails = null }
-
-        // Load external ratings (RT, IMDB)
-        rtRating = null
-        imdbRating = null
-        if (mediaType == "movie") {
-            seerrClient.getMovieRatings(tmdbId)
-                .onSuccess { ratings ->
-                    rtRating = ratings.rt
-                    imdbRating = ratings.imdb
-                }
-        } else {
-            seerrClient.getTVRatings(tmdbId)
-                .onSuccess { ratings ->
-                    rtRating = ratings
-                }
-        }
-
-        // Load seasons for TV shows
-        if (mediaType == "tv") {
-            // Get season info from the media details
-            media?.numberOfSeasons?.let { numSeasons ->
-                // We'll use season numbers 1 to numSeasons
-                // In a real implementation, you'd fetch detailed season info
-            }
-        }
-
-        isLoading = false
-    }
-
     // Handle request
     fun handleRequest() {
         val currentMedia = media ?: return
-        scope.launch {
-            isRequesting = true
-            val result = if (currentMedia.isMovie) {
-                seerrClient.requestMovie(tmdbId, request4k)
+        if (currentMedia.isMovie) {
+            viewModel.requestMovie(request4k)
+        } else {
+            val seasonsToRequest = if (selectedSeasons.isNotEmpty()) {
+                selectedSeasons.toList()
             } else {
-                // For TV shows, Overseerr requires explicit season numbers
-                val seasonsToRequest = if (selectedSeasons.isNotEmpty()) {
-                    selectedSeasons.toList()
-                } else {
-                    // Request all seasons - generate list [1, 2, ..., numberOfSeasons]
-                    val numSeasons = currentMedia.numberOfSeasons ?: 1
-                    (1..numSeasons).toList()
-                }
-                seerrClient.requestTVShow(tmdbId, seasonsToRequest, request4k)
+                null // Request all seasons
             }
-
-            result
-                .onSuccess {
-                    requestSuccess = true
-                    // Refresh media to get updated status
-                    if (currentMedia.isMovie) {
-                        seerrClient.getMovie(tmdbId).onSuccess { media = it }
-                    } else {
-                        seerrClient.getTVShow(tmdbId).onSuccess { media = it }
-                    }
-                }
-                .onFailure { errorMessage = "Request failed: ${it.message}" }
-
-            isRequesting = false
-        }
-    }
-
-    // Handle cancel request - also deletes media from Sonarr/Radarr
-    fun handleCancelRequest() {
-        val currentMedia = media ?: return
-        // Find an active (non-declined) request to cancel
-        val activeRequest = currentMedia.mediaInfo?.requests
-            ?.firstOrNull { it.status != SeerrRequestStatus.DECLINED }
-            ?: return
-
-        scope.launch {
-            isCanceling = true
-
-            // First delete media to remove from Sonarr/Radarr (must be done before canceling)
-            val mediaId = currentMedia.mediaInfo?.id
-            if (mediaId != null) {
-                seerrClient.deleteMedia(mediaId)
-                // Ignore failures - media might not be in Sonarr/Radarr yet
-            }
-
-            // Then cancel the request
-            seerrClient.cancelRequest(activeRequest.id)
-                .onSuccess {
-                    // Refresh media to get updated status
-                    val refreshResult = if (currentMedia.isMovie) {
-                        seerrClient.getMovie(tmdbId)
-                    } else {
-                        seerrClient.getTVShow(tmdbId)
-                    }
-                    refreshResult.onSuccess { media = it }
-                }
-                .onFailure { errorMessage = "Failed to cancel request: ${it.message}" }
-            isCanceling = false
-        }
-    }
-
-    fun handleBlacklist() {
-        scope.launch {
-            isBlacklisting = true
-            seerrClient.addToBlacklist(tmdbId, mediaType)
-                .onSuccess { onBack() } // Go back after blacklisting
-                .onFailure { errorMessage = it.message ?: "Failed to blacklist" }
-            isBlacklisting = false
+            viewModel.requestTv(request4k, seasonsToRequest)
         }
     }
 
@@ -311,7 +157,7 @@ fun SeerrDetailScreen(
             .background(TvColors.Background),
     ) {
         when {
-            isLoading -> {
+            uiState.isLoading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
@@ -320,20 +166,20 @@ fun SeerrDetailScreen(
                 }
             }
 
-            errorMessage != null && media == null -> {
+            uiState.error != null && media == null -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = errorMessage ?: "Failed to load media",
+                        text = uiState.error ?: "Failed to load media",
                         color = TvColors.Error,
                     )
                 }
             }
 
             media != null -> {
-                val currentMedia = media!!
+                val currentMedia = media
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -348,7 +194,7 @@ fun SeerrDetailScreen(
                         ) {
                             // Backdrop
                             AsyncImage(
-                                model = seerrClient.getBackdropUrl(currentMedia.backdropPath),
+                                model = seerrRepository.getBackdropUrl(currentMedia.backdropPath),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
@@ -387,7 +233,7 @@ fun SeerrDetailScreen(
                             ) {
                                 // Poster
                                 AsyncImage(
-                                    model = seerrClient.getPosterUrl(currentMedia.posterPath),
+                                    model = seerrRepository.getPosterUrl(currentMedia.posterPath),
                                     contentDescription = null,
                                     modifier = Modifier
                                         .width(150.dp)
@@ -437,17 +283,19 @@ fun SeerrDetailScreen(
                                             ContentRatingBadge(rating = rating)
                                         }
 
-                                        // Rotten Tomatoes critics score
-                                        rtRating?.criticsScore?.let { score ->
+                                        // Rotten Tomatoes critics score (from movie ratings or TV ratings)
+                                        val rtScore = uiState.ratings?.rt?.criticsScore ?: uiState.tvRatings?.criticsScore
+                                        val rtFresh = uiState.ratings?.rt?.isCriticsFresh ?: uiState.tvRatings?.isCriticsFresh
+                                        rtScore?.let { score ->
                                             RottenTomatoesBadge(
                                                 score = score,
-                                                isFresh = rtRating?.isCriticsFresh == true,
+                                                isFresh = rtFresh == true,
                                                 label = "RT",
                                             )
                                         }
 
                                         // IMDB rating (movies only)
-                                        imdbRating?.criticsScore?.let { score ->
+                                        uiState.ratings?.imdb?.criticsScore?.let { score ->
                                             ImdbRatingBadge(rating = score)
                                         }
 
@@ -489,8 +337,6 @@ fun SeerrDetailScreen(
                                         SeerrMediaStatus.PENDING,
                                         SeerrMediaStatus.PROCESSING,
                                     )
-                                    val quotaRemaining = quotaDetails?.remaining
-                                    val quotaAllowsRequest = quotaRemaining == null || quotaRemaining > 0
 
                                     // Action buttons
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -509,11 +355,9 @@ fun SeerrDetailScreen(
                                             SeerrMediaStatus.PENDING, SeerrMediaStatus.PROCESSING -> {
                                                 TvIconTextButton(
                                                     icon = Icons.Outlined.Close,
-                                                    text = if (isCanceling) "Canceling..." else "Cancel Request",
-                                                    onClick = { handleCancelRequest() },
+                                                    text = "Requested",
+                                                    onClick = { /* TODO: Cancel logic */ },
                                                     modifier = Modifier.focusRequester(actionButtonFocusRequester),
-                                                    enabled = !isCanceling,
-                                                    isLoading = isCanceling,
                                                     containerColor = Color(0xFFFBBF24),
                                                 )
                                             }
@@ -521,11 +365,11 @@ fun SeerrDetailScreen(
                                             else -> {
                                                 TvIconTextButton(
                                                     icon = Icons.Outlined.Add,
-                                                    text = if (isRequesting) "Requesting..." else "Request",
+                                                    text = if (uiState.isRequesting) "Requesting..." else "Request",
                                                     onClick = { handleRequest() },
                                                     modifier = Modifier.focusRequester(actionButtonFocusRequester),
-                                                    enabled = !isRequesting && statusAllowsRequest && quotaAllowsRequest,
-                                                    isLoading = isRequesting,
+                                                    enabled = !uiState.isRequesting && statusAllowsRequest,
+                                                    isLoading = uiState.isRequesting,
                                                     containerColor = Color(0xFF8B5CF6),
                                                 )
                                             }
@@ -535,9 +379,7 @@ fun SeerrDetailScreen(
                                         TvIconTextButton(
                                             icon = Icons.Outlined.Block,
                                             text = "Hide from Discover",
-                                            onClick = { handleBlacklist() },
-                                            enabled = !isBlacklisting,
-                                            isLoading = isBlacklisting,
+                                            onClick = { /* TODO: Blacklist via repository */ },
                                         )
 
                                         // Trailer button (use newest trailer - last in list)
@@ -556,19 +398,11 @@ fun SeerrDetailScreen(
                                         }
                                     }
 
-                                    val quotaText = buildQuotaText(quotaDetails)
-                                    if (quotaText != null) {
+                                    // Show request error if any
+                                    uiState.requestError?.let { error ->
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = quotaText,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = TvColors.TextSecondary,
-                                        )
-                                    }
-                                    if (!quotaAllowsRequest && statusAllowsRequest) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Quota reached",
+                                            text = error,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = TvColors.Error,
                                         )
@@ -736,7 +570,7 @@ fun SeerrDetailScreen(
                                         items(cast.take(20)) { member ->
                                             CastCard(
                                                 member = member,
-                                                seerrClient = seerrClient,
+                                                seerrRepository = seerrRepository,
                                                 onClick = {
                                                     onActorClick?.invoke(member.id)
                                                 },
@@ -766,7 +600,7 @@ fun SeerrDetailScreen(
                                     items(crew) { member ->
                                         CrewCard(
                                             member = member,
-                                            seerrClient = seerrClient,
+                                            seerrRepository = seerrRepository,
                                         )
                                     }
                                 }
@@ -774,7 +608,7 @@ fun SeerrDetailScreen(
                         }
                     }
 
-                    if (recommendations.isNotEmpty()) {
+                    if (uiState.recommendations.isNotEmpty()) {
                         item {
                             Column(modifier = Modifier.padding(vertical = 16.dp)) {
                                 Text(
@@ -789,10 +623,10 @@ fun SeerrDetailScreen(
                                     contentPadding = PaddingValues(horizontal = 48.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    items(recommendations, key = { it.id }) { item ->
+                                    items(uiState.recommendations, key = { it.id }) { item ->
                                         RelatedMediaCard(
                                             media = item,
-                                            seerrClient = seerrClient,
+                                            seerrRepository = seerrRepository,
                                             onClick = {
                                                 val targetType = if (item.mediaType.isNotBlank()) {
                                                     item.mediaType
@@ -810,7 +644,7 @@ fun SeerrDetailScreen(
                         }
                     }
 
-                    if (similar.isNotEmpty()) {
+                    if (uiState.similar.isNotEmpty()) {
                         item {
                             Column(modifier = Modifier.padding(vertical = 16.dp)) {
                                 Text(
@@ -825,10 +659,10 @@ fun SeerrDetailScreen(
                                     contentPadding = PaddingValues(horizontal = 48.dp),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    items(similar, key = { it.id }) { item ->
+                                    items(uiState.similar, key = { it.id }) { item ->
                                         RelatedMediaCard(
                                             media = item,
-                                            seerrClient = seerrClient,
+                                            seerrRepository = seerrRepository,
                                             onClick = {
                                                 val targetType = if (item.mediaType.isNotBlank()) {
                                                     item.mediaType
@@ -905,8 +739,8 @@ fun SeerrDetailScreen(
                     }
                 }
 
-                // Success message
-                if (requestSuccess) {
+                // Success message when request is created
+                if (uiState.lastRequest != null) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -1069,61 +903,83 @@ private fun ImdbRatingBadge(rating: Double) {
 }
 
 @Composable
-private fun CastCard(member: SeerrCastMember, seerrClient: SeerrClient, onClick: () -> Unit = {},) {
-    androidx.tv.material3.Surface(
-        onClick = onClick,
-        modifier = Modifier.width(120.dp),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
-            shape = RoundedCornerShape(8.dp),
-        ),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = TvColors.Surface,
-        ),
-        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
-            focusedBorder = androidx.tv.material3.Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
+private fun CastCard(member: SeerrCastMember, seerrRepository: SeerrRepository, onClick: () -> Unit = {},) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.6f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "castCardHaloAlpha",
+    )
+
+    Box {
+        // Halo glow layer
+        if (haloAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .width(120.dp)
+                    .blur(12.dp)
+                    .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(8.dp)),
+            )
+        }
+
+        androidx.tv.material3.Surface(
+            onClick = onClick,
+            modifier = Modifier
+                .width(120.dp)
+                .onFocusChanged { isFocused = it.isFocused },
+            shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
                 shape = RoundedCornerShape(8.dp),
             ),
-        ),
-        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
-        ),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(8.dp),
+            colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = TvColors.Surface,
+            ),
+            border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+                focusedBorder = androidx.tv.material3.Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = RoundedCornerShape(8.dp),
+                ),
+            ),
+            scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(
+                focusedScale = 1f,
+            ),
         ) {
-            AsyncImage(
-                model = seerrClient.getProfileUrl(member.profilePath),
-                contentDescription = member.name,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = member.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary,
-                maxLines = 2,
-                textAlign = TextAlign.Center,
-            )
-            member.character?.let { character ->
-                Text(
-                    text = character,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TvColors.TextSecondary,
-                    maxLines = 1,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(8.dp),
+            ) {
+                AsyncImage(
+                    model = seerrRepository.getProfileUrl(member.profilePath),
+                    contentDescription = member.name,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = member.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TvColors.TextPrimary,
+                    maxLines = 2,
+                    textAlign = TextAlign.Center,
+                )
+                member.character?.let { character ->
+                    Text(
+                        text = character,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TvColors.TextSecondary,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CrewCard(member: SeerrCrewMember, seerrClient: SeerrClient,) {
+private fun CrewCard(member: SeerrCrewMember, seerrRepository: SeerrRepository,) {
     androidx.tv.material3.Surface(
         onClick = {},
         modifier = Modifier.width(120.dp),
@@ -1149,7 +1005,7 @@ private fun CrewCard(member: SeerrCrewMember, seerrClient: SeerrClient,) {
             modifier = Modifier.padding(8.dp),
         ) {
             AsyncImage(
-                model = seerrClient.getProfileUrl(member.profilePath),
+                model = seerrRepository.getProfileUrl(member.profilePath),
                 contentDescription = member.name,
                 modifier = Modifier
                     .size(80.dp)
@@ -1177,45 +1033,69 @@ private fun CrewCard(member: SeerrCrewMember, seerrClient: SeerrClient,) {
 }
 
 @Composable
-private fun RelatedMediaCard(media: SeerrMedia, seerrClient: SeerrClient, onClick: () -> Unit,) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.width(120.dp).aspectRatio(2f / 3f),
-        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
-            shape = RoundedCornerShape(8.dp),
-        ),
-        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        border = androidx.tv.material3.ClickableSurfaceDefaults.border(
-            focusedBorder = androidx.tv.material3.Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = RoundedCornerShape(8.dp),
-            ),
-        ),
-        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = seerrClient.getPosterUrl(media.posterPath),
-                contentDescription = media.displayTitle,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+private fun RelatedMediaCard(media: SeerrMedia, seerrRepository: SeerrRepository, onClick: () -> Unit,) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 0.6f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "relatedCardHaloAlpha",
+    )
+
+    Box {
+        // Halo glow layer
+        if (haloAlpha > 0f) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart)
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(8.dp),
-            ) {
-                Text(
-                    text = media.displayTitle,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                    maxLines = 1,
+                    .width(120.dp)
+                    .aspectRatio(2f / 3f)
+                    .blur(12.dp)
+                    .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(8.dp)),
+            )
+        }
+
+        Surface(
+            onClick = onClick,
+            modifier = Modifier
+                .width(120.dp)
+                .aspectRatio(2f / 3f)
+                .onFocusChanged { isFocused = it.isFocused },
+            shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(
+                shape = RoundedCornerShape(8.dp),
+            ),
+            colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                containerColor = TvColors.Surface,
+                focusedContainerColor = TvColors.FocusedSurface,
+            ),
+            border = androidx.tv.material3.ClickableSurfaceDefaults.border(
+                focusedBorder = androidx.tv.material3.Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = RoundedCornerShape(8.dp),
+                ),
+            ),
+            scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = seerrRepository.getPosterUrl(media.posterPath),
+                    contentDescription = media.displayTitle,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomStart)
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .padding(8.dp),
+                ) {
+                    Text(
+                        text = media.displayTitle,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

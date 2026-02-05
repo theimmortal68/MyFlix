@@ -55,7 +55,7 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.ui.SeerrRequestFilter
 import dev.jausc.myflix.core.common.ui.SeerrRequestScope
 import dev.jausc.myflix.core.common.ui.SeerrRequestSort
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrRequest
 import dev.jausc.myflix.core.seerr.SeerrRequestStatus
@@ -72,7 +72,7 @@ private const val REQUEST_PAGE_SIZE = 20
 
 @Composable
 fun SeerrRequestsScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onBack: () -> Unit,
     onNavigateToDetail: (tmdbId: Int, mediaType: String) -> Unit,
 ) {
@@ -114,14 +114,14 @@ fun SeerrRequestsScreen(
         actionMessage = null
 
         val result = if (requestScope == SeerrRequestScope.ALL) {
-            seerrClient.getAllRequests(
+            seerrRepository.getAllRequests(
                 page = pageToLoad,
                 pageSize = REQUEST_PAGE_SIZE,
                 filter = selectedFilter.filterValue,
                 sort = selectedSort.sortValue,
             )
         } else {
-            seerrClient.getMyRequests(
+            seerrRepository.getMyRequests(
                 page = pageToLoad,
                 pageSize = REQUEST_PAGE_SIZE,
                 filter = selectedFilter.filterValue,
@@ -166,8 +166,8 @@ fun SeerrRequestsScreen(
         if (mediaTitleCache.containsKey(cacheKey)) return
 
         val result = when (mediaType) {
-            "movie" -> seerrClient.getMovie(tmdbId)
-            "tv" -> seerrClient.getTVShow(tmdbId)
+            "movie" -> seerrRepository.getMovie(tmdbId)
+            "tv" -> seerrRepository.getTVShow(tmdbId)
             else -> return
         }
 
@@ -180,7 +180,7 @@ fun SeerrRequestsScreen(
         scope.launch {
             updatingRequestId = request.id
             actionMessage = null
-            seerrClient.approveRequest(request.id)
+            seerrRepository.approveRequest(request.id)
                 .onSuccess {
                     actionMessage = "Request approved"
                     loadRequests(pageToLoad = 1, append = false)
@@ -194,7 +194,7 @@ fun SeerrRequestsScreen(
         scope.launch {
             updatingRequestId = request.id
             actionMessage = null
-            seerrClient.declineRequest(request.id)
+            seerrRepository.declineRequest(request.id)
                 .onSuccess {
                     actionMessage = "Request declined"
                     loadRequests(pageToLoad = 1, append = false)
@@ -213,13 +213,13 @@ fun SeerrRequestsScreen(
             val mediaId = request.media?.id
             var mediaDeleted = false
             if (mediaId != null) {
-                seerrClient.deleteMedia(mediaId)
+                seerrRepository.deleteMedia(mediaId)
                     .onSuccess { mediaDeleted = true }
                     .onFailure { /* Media might not exist in Sonarr/Radarr yet */ }
             }
 
             // Then cancel the request
-            seerrClient.cancelRequest(request.id)
+            seerrRepository.cancelRequest(request.id)
                 .onSuccess {
                     actionMessage = if (mediaDeleted) {
                         "Request canceled and media removed"

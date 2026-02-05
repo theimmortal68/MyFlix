@@ -81,7 +81,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrRequest
@@ -118,7 +118,7 @@ fun HomeScreen(
     preferences: TvPreferences,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
-    seerrClient: SeerrClient? = null,
+    seerrRepository: SeerrRepository? = null,
     onSeerrMediaClick: (mediaType: String, tmdbId: Int) -> Unit = { _, _ -> },
     restoreFocusRequester: FocusRequester? = null,
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
@@ -138,7 +138,7 @@ fun HomeScreen(
 
     // ViewModel with manual DI
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrClient, HeroContentBuilder.defaultConfig),
+        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrRepository, HeroContentBuilder.defaultConfig),
     )
 
     // Collect UI state from ViewModel
@@ -303,7 +303,7 @@ fun HomeScreen(
                 showSuggestions = showSuggestions,
                 showSeerrRecentRequests = showSeerrRecentRequests,
                 jellyfinClient = jellyfinClient,
-                seerrClient = seerrClient,
+                seerrRepository = seerrRepository,
                 onItemClick = onItemClick,
                 onPlayClick = onPlayClick,
                 onItemLongClick = { item ->
@@ -398,7 +398,7 @@ private fun HomeContent(
     showSuggestions: Boolean,
     showSeerrRecentRequests: Boolean,
     jellyfinClient: JellyfinClient,
-    seerrClient: SeerrClient?,
+    seerrRepository: SeerrRepository?,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem) -> Unit,
@@ -699,12 +699,12 @@ private fun HomeContent(
                         }
 
                         // Recent Requests row (from Seerr)
-                        if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrClient != null) {
+                        if (showSeerrRecentRequests && recentRequests.isNotEmpty() && seerrRepository != null) {
                             item(key = "recent_requests") {
                                 SeerrRequestRow(
                                     title = "Recent Requests",
                                     requests = recentRequests,
-                                    seerrClient = seerrClient,
+                                    seerrRepository = seerrRepository,
                                     accentColor = Color(SeerrColors.GREEN),
                                     onRequestClick = { request ->
                                         request.media?.let { media ->
@@ -939,7 +939,7 @@ private fun ItemRow(
 private fun SeerrRequestRow(
     title: String,
     requests: List<SeerrRequest>,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     accentColor: Color,
     onRequestClick: (SeerrRequest) -> Unit,
     modifier: Modifier = Modifier,
@@ -977,7 +977,7 @@ private fun SeerrRequestRow(
             items(requests, key = { it.id }) { request ->
                 SeerrRequestCard(
                     request = request,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onClick = { onRequestClick(request) },
                 )
             }
@@ -992,7 +992,7 @@ private fun SeerrRequestRow(
 @Composable
 private fun SeerrRequestCard(
     request: SeerrRequest,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1007,9 +1007,9 @@ private fun SeerrRequestCard(
         if (tmdbId != null && mediaType != null) {
             loadFailed = false
             val result = if (mediaType == "tv") {
-                seerrClient.getTVShow(tmdbId)
+                seerrRepository.getTVShow(tmdbId)
             } else {
-                seerrClient.getMovie(tmdbId)
+                seerrRepository.getMovie(tmdbId)
             }
             result
                 .onSuccess { mediaDetails = it }
@@ -1017,7 +1017,7 @@ private fun SeerrRequestCard(
         }
     }
 
-    val posterUrl = mediaDetails?.posterPath?.let { seerrClient.getPosterUrl(it) }
+    val posterUrl = mediaDetails?.posterPath?.let { seerrRepository.getPosterUrl(it) }
     val statusColor = when (request.status) {
         SeerrRequestStatus.PENDING_APPROVAL -> Color(SeerrColors.YELLOW)
         SeerrRequestStatus.APPROVED -> Color(SeerrColors.GREEN)

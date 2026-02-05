@@ -47,7 +47,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrCollection
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
@@ -59,7 +59,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SeerrCollectionDetailScreen(
     collectionId: Int,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -77,7 +77,7 @@ fun SeerrCollectionDetailScreen(
     LaunchedEffect(collectionId, refreshTrigger) {
         isLoading = true
         errorMessage = null
-        seerrClient.getCollection(collectionId)
+        seerrRepository.getCollection(collectionId)
             .onSuccess { collection = it }
             .onFailure { errorMessage = it.message ?: "Failed to load collection" }
         isLoading = false
@@ -95,9 +95,9 @@ fun SeerrCollectionDetailScreen(
             }
             val tmdbId = media.tmdbId ?: media.id
             val requestResult = if (mediaType == "movie") {
-                seerrClient.requestMovie(tmdbId)
+                seerrRepository.requestMovie(tmdbId)
             } else {
-                seerrClient.requestTVShow(tmdbId, null)
+                seerrRepository.requestTVShow(tmdbId, null)
             }
             requestResult
                 .onSuccess { refreshTrigger++ }
@@ -173,7 +173,7 @@ fun SeerrCollectionDetailScreen(
                         val isFirst = parts.indexOf(media) == 0
                         SeerrCollectionPosterCard(
                             media = media,
-                            seerrClient = seerrClient,
+                            seerrRepository = seerrRepository,
                             isRequesting = requestingId == media.id,
                             onClick = {
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
@@ -199,13 +199,13 @@ fun SeerrCollectionDetailScreen(
 @Composable
 private fun SeerrCollectionPosterCard(
     media: SeerrMedia,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     isRequesting: Boolean,
     onClick: () -> Unit,
     onRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val posterUrl = seerrClient.getPosterUrl(media.posterPath)
+    val posterUrl = seerrRepository.getPosterUrl(media.posterPath)
     val availabilityStatus = media.availabilityStatus
     val (requestLabel, canRequest) = when (availabilityStatus) {
         SeerrMediaStatus.AVAILABLE -> "Available" to false

@@ -1,5 +1,7 @@
 package dev.jausc.myflix.core.seerr
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,35 +89,25 @@ class SeerrRepository(
     }
 
     /**
-     * Load all cached data from server.
+     * Load all cached data from server in parallel.
      * Called automatically after successful login.
      */
-    private suspend fun loadCachedData() {
-        // Load user info
-        client.getCurrentUser().onSuccess { user ->
-            _currentUser.value = user
-        }
+    private suspend fun loadCachedData() = coroutineScope {
+        // Load all data in parallel for faster initialization
+        val userDeferred = async { client.getCurrentUser() }
+        val movieGenresDeferred = async { client.getMovieGenres() }
+        val tvGenresDeferred = async { client.getTVGenres() }
+        val discoverDeferred = async { client.getDiscoverSettings() }
+        val radarrDeferred = async { client.getRadarrServers() }
+        val sonarrDeferred = async { client.getSonarrServers() }
 
-        // Load genres (commonly used for filtering/browsing)
-        client.getMovieGenres().onSuccess { genres ->
-            _movieGenres.value = genres
-        }
-        client.getTVGenres().onSuccess { genres ->
-            _tvGenres.value = genres
-        }
-
-        // Load discover slider settings
-        client.getDiscoverSettings().onSuccess { sliders ->
-            _discoverSliders.value = sliders
-        }
-
-        // Load server configurations (for request options)
-        client.getRadarrServers().onSuccess { servers ->
-            _radarrServers.value = servers
-        }
-        client.getSonarrServers().onSuccess { servers ->
-            _sonarrServers.value = servers
-        }
+        // Await all results and update state
+        userDeferred.await().onSuccess { _currentUser.value = it }
+        movieGenresDeferred.await().onSuccess { _movieGenres.value = it }
+        tvGenresDeferred.await().onSuccess { _tvGenres.value = it }
+        discoverDeferred.await().onSuccess { _discoverSliders.value = it }
+        radarrDeferred.await().onSuccess { _radarrServers.value = it }
+        sonarrDeferred.await().onSuccess { _sonarrServers.value = it }
     }
 
     /**

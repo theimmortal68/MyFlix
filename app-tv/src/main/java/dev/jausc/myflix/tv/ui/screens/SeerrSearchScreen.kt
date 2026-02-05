@@ -58,7 +58,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.ui.SeerrSearchFilter
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.theme.TvColors
@@ -69,7 +69,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SeerrSearchScreen(
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onPersonClick: (personId: Int) -> Unit,
     onBack: () -> Unit,
@@ -100,7 +100,7 @@ fun SeerrSearchScreen(
         }
         errorMessage = null
 
-        seerrClient.search(query, pageToLoad)
+        seerrRepository.search(query, pageToLoad)
             .onSuccess { response ->
                 val filtered = response.results.filter { media ->
                     media.mediaType in allowedMediaTypes && selectedFilter.matches(media)
@@ -297,7 +297,7 @@ fun SeerrSearchScreen(
                     itemsIndexed(results, key = { _, media -> "${media.mediaType}-${media.id}" }) { index, media ->
                         SeerrSearchPosterCard(
                             media = media,
-                            seerrClient = seerrClient,
+                            seerrRepository = seerrRepository,
                             onClick = {
                                 if (media.mediaType == "person") {
                                     onPersonClick(media.tmdbId ?: media.id)
@@ -343,14 +343,14 @@ fun SeerrSearchScreen(
 @Composable
 private fun SeerrSearchPosterCard(
     media: SeerrMedia,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val imageUrl = if (media.mediaType == "person") {
-        seerrClient.getProfileUrl(media.profilePath)
+        seerrRepository.getProfileUrl(media.profilePath)
     } else {
-        seerrClient.getPosterUrl(media.posterPath)
+        seerrRepository.getPosterUrl(media.posterPath)
     }
 
     Surface(

@@ -318,10 +318,9 @@ private fun MyFlixTvApp(
                         val password = appState.password
                         if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
                             seerrClient.loginWithJellyfin(username, password)
-                                .onSuccess { user ->
+                                .onSuccess { _ ->
                                     android.util.Log.d("MyFlixSeerr", "Credentials auth SUCCESS")
                                     isSeerrAuthenticated = true
-                                    user.apiKey?.let { tvPreferences.setSeerrApiKey(it) }
                                     seerrClient.sessionCookie?.let { tvPreferences.setSeerrSessionCookie(it) }
                                 }
                                 .onFailure { e ->
@@ -691,7 +690,7 @@ private fun MyFlixTvApp(
                 HomeScreen(
                     jellyfinClient = jellyfinClient,
                     preferences = tvPreferences,
-                    seerrClient = if (isSeerrAuthenticated) seerrClient else null,
+                    seerrRepository = if (isSeerrAuthenticated) seerrRepository else null,
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
                     },
@@ -745,7 +744,7 @@ private fun MyFlixTvApp(
                 // Require actual authentication - isSeerrAuthenticated is set after successful login
                 if (!isSeerrAuthenticated) {
                     SeerrSetupScreen(
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         preferences = tvPreferences,
                         jellyfinUsername = appState.username,
                         jellyfinPassword = appState.password,
@@ -805,7 +804,7 @@ private fun MyFlixTvApp(
 
             composable("seerr/setup") {
                 SeerrSetupScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     preferences = tvPreferences,
                     jellyfinUsername = appState.username,
                     jellyfinPassword = appState.password,
@@ -822,7 +821,7 @@ private fun MyFlixTvApp(
             // Seerr discover screens with pagination
             composable("seerr/trending") {
                 SeerrDiscoverTrendingScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
@@ -832,7 +831,7 @@ private fun MyFlixTvApp(
 
             composable("seerr/movies") {
                 SeerrDiscoverMoviesScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
@@ -842,7 +841,7 @@ private fun MyFlixTvApp(
 
             composable("seerr/tv") {
                 SeerrDiscoverTvScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
@@ -852,7 +851,7 @@ private fun MyFlixTvApp(
 
             composable("seerr/upcoming/movies") {
                 SeerrDiscoverUpcomingMoviesScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
@@ -862,7 +861,7 @@ private fun MyFlixTvApp(
 
             composable("seerr/upcoming/tv") {
                 SeerrDiscoverUpcomingTvScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
@@ -882,7 +881,7 @@ private fun MyFlixTvApp(
                 SeerrDetailScreen(
                     mediaType = mediaType,
                     tmdbId = tmdbId,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { relatedMediaType, relatedTmdbId ->
                         navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
                     },
@@ -913,7 +912,7 @@ private fun MyFlixTvApp(
                 val genreNameEncoded = backStackEntry.arguments?.getString("genreName") ?: ""
                 val genreName = NavigationHelper.decodeNavArg(genreNameEncoded)
                 SeerrDiscoverByGenreScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     mediaType = genreMediaType,
                     genreId = genreId,
                     genreName = genreName,
@@ -935,7 +934,7 @@ private fun MyFlixTvApp(
                 val studioNameEncoded = backStackEntry.arguments?.getString("studioName") ?: ""
                 val studioName = NavigationHelper.decodeNavArg(studioNameEncoded)
                 SeerrDiscoverByStudioScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     studioId = studioId,
                     studioName = studioName,
                     onMediaClick = { mediaType, tmdbId ->
@@ -956,7 +955,7 @@ private fun MyFlixTvApp(
                 val networkNameEncoded = backStackEntry.arguments?.getString("networkName") ?: ""
                 val networkName = NavigationHelper.decodeNavArg(networkNameEncoded)
                 SeerrDiscoverByNetworkScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     networkId = networkId,
                     networkName = networkName,
                     onMediaClick = { mediaType, tmdbId ->
@@ -975,7 +974,7 @@ private fun MyFlixTvApp(
                 val personId = backStackEntry.arguments?.getInt("personId") ?: return@composable
                 SeerrActorDetailScreen(
                     personId = personId,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onBack = { navController.popBackStack() },
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
@@ -1004,7 +1003,7 @@ private fun MyFlixTvApp(
 
             composable(NavigationHelper.SEERR_SEARCH_ROUTE) {
                 SeerrSearchScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
@@ -1017,7 +1016,7 @@ private fun MyFlixTvApp(
 
             composable(NavigationHelper.SEERR_REQUESTS_ROUTE) {
                 SeerrRequestsScreen(
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onBack = { navController.popBackStack() },
                     onNavigateToDetail = { tmdbId, mediaType ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
@@ -1034,35 +1033,35 @@ private fun MyFlixTvApp(
                 val category = backStackEntry.arguments?.getString("category") ?: "trending"
                 when (NavigationHelper.decodeNavArg(category)) {
                     "movies" -> SeerrDiscoverMoviesScreen(
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
                         onBack = { navController.popBackStack() },
                     )
                     "tv" -> SeerrDiscoverTvScreen(
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
                         onBack = { navController.popBackStack() },
                     )
                     "upcoming_movies" -> SeerrDiscoverUpcomingMoviesScreen(
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
                         onBack = { navController.popBackStack() },
                     )
                     "upcoming_tv" -> SeerrDiscoverUpcomingTvScreen(
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
                         onBack = { navController.popBackStack() },
                     )
                     else -> SeerrDiscoverTrendingScreen(
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },
@@ -1080,7 +1079,7 @@ private fun MyFlixTvApp(
                 val collectionId = backStackEntry.arguments?.getInt("collectionId") ?: return@composable
                 SeerrCollectionDetailScreen(
                     collectionId = collectionId,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },

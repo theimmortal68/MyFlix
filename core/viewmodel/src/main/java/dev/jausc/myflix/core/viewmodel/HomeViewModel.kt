@@ -7,8 +7,8 @@ import dev.jausc.myflix.core.common.HeroContentBuilder
 import dev.jausc.myflix.core.common.model.JellyfinItem
 import dev.jausc.myflix.core.common.preferences.AppPreferences
 import dev.jausc.myflix.core.network.JellyfinClient
-import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +63,7 @@ data class HomeUiState(
 class HomeViewModel(
     private val jellyfinClient: JellyfinClient,
     private val preferences: AppPreferences,
-    private val seerrClient: SeerrClient? = null,
+    private val seerrRepository: SeerrRepository? = null,
     private val heroConfig: HeroContentBuilder.Config = HeroContentBuilder.defaultConfig,
 ) : ViewModel() {
 
@@ -73,12 +73,12 @@ class HomeViewModel(
     class Factory(
         private val jellyfinClient: JellyfinClient,
         private val preferences: AppPreferences,
-        private val seerrClient: SeerrClient? = null,
+        private val seerrRepository: SeerrRepository? = null,
         private val heroConfig: HeroContentBuilder.Config = HeroContentBuilder.defaultConfig,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(jellyfinClient, preferences, seerrClient, heroConfig) as T
+            HomeViewModel(jellyfinClient, preferences, seerrRepository, heroConfig) as T
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -207,7 +207,7 @@ class HomeViewModel(
                 }
 
                 // Load Recent Requests from Seerr
-                if (showSeerrRecentRequests.value && seerrClient != null) {
+                if (showSeerrRecentRequests.value && seerrRepository != null) {
                     loadRecentRequests()
                 }
 
@@ -354,8 +354,8 @@ class HomeViewModel(
     }
 
     private suspend fun loadRecentRequests() {
-        val client = seerrClient ?: return
-        SeerrDiscoverHelper.loadAllRequestsRow(client)?.let { row ->
+        val repo = seerrRepository ?: return
+        SeerrDiscoverHelper.loadAllRequestsRow(repo)?.let { row ->
             _uiState.update { it.copy(recentRequests = row.items) }
         }
     }

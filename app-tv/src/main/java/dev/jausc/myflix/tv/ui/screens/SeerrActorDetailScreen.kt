@@ -54,7 +54,7 @@ import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.common.ui.SeerrActorDetailScreenState
 import dev.jausc.myflix.core.common.ui.SeerrPersonLoader
 import dev.jausc.myflix.core.common.ui.rememberSeerrActorDetailScreenState
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrPerson
 import dev.jausc.myflix.core.seerr.SeerrPersonCastCredit
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
@@ -72,11 +72,11 @@ import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 @Composable
 fun SeerrActorDetailScreen(
     personId: Int,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onBack: () -> Unit,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
 ) {
-    val loader = remember(seerrClient) { SeerrPersonLoader.from(seerrClient) }
+    val loader = remember(seerrRepository) { SeerrPersonLoader.from(seerrRepository) }
     val state = rememberSeerrActorDetailScreenState(personId, loader)
 
     val backButtonFocusRequester = remember { FocusRequester() }
@@ -130,7 +130,7 @@ fun SeerrActorDetailScreen(
             state.person != null -> {
                 TvActorDetailContent(
                     state = state,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onBack = onBack,
                     onMediaClick = onMediaClick,
                     backButtonFocusRequester = backButtonFocusRequester,
@@ -145,7 +145,7 @@ fun SeerrActorDetailScreen(
 @Composable
 private fun TvActorDetailContent(
     state: SeerrActorDetailScreenState,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onBack: () -> Unit,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     backButtonFocusRequester: FocusRequester,
@@ -172,7 +172,7 @@ private fun TvActorDetailContent(
             PersonHeader(
                 state = state,
                 person = currentPerson,
-                seerrClient = seerrClient,
+                seerrRepository = seerrRepository,
                 onBack = onBack,
                 backButtonFocusRequester = backButtonFocusRequester,
             )
@@ -197,7 +197,7 @@ private fun TvActorDetailContent(
             val isFirst = castCredits.indexOf(credit) == 0
             PersonMediaCard(
                 credit = credit,
-                seerrClient = seerrClient,
+                seerrRepository = seerrRepository,
                 onClick = {
                     val mediaType = credit.mediaType ?: "movie"
                     onMediaClick(mediaType, credit.id)
@@ -220,7 +220,7 @@ private fun TvActorDetailContent(
 private fun PersonHeader(
     state: SeerrActorDetailScreenState,
     person: SeerrPerson,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onBack: () -> Unit,
     backButtonFocusRequester: FocusRequester,
 ) {
@@ -257,7 +257,7 @@ private fun PersonHeader(
 
             // Profile photo
             AsyncImage(
-                model = seerrClient.getProfileUrl(person.profilePath, "h632"),
+                model = seerrRepository.getProfileUrl(person.profilePath, "h632"),
                 contentDescription = person.name,
                 modifier = Modifier
                     .size(150.dp)
@@ -317,7 +317,7 @@ private fun PersonHeader(
 @Composable
 private fun PersonMediaCard(
     credit: SeerrPersonCastCredit,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -345,7 +345,7 @@ private fun PersonMediaCard(
     ) {
         Box {
             AsyncImage(
-                model = seerrClient.getPosterUrl(credit.posterPath),
+                model = seerrRepository.getPosterUrl(credit.posterPath),
                 contentDescription = credit.displayTitle,
                 modifier = Modifier
                     .fillMaxSize()

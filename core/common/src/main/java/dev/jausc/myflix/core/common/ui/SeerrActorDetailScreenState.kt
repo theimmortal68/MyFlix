@@ -105,6 +105,14 @@ interface SeerrPersonLoader {
                 override suspend fun loadPerson(personId: Int) = client.getPerson(personId)
                 override suspend fun loadCombinedCredits(personId: Int) = client.getPersonCombinedCredits(personId)
             }
+
+        /**
+         * Create a loader that delegates to the given SeerrRepository.
+         */
+        fun from(repository: dev.jausc.myflix.core.seerr.SeerrRepository): SeerrPersonLoader = object : SeerrPersonLoader {
+                override suspend fun loadPerson(personId: Int) = repository.getPerson(personId)
+                override suspend fun loadCombinedCredits(personId: Int) = repository.getPersonCombinedCredits(personId)
+            }
     }
 }
 

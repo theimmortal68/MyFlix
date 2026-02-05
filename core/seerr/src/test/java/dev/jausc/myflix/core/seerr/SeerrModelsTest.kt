@@ -178,9 +178,9 @@ class SeerrModelsTest {
     }
 
     @Test
-    fun `statusText returns Pending for status 1`() {
+    fun `statusText returns Pending Approval for status 1`() {
         val request = SeerrRequest(id = 1, status = 1)
-        assertEquals("Pending", request.statusText)
+        assertEquals("Pending Approval", request.statusText)
     }
 
     @Test

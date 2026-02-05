@@ -295,6 +295,67 @@ fun SeerrHomeScreen(
                             )
                         }
 
+                        // Use computed properties from uiState for row access
+                        val trendingRow = uiState.trendingRow
+                        val popularMoviesRow = uiState.popularMoviesRow
+                        val movieGenresRow = uiState.movieGenresRow
+                        val upcomingMoviesRow = uiState.upcomingMoviesRow
+                        val popularTvRow = uiState.popularTvRow
+                        val tvGenresRow = uiState.tvGenresRow
+                        val upcomingTvRow = uiState.upcomingTvRow
+                        val otherRows = uiState.otherRows
+
+                        // Track pagination state for each row
+                        val rowPages = remember { mutableStateMapOf<String, Int>() }
+
+                        // Helper to render a content row
+                        @Composable
+                        fun RenderContentRow(
+                            row: SeerrDiscoverRow,
+                            firstItemFocusRequester: FocusRequester? = null,
+                        ) {
+                            val onViewAll: (() -> Unit)? = when (row.rowType) {
+                                SeerrRowType.TRENDING -> onNavigateDiscoverTrending
+                                SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
+                                SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
+                                SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
+                                SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
+                                else -> null
+                            }
+                            val currentPage = rowPages[row.key] ?: 1
+                            SeerrContentRow(
+                                title = row.title,
+                                items = row.items,
+                                seerrRepository = seerrRepository,
+                                accentColor = Color(row.accentColorValue),
+                                onItemClick = { media ->
+                                    onMediaClick(media.mediaType, media.tmdbId ?: media.id)
+                                },
+                                onItemLongClick = { media ->
+                                    dialogMedia = media
+                                    dialogParams = DialogParams(
+                                        title = media.displayTitle,
+                                        items = buildSeerrDialogItems(media, seerrActions),
+                                        fromLongClick = true,
+                                    )
+                                    dialogVisible = true
+                                },
+                                onItemFocused = { media ->
+                                    previewItem = media
+                                    updateExitFocus(firstTrendingItemFocusRequester)
+                                },
+                                onViewAll = onViewAll,
+                                onLoadMore = if (row.rowType != SeerrRowType.OTHER) {
+                                    {
+                                        val nextPage = currentPage + 1
+                                        rowPages[row.key] = nextPage
+                                        viewModel.loadMoreForRow(row.key, nextPage)
+                                    }
+                                } else null,
+                                firstItemFocusRequester = firstItemFocusRequester,
+                            )
+                        }
+
                         // Scrolling content rows
                         LazyColumn(
                             state = lazyListState,
@@ -321,78 +382,6 @@ fun SeerrHomeScreen(
                                         onClick = onNavigateSeerrRequests,
                                     )
                                 }
-                            }
-
-                            // Ordered rows:
-                            // 1. Trending
-                            // 2. Popular Movies
-                            // 3. Movie Genres
-                            // 4. Upcoming Movies
-                            // 5. Studios
-                            // 6. Popular TV
-                            // 7. TV Genres
-                            // 8. Upcoming TV
-                            // 9. Networks
-
-                            // Use computed properties from uiState for row access
-                            val trendingRow = uiState.trendingRow
-                            val popularMoviesRow = uiState.popularMoviesRow
-                            val movieGenresRow = uiState.movieGenresRow
-                            val upcomingMoviesRow = uiState.upcomingMoviesRow
-                            val popularTvRow = uiState.popularTvRow
-                            val tvGenresRow = uiState.tvGenresRow
-                            val upcomingTvRow = uiState.upcomingTvRow
-                            val otherRows = uiState.otherRows
-
-                            // Track pagination state for each row
-                            val rowPages = remember { mutableStateMapOf<String, Int>() }
-
-                            // Helper to render a content row
-                            @Composable
-                            fun RenderContentRow(
-                                row: SeerrDiscoverRow,
-                                firstItemFocusRequester: FocusRequester? = null,
-                            ) {
-                                val onViewAll: (() -> Unit)? = when (row.rowType) {
-                                    SeerrRowType.TRENDING -> onNavigateDiscoverTrending
-                                    SeerrRowType.POPULAR_MOVIES -> onNavigateDiscoverMovies
-                                    SeerrRowType.POPULAR_TV -> onNavigateDiscoverTv
-                                    SeerrRowType.UPCOMING_MOVIES -> onNavigateDiscoverUpcomingMovies
-                                    SeerrRowType.UPCOMING_TV -> onNavigateDiscoverUpcomingTv
-                                    else -> null
-                                }
-                                val currentPage = rowPages[row.key] ?: 1
-                                SeerrContentRow(
-                                    title = row.title,
-                                    items = row.items,
-                                    seerrRepository = seerrRepository,
-                                    accentColor = Color(row.accentColorValue),
-                                    onItemClick = { media ->
-                                        onMediaClick(media.mediaType, media.tmdbId ?: media.id)
-                                    },
-                                    onItemLongClick = { media ->
-                                        dialogMedia = media
-                                        dialogParams = DialogParams(
-                                            title = media.displayTitle,
-                                            items = buildSeerrDialogItems(media, seerrActions),
-                                            fromLongClick = true,
-                                        )
-                                        dialogVisible = true
-                                    },
-                                    onItemFocused = { media ->
-                                        previewItem = media
-                                        updateExitFocus(firstTrendingItemFocusRequester)
-                                    },
-                                    onViewAll = onViewAll,
-                                    onLoadMore = if (row.rowType != SeerrRowType.OTHER) {
-                                        {
-                                            val nextPage = currentPage + 1
-                                            rowPages[row.key] = nextPage
-                                            viewModel.loadMoreForRow(row.key, nextPage)
-                                        }
-                                    } else null,
-                                    firstItemFocusRequester = firstItemFocusRequester,
-                                )
                             }
 
                             // 1. Trending
