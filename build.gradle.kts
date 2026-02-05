@@ -53,7 +53,7 @@ subprojects {
 // Shared versions
 buildscript {
     extra.apply {
-        set("minSdk", 25)
+        set("minSdk", 30)
         set("targetSdk", 36)
         set("compileSdk", 36)
         set("kotlinVersion", "2.3.0")

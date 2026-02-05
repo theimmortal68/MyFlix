@@ -18,10 +18,9 @@
 cmake_minimum_required(VERSION 3.21.0 FATAL_ERROR)
 # LINT.ThenChange(../../../build.gradle)
 
-# Abseil requires C++17
-set(CMAKE_CXX_STANDARD 17)
+# C++11 is sufficient without abseil
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(ABSL_PROPAGATE_CXX_STD ON)
 
 project(libgav1JNI C CXX)
 

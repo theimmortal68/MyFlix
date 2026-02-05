@@ -3,7 +3,6 @@ package dev.jausc.myflix.core.network
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import androidx.core.content.FileProvider
 import dev.jausc.myflix.core.common.model.AppType
@@ -72,15 +71,11 @@ class UpdateManager(
      */
     fun installApk(file: File) {
         try {
-            val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.provider",
-                    file,
-                )
-            } else {
-                Uri.fromFile(file)
-            }
+            val uri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                file,
+            )
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")

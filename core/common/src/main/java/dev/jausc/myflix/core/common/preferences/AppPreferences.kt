@@ -160,6 +160,13 @@ abstract class AppPreferences(context: Context) {
     /** Prefer HDR10 over Dolby Vision. Useful for devices with buggy DV support. */
     val preferHdrOverDv: StateFlow<Boolean> by lazy { _preferHdrOverDv.asStateFlow() }
 
+    private val _av1DirectPlayEnabled: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(prefs.getBoolean(PreferenceKeys.Prefs.AV1_DIRECT_PLAY_ENABLED, PreferenceKeys.Defaults.AV1_DIRECT_PLAY_ENABLED))
+    }
+
+    /** Enable AV1 direct play. Disable to force transcoding for AV1 content. */
+    val av1DirectPlayEnabled: StateFlow<Boolean> by lazy { _av1DirectPlayEnabled.asStateFlow() }
+
     // Media Segment Preferences (skip intro/credits)
     // Values: "OFF" (disabled), "ASK" (show button), "AUTO" (skip automatically)
     private val _skipIntroMode: MutableStateFlow<String> by lazy {
@@ -479,6 +486,15 @@ abstract class AppPreferences(context: Context) {
     fun setPreferHdrOverDv(prefer: Boolean) {
         prefs.edit().putBoolean(PreferenceKeys.Prefs.PREFER_HDR_OVER_DV, prefer).apply()
         _preferHdrOverDv.value = prefer
+    }
+
+    /**
+     * Set whether AV1 direct play is enabled.
+     * Disable this to force transcoding for AV1 content (useful if hardware decoder has issues).
+     */
+    fun setAv1DirectPlayEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(PreferenceKeys.Prefs.AV1_DIRECT_PLAY_ENABLED, enabled).apply()
+        _av1DirectPlayEnabled.value = enabled
     }
 
     // Media segment setters

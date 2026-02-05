@@ -116,6 +116,9 @@ object PreferenceKeys {
         /** Prefer HDR10 over Dolby Vision (for devices with buggy DV support) */
         const val PREFER_HDR_OVER_DV = "prefer_hdr_over_dv"
 
+        /** Enable AV1 direct play (disable to force transcoding for AV1 content) */
+        const val AV1_DIRECT_PLAY_ENABLED = "av1_direct_play_enabled"
+
         // Media segment preferences (skip intro/credits)
         /** Skip intro behavior: OFF, ASK, AUTO */
         const val SKIP_INTRO_MODE = "skip_intro_mode"
@@ -289,6 +292,9 @@ object PreferenceKeys {
 
         /** Default prefer HDR over DV: false (use Dolby Vision if available) */
         const val PREFER_HDR_OVER_DV = false
+
+        /** Default AV1 direct play: enabled (use hardware decoder if available) */
+        const val AV1_DIRECT_PLAY_ENABLED = true
 
         // Media segment defaults (OFF, ASK, AUTO)
         const val SKIP_INTRO_MODE = "ASK"

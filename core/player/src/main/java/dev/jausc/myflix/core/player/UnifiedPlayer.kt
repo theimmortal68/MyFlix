@@ -19,6 +19,13 @@ data class PlaybackState(
     val videoWidth: Int = 0,
     val videoHeight: Int = 0,
     val videoAspectRatio: Float = 0f,
+    // Actual codec/decoder info (populated during playback)
+    val actualVideoCodec: String? = null,
+    val actualVideoDecoder: String? = null,
+    val actualAudioCodec: String? = null,
+    val actualAudioDecoder: String? = null,
+    val isAudioPassthrough: Boolean = false,
+    val actualHdrFormat: String? = null,
 ) {
     val progress: Float
         get() = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f

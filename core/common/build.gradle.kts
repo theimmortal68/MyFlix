@@ -12,7 +12,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
-        isCoreLibraryDesugaringEnabled = true
     }
     buildFeatures {
         compose = true
@@ -24,9 +23,6 @@ kotlin {
 }
 
 dependencies {
-    // Core library desugaring
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:${rootProject.extra["desugarVersion"]}")
-
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:${rootProject.extra["composeBomVersion"]}"))
 
