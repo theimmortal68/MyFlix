@@ -1005,6 +1005,153 @@ class SeerrClient(
     }
 
     // ========================================================================
+    // Issues
+    // ========================================================================
+
+    /**
+     * Get list of issues with optional filtering.
+     *
+     * @param filter Filter by status: "all", "open", "resolved"
+     * @param sort Sort order: "added", "modified"
+     * @param take Number of items per page
+     * @param skip Number of items to skip (for pagination)
+     */
+    suspend fun getIssues(
+        filter: String? = null,
+        sort: String? = null,
+        take: Int = 20,
+        skip: Int = 0,
+    ): Result<SeerrIssueListResponse> = runCatching {
+        requireAuth()
+        val response = httpClient.get("$baseUrl/api/v1/issue") {
+            filter?.let { parameter("filter", it) }
+            sort?.let { parameter("sort", it) }
+            parameter("take", take)
+            parameter("skip", skip)
+        }
+        response.body()
+    }
+
+    /**
+     * Create a new issue for a media item.
+     *
+     * @param mediaId The internal Jellyseerr media ID (from mediaInfo.id)
+     * @param issueType Issue type: 1=Video, 2=Audio, 3=Subtitle, 4=Other
+     * @param message Description of the issue
+     * @param problemSeason Optional season number if issue is season-specific
+     * @param problemEpisode Optional episode number if issue is episode-specific
+     */
+    suspend fun createIssue(
+        mediaId: Int,
+        issueType: Int,
+        message: String,
+        problemSeason: Int? = null,
+        problemEpisode: Int? = null,
+    ): Result<SeerrIssue> = runCatching {
+        requireAuth()
+        val response = httpClient.post("$baseUrl/api/v1/issue") {
+            setBody(
+                SeerrCreateIssue(
+                    mediaId = mediaId,
+                    issueType = issueType,
+                    message = message,
+                    problemSeason = problemSeason,
+                    problemEpisode = problemEpisode,
+                ),
+            )
+        }
+        if (!response.status.isSuccess()) {
+            val error = response.bodyAsText()
+            throw Exception("Failed to create issue: $error")
+        }
+        response.body()
+    }
+
+    /**
+     * Get an issue by ID.
+     */
+    suspend fun getIssue(issueId: Int): Result<SeerrIssue> = runCatching {
+        requireAuth()
+        val response = httpClient.get("$baseUrl/api/v1/issue/$issueId")
+        response.body()
+    }
+
+    /**
+     * Add a comment to an existing issue.
+     *
+     * @param issueId The issue ID
+     * @param message The comment message
+     */
+    suspend fun addIssueComment(issueId: Int, message: String): Result<SeerrIssueComment> = runCatching {
+        requireAuth()
+        val response = httpClient.post("$baseUrl/api/v1/issue/$issueId/comment") {
+            setBody(mapOf("message" to message))
+        }
+        if (!response.status.isSuccess()) {
+            val error = response.bodyAsText()
+            throw Exception("Failed to add comment: $error")
+        }
+        response.body()
+    }
+
+    /**
+     * Resolve an issue (mark as resolved).
+     */
+    suspend fun resolveIssue(issueId: Int): Result<SeerrIssue> = runCatching {
+        requireAuth()
+        val response = httpClient.post("$baseUrl/api/v1/issue/$issueId/resolve")
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to resolve issue: ${response.status}")
+        }
+        response.body()
+    }
+
+    /**
+     * Delete an issue.
+     */
+    suspend fun deleteIssue(issueId: Int): Result<Unit> = runCatching {
+        requireAuth()
+        val response = httpClient.delete("$baseUrl/api/v1/issue/$issueId")
+        if (!response.status.isSuccess()) {
+            throw Exception("Failed to delete issue: ${response.status}")
+        }
+    }
+
+    // ========================================================================
+    // Settings & Service Configuration
+    // ========================================================================
+
+    /**
+     * Get public server settings.
+     * This endpoint does not require authentication.
+     */
+    suspend fun getPublicSettings(): Result<SeerrPublicSettings> = runCatching {
+        requireBaseUrl()
+        val response = httpClient.get("$baseUrl/api/v1/settings/public")
+        response.body()
+    }
+
+    /**
+     * Get Radarr server configurations.
+     * Returns list of configured Radarr servers (non-sensitive data only).
+     */
+    suspend fun getRadarrServers(): Result<List<SeerrRadarrServer>> = runCatching {
+        requireAuth()
+        val response = httpClient.get("$baseUrl/api/v1/service/radarr")
+        response.body()
+    }
+
+    /**
+     * Get Sonarr server configurations.
+     * Returns list of configured Sonarr servers (non-sensitive data only).
+     */
+    suspend fun getSonarrServers(): Result<List<SeerrSonarrServer>> = runCatching {
+        requireAuth()
+        val response = httpClient.get("$baseUrl/api/v1/service/sonarr")
+        response.body()
+    }
+
+    // ========================================================================
     // Image URLs
     // ========================================================================
 
