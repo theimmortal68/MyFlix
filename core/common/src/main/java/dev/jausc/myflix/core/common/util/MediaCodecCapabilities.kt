@@ -102,6 +102,13 @@ class MediaCodecCapabilities(@Suppress("UNUSED_PARAMETER") context: Context) {
         } else {
             0x1000
         }
+
+        // Dolby Vision profile for AV1 (Profile 10)
+        private val DV_PROFILE_DVAV1_10 = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            CodecProfileLevel.DolbyVisionProfileDvav110
+        } else {
+            0x400 // Literal value for older API levels
+        }
     }
 
     // ==================== AVC (H.264) ====================
@@ -195,15 +202,15 @@ class MediaCodecCapabilities(@Suppress("UNUSED_PARAMETER") context: Context) {
 
     // ==================== AV1 ====================
 
-    /** Check if device has any AV1 decoder */
-    fun supportsAv1(): Boolean = hasCodecForMime(MIME_VIDEO_AV1, requireHardware = true)
+    /** Check if device has any AV1 decoder (hardware or software like libgav1/dav1d) */
+    fun supportsAv1(): Boolean = hasCodecForMime(MIME_VIDEO_AV1, requireHardware = false)
 
     /** Check if device supports AV1 Main 10 profile (10-bit AV1) */
     fun supportsAv1Main10(): Boolean = hasDecoder(
         MIME_VIDEO_AV1,
         AV1_PROFILE_MAIN10,
         AV1_LEVEL_5,
-        requireHardware = true,
+        requireHardware = false, // Allow software decoder (libdav1d/libgav1)
     )
 
     /** Check if device supports AV1 HDR10 */
@@ -211,8 +218,16 @@ class MediaCodecCapabilities(@Suppress("UNUSED_PARAMETER") context: Context) {
         MIME_VIDEO_AV1,
         AV1_PROFILE_MAIN10_HDR10,
         AV1_LEVEL_5,
-        requireHardware = true,
+        requireHardware = false, // Allow software decoder (libdav1d/libgav1)
     )
+
+    /** Check if device supports AV1 Dolby Vision (DV Profile 10) */
+    fun supportsAv1DolbyVision(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+        hasDecoder(
+            MIME_VIDEO_DOLBY_VISION,
+            DV_PROFILE_DVAV1_10,
+            CodecProfileLevel.DolbyVisionLevelHd24,
+        )
 
     /** Get supported AV1 profiles as strings for DeviceProfile */
     fun getSupportedAv1Profiles(): List<String> = buildList {

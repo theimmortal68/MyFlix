@@ -1810,7 +1810,8 @@ class JellyfinClient(
                 "JellyfinClient",
                 "Device capabilities: HEVC=${it.supportsHevc()} HEVC10=${it.supportsHevcMain10()} " +
                     "HDR10=${it.supportsHevcHdr10()} HDR10+=${it.supportsHevcHdr10Plus()} " +
-                    "AV1=${it.supportsAv1()} AV110=${it.supportsAv1Main10()} DV=${it.supportsDolbyVision()}",
+                    "AV1=${it.supportsAv1()} AV110=${it.supportsAv1Main10()} AV1HDR10=${it.supportsAv1Hdr10()} " +
+                    "AV1DV=${it.supportsAv1DolbyVision()} DV=${it.supportsDolbyVision()}",
             )
         }
 
@@ -1822,7 +1823,12 @@ class JellyfinClient(
         val supportsHevcDolbyVision = caps?.supportsDolbyVision() == true
         val supportsAv1 = caps?.supportsAv1() == true
         val supportsAv1Main10 = caps?.supportsAv1Main10() == true
-        val supportsAv1Hdr10 = caps?.supportsAv1Hdr10() == true
+        // AV1 Main 10 can decode HDR10 content - display handles HDR output
+        // Many devices don't advertise specific HDR10 profile but still work
+        val supportsAv1Hdr10 = caps?.supportsAv1Hdr10() == true || supportsAv1Main10
+        // DV Profile 10 uses AV1 Main 10 as base - devices with AV1 Main 10 can decode it
+        // The DV RPU metadata can be processed by capable displays or safely ignored
+        val supportsAv1DolbyVision = caps?.supportsAv1DolbyVision() == true || supportsAv1Main10
 
         // Build list of supported video codecs for direct play
         // Note: Don't add dvh1/dvhe - DV content uses hevc codec with DOVI VideoRangeType
@@ -1832,7 +1838,7 @@ class JellyfinClient(
             if (supportsHevc) add("hevc")
             if (caps?.supportsVp8() == true) add("vp8")
             if (caps?.supportsVp9() == true) add("vp9")
-            // Only include AV1 if hardware supports it AND user hasn't disabled it
+            // Include AV1 if device has decoder (hardware or software) AND user hasn't disabled it
             if (supportsAv1 && av1DirectPlayEnabled) add("av1")
             // VC-1 for older WMV/ASF content (common in DVD rips)
             if (caps?.supportsVc1() == true) add("vc1")
@@ -1953,25 +1959,25 @@ class JellyfinClient(
             }
 
             // VideoRangeType support for AV1
-            val unsupportedAv1RangeTypes = buildSet {
-                add("DOVIInvalid")
+            // If device supports AV1 Main 10, it can decode all AV1 content including DV Profile 10
+            // The display handles HDR output and DV RPU processing
+            android.util.Log.d(
+                "JellyfinClient",
+                "AV1 capabilities: Main10=$supportsAv1Main10 HDR10=$supportsAv1Hdr10 DV=$supportsAv1DolbyVision",
+            )
 
-                // For AV1, we don't have granular DV detection, so be conservative
-                add("DOVI")
-                add("DOVIWithHDR10")
-                add("DOVIWithHDR10Plus")
-                add("DOVIWithEL")
-                add("DOVIWithELHDR10Plus")
-                add("DOVIWithHLG")
-
-                // HDR support
-                if (!supportsAv1Hdr10) {
+            // Only add VideoRangeType restrictions if device lacks AV1 Main 10 support
+            if (!supportsAv1Main10 && supportsAv1) {
+                val unsupportedAv1RangeTypes = buildSet {
+                    add("DOVIInvalid")
+                    add("DOVI")
+                    add("DOVIWithHDR10")
+                    add("DOVIWithHDR10Plus")
+                    add("DOVIWithHLG")
+                    add("DOVIWithSDR")
                     add("HDR10")
                     add("HDR10Plus")
                 }
-            }
-
-            if (unsupportedAv1RangeTypes.isNotEmpty() && supportsAv1) {
                 val rangeTypeValue = unsupportedAv1RangeTypes.joinToString("|")
                 add(
                     CodecProfile(
@@ -1996,6 +2002,8 @@ class JellyfinClient(
                     ),
                 )
             }
+            // If supportsAv1Main10 is true, we don't add any VideoRangeType restrictions
+            // This allows all AV1 content including DV Profile 10.x to direct play
 
             // AV1 profile restrictions
             if (caps?.supportsAv1() == true && !caps.supportsAv1Main10()) {
@@ -2038,8 +2046,22 @@ class JellyfinClient(
             }
 
             // Audio codec profiles - advertise channel support for high-channel audio
-            // Note: TrueHD profile removed since we don't advertise TrueHD support
-            // (doesn't work reliably in HLS containers used for server remux/transcode)
+
+            // TrueHD (Atmos) - up to 16 channels, decoded locally via FFmpeg
+            add(
+                CodecProfile(
+                    type = "Audio",
+                    codec = "truehd",
+                    conditions = listOf(
+                        ProfileCondition(
+                            condition = "LessThanEqual",
+                            property = "AudioChannels",
+                            value = "16",
+                            isRequired = false,
+                        ),
+                    ),
+                ),
+            )
 
             // E-AC3/DD+ (Atmos/JOC) - supports up to 16 channels for object-based audio
             add(
@@ -2130,10 +2152,10 @@ class JellyfinClient(
         // Match official Jellyfin client container and codec lists
         val videoContainers = "asf,hls,m4v,mkv,mov,mp4,ogm,ogv,ts,vob,webm,wmv,xvid"
         val audioContainers = "aac,flac,m4a,mp3,ogg,opus,wav,wma"
-        // Note: TrueHD and MLP removed - these lossless formats don't work reliably in HLS
-        // containers which the server uses for remux/transcode. Most TrueHD content has
-        // fallback AC3/EAC3 tracks that work better. Users with AVRs can use server profiles.
-        val audioCodecs = "aac,aac_latm,ac3,alac,dca,dts,eac3,flac,mp2,mp3,opus,pcm_alaw,pcm_mulaw,pcm_s16le,pcm_s20le,pcm_s24le,vorbis"
+        // Audio codecs for DIRECT PLAY - includes TrueHD/MLP for local FFmpeg decode
+        val directPlayAudioCodecs = "aac,aac_latm,ac3,alac,dca,dts,eac3,flac,mlp,mp2,mp3,opus,pcm_alaw,pcm_mulaw,pcm_s16le,pcm_s20le,pcm_s24le,truehd,vorbis"
+        // Audio codecs for TRANSCODING - excludes TrueHD/MLP as they don't work in HLS containers
+        val transcodingAudioCodecs = "aac,ac3,eac3,mp3,alac,flac,opus"
 
         return DeviceProfile(
             name = "MyFlix-Android",
@@ -2143,12 +2165,12 @@ class JellyfinClient(
                     type = "Video",
                     container = videoContainers,
                     videoCodec = videoCodecs.joinToString(","),
-                    audioCodec = audioCodecs,
+                    audioCodec = directPlayAudioCodecs,
                 ),
                 DirectPlayProfile(
                     type = "Audio",
                     container = audioContainers,
-                    audioCodec = audioCodecs,
+                    audioCodec = directPlayAudioCodecs,
                 ),
             ),
             transcodingProfiles = listOf(
@@ -2157,21 +2179,18 @@ class JellyfinClient(
                     type = "Video",
                     container = "ts",
                     videoCodec = transcodingVideoCodec,
-                    audioCodec = "aac,ac3,eac3,mp3",
+                    audioCodec = transcodingAudioCodecs,
                     protocol = "hls",
                     context = "Streaming",
                     copyTimestamps = false,
                     enableSubtitlesInManifest = true,
                 ),
-                // fMP4 HLS for advanced audio codecs
-                // Note: TrueHD and DTS-HD removed - when server transcodes video, these lossless
-                // formats in HLS don't work on most devices. Server will transcode to EAC3/AAC.
-                // Direct play of TrueHD/DTS-HD still works via local FFmpeg decode.
+                // fMP4 HLS for advanced audio codecs (excludes TrueHD - doesn't work in HLS)
                 TranscodingProfile(
                     type = "Video",
                     container = "mp4",
                     videoCodec = transcodingVideoCodec,
-                    audioCodec = "aac,ac3,eac3,mp3,alac,flac,opus",
+                    audioCodec = transcodingAudioCodecs,
                     protocol = "hls",
                     context = "Streaming",
                     copyTimestamps = false,
@@ -2252,7 +2271,10 @@ class JellyfinClient(
         av1DirectPlayEnabled: Boolean = true,
     ): Result<PlaybackInfoResponse> = runCatching {
         val isDirectPlay = maxBitrateMbps == null || maxBitrateMbps == 0
-        val bitrateBps = if (isDirectPlay) null else maxBitrateMbps * 1_000_000
+        // Always provide a bitrate even for direct play - server uses this to configure
+        // encoder if transcoding is needed (e.g., AV1+DV). Default 200 Mbps matches
+        // official client behavior and prevents VAAPI encoder errors from -b:v 0.
+        val bitrateBps = if (isDirectPlay) 200_000_000 else maxBitrateMbps * 1_000_000
 
         // Build device profile dynamically based on device codec capabilities
         val deviceProfile = buildDeviceProfile(
@@ -2263,7 +2285,8 @@ class JellyfinClient(
 
         val request = PlaybackInfoRequest(
             mediaSourceId = mediaSourceId,
-            maxStreamingBitrate = bitrateBps,
+            // Use null for direct play to not limit, but use actual bitrate for transcode
+            maxStreamingBitrate = if (isDirectPlay) null else bitrateBps,
             audioStreamIndex = audioStreamIndex,
             subtitleStreamIndex = subtitleStreamIndex,
             enableDirectPlay = isDirectPlay,
