@@ -444,6 +444,19 @@ class PlayerController(
         _state.value = PlaybackState(playerType = "Released")
     }
 
+    // ==================== HDR Detection Hint ====================
+
+    /**
+     * Set server-provided video range type as a hint for HDR detection.
+     * Use this when the Jellyfin server remuxes content (e.g., stripping Dolby Vision to HDR10),
+     * since ExoPlayer may not detect HDR metadata from the container in such cases.
+     *
+     * @param rangeType The video range type from Jellyfin API (e.g., "HDR10", "DOVIWithHDR10", "SDR")
+     */
+    fun setServerVideoRangeHint(rangeType: String?) {
+        (currentPlayer as? ExoPlayerWrapper)?.setServerVideoRangeHint(rangeType)
+    }
+
     companion object {
         private const val TAG = "PlayerController"
 

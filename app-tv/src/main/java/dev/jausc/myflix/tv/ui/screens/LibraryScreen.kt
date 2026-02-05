@@ -28,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -98,8 +99,16 @@ fun LibraryScreen(
     val gridState = rememberLazyGridState()
     var didRequestInitialFocus by remember { mutableStateOf(false) }
 
+    // Track last clicked item for focus restoration when returning from detail
+    var lastClickedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+
     // Track last focused item for reliable focus restoration after NavRail exit
     var lastFocusedRequester by remember { mutableStateOf<FocusRequester?>(null) }
+
+    // Stable map of focus requesters for each item (moved here for focus restoration)
+    val itemFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    fun getItemFocusRequester(itemId: String): FocusRequester =
+        itemFocusRequesters.getOrPut(itemId) { FocusRequester() }
 
     // NavRail exit focus registration - use last focused item, fallback to first
     val updateExitFocus = rememberExitFocusRegistry(lastFocusedRequester ?: firstItemFocusRequester)
@@ -160,7 +169,7 @@ fun LibraryScreen(
     // Track the last letter we focused for to detect changes
     var lastFocusedForLetter by remember { mutableStateOf<Char?>(null) }
 
-    // Focus on first item when loading completes
+    // Focus on first item when loading completes, or restore to last clicked item
     // Uses snapshotFlow to reliably detect loading state transitions
     LaunchedEffect(Unit) {
         snapshotFlow { Triple(state.isLoading, state.items.isNotEmpty(), state.currentLetter) }
@@ -171,18 +180,43 @@ fun LibraryScreen(
                     if (shouldFocus) {
                         didRequestInitialFocus = true
                         lastFocusedForLetter = currentLetter
-                        // Scroll to top first to ensure item 0 is composed
-                        gridState.scrollToItem(0)
-                        // Small delay to let composition settle
-                        delay(50)
-                        // Retry focus request - grid may not be attached immediately after loading
-                        repeat(5) { attempt ->
-                            delay(if (attempt == 0) 50 else 100)
-                            try {
-                                firstItemFocusRequester.requestFocus()
-                                return@collect // Success, exit
-                            } catch (_: Exception) {
-                                // Focus request failed, retry
+
+                        // Check if we have a last clicked item to restore focus to
+                        val restoreItemId = lastClickedItemId
+                        val restoreIndex = if (restoreItemId != null) {
+                            state.items.indexOfFirst { it.id == restoreItemId }
+                        } else {
+                            -1
+                        }
+
+                        if (restoreIndex >= 0) {
+                            // Scroll to the last clicked item
+                            gridState.scrollToItem(restoreIndex)
+                            // Small delay to let composition settle
+                            delay(50)
+                            // Request focus on the restored item
+                            val focusRequester = getItemFocusRequester(restoreItemId!!)
+                            repeat(5) { attempt ->
+                                delay(if (attempt == 0) 50 else 100)
+                                try {
+                                    focusRequester.requestFocus()
+                                    return@collect // Success, exit
+                                } catch (_: Exception) {
+                                    // Focus request failed, retry
+                                }
+                            }
+                        } else {
+                            // No restore item, focus first item
+                            gridState.scrollToItem(0)
+                            delay(50)
+                            repeat(5) { attempt ->
+                                delay(if (attempt == 0) 50 else 100)
+                                try {
+                                    firstItemFocusRequester.requestFocus()
+                                    return@collect // Success, exit
+                                } catch (_: Exception) {
+                                    // Focus request failed, retry
+                                }
                             }
                         }
                     }
@@ -295,7 +329,12 @@ fun LibraryScreen(
                                     firstItemFocusRequester = firstItemFocusRequester,
                                     filterBarFocusRequester = filterBarFirstButtonFocusRequester,
                                     alphabetFocusRequester = alphabetFocusRequester,
-                                    onItemClick = onItemClick,
+                                    getItemFocusRequester = ::getItemFocusRequester,
+                                    onItemClick = { itemId ->
+                                        // Save the clicked item ID for focus restoration on return
+                                        lastClickedItemId = itemId
+                                        onItemClick(itemId)
+                                    },
                                     onItemLongClick = { item, focusRequester ->
                                         dialogRestoreFocus = focusRequester
                                         dialogParams = DialogParams(
@@ -417,6 +456,7 @@ private fun LibraryGridContent(
     firstItemFocusRequester: FocusRequester,
     filterBarFocusRequester: FocusRequester,
     alphabetFocusRequester: FocusRequester,
+    getItemFocusRequester: (String) -> FocusRequester,
     onItemClick: (String) -> Unit,
     onItemLongClick: (JellyfinItem, FocusRequester) -> Unit,
     onItemFocused: (JellyfinItem, String, FocusRequester) -> Unit,
@@ -424,11 +464,6 @@ private fun LibraryGridContent(
 ) {
     // Dummy focus requester to block focus movement (requests to unattached requester fail)
     val focusTrap = remember { FocusRequester() }
-
-    // Stable map of focus requesters for each item (for long-press focus restoration)
-    val itemFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
-    fun getItemFocusRequester(itemId: String): FocusRequester =
-        itemFocusRequesters.getOrPut(itemId) { FocusRequester() }
 
     LazyVerticalGrid(
         state = gridState,

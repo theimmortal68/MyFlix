@@ -267,6 +267,9 @@ fun PlayerScreen(
     // Get HDR preference (prefer HDR10 over Dolby Vision)
     val preferHdrOverDv by appPreferences.preferHdrOverDv.collectAsState()
 
+    // Get AV1 direct play preference
+    val av1DirectPlayEnabled by appPreferences.av1DirectPlayEnabled.collectAsState()
+
     // ViewModel with manual DI
     val viewModel: PlayerViewModel = viewModel(
         key = itemId,
@@ -279,6 +282,7 @@ fun PlayerScreen(
             maxStreamingBitrateMbps = maxStreamingBitrate,
             startPositionMs = startPositionMs,
             preferHdrOverDv = preferHdrOverDv,
+            av1DirectPlayEnabled = av1DirectPlayEnabled,
             playbackStopCallback = playbackStopCallback,
         ),
     )
@@ -387,6 +391,25 @@ fun PlayerScreen(
             )
             android.util.Log.d("PlayerScreen", "Initializing player: videoRangeType=${mediaInfo.videoRangeType}")
             viewModel.setPlayerReady(playerController.initializeForMedia(coreMediaInfo))
+
+            // Set server video range hint for accurate HDR badge display
+            // This helps when FFmpeg remuxes content (e.g., strips DV to HDR10) and
+            // container-level HDR metadata isn't properly set for ExoPlayer to detect
+            //
+            // Special handling for DOVIWithEL: when transcoded (DV stripped via remove_dovi=1),
+            // the output is the base layer format (typically HDR10), not Dolby Vision
+            val effectiveRangeType = when {
+                state.playMethod == "Transcode" &&
+                    state.transcodeReasons?.contains("VideoRangeTypeNotSupported") == true &&
+                    (mediaInfo.videoRangeType == "DOVIWithEL" || mediaInfo.videoRangeType == "DOVIWithELHDR10Plus") -> {
+                    // DOVIWithEL base layer is typically HDR10 (or SDR, but most modern encodes use HDR10)
+                    android.util.Log.d("PlayerScreen", "DOVIWithEL being transcoded, assuming HDR10 output")
+                    "HDR10"
+                }
+                else -> mediaInfo.videoRangeType
+            }
+            playerController.setServerVideoRangeHint(effectiveRangeType)
+
             focusRequester.requestFocus()
         }
     }
@@ -1225,11 +1248,14 @@ private fun TvPlayerControlsOverlay(
     transcodeReasons: List<String>? = null,
     onSubtitleDownloaded: (() -> Unit)? = null,
 ) {
+    // Use ACTUAL playback info from ExoPlayer when available, otherwise fall back to source metadata
     val videoQuality = item?.videoQualityLabel ?: ""
-    val videoCodec = item?.videoCodecLabel ?: ""
-    val videoRange = item?.videoRangeLabel ?: ""
-    val audioCodec = item?.audioCodecLabel ?: ""
+    val videoCodec = playbackState.actualVideoCodec ?: item?.videoCodecLabel ?: ""
+    val videoRange = playbackState.actualHdrFormat ?: item?.videoRangeLabel ?: ""
+    // For audio, show actual decoded/passthrough status
+    val audioCodec = playbackState.actualAudioCodec ?: item?.audioCodecLabel ?: ""
     val playerType = playbackState.playerType
+    val audioDecoder = playbackState.actualAudioDecoder
     // Slide-out menu state
     var activeMenu by remember { mutableStateOf<PlayerMenuType?>(null) }
     var menuAnchor by remember { mutableStateOf<MenuAnchor?>(null) }
@@ -1374,16 +1400,27 @@ private fun TvPlayerControlsOverlay(
                         },
                     )
                 }
-                // Audio codec badge (e.g., "TrueHD Atmos", "DTS-HD MA 7.1")
+                // Audio codec badge (e.g., "E-AC3", "PCM (decoded)")
+                // Shows actual playback format, not source metadata
                 if (audioCodec.isNotBlank()) {
                     PlayerBadge(
                         text = audioCodec,
                         backgroundColor = when {
+                            audioCodec.contains("PCM") -> Color(0xFF607D8B) // Gray for decoded
                             audioCodec.contains("Atmos") -> Color(0xFF1E88E5)
                             audioCodec.contains("DTS") -> Color(0xFFFF5722)
                             audioCodec.contains("TrueHD") -> Color(0xFF9C27B0)
+                            audioCodec.contains("E-AC3") || audioCodec.contains("EAC3") -> Color(0xFF1E88E5)
+                            audioCodec.contains("AC3") -> Color(0xFF2196F3)
                             else -> Color.White.copy(alpha = 0.2f)
                         },
+                    )
+                }
+                // Show decoder info if using FFmpeg (indicates software decode)
+                if (audioDecoder?.contains("ffmpeg", ignoreCase = true) == true) {
+                    PlayerBadge(
+                        text = "SW Decode",
+                        backgroundColor = Color(0xFF795548), // Brown for software
                     )
                 }
             }

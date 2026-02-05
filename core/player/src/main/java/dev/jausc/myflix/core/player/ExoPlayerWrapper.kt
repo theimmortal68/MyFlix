@@ -10,7 +10,10 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.DecoderReuseEvaluation
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
@@ -180,10 +183,11 @@ class ExoPlayerWrapper(
     ) : DefaultRenderersFactory(factoryContext) {
         init {
             setEnableDecoderFallback(enableDecoderFallback)
-            // PREFER: Use extension renderers (AV1 software) first, then hardware
-            // This enables AV1 playback on devices like Shield TV without hardware AV1
+            // ON (not PREFER): Use hardware decoders first, fall back to FFmpeg extensions
+            // PREFER was causing FFmpeg software AV1 decode on devices with slow hardware AV1,
+            // resulting in frame drops. Hardware should be tried first since it's typically faster.
             // Note: We override buildAudioRenderers to exclude FFmpeg for audio passthrough
-            setExtensionRendererMode(EXTENSION_RENDERER_MODE_PREFER)
+            setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
         }
 
         override fun buildAudioSink(
@@ -224,9 +228,10 @@ class ExoPlayerWrapper(
             eventListener: AudioRendererEventListener,
             out: ArrayList<Renderer>,
         ) {
-            // For passthrough mode, only use MediaCodecAudioRenderer (not FFmpeg)
-            // FFmpeg would decode E-AC3/TrueHD to PCM instead of passing through to receiver/TV
-            // The MediaCodecAudioRenderer with proper AudioCapabilities will handle passthrough
+            // For passthrough mode:
+            // 1. MediaCodecAudioRenderer first - handles passthrough for supported codecs
+            // 2. FfmpegAudioRenderer second - decodes to PCM when passthrough not available
+            //    (e.g., DTS-HD MA on TVs without DTS-HD passthrough support)
             out.add(
                 MediaCodecAudioRenderer(
                     context,
@@ -237,7 +242,15 @@ class ExoPlayerWrapper(
                     audioSink,
                 ),
             )
-            Log.d(TAG, "Audio renderers built for passthrough (MediaCodec only, no FFmpeg)")
+
+            // Add FFmpeg as fallback for codecs that can't be passed through
+            // This allows DTS-HD MA to be decoded to PCM on devices without passthrough
+            if (isFfmpegAvailable()) {
+                out.add(FfmpegAudioRenderer(eventHandler, eventListener, audioSink))
+                Log.d(TAG, "Audio renderers built for passthrough (MediaCodec + FFmpeg fallback)")
+            } else {
+                Log.d(TAG, "Audio renderers built for passthrough (MediaCodec only, FFmpeg unavailable)")
+            }
         }
     }
 
@@ -258,6 +271,25 @@ class ExoPlayerWrapper(
     private var externalSubtitleMimeType: String? = null
     private var externalSubtitleLanguage: String? = null
     private var externalSubtitleLabel: String? = null
+
+    // Server-provided video range type (used as fallback when ExoPlayer doesn't detect HDR)
+    // This addresses a known issue where FFmpeg remux with remove_dovi=1 strips DV layer
+    // but doesn't properly set container-level HDR metadata that ExoPlayer relies on.
+    // The server knows the output format (HDR10 after DV stripping), so we use that.
+    private var serverVideoRangeType: String? = null
+
+    /**
+     * Set server-provided video range type as a hint for HDR detection.
+     * When the Jellyfin server remuxes content (e.g., stripping Dolby Vision to HDR10),
+     * ExoPlayer may not detect the HDR metadata from the container. This hint allows
+     * the app to display accurate HDR format info using the server's knowledge of the output.
+     *
+     * @param rangeType The video range type from Jellyfin API (e.g., "HDR10", "DOVIWithHDR10", "SDR")
+     */
+    fun setServerVideoRangeHint(rangeType: String?) {
+        serverVideoRangeType = rangeType
+        Log.d(TAG, "Server video range hint set: $rangeType")
+    }
 
     val exoPlayer: ExoPlayer?
         get() = player
@@ -336,6 +368,7 @@ class ExoPlayerWrapper(
                     playWhenReady = true
 
                     addListener(createPlayerListener())
+                    addAnalyticsListener(createAnalyticsListener())
                 }
 
             initialized = true
@@ -395,6 +428,152 @@ class ExoPlayerWrapper(
 
         override fun onCues(cueGroup: CueGroup) {
             subtitleDelayController.onCues(cueGroup)
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+            updateActualPlaybackInfo(tracks)
+        }
+    }
+
+    /**
+     * Extract actual codec/decoder info from ExoPlayer's selected tracks.
+     * This shows what's ACTUALLY being decoded, not source metadata.
+     */
+    private fun updateActualPlaybackInfo(tracks: Tracks) {
+        var videoCodec: String? = null
+        var videoDecoder: String? = null
+        var audioCodec: String? = null
+        var audioDecoder: String? = null
+        var isPassthrough = false
+        var hdrFormat: String? = null
+
+        for (group in tracks.groups) {
+            if (!group.isSelected) continue
+
+            for (i in 0 until group.length) {
+                if (!group.isTrackSelected(i)) continue
+
+                val format = group.getTrackFormat(i)
+                val trackType = group.type
+
+                when (trackType) {
+                    C.TRACK_TYPE_VIDEO -> {
+                        // Get video codec from MIME type
+                        videoCodec = when {
+                            format.sampleMimeType?.contains("hevc") == true -> "HEVC"
+                            format.sampleMimeType?.contains("avc") == true -> "H.264"
+                            format.sampleMimeType?.contains("av01") == true -> "AV1"
+                            format.sampleMimeType?.contains("vp9") == true -> "VP9"
+                            format.sampleMimeType?.contains("vp8") == true -> "VP8"
+                            format.sampleMimeType?.contains("dolby-vision") == true -> "Dolby Vision"
+                            else -> format.sampleMimeType?.substringAfter("/")?.uppercase()
+                        }
+
+                        // Determine HDR format from color info
+                        val exoDetectedHdr = when {
+                            format.sampleMimeType?.contains("dolby-vision") == true -> "Dolby Vision"
+                            format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 -> {
+                                if (format.colorInfo?.colorSpace == C.COLOR_SPACE_BT2020) "HDR10" else "HDR"
+                            }
+                            format.colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG -> "HLG"
+                            else -> "SDR"
+                        }
+
+                        // Use server hint as fallback when ExoPlayer doesn't detect HDR
+                        // This handles cases like FFmpeg remux where container HDR metadata is missing
+                        // but the actual video stream is HDR (TV detects it, ExoPlayer doesn't)
+                        hdrFormat = if (exoDetectedHdr == "SDR" && serverVideoRangeType != null) {
+                            val serverHdr = mapServerRangeType(serverVideoRangeType)
+                            if (serverHdr != "SDR") {
+                                Log.d(TAG, "ExoPlayer detected SDR but server says $serverVideoRangeType, using $serverHdr")
+                                serverHdr
+                            } else {
+                                exoDetectedHdr
+                            }
+                        } else {
+                            exoDetectedHdr
+                        }
+
+                        // Decoder info is set via AnalyticsListener, not available here
+                        Log.d(TAG, "Actual video: codec=$videoCodec, exoHdr=$exoDetectedHdr, finalHdr=$hdrFormat, serverHint=$serverVideoRangeType")
+                    }
+
+                    C.TRACK_TYPE_AUDIO -> {
+                        // Determine audio format from MIME type
+                        val mimeType = format.sampleMimeType ?: ""
+
+                        // The actual decoder name will be updated via AnalyticsListener
+                        // For now, determine the codec from the track format
+                        audioCodec = when {
+                            mimeType.contains("ac3") && !mimeType.contains("eac3") -> "AC3"
+                            mimeType.contains("eac3") || mimeType.contains("e-ac3") -> "E-AC3"
+                            mimeType.contains("dts") -> "DTS"
+                            mimeType.contains("truehd") || mimeType.contains("mlp") -> "TrueHD"
+                            mimeType.contains("aac") -> "AAC"
+                            mimeType.contains("mp3") || mimeType.contains("mpeg") -> "MP3"
+                            mimeType.contains("opus") -> "Opus"
+                            mimeType.contains("flac") -> "FLAC"
+                            mimeType.contains("pcm") || mimeType.contains("raw") -> "PCM"
+                            else -> mimeType.substringAfter("/").uppercase()
+                        }
+
+                        Log.d(TAG, "Actual audio track: codec=$audioCodec, mimeType=$mimeType")
+                    }
+                }
+            }
+        }
+
+        _state.value = _state.value.copy(
+            actualVideoCodec = videoCodec,
+            actualVideoDecoder = videoDecoder,
+            actualAudioCodec = audioCodec,
+            actualAudioDecoder = audioDecoder,
+            isAudioPassthrough = isPassthrough,
+            actualHdrFormat = hdrFormat,
+        )
+    }
+
+    /**
+     * AnalyticsListener to capture actual decoder names when renderers initialize.
+     * This tells us whether FFmpeg or MediaCodec is being used.
+     */
+    private fun createAnalyticsListener() = object : AnalyticsListener {
+        override fun onAudioDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long,
+        ) {
+            Log.d(TAG, "Audio decoder initialized: $decoderName")
+
+            // Determine if this is passthrough, FFmpeg decode, or MediaCodec decode
+            val isPassthrough = decoderName.contains("passthrough", ignoreCase = true) ||
+                decoderName.contains("AudioTrack", ignoreCase = true)
+            val isFFmpeg = decoderName.contains("ffmpeg", ignoreCase = true)
+
+            // Update audio codec display based on decoder type
+            val currentAudioCodec = _state.value.actualAudioCodec
+            val updatedAudioCodec = when {
+                isFFmpeg && currentAudioCodec != null -> "PCM (from $currentAudioCodec)"
+                isPassthrough -> currentAudioCodec // Keep original codec name for passthrough
+                else -> currentAudioCodec // MediaCodec decode
+            }
+
+            _state.value = _state.value.copy(
+                actualAudioDecoder = decoderName,
+                actualAudioCodec = updatedAudioCodec,
+                isAudioPassthrough = isPassthrough,
+            )
+        }
+
+        override fun onVideoDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long,
+        ) {
+            Log.d(TAG, "Video decoder initialized: $decoderName")
+            _state.value = _state.value.copy(actualVideoDecoder = decoderName)
         }
     }
 
@@ -797,6 +976,28 @@ class ExoPlayerWrapper(
             if (capabilities.supportsEncoding(C.ENCODING_DOLBY_TRUEHD)) formats.add("TrueHD")
 
             return if (formats.isEmpty()) "None" else formats.joinToString(", ")
+        }
+
+        /**
+         * Map Jellyfin VideoRangeType to display-friendly string.
+         * Used as fallback when ExoPlayer's colorInfo doesn't detect HDR metadata.
+         *
+         * Jellyfin VideoRangeType values:
+         * - SDR, HDR10, HDR10Plus, HLG, DOVI, DOVIWithHDR10, DOVIWithHDR10Plus,
+         *   DOVIWithEL, DOVIWithELHDR10Plus, DOVIWithHLG, DOVIInvalid
+         */
+        fun mapServerRangeType(rangeType: String?): String {
+            return when (rangeType?.uppercase()) {
+                "SDR", null -> "SDR"
+                "HDR10" -> "HDR10"
+                "HDR10PLUS" -> "HDR10+"
+                "HLG" -> "HLG"
+                "DOVI" -> "Dolby Vision"
+                "DOVIWITHHDR10", "DOVIWITHHDR10PLUS" -> "Dolby Vision"
+                "DOVIWITHEL", "DOVIWITHELHDR10PLUS" -> "Dolby Vision"
+                "DOVIWITHHLG" -> "Dolby Vision"
+                else -> "HDR" // Unknown HDR type
+            }
         }
     }
 }
