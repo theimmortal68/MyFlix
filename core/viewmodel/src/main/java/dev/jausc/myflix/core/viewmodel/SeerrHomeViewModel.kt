@@ -3,8 +3,8 @@ package dev.jausc.myflix.core.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
@@ -67,25 +67,25 @@ data class SeerrHomeUiState(
  * Manages content loading and state with proper lifecycle handling.
  */
 class SeerrHomeViewModel(
-    private val seerrClient: SeerrClient,
+    private val seerrRepository: SeerrRepository,
 ) : ViewModel() {
 
     /**
      * Factory for creating SeerrHomeViewModel with manual dependency injection.
      */
     class Factory(
-        private val seerrClient: SeerrClient,
+        private val seerrRepository: SeerrRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            SeerrHomeViewModel(seerrClient) as T
+            SeerrHomeViewModel(seerrRepository) as T
     }
 
     private val _uiState = MutableStateFlow(SeerrHomeUiState())
     val uiState: StateFlow<SeerrHomeUiState> = _uiState.asStateFlow()
 
     /** Exposed auth state for observing in Composables */
-    val isAuthenticated = seerrClient.isAuthenticated
+    val isAuthenticated = seerrRepository.isAuthenticated
 
     init {
         loadContent()
@@ -98,7 +98,7 @@ class SeerrHomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            if (!seerrClient.isAuthenticated.value) {
+            if (!seerrRepository.isAuthenticated.value) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -109,17 +109,17 @@ class SeerrHomeViewModel(
             }
 
             // Load discover rows using shared helper
-            val sliders = seerrClient.getDiscoverSettings().getOrNull()
+            val sliders = seerrRepository.getDiscoverSettings().getOrNull()
             val discoverRows = if (!sliders.isNullOrEmpty()) {
-                SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders)
+                SeerrDiscoverHelper.loadDiscoverRows(seerrRepository, sliders)
             } else {
-                SeerrDiscoverHelper.loadFallbackRows(seerrClient)
+                SeerrDiscoverHelper.loadFallbackRows(seerrRepository)
             }
 
             val featuredItem = discoverRows.firstOrNull()?.items?.firstOrNull()
 
             // Load genre rows for browsing
-            val genreRows = SeerrDiscoverHelper.loadGenreRows(seerrClient)
+            val genreRows = SeerrDiscoverHelper.loadGenreRows(seerrRepository)
 
             // Load studios and networks rows
             val studiosRow = SeerrDiscoverHelper.getStudiosRow()
@@ -143,22 +143,22 @@ class SeerrHomeViewModel(
      */
     fun refresh() {
         viewModelScope.launch {
-            if (!seerrClient.isAuthenticated.value) {
+            if (!seerrRepository.isAuthenticated.value) {
                 _uiState.update {
                     it.copy(errorMessage = "Not connected to Seerr")
                 }
                 return@launch
             }
 
-            val sliders = seerrClient.getDiscoverSettings().getOrNull()
+            val sliders = seerrRepository.getDiscoverSettings().getOrNull()
             val discoverRows = if (!sliders.isNullOrEmpty()) {
-                SeerrDiscoverHelper.loadDiscoverRows(seerrClient, sliders)
+                SeerrDiscoverHelper.loadDiscoverRows(seerrRepository, sliders)
             } else {
-                SeerrDiscoverHelper.loadFallbackRows(seerrClient)
+                SeerrDiscoverHelper.loadFallbackRows(seerrRepository)
             }
 
             val featuredItem = discoverRows.firstOrNull()?.items?.firstOrNull()
-            val genreRows = SeerrDiscoverHelper.loadGenreRows(seerrClient)
+            val genreRows = SeerrDiscoverHelper.loadGenreRows(seerrRepository)
             val studiosRow = SeerrDiscoverHelper.getStudiosRow()
             val networksRow = SeerrDiscoverHelper.getNetworksRow()
 
@@ -179,7 +179,7 @@ class SeerrHomeViewModel(
      */
     fun requestMovie(tmdbId: Int) {
         viewModelScope.launch {
-            seerrClient.requestMovie(tmdbId)
+            seerrRepository.requestMovie(tmdbId)
         }
     }
 
@@ -188,7 +188,7 @@ class SeerrHomeViewModel(
      */
     fun requestTVShow(tmdbId: Int) {
         viewModelScope.launch {
-            seerrClient.requestTVShow(tmdbId)
+            seerrRepository.requestTVShow(tmdbId)
         }
     }
 
@@ -199,9 +199,9 @@ class SeerrHomeViewModel(
         viewModelScope.launch {
             val tmdbId = media.tmdbId ?: media.id
             if (media.isMovie) {
-                seerrClient.requestMovie(tmdbId)
+                seerrRepository.requestMovie(tmdbId)
             } else {
-                seerrClient.requestTVShow(tmdbId)
+                seerrRepository.requestTVShow(tmdbId)
             }
         }
     }
@@ -211,7 +211,7 @@ class SeerrHomeViewModel(
      */
     fun addToBlacklist(media: SeerrMedia) {
         viewModelScope.launch {
-            seerrClient.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
+            seerrRepository.addToBlacklist(media.tmdbId ?: media.id, media.mediaType)
         }
     }
 

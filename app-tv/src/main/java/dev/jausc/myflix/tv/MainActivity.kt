@@ -64,6 +64,7 @@ import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.PlayCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.tv.ui.components.NavItem
 import dev.jausc.myflix.tv.ui.components.navrail.FocusSentinel
 import dev.jausc.myflix.tv.ui.components.navrail.NavRailAnimations
@@ -195,6 +196,7 @@ private fun MyFlixTvApp(
     val appState = remember { AppState(context, jellyfinClient) }
     val tvPreferences = remember { TvPreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
+    val seerrRepository = remember { SeerrRepository(seerrClient) }
 
     // SyncPlay infrastructure
     val syncPlayScope = rememberCoroutineScope()
@@ -756,11 +758,11 @@ private fun MyFlixTvApp(
                     )
                 } else {
                     val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
-                        factory = SeerrHomeViewModel.Factory(seerrClient),
+                        factory = SeerrHomeViewModel.Factory(seerrRepository),
                     )
                     SeerrHomeScreen(
                         viewModel = seerrHomeViewModel,
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         onMediaClick = { mediaType, tmdbId ->
                             navController.navigate("seerr/$mediaType/$tmdbId")
                         },

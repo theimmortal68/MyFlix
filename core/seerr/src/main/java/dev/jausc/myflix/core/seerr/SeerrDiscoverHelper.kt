@@ -12,12 +12,12 @@ object SeerrDiscoverHelper {
     /**
      * Load discover rows based on Seerr slider settings.
      *
-     * @param seerrClient The Seerr API client
+     * @param seerrRepository The Seerr API client
      * @param sliders List of discover sliders from settings
      * @return List of discover rows with content
      */
     suspend fun loadDiscoverRows(
-        seerrClient: SeerrClient,
+        seerrRepository: SeerrRepository,
         sliders: List<SeerrDiscoverSlider>,
     ): List<SeerrDiscoverRow> {
         val rows = mutableListOf<SeerrDiscoverRow>()
@@ -27,58 +27,58 @@ object SeerrDiscoverHelper {
             val (title, colorValue) = discoverTitleAndColor(slider)
             val items = when (slider.type) {
                 SeerrDiscoverSliderType.TRENDING ->
-                    seerrClient.getTrending().map { it.results }.getOrDefault(emptyList())
+                    seerrRepository.getTrending().map { it.results }.getOrDefault(emptyList())
                 SeerrDiscoverSliderType.POPULAR_MOVIES ->
-                    seerrClient.getPopularMovies().map { it.results }.getOrDefault(emptyList())
+                    seerrRepository.getPopularMovies().map { it.results }.getOrDefault(emptyList())
                 SeerrDiscoverSliderType.POPULAR_TV ->
-                    seerrClient.getPopularTV().map { it.results }.getOrDefault(emptyList())
+                    seerrRepository.getPopularTV().map { it.results }.getOrDefault(emptyList())
                 SeerrDiscoverSliderType.UPCOMING_MOVIES ->
-                    seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
+                    seerrRepository.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
                 SeerrDiscoverSliderType.UPCOMING_TV ->
-                    seerrClient.discoverTVWithParams(mapOf("firstAirDateGte" to today))
+                    seerrRepository.discoverTVWithParams(mapOf("firstAirDateGte" to today))
                         .map { it.results }
                         .getOrDefault(emptyList())
                 SeerrDiscoverSliderType.PLEX_WATCHLIST ->
                     emptyList() // Watchlist removed - use blacklist instead
                 SeerrDiscoverSliderType.TMDB_MOVIE_KEYWORD ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverMoviesWithParams(mapOf("keywords" to data))
+                        seerrRepository.discoverMoviesWithParams(mapOf("keywords" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_TV_KEYWORD ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverTVWithParams(mapOf("keywords" to data))
+                        seerrRepository.discoverTVWithParams(mapOf("keywords" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_MOVIE_GENRE ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverMoviesWithParams(mapOf("genre" to data))
+                        seerrRepository.discoverMoviesWithParams(mapOf("genre" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_TV_GENRE ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverTVWithParams(mapOf("genre" to data))
+                        seerrRepository.discoverTVWithParams(mapOf("genre" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_STUDIO ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverMoviesWithParams(mapOf("studio" to data))
+                        seerrRepository.discoverMoviesWithParams(mapOf("studio" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_NETWORK ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverTVWithParams(mapOf("network" to data))
+                        seerrRepository.discoverTVWithParams(mapOf("network" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_SEARCH ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.search(data)
+                        seerrRepository.search(data)
                             .map {
                                 it.results.filter { media ->
                                 media.mediaType == "movie" || media.mediaType == "tv"
@@ -88,13 +88,13 @@ object SeerrDiscoverHelper {
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverMoviesWithParams(mapOf("watchProviders" to data))
+                        seerrRepository.discoverMoviesWithParams(mapOf("watchProviders" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
                 SeerrDiscoverSliderType.TMDB_TV_STREAMING_SERVICES ->
                     slider.data?.takeIf { it.isNotBlank() }?.let { data ->
-                        seerrClient.discoverTVWithParams(mapOf("watchProviders" to data))
+                        seerrRepository.discoverTVWithParams(mapOf("watchProviders" to data))
                             .map { it.results }
                             .getOrDefault(emptyList())
                     } ?: emptyList()
@@ -128,16 +128,16 @@ object SeerrDiscoverHelper {
     /**
      * Load fallback discover rows when no slider settings are available.
      *
-     * @param seerrClient The Seerr API client
+     * @param seerrRepository The Seerr API client
      * @return List of default discover rows
      */
-    suspend fun loadFallbackRows(seerrClient: SeerrClient,): List<SeerrDiscoverRow> {
+    suspend fun loadFallbackRows(seerrRepository: SeerrRepository,): List<SeerrDiscoverRow> {
         val rows = mutableListOf<SeerrDiscoverRow>()
-        val trending = seerrClient.getTrending().map { it.results }.getOrDefault(emptyList())
-        val popularMovies = seerrClient.getPopularMovies().map { it.results }.getOrDefault(emptyList())
-        val popularTv = seerrClient.getPopularTV().map { it.results }.getOrDefault(emptyList())
-        val upcomingMovies = seerrClient.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
-        val upcomingTv = seerrClient.getUpcomingTV().map { it.results }.getOrDefault(emptyList())
+        val trending = seerrRepository.getTrending().map { it.results }.getOrDefault(emptyList())
+        val popularMovies = seerrRepository.getPopularMovies().map { it.results }.getOrDefault(emptyList())
+        val popularTv = seerrRepository.getPopularTV().map { it.results }.getOrDefault(emptyList())
+        val upcomingMovies = seerrRepository.getUpcomingMovies().map { it.results }.getOrDefault(emptyList())
+        val upcomingTv = seerrRepository.getUpcomingTV().map { it.results }.getOrDefault(emptyList())
 
         data class FallbackRowData(
             val title: String,
@@ -231,14 +231,14 @@ object SeerrDiscoverHelper {
     /**
      * Load genre rows for browsing.
      *
-     * @param seerrClient The Seerr API client
+     * @param seerrRepository The Seerr API client
      * @return List of genre rows (movie genres and TV genres)
      */
-    suspend fun loadGenreRows(seerrClient: SeerrClient,): List<SeerrGenreRow> {
+    suspend fun loadGenreRows(seerrRepository: SeerrRepository,): List<SeerrGenreRow> {
         val rows = mutableListOf<SeerrGenreRow>()
 
         // Load movie genres
-        seerrClient.getMovieGenres().onSuccess { genres ->
+        seerrRepository.getMovieGenres().onSuccess { genres ->
             if (genres.isNotEmpty()) {
                 rows.add(
                     SeerrGenreRow(
@@ -252,7 +252,7 @@ object SeerrDiscoverHelper {
         }
 
         // Load TV genres
-        seerrClient.getTVGenres().onSuccess { genres ->
+        seerrRepository.getTVGenres().onSuccess { genres ->
             if (genres.isNotEmpty()) {
                 rows.add(
                     SeerrGenreRow(
@@ -297,11 +297,11 @@ object SeerrDiscoverHelper {
     /**
      * Load recent requests row for the current user.
      *
-     * @param seerrClient The Seerr API client
+     * @param seerrRepository The Seerr API client
      * @return A row of recent requests, or null if no requests exist
      */
-    suspend fun loadRecentRequestsRow(seerrClient: SeerrClient): SeerrRequestRow? {
-        return seerrClient.getMyRequests(page = 1, pageSize = MAX_ITEMS_PER_ROW)
+    suspend fun loadRecentRequestsRow(seerrRepository: SeerrRepository): SeerrRequestRow? {
+        return seerrRepository.getMyRequests(page = 1, pageSize = MAX_ITEMS_PER_ROW)
             .getOrNull()
             ?.results
             ?.takeIf { it.isNotEmpty() }
@@ -319,11 +319,11 @@ object SeerrDiscoverHelper {
      * Load all recent requests row (not filtered by user).
      * Shows all requests from all users, sorted by most recent.
      *
-     * @param seerrClient The Seerr API client
+     * @param seerrRepository The Seerr API client
      * @return A row of all recent requests, or null if no requests exist
      */
-    suspend fun loadAllRequestsRow(seerrClient: SeerrClient): SeerrRequestRow? {
-        return seerrClient.getAllRequests(page = 1, pageSize = MAX_ITEMS_PER_ROW)
+    suspend fun loadAllRequestsRow(seerrRepository: SeerrRepository): SeerrRequestRow? {
+        return seerrRepository.getAllRequests(page = 1, pageSize = MAX_ITEMS_PER_ROW)
             .getOrNull()
             ?.results
             ?.takeIf { it.isNotEmpty() }

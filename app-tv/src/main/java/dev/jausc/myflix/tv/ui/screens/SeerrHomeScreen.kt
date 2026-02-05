@@ -84,7 +84,6 @@ import dev.jausc.myflix.core.common.ui.buildSeerrActionItems
 import dev.jausc.myflix.core.seerr.GenreBackdropColors
 import dev.jausc.myflix.core.seerr.PopularNetworks
 import dev.jausc.myflix.core.seerr.PopularStudios
-import dev.jausc.myflix.core.seerr.SeerrClient
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrGenre
@@ -92,6 +91,7 @@ import dev.jausc.myflix.core.seerr.SeerrImdbRating
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
 import dev.jausc.myflix.core.seerr.SeerrNetwork
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.core.seerr.SeerrStudio
@@ -123,7 +123,7 @@ import java.util.Locale
 @Composable
 fun SeerrHomeScreen(
     viewModel: SeerrHomeViewModel,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onMediaClick: (mediaType: String, tmdbId: Int) -> Unit,
     onNavigateSeerrSearch: () -> Unit = {},
     onNavigateSeerrRequests: () -> Unit = {},
@@ -201,12 +201,12 @@ fun SeerrHomeScreen(
 
         // Load ratings based on media type
         if (media.isMovie) {
-            seerrClient.getMovieRatings(tmdbId).onSuccess { response ->
+            seerrRepository.getMovieRatings(tmdbId).onSuccess { response ->
                 heroRtRating = response.rt
                 heroImdbRating = response.imdb
             }
         } else {
-            seerrClient.getTVRatings(tmdbId).onSuccess { rtRating ->
+            seerrRepository.getTVRatings(tmdbId).onSuccess { rtRating ->
                 heroRtRating = rtRating
                 // TV shows only have RT ratings from this endpoint
             }
@@ -273,7 +273,7 @@ fun SeerrHomeScreen(
                     // Layer 1: Backdrop image (90% of screen, fades at edges)
                     SeerrBackdropLayer(
                         media = heroDisplayItem,
-                        seerrClient = seerrClient,
+                        seerrRepository = seerrRepository,
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
                             .fillMaxHeight(0.9f)
@@ -358,7 +358,7 @@ fun SeerrHomeScreen(
                                 SeerrContentRow(
                                     title = row.title,
                                     items = row.items,
-                                    seerrClient = seerrClient,
+                                    seerrRepository = seerrRepository,
                                     accentColor = Color(row.accentColorValue),
                                     onItemClick = { media ->
                                         onMediaClick(media.mediaType, media.tmdbId ?: media.id)
@@ -506,7 +506,7 @@ private fun buildSeerrDialogItems(media: SeerrMedia, actions: SeerrMediaActions,
  * Backdrop layer for Seerr media - displays behind content with edge fading.
  */
 @Composable
-private fun SeerrBackdropLayer(media: SeerrMedia?, seerrClient: SeerrClient, modifier: Modifier = Modifier,) {
+private fun SeerrBackdropLayer(media: SeerrMedia?, seerrRepository: SeerrClient, modifier: Modifier = Modifier,) {
     if (media == null) return
 
     Box(modifier = modifier) {
@@ -520,7 +520,7 @@ private fun SeerrBackdropLayer(media: SeerrMedia?, seerrClient: SeerrClient, mod
             modifier = Modifier.fillMaxSize(),
         ) { currentMedia ->
             AsyncImage(
-                model = seerrClient.getBackdropUrl(currentMedia.backdropPath),
+                model = seerrRepository.getBackdropUrl(currentMedia.backdropPath),
                 contentDescription = currentMedia.displayTitle,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
@@ -748,7 +748,7 @@ private fun SeerrHeroSection(
 private fun SeerrContentRow(
     title: String,
     items: List<SeerrMedia>,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrClient,
     accentColor: Color,
     onItemClick: (SeerrMedia) -> Unit,
     onItemLongClick: ((SeerrMedia) -> Unit)? = null,
@@ -787,7 +787,7 @@ private fun SeerrContentRow(
             itemsIndexed(items, key = { _, media -> "${media.mediaType}_${media.id}" }) { index, media ->
                 SeerrMediaCard(
                     media = media,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onClick = { onItemClick(media) },
                     onLongClick = onItemLongClick?.let { { it(media) } },
                     onItemFocused = onItemFocused,
@@ -811,7 +811,7 @@ private fun SeerrContentRow(
 @Composable
 private fun SeerrMediaCard(
     media: SeerrMedia,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrClient,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
@@ -847,7 +847,7 @@ private fun SeerrMediaCard(
     ) {
         Box {
             AsyncImage(
-                model = seerrClient.getPosterUrl(media.posterPath),
+                model = seerrRepository.getPosterUrl(media.posterPath),
                 contentDescription = media.displayTitle,
                 modifier = Modifier
                     .fillMaxSize()
