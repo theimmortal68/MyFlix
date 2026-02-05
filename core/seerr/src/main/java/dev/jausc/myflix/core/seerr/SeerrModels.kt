@@ -1259,12 +1259,50 @@ data class SeerrPublicSettings(
 @Serializable
 data class SeerrDiscoverSlider(
     @SerialName("id") val id: Int,
-    @SerialName("type") val type: Int,
+    @SerialName("type") val typeId: Int,
     @SerialName("title") val title: String? = null,
     @SerialName("data") val data: String? = null,
     @SerialName("isBuiltIn") val isBuiltIn: Boolean = false,
     @SerialName("enabled") val enabled: Boolean = true,
-)
+) {
+    /** The slider type enum */
+    val type: SeerrDiscoverSliderType
+        get() = SeerrDiscoverSliderType.fromId(typeId)
+}
+
+/**
+ * Discover slider types.
+ * Based on Jellyseerr/Overseerr slider type IDs.
+ */
+enum class SeerrDiscoverSliderType(val id: Int) {
+    RECENTLY_ADDED(1),
+    RECENT_REQUESTS(2),
+    PLEX_WATCHLIST(3),
+    TRENDING(4),
+    POPULAR_MOVIES(5),
+    MOVIE_GENRES(6),
+    UPCOMING_MOVIES(7),
+    STUDIOS(8),
+    POPULAR_TV(9),
+    TV_GENRES(10),
+    UPCOMING_TV(11),
+    NETWORKS(12),
+    TMDB_MOVIE_KEYWORD(13),
+    TMDB_TV_KEYWORD(14),
+    TMDB_MOVIE_GENRE(15),
+    TMDB_TV_GENRE(16),
+    TMDB_STUDIO(17),
+    TMDB_NETWORK(18),
+    TMDB_SEARCH(19),
+    TMDB_MOVIE_STREAMING_SERVICES(20),
+    TMDB_TV_STREAMING_SERVICES(21),
+    UNKNOWN(0);
+
+    companion object {
+        fun fromId(id: Int): SeerrDiscoverSliderType =
+            entries.find { it.id == id } ?: UNKNOWN
+    }
+}
 
 // ============================================================================
 // Authentication Types
@@ -1629,3 +1667,158 @@ object PopularNetworks {
     fun getLogoUrl(logoPath: String): String =
         "https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,bababa)$logoPath"
 }
+
+// ============================================================================
+// API Response Types (used by SeerrClient)
+// ============================================================================
+
+/**
+ * Server status response.
+ */
+@Serializable
+data class SeerrStatus(
+    @SerialName("version") val version: String? = null,
+    @SerialName("commitTag") val commitTag: String? = null,
+    @SerialName("updateAvailable") val updateAvailable: Boolean = false,
+    @SerialName("commitsBehind") val commitsBehind: Int = 0,
+)
+
+/**
+ * Discover/search result response with pagination.
+ */
+@Serializable
+data class SeerrDiscoverResult(
+    @SerialName("page") val page: Int = 1,
+    @SerialName("totalPages") val totalPages: Int = 1,
+    @SerialName("totalResults") val totalResults: Int = 0,
+    @SerialName("results") val results: List<SeerrMedia> = emptyList(),
+)
+
+/**
+ * Request list result response with pagination.
+ */
+@Serializable
+data class SeerrRequestResult(
+    @SerialName("pageInfo") val pageInfo: SeerrPageInfo,
+    @SerialName("results") val results: List<SeerrRequest> = emptyList(),
+)
+
+/**
+ * Create media request body.
+ */
+@Serializable
+data class CreateMediaRequest(
+    @SerialName("mediaType") val mediaType: String,
+    @SerialName("mediaId") val mediaId: Int,
+    @SerialName("tvdbId") val tvdbId: Int? = null,
+    @SerialName("seasons") val seasons: List<Int>? = null,
+    @SerialName("is4k") val is4k: Boolean = false,
+    @SerialName("serverId") val serverId: Int? = null,
+    @SerialName("profileId") val profileId: Int? = null,
+    @SerialName("rootFolder") val rootFolder: String? = null,
+    @SerialName("languageProfileId") val languageProfileId: Int? = null,
+    @SerialName("userId") val userId: Int? = null,
+)
+
+/**
+ * Combined ratings response (Rotten Tomatoes + IMDB).
+ */
+@Serializable
+data class SeerrRatingResponse(
+    @SerialName("rt") val rt: SeerrRottenTomatoesRating? = null,
+    @SerialName("imdb") val imdb: SeerrImdbRating? = null,
+)
+
+/**
+ * Quick Connect state response.
+ */
+@Serializable
+data class SeerrQuickConnectState(
+    @SerialName("code") val code: String,
+    @SerialName("secret") val secret: String,
+    @SerialName("authenticated") val authenticated: Boolean = false,
+)
+
+/**
+ * Quick Connect flow states for UI.
+ */
+sealed class SeerrQuickConnectFlowState {
+    data object Initializing : SeerrQuickConnectFlowState()
+    data object NotAvailable : SeerrQuickConnectFlowState()
+    data class WaitingForApproval(val code: String, val secret: String) : SeerrQuickConnectFlowState()
+    data object Authenticating : SeerrQuickConnectFlowState()
+    data class Authenticated(val user: SeerrUser) : SeerrQuickConnectFlowState()
+    data class Error(val message: String) : SeerrQuickConnectFlowState()
+}
+
+/**
+ * User quota information.
+ */
+@Serializable
+data class SeerrUserQuota(
+    @SerialName("movie") val movie: SeerrQuotaDetails? = null,
+    @SerialName("tv") val tv: SeerrQuotaDetails? = null,
+)
+
+/**
+ * Request counts by status.
+ */
+@Serializable
+data class SeerrRequestCounts(
+    @SerialName("total") val total: Int = 0,
+    @SerialName("movie") val movie: Int = 0,
+    @SerialName("tv") val tv: Int = 0,
+    @SerialName("pending") val pending: Int = 0,
+    @SerialName("approved") val approved: Int = 0,
+    @SerialName("declined") val declined: Int = 0,
+    @SerialName("processing") val processing: Int = 0,
+    @SerialName("available") val available: Int = 0,
+    @SerialName("completed") val completed: Int = 0,
+)
+
+/**
+ * Issue counts by type/status.
+ */
+@Serializable
+data class SeerrIssueCounts(
+    @SerialName("total") val total: Int = 0,
+    @SerialName("video") val video: Int = 0,
+    @SerialName("audio") val audio: Int = 0,
+    @SerialName("subtitles") val subtitles: Int = 0,
+    @SerialName("others") val others: Int = 0,
+    @SerialName("open") val open: Int = 0,
+    @SerialName("closed") val closed: Int = 0,
+)
+
+/**
+ * Radarr server configuration (non-sensitive).
+ */
+@Serializable
+data class SeerrRadarrServer(
+    @SerialName("id") val id: Int,
+    @SerialName("name") val name: String? = null,
+    @SerialName("isDefault") val isDefault: Boolean = false,
+    @SerialName("is4k") val is4k: Boolean = false,
+    @SerialName("activeProfileId") val activeProfileId: Int? = null,
+    @SerialName("activeProfileName") val activeProfileName: String? = null,
+    @SerialName("activeDirectory") val activeDirectory: String? = null,
+)
+
+/**
+ * Sonarr server configuration (non-sensitive).
+ */
+@Serializable
+data class SeerrSonarrServer(
+    @SerialName("id") val id: Int,
+    @SerialName("name") val name: String? = null,
+    @SerialName("isDefault") val isDefault: Boolean = false,
+    @SerialName("is4k") val is4k: Boolean = false,
+    @SerialName("activeProfileId") val activeProfileId: Int? = null,
+    @SerialName("activeProfileName") val activeProfileName: String? = null,
+    @SerialName("activeDirectory") val activeDirectory: String? = null,
+    @SerialName("activeLanguageProfileId") val activeLanguageProfileId: Int? = null,
+    @SerialName("activeAnimeProfileId") val activeAnimeProfileId: Int? = null,
+    @SerialName("activeAnimeLanguageProfileId") val activeAnimeLanguageProfileId: Int? = null,
+    @SerialName("activeAnimeDirectory") val activeAnimeDirectory: String? = null,
+    @SerialName("enableSeasonFolders") val enableSeasonFolders: Boolean = true,
+)

@@ -103,7 +103,8 @@ object SeerrDiscoverHelper {
                 SeerrDiscoverSliderType.MOVIE_GENRES,
                 SeerrDiscoverSliderType.TV_GENRES,
                 SeerrDiscoverSliderType.STUDIOS,
-                SeerrDiscoverSliderType.NETWORKS -> emptyList()
+                SeerrDiscoverSliderType.NETWORKS,
+                SeerrDiscoverSliderType.UNKNOWN -> emptyList()
             }
 
             val filtered = items.filterDiscoverable().take(MAX_ITEMS_PER_ROW)
@@ -195,6 +196,7 @@ object SeerrDiscoverHelper {
             SeerrDiscoverSliderType.TMDB_SEARCH -> slider.title ?: "Search"
             SeerrDiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES -> slider.title ?: "Streaming Movies"
             SeerrDiscoverSliderType.TMDB_TV_STREAMING_SERVICES -> slider.title ?: "Streaming TV"
+            SeerrDiscoverSliderType.UNKNOWN -> slider.title ?: "Unknown"
         }
 
         val accentColor = when (slider.type) {

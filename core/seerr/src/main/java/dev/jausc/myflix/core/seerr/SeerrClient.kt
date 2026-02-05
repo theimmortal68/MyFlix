@@ -249,7 +249,7 @@ class SeerrClient(
         val user: SeerrUser = response.body()
         _isAuthenticated.value = true
         currentUser = user
-        apiKey = user.apiKey // Store API key for persistent auth (if provided)
+        // Note: API key is not returned in user response - use session cookie for persistent auth
         user
     }
 
@@ -445,7 +445,7 @@ class SeerrClient(
         val user = userResult.getOrThrow()
         _isAuthenticated.value = true
         currentUser = user
-        apiKey = user.apiKey
+        // Note: API key is not returned from Quick Connect - use session cookie for persistent auth
 
         emit(SeerrQuickConnectFlowState.Authenticated(user))
     }
@@ -477,24 +477,27 @@ class SeerrClient(
 
     /**
      * Get user quota information.
+     * Note: The API returns quota limits but not remaining count directly.
+     * Remaining is calculated as limit - used (if limit is set).
      */
     suspend fun getUserQuota(): Result<SeerrUserQuota> = runCatching {
         requireAuth()
         val response = httpClient.get("$baseUrl/api/v1/auth/me")
         // Quota is returned as part of user object, extract it
         val user: SeerrUser = response.body()
+        val used = user.requestCount ?: 0
         SeerrUserQuota(
             movie = SeerrQuotaDetails(
                 limit = user.movieQuotaLimit,
                 days = user.movieQuotaDays,
-                used = user.requestCount ?: 0,
-                remaining = user.movieQuotaRemaining,
+                used = used,
+                remaining = user.movieQuotaLimit?.let { maxOf(0, it - used) },
             ),
             tv = SeerrQuotaDetails(
                 limit = user.tvQuotaLimit,
                 days = user.tvQuotaDays,
-                used = user.requestCount ?: 0,
-                remaining = user.tvQuotaRemaining,
+                used = used,
+                remaining = user.tvQuotaLimit?.let { maxOf(0, it - used) },
             ),
         )
     }
