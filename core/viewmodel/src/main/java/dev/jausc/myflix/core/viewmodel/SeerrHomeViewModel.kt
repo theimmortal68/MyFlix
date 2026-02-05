@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
-import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrDiscoverRow
 import dev.jausc.myflix.core.seerr.SeerrGenreRow
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrNetworkRow
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.core.seerr.SeerrStudioRow
+import dev.jausc.myflix.core.seerr.filterDiscoverable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
  */
 data class SeerrHomeUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
     val rows: List<SeerrDiscoverRow> = emptyList(),
     val genreRows: List<SeerrGenreRow> = emptyList(),
@@ -87,6 +89,15 @@ class SeerrHomeViewModel(
     /** Exposed auth state for observing in Composables */
     val isAuthenticated = seerrRepository.isAuthenticated
 
+    /** Current authenticated user */
+    val currentUser = seerrRepository.currentUser
+
+    /** Cached movie genres */
+    val movieGenres = seerrRepository.movieGenres
+
+    /** Cached TV genres */
+    val tvGenres = seerrRepository.tvGenres
+
     init {
         loadContent()
     }
@@ -139,13 +150,15 @@ class SeerrHomeViewModel(
     }
 
     /**
-     * Refresh content without showing loading indicator.
+     * Refresh content with optional refresh indicator.
      */
     fun refresh() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+
             if (!seerrRepository.isAuthenticated.value) {
                 _uiState.update {
-                    it.copy(errorMessage = "Not connected to Seerr")
+                    it.copy(isRefreshing = false, errorMessage = "Not connected to Seerr")
                 }
                 return@launch
             }
@@ -164,12 +177,51 @@ class SeerrHomeViewModel(
 
             _uiState.update {
                 it.copy(
+                    isRefreshing = false,
                     rows = discoverRows,
                     genreRows = genreRows,
                     studiosRow = studiosRow,
                     networksRow = networksRow,
                     featuredItem = featuredItem,
                 )
+            }
+        }
+    }
+
+    /**
+     * Load more items for a specific row (pagination).
+     *
+     * @param rowId The unique key of the row to load more items for
+     * @param page The page number to load (1-indexed)
+     */
+    fun loadMoreForRow(rowId: String, page: Int) {
+        viewModelScope.launch {
+            val currentRows = _uiState.value.rows.toMutableList()
+            val rowIndex = currentRows.indexOfFirst { it.key == rowId }
+            if (rowIndex == -1) return@launch
+
+            val row = currentRows[rowIndex]
+            // Determine which API call to make based on row type
+            val result = when (row.rowType) {
+                SeerrRowType.TRENDING -> seerrRepository.getTrending(page)
+                SeerrRowType.POPULAR_MOVIES -> seerrRepository.getPopularMovies(page)
+                SeerrRowType.POPULAR_TV -> seerrRepository.getPopularTV(page)
+                SeerrRowType.UPCOMING_MOVIES -> seerrRepository.getUpcomingMovies(page)
+                SeerrRowType.UPCOMING_TV -> seerrRepository.getUpcomingTV(page)
+                SeerrRowType.OTHER -> return@launch // Custom rows don't paginate via this method
+            }
+
+            result.onSuccess { response ->
+                val existingItems = row.items.toMutableList()
+                val newItems = response.results.filterDiscoverable()
+                // Avoid duplicates by checking IDs
+                val uniqueNewItems = newItems.filter { newItem ->
+                    existingItems.none { existing -> existing.id == newItem.id }
+                }
+                existingItems.addAll(uniqueNewItems)
+
+                currentRows[rowIndex] = row.copy(items = existingItems)
+                _uiState.update { it.copy(rows = currentRows) }
             }
         }
     }
