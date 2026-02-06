@@ -98,6 +98,7 @@ import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.tv.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
+import dev.jausc.myflix.tv.ui.screens.discover.DiscoverHomeScreen
 import dev.jausc.myflix.tv.channels.ChannelSyncWorker
 import dev.jausc.myflix.tv.channels.TvChannelManager
 import dev.jausc.myflix.tv.channels.WatchNextManager
@@ -397,6 +398,7 @@ private fun MyFlixTvApp(
                 currentRoute?.startsWith("home") == true -> NavItem.HOME
                 currentRoute?.startsWith("search") == true -> NavItem.SEARCH
                 currentRoute?.startsWith("settings") == true -> NavItem.SETTINGS
+                currentRoute?.startsWith("discover_v2") == true -> NavItem.DISCOVER_V2
                 currentRoute?.startsWith("seerr") == true -> NavItem.DISCOVER
                 currentRoute?.startsWith("library") == true -> getLibraryNavItem(currentBackStackEntry)
                 currentRoute?.startsWith("collections") == true -> NavItem.COLLECTIONS
@@ -1085,6 +1087,19 @@ private fun MyFlixTvApp(
                         navController.navigate("seerr/$mediaType/$tmdbId")
                     },
                     onBack = { navController.popBackStack() },
+                )
+            }
+
+            // Discover V2 route - new carousel-based discover UI
+            composable(NavItem.DISCOVER_V2.route) {
+                val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
+                    factory = SeerrHomeViewModel.Factory(seerrRepository),
+                )
+                DiscoverHomeScreen(
+                    viewModel = seerrHomeViewModel,
+                    onMediaClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
                 )
             }
 
