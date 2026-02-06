@@ -151,6 +151,17 @@ fun EpisodesScreen(
 ) {
     // Currently focused episode drives hero content
     var focusedEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+    // Pending episode set immediately on focus; committed after debounce
+    var pendingEpisode by remember { mutableStateOf<JellyfinItem?>(null) }
+
+    // Debounce rapid focus changes - wait 300ms before committing to display
+    LaunchedEffect(pendingEpisode) {
+        val target = pendingEpisode ?: return@LaunchedEffect
+        delay(300L)
+        if (pendingEpisode == target) {
+            focusedEpisode = target
+        }
+    }
 
     // Options dialog state
     var showOptionsDialog by remember { mutableStateOf(false) }
@@ -321,7 +332,7 @@ fun EpisodesScreen(
                 targetEpisodeIndex = targetEpisodeIndex,
                 episodeFocusRequesters = episodeFocusRequesters,
                 onEpisodeClick = onEpisodeClick,
-                onEpisodeFocused = { episode -> focusedEpisode = episode },
+                onEpisodeFocused = { episode -> pendingEpisode = episode },
                 focusRequester = episodeRowFocusRequester,
                 upFocusRequester = playFocusRequester,
                 downFocusRequester = getTabFocusRequester(selectedTab),
