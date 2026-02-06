@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -73,13 +74,13 @@ fun SeerrCastCard(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.width(130.dp),
+        modifier = modifier.width(132.dp),
     ) {
         Box {
             if (haloAlpha > 0f) {
                 Box(
                     modifier = Modifier
-                        .size(112.dp)
+                        .size(132.dp)
                         .blur(12.dp)
                         .background(TvColors.BluePrimary.copy(alpha = haloAlpha), CircleShape),
                 )
@@ -88,7 +89,7 @@ fun SeerrCastCard(
             Surface(
                 onClick = onClick,
                 modifier = Modifier
-                    .size(112.dp)
+                    .size(132.dp)
                     .onFocusChanged { isFocused = it.isFocused },
                 shape = ClickableSurfaceDefaults.shape(
                     shape = CircleShape,
@@ -147,11 +148,11 @@ fun SeerrCrewCard(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.width(130.dp),
+        modifier = modifier.width(132.dp),
     ) {
         Surface(
             onClick = {},
-            modifier = Modifier.size(112.dp),
+            modifier = Modifier.size(132.dp),
             shape = ClickableSurfaceDefaults.shape(
                 shape = CircleShape,
             ),
@@ -215,12 +216,12 @@ fun SeerrRelatedMediaCard(
         label = "relatedCardHaloAlpha",
     )
 
-    Column(modifier = modifier.width(82.dp)) {
+    Column(modifier = modifier.width(110.dp)) {
         Box {
             if (haloAlpha > 0f) {
                 Box(
                     modifier = Modifier
-                        .width(82.dp)
+                        .width(110.dp)
                         .aspectRatio(2f / 3f)
                         .blur(12.dp)
                         .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(8.dp)),
@@ -230,7 +231,7 @@ fun SeerrRelatedMediaCard(
             Surface(
                 onClick = onClick,
                 modifier = Modifier
-                    .width(82.dp)
+                    .width(110.dp)
                     .aspectRatio(2f / 3f)
                     .onFocusChanged { isFocused = it.isFocused },
                 shape = ClickableSurfaceDefaults.shape(
@@ -261,9 +262,11 @@ fun SeerrRelatedMediaCard(
             text = media.displayTitle,
             style = MaterialTheme.typography.labelSmall,
             color = if (isFocused) Color.White else TvColors.TextPrimary,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .then(if (isFocused) Modifier.basicMarquee() else Modifier),
         )
     }
 }
@@ -279,7 +282,7 @@ fun SeerrVideoCard(
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.width(190.dp)) {
+    Column(modifier = modifier.width(210.dp)) {
         Surface(
             onClick = {
                 video.key?.let { key ->

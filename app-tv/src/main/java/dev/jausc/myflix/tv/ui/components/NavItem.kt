@@ -2,7 +2,6 @@ package dev.jausc.myflix.tv.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Movie
@@ -30,7 +29,6 @@ enum class NavItem(
     MOVIES(Icons.Outlined.Movie, "Movies", "movies", Color(0xFFFBBF24)),
     COLLECTIONS(Icons.Outlined.VideoLibrary, "Collections", "collections", Color(0xFFFF7043)),
     UNIVERSES(Icons.Outlined.Hub, "Universes", "universes", Color(0xFF9575CD)),
-    DISCOVER(Icons.Outlined.Explore, "Discover", "seerr", Color(0xFF8B5CF6)),
-    DISCOVER_V2(Icons.Outlined.AutoAwesome, "Discover+", "discover_v2", Color(0xFFC084FC)),
+    DISCOVER(Icons.Outlined.AutoAwesome, "Discover", "discover", Color(0xFFC084FC)),
     SETTINGS(Icons.Outlined.Settings, "Settings", "settings", Color(0xFFF472B6)),
 }

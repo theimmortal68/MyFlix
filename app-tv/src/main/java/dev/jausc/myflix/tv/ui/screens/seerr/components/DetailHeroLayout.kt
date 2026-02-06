@@ -5,6 +5,7 @@ package dev.jausc.myflix.tv.ui.screens.seerr.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,9 +33,9 @@ import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Three-column hero layout for the detail screen.
- * Column 1: Poster
- * Column 2: Title, rating row, genre chips, overview
- * Column 3: Info table
+ * Column 1: Poster + action buttons (stacked)
+ * Column 2: Title, overview
+ * Column 3: Info table (bottom-aligned with buttons)
  */
 @Composable
 fun DetailHeroLayout(
@@ -43,23 +44,31 @@ fun DetailHeroLayout(
     ratings: SeerrRatingResponse?,
     tvRatings: SeerrRottenTomatoesRating?,
     modifier: Modifier = Modifier,
+    actionButtons: @Composable () -> Unit = {},
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 48.dp),
+            .height(IntrinsicSize.Max)
+            .padding(end = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // Column 1: Poster
-        AsyncImage(
-            model = seerrRepository.getPosterUrl(media.posterPath),
-            contentDescription = media.displayTitle,
-            modifier = Modifier
-                .width(150.dp)
-                .height(225.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop,
-        )
+        // Column 1: Poster + action buttons
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AsyncImage(
+                model = seerrRepository.getPosterUrl(media.posterPath),
+                contentDescription = media.displayTitle,
+                modifier = Modifier
+                    .width(150.dp)
+                    .height(225.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop,
+            )
+
+            actionButtons()
+        }
 
         // Column 2: Title, overview
         Column(
@@ -87,10 +96,10 @@ fun DetailHeroLayout(
             }
         }
 
-        // Column 3: Info table (top-aligned, right-aligned)
+        // Column 3: Info table (bottom-aligned)
         Box(
-            modifier = Modifier.align(Alignment.Top),
-            contentAlignment = Alignment.TopEnd,
+            modifier = Modifier.align(Alignment.Bottom),
+            contentAlignment = Alignment.BottomEnd,
         ) {
             DetailInfoTable(
                 media = media,
@@ -100,4 +109,3 @@ fun DetailHeroLayout(
         }
     }
 }
-

@@ -87,12 +87,6 @@ import dev.jausc.myflix.tv.ui.screens.seerr.SeerrMediaDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByNetworkScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByStudioScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverMoviesScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTrendingScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverTvScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverUpcomingMoviesScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverUpcomingTvScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrHomeScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
@@ -399,7 +393,7 @@ private fun MyFlixTvApp(
                 currentRoute?.startsWith("home") == true -> NavItem.HOME
                 currentRoute?.startsWith("search") == true -> NavItem.SEARCH
                 currentRoute?.startsWith("settings") == true -> NavItem.SETTINGS
-                currentRoute?.startsWith("discover_v2") == true -> NavItem.DISCOVER_V2
+                currentRoute?.startsWith("discover") == true -> NavItem.DISCOVER
                 currentRoute?.startsWith("seerr") == true -> NavItem.DISCOVER
                 currentRoute?.startsWith("library") == true -> getLibraryNavItem(currentBackStackEntry)
                 currentRoute?.startsWith("collections") == true -> NavItem.COLLECTIONS
@@ -578,7 +572,7 @@ private fun MyFlixTvApp(
             }
             NavItem.SEARCH -> { navController.navigate("search") }
             NavItem.SETTINGS -> { navController.navigate("settings") }
-            NavItem.DISCOVER -> { navController.navigate("seerr") }
+            NavItem.DISCOVER -> { navController.navigate("discover") }
             NavItem.MOVIES -> {
                 LibraryFinder.findMoviesLibrary(libraries)?.let {
                     navController.navigate(
@@ -595,7 +589,6 @@ private fun MyFlixTvApp(
             }
             NavItem.COLLECTIONS -> { navController.navigate("collections") }
             NavItem.UNIVERSES -> { navController.navigate("universes") }
-            NavItem.DISCOVER_V2 -> { navController.navigate("discover_v2") }
         }
     }
 
@@ -744,68 +737,6 @@ private fun MyFlixTvApp(
             }
 
             // Seerr routes
-            composable("seerr") {
-                // Require actual authentication - isSeerrAuthenticated is set after successful login
-                if (!isSeerrAuthenticated) {
-                    SeerrSetupScreen(
-                        seerrRepository = seerrRepository,
-                        preferences = tvPreferences,
-                        jellyfinUsername = appState.username,
-                        jellyfinPassword = appState.password,
-                        jellyfinServerUrl = jellyfinClient.serverUrl,
-                        onSetupComplete = {
-                            // Just set authenticated - recomposition will show SeerrHomeScreen
-                            isSeerrAuthenticated = true
-                        },
-                        onBack = { navController.popBackStack() },
-                    )
-                } else {
-                    val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
-                        factory = SeerrHomeViewModel.Factory(seerrRepository),
-                    )
-                    SeerrHomeScreen(
-                        viewModel = seerrHomeViewModel,
-                        seerrRepository = seerrRepository,
-                        onMediaClick = { mediaType, tmdbId ->
-                            navController.navigate("seerr/$mediaType/$tmdbId")
-                        },
-                        onNavigateSeerrSearch = {
-                            navController.navigate(NavigationHelper.SEERR_SEARCH_ROUTE)
-                        },
-                        onNavigateSeerrRequests = {
-                            navController.navigate(NavigationHelper.SEERR_REQUESTS_ROUTE)
-                        },
-                        onNavigateDiscoverTrending = {
-                            navController.navigate("seerr/trending")
-                        },
-                        onNavigateDiscoverMovies = {
-                            navController.navigate("seerr/movies")
-                        },
-                        onNavigateDiscoverTv = {
-                            navController.navigate("seerr/tv")
-                        },
-                        onNavigateDiscoverUpcomingMovies = {
-                            navController.navigate("seerr/upcoming/movies")
-                        },
-                        onNavigateDiscoverUpcomingTv = {
-                            navController.navigate("seerr/upcoming/tv")
-                        },
-                        onNavigateGenre = { genreMediaType, genreId, genreName ->
-                            val encodedName = NavigationHelper.encodeNavArg(genreName)
-                            navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
-                        },
-                        onNavigateStudio = { studioId, studioName ->
-                            val encodedName = NavigationHelper.encodeNavArg(studioName)
-                            navController.navigate("seerr/studio/$studioId/$encodedName")
-                        },
-                        onNavigateNetwork = { networkId, networkName ->
-                            val encodedName = NavigationHelper.encodeNavArg(networkName)
-                            navController.navigate("seerr/network/$networkId/$encodedName")
-                        },
-                    )
-                }
-            }
-
             composable("seerr/setup") {
                 SeerrSetupScreen(
                     seerrRepository = seerrRepository,
@@ -814,60 +745,10 @@ private fun MyFlixTvApp(
                     jellyfinPassword = appState.password,
                     jellyfinServerUrl = jellyfinClient.serverUrl,
                     onSetupComplete = {
-                        navController.navigate("seerr") {
+                        isSeerrAuthenticated = true
+                        navController.navigate("discover") {
                             popUpTo("seerr/setup") { inclusive = true }
                         }
-                    },
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            // Seerr discover screens with pagination
-            composable("seerr/trending") {
-                SeerrDiscoverTrendingScreen(
-                    seerrRepository = seerrRepository,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
-                    },
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable("seerr/movies") {
-                SeerrDiscoverMoviesScreen(
-                    seerrRepository = seerrRepository,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
-                    },
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable("seerr/tv") {
-                SeerrDiscoverTvScreen(
-                    seerrRepository = seerrRepository,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
-                    },
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable("seerr/upcoming/movies") {
-                SeerrDiscoverUpcomingMoviesScreen(
-                    seerrRepository = seerrRepository,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
-                    },
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable("seerr/upcoming/tv") {
-                SeerrDiscoverUpcomingTvScreen(
-                    seerrRepository = seerrRepository,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
                     },
                     onBack = { navController.popBackStack() },
                 )
@@ -1030,52 +911,6 @@ private fun MyFlixTvApp(
             }
 
             composable(
-                route = "seerr/discover/{category}",
-                arguments = listOf(
-                    navArgument("category") { type = NavType.StringType },
-                ),
-            ) { backStackEntry ->
-                val category = backStackEntry.arguments?.getString("category") ?: "trending"
-                when (NavigationHelper.decodeNavArg(category)) {
-                    "movies" -> SeerrDiscoverMoviesScreen(
-                        seerrRepository = seerrRepository,
-                        onMediaClick = { mediaType, tmdbId ->
-                            navController.navigate("seerr/$mediaType/$tmdbId")
-                        },
-                        onBack = { navController.popBackStack() },
-                    )
-                    "tv" -> SeerrDiscoverTvScreen(
-                        seerrRepository = seerrRepository,
-                        onMediaClick = { mediaType, tmdbId ->
-                            navController.navigate("seerr/$mediaType/$tmdbId")
-                        },
-                        onBack = { navController.popBackStack() },
-                    )
-                    "upcoming_movies" -> SeerrDiscoverUpcomingMoviesScreen(
-                        seerrRepository = seerrRepository,
-                        onMediaClick = { mediaType, tmdbId ->
-                            navController.navigate("seerr/$mediaType/$tmdbId")
-                        },
-                        onBack = { navController.popBackStack() },
-                    )
-                    "upcoming_tv" -> SeerrDiscoverUpcomingTvScreen(
-                        seerrRepository = seerrRepository,
-                        onMediaClick = { mediaType, tmdbId ->
-                            navController.navigate("seerr/$mediaType/$tmdbId")
-                        },
-                        onBack = { navController.popBackStack() },
-                    )
-                    else -> SeerrDiscoverTrendingScreen(
-                        seerrRepository = seerrRepository,
-                        onMediaClick = { mediaType, tmdbId ->
-                            navController.navigate("seerr/$mediaType/$tmdbId")
-                        },
-                        onBack = { navController.popBackStack() },
-                    )
-                }
-            }
-
-            composable(
                 route = "seerr/collection/{collectionId}",
                 arguments = listOf(
                     navArgument("collectionId") { type = NavType.IntType },
@@ -1092,29 +927,43 @@ private fun MyFlixTvApp(
                 )
             }
 
-            // Discover V2 route - new carousel-based discover UI
-            composable(NavItem.DISCOVER_V2.route) {
-                val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
-                    factory = SeerrHomeViewModel.Factory(seerrRepository),
-                )
-                DiscoverHomeScreen(
-                    viewModel = seerrHomeViewModel,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
-                    },
-                    onNavigateGenre = { genreMediaType, genreId, genreName ->
-                        val encodedName = NavigationHelper.encodeNavArg(genreName)
-                        navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
-                    },
-                    onNavigateStudio = { studioId, studioName ->
-                        val encodedName = NavigationHelper.encodeNavArg(studioName)
-                        navController.navigate("seerr/studio/$studioId/$encodedName")
-                    },
-                    onNavigateNetwork = { networkId, networkName ->
-                        val encodedName = NavigationHelper.encodeNavArg(networkName)
-                        navController.navigate("seerr/network/$networkId/$encodedName")
-                    },
-                )
+            // Discover route - carousel-based discover UI
+            composable(NavItem.DISCOVER.route) {
+                if (!isSeerrAuthenticated) {
+                    SeerrSetupScreen(
+                        seerrRepository = seerrRepository,
+                        preferences = tvPreferences,
+                        jellyfinUsername = appState.username,
+                        jellyfinPassword = appState.password,
+                        jellyfinServerUrl = jellyfinClient.serverUrl,
+                        onSetupComplete = {
+                            isSeerrAuthenticated = true
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                } else {
+                    val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
+                        factory = SeerrHomeViewModel.Factory(seerrRepository),
+                    )
+                    DiscoverHomeScreen(
+                        viewModel = seerrHomeViewModel,
+                        onMediaClick = { mediaType, tmdbId ->
+                            navController.navigate("seerr/$mediaType/$tmdbId")
+                        },
+                        onNavigateGenre = { genreMediaType, genreId, genreName ->
+                            val encodedName = NavigationHelper.encodeNavArg(genreName)
+                            navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
+                        },
+                        onNavigateStudio = { studioId, studioName ->
+                            val encodedName = NavigationHelper.encodeNavArg(studioName)
+                            navController.navigate("seerr/studio/$studioId/$encodedName")
+                        },
+                        onNavigateNetwork = { networkId, networkName ->
+                            val encodedName = NavigationHelper.encodeNavArg(networkName)
+                            navController.navigate("seerr/network/$networkId/$encodedName")
+                        },
+                    )
+                }
             }
 
             composable(

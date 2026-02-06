@@ -95,6 +95,13 @@ class SeerrHomeViewModel(
     private val ratingsCache = mutableMapOf<String, DiscoverFocusedRatings>()
     private var ratingsFetchJob: Job? = null
 
+    /** Backdrop URL for focused browse item (studio/network) */
+    private val _browseBackdropUrl = MutableStateFlow<String?>(null)
+    val browseBackdropUrl: StateFlow<String?> = _browseBackdropUrl.asStateFlow()
+
+    private val browseBackdropCache = mutableMapOf<String, String>()
+    private var browseBackdropJob: Job? = null
+
     /** Exposed auth state for observing in Composables */
     val isAuthenticated = seerrRepository.isAuthenticated
 
@@ -327,6 +334,49 @@ class SeerrHomeViewModel(
                         ratingsCache[cacheKey] = ratings
                         _focusedRatings.value = ratings
                     }
+            }
+        }
+    }
+
+    /**
+     * Fetch a backdrop URL for a browse item (studio or network).
+     * Discovers one movie/show from that studio/network and uses its backdrop.
+     * Results are cached to avoid redundant API calls.
+     *
+     * @param type "studio" or "network"
+     * @param id The studio or network TMDB ID
+     */
+    @Suppress("MagicNumber")
+    fun fetchBrowseBackdrop(type: String, id: Int) {
+        val cacheKey = "${type}_$id"
+        browseBackdropCache[cacheKey]?.let { cached ->
+            _browseBackdropUrl.value = cached
+            return
+        }
+
+        browseBackdropJob?.cancel()
+        browseBackdropJob = viewModelScope.launch {
+            delay(300) // Debounce rapid focus changes
+            val result = when (type) {
+                "movie_genre" -> seerrRepository.discoverMovies(genreId = id)
+                "tv_genre" -> seerrRepository.discoverTV(genreId = id)
+                "studio" -> seerrRepository.discoverMoviesWithParams(
+                    mapOf("studio" to id.toString()),
+                )
+                "network" -> seerrRepository.discoverTVWithParams(
+                    mapOf("network" to id.toString()),
+                )
+                else -> return@launch
+            }
+            result.onSuccess { discoverResult ->
+                val backdropPath = discoverResult.results
+                    .firstOrNull { it.backdropPath != null }
+                    ?.backdropPath
+                backdropPath?.let { path ->
+                    val url = "https://image.tmdb.org/t/p/w1280$path"
+                    browseBackdropCache[cacheKey] = url
+                    _browseBackdropUrl.value = url
+                }
             }
         }
     }

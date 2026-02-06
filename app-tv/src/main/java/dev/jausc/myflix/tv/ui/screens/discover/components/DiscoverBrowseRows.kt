@@ -24,6 +24,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,7 @@ fun DiscoverGenreBrowseRow(
     onGenreClick: (SeerrGenre) -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = Color(0xFF8B5CF6),
+    onItemFocused: ((name: String, id: Int) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -88,6 +90,9 @@ fun DiscoverGenreBrowseRow(
                     SeerrGenreCard(
                         genre = genre,
                         onClick = { onGenreClick(genre) },
+                        modifier = Modifier.onFocusChanged { state ->
+                            if (state.hasFocus) onItemFocused?.invoke(genre.name, genre.id)
+                        },
                     )
                 }
             }
@@ -107,6 +112,7 @@ fun DiscoverStudioBrowseRow(
     onStudioClick: (SeerrStudio) -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = Color(0xFFFBBF24),
+    onItemFocused: ((name: String, id: Int) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -126,6 +132,9 @@ fun DiscoverStudioBrowseRow(
                     SeerrStudioCard(
                         studio = studio,
                         onClick = { onStudioClick(studio) },
+                        modifier = Modifier.onFocusChanged { state ->
+                            if (state.hasFocus) onItemFocused?.invoke(studio.name, studio.id)
+                        },
                     )
                 }
             }
@@ -145,6 +154,7 @@ fun DiscoverNetworkBrowseRow(
     onNetworkClick: (SeerrNetwork) -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = Color(0xFF34D399),
+    onItemFocused: ((name: String, id: Int) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -164,6 +174,9 @@ fun DiscoverNetworkBrowseRow(
                     SeerrNetworkCard(
                         network = network,
                         onClick = { onNetworkClick(network) },
+                        modifier = Modifier.onFocusChanged { state ->
+                            if (state.hasFocus) onItemFocused?.invoke(network.name, network.id)
+                        },
                     )
                 }
             }

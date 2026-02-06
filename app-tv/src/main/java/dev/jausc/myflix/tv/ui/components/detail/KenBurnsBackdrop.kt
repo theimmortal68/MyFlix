@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.components.detail
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -40,6 +41,8 @@ enum class KenBurnsFadePreset {
     HOME_SCREEN,
     /** Movie detail screen - balanced fade for cinematic feel */
     MOVIE,
+    /** Discover detail screen - similar to movie but slightly softer */
+    DISCOVER_DETAIL,
 }
 
 /**
@@ -55,39 +58,6 @@ fun KenBurnsBackdrop(
     modifier: Modifier = Modifier,
     fadePreset: KenBurnsFadePreset = KenBurnsFadePreset.SERIES_DETAIL,
 ) {
-    val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "ken_burns")
-
-    // Slow zoom: 1.03 -> 1.12 over 18 seconds
-    // Minimum scale of 1.03 provides buffer for the ±1.5% horizontal pan
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1.03f,
-        targetValue = 1.12f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 18000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "scale",
-    )
-
-    // Subtle horizontal pan: -1.5% to +1.5% over 22 seconds
-    // Different duration from scale creates organic movement
-    val translateX by infiniteTransition.animateFloat(
-        initialValue = -0.015f,
-        targetValue = 0.015f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 22000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "translateX",
-    )
-
-    val request = remember(imageUrl) {
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .build()
-    }
-
     // Get fade configuration based on preset
     val fadeConfig = when (fadePreset) {
         KenBurnsFadePreset.SERIES_DETAIL -> FadeConfig(
@@ -118,57 +88,29 @@ fun KenBurnsBackdrop(
             overlayAlpha = 0.75f,
             overlayFadeEnd = 0.45f,
         )
+        KenBurnsFadePreset.DISCOVER_DETAIL -> FadeConfig(
+            leftFadeStart = 0.10f,
+            leftFadeMid = 0.25f,
+            bottomFadeMid = 0.50f,
+            overlayAlpha = 0.70f,
+            overlayFadeEnd = 0.40f,
+        )
     }
 
     Box(modifier = modifier.clipToBounds()) {
-        // Mask container - stable in screen space
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    // Offscreen compositing for stable DstIn blending
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
-                .drawWithCache {
-                    // Edge fade masks
-                    val leftFade = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.002f to Color.Transparent,
-                            fadeConfig.leftFadeStart to Color.Black.copy(alpha = 0.5f),
-                            fadeConfig.leftFadeMid to Color.Black,
-                            1.0f to Color.Black,
-                        ),
-                    )
-                    val bottomFade = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black,
-                            fadeConfig.bottomFadeMid to Color.Black,
-                            0.998f to Color.Transparent,
-                        ),
-                    )
-                    onDrawWithContent {
-                        drawContent()
-                        drawRect(leftFade, blendMode = BlendMode.DstIn)
-                        drawRect(bottomFade, blendMode = BlendMode.DstIn)
-                    }
-                },
-        ) {
-            // Animated image - Ken Burns zoom and pan effect
-            AsyncImage(
-                model = request,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = size.width * translateX
-                    },
+        // Crossfade between different backdrop images
+        Crossfade(
+            targetState = imageUrl,
+            animationSpec = tween(600),
+            label = "backdrop_crossfade",
+        ) { currentUrl ->
+            KenBurnsBackdropContent(
+                imageUrl = currentUrl,
+                fadeConfig = fadeConfig,
             )
         }
 
-        // Gradient overlay for text readability
+        // Gradient overlay for text readability (outside Crossfade so it's stable)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -182,6 +124,91 @@ fun KenBurnsBackdrop(
                         ),
                     ),
                 ),
+        )
+    }
+}
+
+/**
+ * Internal content for Ken Burns backdrop - the animated image with edge fade masks.
+ * Separated so Crossfade can manage transitions between different images.
+ */
+@Composable
+private fun KenBurnsBackdropContent(
+    imageUrl: String?,
+    fadeConfig: FadeConfig,
+) {
+    val context = LocalContext.current
+    val infiniteTransition = rememberInfiniteTransition(label = "ken_burns")
+
+    // Slow zoom: 1.03 -> 1.12 over 18 seconds
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1.03f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 18000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "scale",
+    )
+
+    // Subtle horizontal pan: -1.5% to +1.5% over 22 seconds
+    val translateX by infiniteTransition.animateFloat(
+        initialValue = -0.015f,
+        targetValue = 0.015f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 22000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "translateX",
+    )
+
+    val request = remember<ImageRequest>(imageUrl) {
+        ImageRequest.Builder(context)
+            .data(imageUrl)
+            .build()
+    }
+
+    // Mask container - stable in screen space
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithCache {
+                val leftFade = Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0.002f to Color.Transparent,
+                        fadeConfig.leftFadeStart to Color.Black.copy(alpha = 0.5f),
+                        fadeConfig.leftFadeMid to Color.Black,
+                        1.0f to Color.Black,
+                    ),
+                )
+                val bottomFade = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.0f to Color.Black,
+                        fadeConfig.bottomFadeMid to Color.Black,
+                        0.998f to Color.Transparent,
+                    ),
+                )
+                onDrawWithContent {
+                    drawContent()
+                    drawRect(leftFade, blendMode = BlendMode.DstIn)
+                    drawRect(bottomFade, blendMode = BlendMode.DstIn)
+                }
+            },
+    ) {
+        AsyncImage(
+            model = request,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = size.width * translateX
+                },
         )
     }
 }

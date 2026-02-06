@@ -32,7 +32,11 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -124,22 +128,35 @@ fun DiscoverHomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
     val focusedRatings by viewModel.focusedRatings.collectAsState()
+    val browseBackdropFromVm by viewModel.browseBackdropUrl.collectAsState()
 
-    // Track the currently focused media for the hero section
+    // Committed display state - only updated after debounce settles
     var focusedMedia by remember { mutableStateOf<SeerrMedia?>(null) }
+    var heroOverrideTitle by remember { mutableStateOf<String?>(null) }
+    var heroOverrideBackdrop by remember { mutableStateOf<String?>(null) }
 
-    // Build backdrop URL from focused media
-    val backdropUrl = remember(focusedMedia?.id) {
-        focusedMedia?.backdropPath?.let { "https://image.tmdb.org/t/p/w1280$it" }
+    // Pending state - updated immediately on focus, debounced before committing
+    var pendingFocusedMedia by remember { mutableStateOf<SeerrMedia?>(null) }
+    var pendingOverrideTitle by remember { mutableStateOf<String?>(null) }
+    var pendingBrowseType by remember { mutableStateOf<String?>(null) }
+    var pendingBrowseId by remember { mutableIntStateOf(0) }
+
+    // Debounce counter: incremented on every focus change, used as LaunchedEffect key
+    var pendingVersion by remember { mutableIntStateOf(0) }
+
+    // Sync VM browse backdrop into local state when in browse mode
+    LaunchedEffect(browseBackdropFromVm, heroOverrideTitle) {
+        if (heroOverrideTitle != null && browseBackdropFromVm != null) {
+            heroOverrideBackdrop = browseBackdropFromVm
+        }
     }
 
-    // Fetch ratings when focused media changes
-    LaunchedEffect(focusedMedia?.id) {
-        focusedMedia?.let { media ->
-            viewModel.fetchRatingsForMedia(
-                tmdbId = media.tmdbId ?: media.id,
-                isMovie = media.isMovie,
-            )
+    // Build backdrop URL - override takes precedence over focused media
+    val backdropUrl = if (heroOverrideBackdrop != null) {
+        heroOverrideBackdrop
+    } else {
+        remember(focusedMedia?.id) {
+            focusedMedia?.backdropPath?.let { "https://image.tmdb.org/t/p/w1280$it" }
         }
     }
 
@@ -156,6 +173,43 @@ fun DiscoverHomeScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
+    // Debounce focus changes - wait 300ms + scroll stop before committing
+    LaunchedEffect(pendingVersion) {
+        if (pendingVersion == 0) return@LaunchedEffect // Skip initial
+
+        delay(300L)
+
+        if (listState.isScrollInProgress) {
+            snapshotFlow { listState.isScrollInProgress }.first { !it }
+        }
+
+        // Commit pending state
+        val media = pendingFocusedMedia
+        val overrideTitle = pendingOverrideTitle
+
+        if (overrideTitle != null) {
+            // Browse row focused (genre/studio/network)
+            heroOverrideTitle = overrideTitle
+            heroOverrideBackdrop = null
+            focusedMedia = null
+            viewModel.fetchBrowseBackdrop(pendingBrowseType!!, pendingBrowseId)
+        } else if (media != null) {
+            // Media item focused
+            focusedMedia = media
+            heroOverrideTitle = null
+            heroOverrideBackdrop = null
+            viewModel.fetchRatingsForMedia(
+                tmdbId = media.tmdbId ?: media.id,
+                isMovie = media.isMovie,
+            )
+        }
+    }
+
+    // Focus restoration: save last focused item ID to survive back navigation
+    var savedFocusItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    val restoreFocusRequester = remember { FocusRequester() }
+    var focusRestored by remember { mutableStateOf(false) }
+
     // Track last focused row for explicit scroll management (HomeScreen pattern)
     var lastFocusedRow by remember { mutableIntStateOf(-1) }
 
@@ -163,7 +217,7 @@ fun DiscoverHomeScreen(
     val rowPages = remember { mutableStateMapOf<String, Int>() }
 
     // Request focus when content loads, and set initial hero media
-    LaunchedEffect(uiState.rows) {
+    LaunchedEffect(uiState.rows, savedFocusItemId) {
         if (uiState.rows.isNotEmpty()) {
             // Set initial hero to first item of trending row
             if (focusedMedia == null) {
@@ -172,11 +226,26 @@ fun DiscoverHomeScreen(
                 }
             }
             // Short delay to allow composition to complete
-            kotlinx.coroutines.delay(100)
-            try {
-                getRowFocusRequester(MediaCategory.TRENDING).requestFocus()
-            } catch (_: Exception) {
-                // Focus request failed, ignore
+            delay(100)
+            if (savedFocusItemId != null && !focusRestored) {
+                // Returning from detail screen - restore focus to last item
+                try {
+                    restoreFocusRequester.requestFocus()
+                    focusRestored = true
+                } catch (_: Exception) {
+                    // Item may not be visible, fall back to first row
+                    try {
+                        getRowFocusRequester(MediaCategory.TRENDING).requestFocus()
+                    } catch (_: Exception) { }
+                    focusRestored = true
+                }
+            } else if (savedFocusItemId == null) {
+                // First load - focus first row
+                try {
+                    getRowFocusRequester(MediaCategory.TRENDING).requestFocus()
+                } catch (_: Exception) {
+                    // Focus request failed, ignore
+                }
             }
         }
     }
@@ -379,9 +448,15 @@ fun DiscoverHomeScreen(
                                                     }
                                                 },
                                                 onItemFocused = { media ->
-                                                    focusedMedia = media
+                                                    pendingFocusedMedia = media
+                                                    pendingOverrideTitle = null
+                                                    pendingVersion++
+                                                    savedFocusItemId = "${media.mediaType}_${media.id}"
+                                                    focusRestored = true
                                                 },
                                                 focusRequester = rowFocusRequester,
+                                                savedFocusItemId = savedFocusItemId,
+                                                restoreFocusRequester = restoreFocusRequester,
                                                 accentColor = getAccentColorForCategory(rowItem.category),
                                             )
                                         }
@@ -394,6 +469,13 @@ fun DiscoverHomeScreen(
                                                     onNavigateGenre(rowItem.mediaType, genre.id, genre.name)
                                                 },
                                                 accentColor = rowItem.accentColor,
+                                                onItemFocused = { name, id ->
+                                                    pendingFocusedMedia = null
+                                                    pendingOverrideTitle = name
+                                                    pendingBrowseType = if (rowItem.mediaType == "movie") "movie_genre" else "tv_genre"
+                                                    pendingBrowseId = id
+                                                    pendingVersion++
+                                                },
                                                 modifier = Modifier.onFocusChanged { state ->
                                                     if (state.hasFocus && index != lastFocusedRow) {
                                                         lastFocusedRow = index
@@ -412,6 +494,13 @@ fun DiscoverHomeScreen(
                                                 onStudioClick = { studio ->
                                                     onNavigateStudio(studio.id, studio.name)
                                                 },
+                                                onItemFocused = { name, id ->
+                                                    pendingFocusedMedia = null
+                                                    pendingOverrideTitle = name
+                                                    pendingBrowseType = "studio"
+                                                    pendingBrowseId = id
+                                                    pendingVersion++
+                                                },
                                                 modifier = Modifier.onFocusChanged { state ->
                                                     if (state.hasFocus && index != lastFocusedRow) {
                                                         lastFocusedRow = index
@@ -429,6 +518,13 @@ fun DiscoverHomeScreen(
                                                 networks = rowItem.networkRow.networks,
                                                 onNetworkClick = { network ->
                                                     onNavigateNetwork(network.id, network.name)
+                                                },
+                                                onItemFocused = { name, id ->
+                                                    pendingFocusedMedia = null
+                                                    pendingOverrideTitle = name
+                                                    pendingBrowseType = "network"
+                                                    pendingBrowseId = id
+                                                    pendingVersion++
                                                 },
                                                 modifier = Modifier.onFocusChanged { state ->
                                                     if (state.hasFocus && index != lastFocusedRow) {
@@ -456,6 +552,7 @@ fun DiscoverHomeScreen(
                         DiscoverHeroSection(
                             media = focusedMedia,
                             ratings = focusedRatings,
+                            overrideTitle = heroOverrideTitle,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

@@ -246,7 +246,7 @@ fun SeerrMediaDetailScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(390.dp),
+                            .height(352.dp),
                     ) {
                         // Ken Burns animated backdrop
                         KenBurnsBackdrop(
@@ -258,63 +258,49 @@ fun SeerrMediaDetailScreen(
                                 .align(Alignment.TopEnd),
                         )
 
-                        // Back button
-                        TvIconButton(
-                            icon = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = onBack,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(start = 48.dp, top = 24.dp),
-                        )
-
-                        // Content: hero layout + action buttons
+                        // Content: hero layout with action buttons
                         Column(
                             modifier = Modifier
                                 .align(Alignment.TopStart)
-                                .padding(top = 72.dp),
+                                .padding(top = 16.dp),
                         ) {
-                            // Three-column hero layout
+                            // Three-column hero layout with buttons in poster column
                             DetailHeroLayout(
                                 media = currentMedia,
                                 seerrRepository = seerrRepository,
                                 ratings = uiState.ratings,
                                 tvRatings = uiState.tvRatings,
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Action buttons row
-                            Column(
-                                modifier = Modifier
-                                    .padding(horizontal = 48.dp)
-                                    .focusProperties {
-                                        down = getTabFocusRequester(
-                                            availableTabs.firstOrNull() ?: SeerrDetailTab.Cast,
+                                actionButtons = {
+                                    Column(
+                                        modifier = Modifier.focusProperties {
+                                            down = getTabFocusRequester(
+                                                availableTabs.firstOrNull() ?: SeerrDetailTab.Cast,
+                                            )
+                                        },
+                                    ) {
+                                        DetailActionButtons(
+                                            media = currentMedia,
+                                            isRequesting = uiState.isRequesting,
+                                            onRequest = { handleRequest() },
+                                            onTrailerClick = onTrailerClick,
+                                            actionButtonFocusRequester = actionButtonFocusRequester,
                                         )
-                                    },
-                            ) {
-                                DetailActionButtons(
-                                    media = currentMedia,
-                                    isRequesting = uiState.isRequesting,
-                                    onRequest = { handleRequest() },
-                                    onTrailerClick = onTrailerClick,
-                                    actionButtonFocusRequester = actionButtonFocusRequester,
-                                )
 
-                                uiState.requestError?.let { error ->
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = error,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TvColors.Error,
-                                    )
-                                }
-                            }
+                                        uiState.requestError?.let { error ->
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = error,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TvColors.Error,
+                                            )
+                                        }
+                                    }
+                                },
+                            )
 
                                 // Tab row directly under buttons
                                 if (availableTabs.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(32.dp))
                                     TvTabRow(
                                         tabs = availableTabs,
                                         selectedTab = selectedTab,
@@ -341,7 +327,7 @@ fun SeerrMediaDetailScreen(
                                         focusConfig = TvTabRowFocusConfig(
                                             upFocusRequester = actionButtonFocusRequester,
                                         ),
-                                        modifier = Modifier.padding(horizontal = 48.dp),
+                                        modifier = Modifier.padding(end = 16.dp),
                                     )
                                 }
                         }
@@ -443,8 +429,8 @@ private fun SeerrCastTabContent(
     tabFocusRequester: FocusRequester? = null,
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        contentPadding = PaddingValues(horizontal = 48.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(start = 4.dp),
     ) {
         items(cast, key = { it.id }) { member ->
             SeerrCastCard(
@@ -469,8 +455,8 @@ private fun SeerrCrewTabContent(
     tabFocusRequester: FocusRequester? = null,
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        contentPadding = PaddingValues(horizontal = 48.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(start = 4.dp),
     ) {
         items(crew, key = { "${it.id}_${it.job}" }) { member ->
             SeerrCrewCard(
@@ -496,7 +482,7 @@ private fun SeerrRelatedTabContent(
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 48.dp),
+        contentPadding = PaddingValues(start = 4.dp),
     ) {
         items(items, key = { it.id }) { item ->
             SeerrRelatedMediaCard(
@@ -531,7 +517,7 @@ private fun SeerrVideosTabContent(
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 48.dp),
+        contentPadding = PaddingValues(start = 4.dp),
     ) {
         items(videos, key = { it.key ?: it.name ?: "" }) { video ->
             SeerrVideoCard(

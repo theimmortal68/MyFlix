@@ -55,22 +55,24 @@ val DISCOVER_HERO_HEIGHT = 220.dp
 fun DiscoverHeroSection(
     media: SeerrMedia?,
     ratings: DiscoverFocusedRatings? = null,
+    overrideTitle: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    if (media == null) return
+    // Determine the display title - override takes precedence
+    val displayTitle = overrideTitle ?: media?.displayTitle ?: return
 
     Box(
         modifier = modifier
             .fillMaxSize(),
     ) {
         AnimatedContent(
-            targetState = media,
+            targetState = displayTitle,
             transitionSpec = {
                 fadeIn(animationSpec = tween(500, delayMillis = 200)) togetherWith
                     fadeOut(animationSpec = tween(300))
             },
             label = "discover_hero_text",
-        ) { item ->
+        ) { title ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -80,7 +82,7 @@ fun DiscoverHeroSection(
             ) {
                 // Title
                 Text(
-                    text = item.displayTitle,
+                    text = title,
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp,
@@ -90,25 +92,28 @@ fun DiscoverHeroSection(
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Column(modifier = Modifier.fillMaxWidth(0.55f)) {
-                    // Rating row
-                    DiscoverRatingRow(item, ratings)
-
+                // Only show ratings and overview for media items (not browse items)
+                if (overrideTitle == null && media != null) {
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Description
-                    item.overview?.let { overview ->
-                        Text(
-                            text = overview,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TvColors.TextPrimary.copy(alpha = 0.9f),
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 18.sp,
-                            modifier = Modifier.fillMaxWidth(0.8f),
-                        )
+                    Column(modifier = Modifier.fillMaxWidth(0.55f)) {
+                        // Rating row
+                        DiscoverRatingRow(media, ratings)
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Description
+                        media.overview?.let { overview ->
+                            Text(
+                                text = overview,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TvColors.TextPrimary.copy(alpha = 0.9f),
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 18.sp,
+                                modifier = Modifier.fillMaxWidth(0.8f),
+                            )
+                        }
                     }
                 }
             }

@@ -75,6 +75,8 @@ fun DiscoverCarousel(
     onRowFocused: (() -> Unit)? = null,
     onItemFocused: ((SeerrMedia) -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    savedFocusItemId: String? = null,
+    restoreFocusRequester: FocusRequester? = null,
     accentColor: Color = TvColors.BluePrimary,
 ) {
     val listState = rememberLazyListState()
@@ -125,12 +127,16 @@ fun DiscoverCarousel(
                     items,
                     key = { _, media -> "${media.mediaType}_${media.id}" },
                 ) { index, media ->
+                    val mediaKey = "${media.mediaType}_${media.id}"
+                    val isRestoreTarget = savedFocusItemId == mediaKey && restoreFocusRequester != null
                     DiscoverMediaCard(
                         media = media,
                         onClick = { onItemClick(media) },
                         modifier = Modifier
                             .then(
-                                if (index == 0 && focusRequester != null) {
+                                if (isRestoreTarget) {
+                                    Modifier.focusRequester(restoreFocusRequester!!)
+                                } else if (index == 0 && focusRequester != null) {
                                     Modifier.focusRequester(focusRequester)
                                 } else {
                                     Modifier

@@ -213,7 +213,6 @@ private fun buildMainNavItems(showUniverses: Boolean, showDiscover: Boolean): Li
         add(NavItem.COLLECTIONS)
         if (showUniverses) add(NavItem.UNIVERSES)
         if (showDiscover) add(NavItem.DISCOVER)
-        if (showDiscover) add(NavItem.DISCOVER_V2)
     }
 }
 

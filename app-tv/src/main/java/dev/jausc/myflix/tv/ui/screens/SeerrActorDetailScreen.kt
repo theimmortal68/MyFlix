@@ -166,7 +166,7 @@ private fun TvActorDetailContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(top = 24.dp),
+            .padding(top = 16.dp),
     ) {
         // Header section
         PersonHeader(
@@ -243,30 +243,6 @@ private fun PersonHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        // Back button aligned to the left
-        Button(
-            onClick = onBack,
-            modifier = Modifier
-                .height(24.dp)
-                .focusRequester(backButtonFocusRequester),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-            scale = ButtonDefaults.scale(focusedScale = 1f),
-            colors = ButtonDefaults.colors(
-                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                contentColor = TvColors.TextPrimary,
-                focusedContainerColor = TvColors.BluePrimary,
-                focusedContentColor = Color.White,
-            ),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.size(14.dp),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -278,15 +254,14 @@ private fun PersonHeader(
                 model = seerrRepository.getProfileUrl(person.profilePath, "h632"),
                 contentDescription = person.name,
                 modifier = Modifier
-                    .width(146.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.FillHeight,
             )
 
         // Info column
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).padding(top = 36.dp, bottom = 6.dp),
         ) {
             // Name
             Text(

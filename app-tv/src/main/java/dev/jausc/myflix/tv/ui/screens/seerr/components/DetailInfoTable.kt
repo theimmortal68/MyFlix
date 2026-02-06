@@ -190,8 +190,8 @@ fun DetailInfoTable(
                             painter = painterResource(id = R.drawable.ic_rotten_tomatoes_logo),
                             contentDescription = "Rotten Tomatoes",
                             modifier = Modifier
-                                .width(24.dp)
-                                .height(10.dp),
+                                .width(36.dp)
+                                .height(15.dp),
                         )
                     },
                     value = {
