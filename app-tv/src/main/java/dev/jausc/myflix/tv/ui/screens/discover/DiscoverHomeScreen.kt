@@ -67,9 +67,14 @@ fun DiscoverHomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
 
-    // Focus management
-    val firstRowFocusRequester = remember { FocusRequester() }
-    val updateExitFocus = rememberExitFocusRegistry(firstRowFocusRequester)
+    // Stable map of FocusRequesters per category (pattern from CLAUDE.md)
+    val rowFocusRequesters = remember { mutableStateMapOf<MediaCategory, FocusRequester>() }
+    fun getRowFocusRequester(category: MediaCategory): FocusRequester =
+        rowFocusRequesters.getOrPut(category) { FocusRequester() }
+
+    // Focus management - use first row's requester for exit focus
+    val firstRowRequester = getRowFocusRequester(MediaCategory.TRENDING)
+    val updateExitFocus = rememberExitFocusRegistry(firstRowRequester)
 
     // Track focused row for scroll management
     var focusedRowIndex by remember { mutableIntStateOf(0) }
@@ -91,9 +96,11 @@ fun DiscoverHomeScreen(
     // Request focus when content loads
     LaunchedEffect(uiState.rows) {
         if (uiState.rows.isNotEmpty()) {
+            // Short delay to allow composition to complete
             kotlinx.coroutines.delay(100)
             try {
-                firstRowFocusRequester.requestFocus()
+                // Request focus on first row using stable requester
+                getRowFocusRequester(MediaCategory.TRENDING).requestFocus()
             } catch (_: Exception) {
                 // Focus request failed, ignore
             }
@@ -217,7 +224,8 @@ fun DiscoverHomeScreen(
                         key = { _, pair -> pair.first.name },
                     ) { index, (category, row) ->
                         val discoverRow = row ?: return@itemsIndexed
-                        val rowFocusRequester = remember { FocusRequester() }
+                        // Use stable focus requester from map (not created inside loop)
+                        val rowFocusRequester = getRowFocusRequester(category)
 
                         // Get current page for this row
                         val currentPage = rowPages[discoverRow.key] ?: 1
@@ -228,14 +236,7 @@ fun DiscoverHomeScreen(
                             onItemClick = { media ->
                                 onMediaClick(media.mediaType, media.tmdbId ?: media.id)
                             },
-                            modifier = Modifier
-                                .then(
-                                    if (index == 0) {
-                                        Modifier.focusRequester(firstRowFocusRequester)
-                                    } else {
-                                        Modifier.focusRequester(rowFocusRequester)
-                                    },
-                                ),
+                            modifier = Modifier.focusRequester(rowFocusRequester),
                             isLoading = false, // Could track loading state per row
                             onLoadMore = {
                                 val nextPage = currentPage + 1
@@ -244,14 +245,13 @@ fun DiscoverHomeScreen(
                             },
                             onRowFocused = {
                                 focusedRowIndex = index
-                                updateExitFocus(
-                                    if (index == 0) firstRowFocusRequester else rowFocusRequester,
-                                )
+                                // Use stable requester from map for exit focus
+                                updateExitFocus(rowFocusRequester)
                             },
                             onItemFocused = { media ->
                                 // Could update a preview/hero section here if desired
                             },
-                            focusRequester = if (index == 0) firstRowFocusRequester else rowFocusRequester,
+                            focusRequester = rowFocusRequester,
                             accentColor = getAccentColorForCategory(category),
                         )
                     }
