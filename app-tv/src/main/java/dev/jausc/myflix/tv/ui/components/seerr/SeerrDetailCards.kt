@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -63,6 +61,7 @@ fun SeerrCastCard(
     member: SeerrCastMember,
     seerrRepository: SeerrRepository,
     onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -72,67 +71,67 @@ fun SeerrCastCard(
         label = "castCardHaloAlpha",
     )
 
-    Box {
-        if (haloAlpha > 0f) {
-            Box(
-                modifier = Modifier
-                    .width(120.dp)
-                    .blur(12.dp)
-                    .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(8.dp)),
-            )
-        }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.width(130.dp),
+    ) {
+        Box {
+            if (haloAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .size(112.dp)
+                        .blur(12.dp)
+                        .background(TvColors.BluePrimary.copy(alpha = haloAlpha), CircleShape),
+                )
+            }
 
-        Surface(
-            onClick = onClick,
-            modifier = Modifier
-                .width(120.dp)
-                .onFocusChanged { isFocused = it.isFocused },
-            shape = ClickableSurfaceDefaults.shape(
-                shape = RoundedCornerShape(8.dp),
-            ),
-            colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                focusedContainerColor = TvColors.Surface,
-            ),
-            border = ClickableSurfaceDefaults.border(
-                focusedBorder = Border(
-                    border = BorderStroke(2.dp, TvColors.BluePrimary),
-                    shape = RoundedCornerShape(8.dp),
+            Surface(
+                onClick = onClick,
+                modifier = Modifier
+                    .size(112.dp)
+                    .onFocusChanged { isFocused = it.isFocused },
+                shape = ClickableSurfaceDefaults.shape(
+                    shape = CircleShape,
                 ),
-            ),
-            scale = ClickableSurfaceDefaults.scale(
-                focusedScale = 1f,
-            ),
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(8.dp),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = TvColors.Surface,
+                    focusedContainerColor = TvColors.Surface,
+                ),
+                border = ClickableSurfaceDefaults.border(
+                    focusedBorder = Border(
+                        border = BorderStroke(2.dp, TvColors.BluePrimary),
+                        shape = CircleShape,
+                    ),
+                ),
+                scale = ClickableSurfaceDefaults.scale(
+                    focusedScale = 1.05f,
+                ),
             ) {
                 AsyncImage(
                     model = seerrRepository.getProfileUrl(member.profilePath),
                     contentDescription = member.name,
                     modifier = Modifier
-                        .size(80.dp)
+                        .fillMaxSize()
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = member.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TvColors.TextPrimary,
-                    maxLines = 2,
-                    textAlign = TextAlign.Center,
-                )
-                member.character?.let { character ->
-                    Text(
-                        text = character,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TvColors.TextSecondary,
-                        maxLines = 1,
-                    )
-                }
             }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = member.name,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isFocused) Color.White else TvColors.TextPrimary,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
+        member.character?.let { character ->
+            Text(
+                text = character,
+                style = MaterialTheme.typography.labelSmall,
+                color = TvColors.TextSecondary,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -144,67 +143,69 @@ fun SeerrCastCard(
 fun SeerrCrewCard(
     member: SeerrCrewMember,
     seerrRepository: SeerrRepository,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        onClick = {},
-        modifier = Modifier.width(120.dp),
-        shape = ClickableSurfaceDefaults.shape(
-            shape = RoundedCornerShape(8.dp),
-        ),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = TvColors.Surface,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = RoundedCornerShape(8.dp),
-            ),
-        ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
-        ),
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.width(130.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(8.dp),
+        Surface(
+            onClick = {},
+            modifier = Modifier.size(112.dp),
+            shape = ClickableSurfaceDefaults.shape(
+                shape = CircleShape,
+            ),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = TvColors.Surface,
+                focusedContainerColor = TvColors.Surface,
+            ),
+            border = ClickableSurfaceDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = CircleShape,
+                ),
+            ),
+            scale = ClickableSurfaceDefaults.scale(
+                focusedScale = 1.05f,
+            ),
         ) {
             AsyncImage(
                 model = seerrRepository.getProfileUrl(member.profilePath),
                 contentDescription = member.name,
                 modifier = Modifier
-                    .size(80.dp)
+                    .fillMaxSize()
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop,
             )
-            Spacer(modifier = Modifier.height(8.dp))
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = member.name,
+            style = MaterialTheme.typography.bodySmall,
+            color = TvColors.TextPrimary,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
+        member.job?.let { job ->
             Text(
-                text = member.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = TvColors.TextPrimary,
-                maxLines = 2,
-                textAlign = TextAlign.Center,
+                text = job,
+                style = MaterialTheme.typography.labelSmall,
+                color = TvColors.TextSecondary,
+                maxLines = 1,
             )
-            member.job?.let { job ->
-                Text(
-                    text = job,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TvColors.TextSecondary,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }
 
 /**
- * Related media poster card with blue halo focus effect.
+ * Related media poster card with title below poster (not overlaid).
  */
 @Composable
 fun SeerrRelatedMediaCard(
     media: SeerrMedia,
     seerrRepository: SeerrRepository,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -214,22 +215,80 @@ fun SeerrRelatedMediaCard(
         label = "relatedCardHaloAlpha",
     )
 
-    Box {
-        if (haloAlpha > 0f) {
-            Box(
+    Column(modifier = modifier.width(82.dp)) {
+        Box {
+            if (haloAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .width(82.dp)
+                        .aspectRatio(2f / 3f)
+                        .blur(12.dp)
+                        .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(8.dp)),
+                )
+            }
+
+            Surface(
+                onClick = onClick,
                 modifier = Modifier
-                    .width(120.dp)
+                    .width(82.dp)
                     .aspectRatio(2f / 3f)
-                    .blur(12.dp)
-                    .background(TvColors.BluePrimary.copy(alpha = haloAlpha), RoundedCornerShape(8.dp)),
-            )
+                    .onFocusChanged { isFocused = it.isFocused },
+                shape = ClickableSurfaceDefaults.shape(
+                    shape = RoundedCornerShape(8.dp),
+                ),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = TvColors.Surface,
+                    focusedContainerColor = TvColors.FocusedSurface,
+                ),
+                border = ClickableSurfaceDefaults.border(
+                    focusedBorder = Border(
+                        border = BorderStroke(2.dp, TvColors.BluePrimary),
+                        shape = RoundedCornerShape(8.dp),
+                    ),
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+            ) {
+                AsyncImage(
+                    model = seerrRepository.getPosterUrl(media.posterPath),
+                    contentDescription = media.displayTitle,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
 
+        Text(
+            text = media.displayTitle,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isFocused) Color.White else TvColors.TextPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+/**
+ * YouTube video thumbnail card with title below thumbnail (not overlaid).
+ */
+@Composable
+fun SeerrVideoCard(
+    video: SeerrVideo,
+    onClick: (videoKey: String, title: String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier.width(190.dp)) {
         Surface(
-            onClick = onClick,
+            onClick = {
+                video.key?.let { key ->
+                    onClick(key, video.name ?: video.type)
+                }
+            },
             modifier = Modifier
-                .width(120.dp)
-                .aspectRatio(2f / 3f)
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
                 .onFocusChanged { isFocused = it.isFocused },
             shape = ClickableSurfaceDefaults.shape(
                 shape = RoundedCornerShape(8.dp),
@@ -244,108 +303,42 @@ fun SeerrRelatedMediaCard(
                     shape = RoundedCornerShape(8.dp),
                 ),
             ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box {
                 AsyncImage(
-                    model = seerrRepository.getPosterUrl(media.posterPath),
-                    contentDescription = media.displayTitle,
-                    contentScale = ContentScale.Crop,
+                    model = "https://img.youtube.com/vi/${video.key}/mqdefault.jpg",
+                    contentDescription = video.name,
                     modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
                 )
+
+                // Play icon overlay with circle background
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomStart)
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .padding(8.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = media.displayTitle,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White,
-                        maxLines = 1,
+                    Icon(
+                        imageVector = Icons.Outlined.PlayArrow,
+                        contentDescription = "Play video",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                            .padding(4.dp),
                     )
                 }
             }
         }
-    }
-}
 
-/**
- * YouTube video thumbnail card.
- */
-@Composable
-fun SeerrVideoCard(
-    video: SeerrVideo,
-    onClick: (videoKey: String, title: String?) -> Unit,
-) {
-    Surface(
-        onClick = {
-            video.key?.let { key ->
-                onClick(key, video.name ?: video.type)
-            }
-        },
-        modifier = Modifier
-            .width(210.dp)
-            .aspectRatio(16f / 9f),
-        shape = ClickableSurfaceDefaults.shape(
-            shape = RoundedCornerShape(8.dp),
-        ),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
-                shape = RoundedCornerShape(8.dp),
-            ),
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = "https://img.youtube.com/vi/${video.key}/hqdefault.jpg",
-                contentDescription = video.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.PlayArrow,
-                    contentDescription = "Play video",
-                    modifier = Modifier.size(48.dp),
-                    tint = Color.White,
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                        ),
-                    )
-                    .padding(8.dp),
-            ) {
-                Text(
-                    text = video.name ?: "",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
+        Text(
+            text = video.name ?: "",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isFocused) Color.White else TvColors.TextSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }
 

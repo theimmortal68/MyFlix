@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.screens.seerr.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -26,6 +29,10 @@ import androidx.tv.material3.Text
 import dev.jausc.myflix.core.common.util.DateFormatter
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.core.seerr.SeerrRatingResponse
+import dev.jausc.myflix.core.seerr.SeerrRottenTomatoesRating
+import dev.jausc.myflix.tv.R
+import dev.jausc.myflix.tv.ui.components.seerr.SeerrContentRatingBadge
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import java.util.Locale
 
@@ -36,6 +43,8 @@ import java.util.Locale
 @Composable
 fun DetailInfoTable(
     media: SeerrMedia,
+    ratings: SeerrRatingResponse?,
+    tvRatings: SeerrRottenTomatoesRating?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -105,10 +114,20 @@ fun DetailInfoTable(
                 )
             }
 
-            // Content Rating
+            // Content Rating (colored badge)
             media.contentRating?.let { rating ->
                 if (rating.isNotBlank()) {
-                    InfoRow(label = "Rated", value = rating)
+                    InfoRowContent(
+                        label = {
+                            Text(
+                                text = "Rated",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = TvColors.TextSecondary,
+                            )
+                        },
+                        value = { SeerrContentRatingBadge(rating) },
+                    )
                 }
             }
 
@@ -123,7 +142,7 @@ fun DetailInfoTable(
                 }
             }
 
-            // TMDb rating
+            // TMDb rating (logo + score with votes)
             media.voteAverage?.let { score ->
                 if (score > 0.0) {
                     val voteText = buildString {
@@ -132,13 +151,101 @@ fun DetailInfoTable(
                             if (count > 0) append(" ($count votes)")
                         }
                     }
-                    InfoRow(label = "TMDb", value = voteText, valueColor = Color(0xFF01D277))
+                    InfoRowContent(
+                        label = {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_tmdb),
+                                contentDescription = "TMDb",
+                                modifier = Modifier
+                                    .width(24.dp)
+                                    .height(10.dp),
+                            )
+                        },
+                        value = {
+                            Text(
+                                text = voteText,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = Color(0xFF01D277),
+                            )
+                        },
+                    )
                 }
+            }
+
+            // Rotten Tomatoes (logo left, tomato icon + score right)
+            val rtScore = ratings?.rt?.criticsScore ?: tvRatings?.criticsScore
+            val rtFresh = ratings?.rt?.isCriticsFresh ?: tvRatings?.isCriticsFresh
+            rtScore?.let { score ->
+                val tomatoRes = if (rtFresh == true) {
+                    R.drawable.ic_rotten_tomatoes_fresh
+                } else {
+                    R.drawable.ic_rotten_tomatoes_rotten
+                }
+                val scoreColor = if (rtFresh == true) Color(0xFFFA320A) else Color(0xFF6AC238)
+                InfoRowContent(
+                    label = {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_rotten_tomatoes_logo),
+                            contentDescription = "Rotten Tomatoes",
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(10.dp),
+                        )
+                    },
+                    value = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Image(
+                                painter = painterResource(id = tomatoRes),
+                                contentDescription = if (rtFresh == true) "Fresh" else "Rotten",
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text = "$score%",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = scoreColor,
+                            )
+                        }
+                    },
+                )
+            }
+
+            // IMDb (logo + score)
+            ratings?.imdb?.criticsScore?.let { score ->
+                InfoRowContent(
+                    label = {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_imdb),
+                            contentDescription = "IMDb",
+                            modifier = Modifier
+                                .width(20.dp)
+                                .height(10.dp),
+                        )
+                    },
+                    value = {
+                        Text(
+                            text = String.format(Locale.US, "%.1f", score),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = Color(0xFFF5C518),
+                        )
+                    },
+                )
             }
         }
     }
 }
 
+/**
+ * Text-based info row with a fixed-width label column.
+ */
 @Composable
 private fun InfoRow(
     label: String,
@@ -151,7 +258,7 @@ private fun InfoRow(
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = TvColors.TextSecondary,
-            modifier = Modifier.width(80.dp),
+            modifier = Modifier.width(72.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
@@ -159,6 +266,26 @@ private fun InfoRow(
             style = MaterialTheme.typography.bodySmall,
             color = valueColor,
         )
+    }
+}
+
+/**
+ * Composable-based info row for badge/icon content.
+ */
+@Composable
+private fun InfoRowContent(
+    label: @Composable () -> Unit,
+    value: @Composable () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.width(72.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            label()
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        value()
     }
 }
 

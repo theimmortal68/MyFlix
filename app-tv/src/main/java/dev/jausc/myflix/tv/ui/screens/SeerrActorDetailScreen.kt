@@ -16,32 +16,42 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -85,17 +95,13 @@ fun SeerrActorDetailScreen(
     // NavRail exit focus registration
     val updateExitFocus = rememberExitFocusRegistry(firstCardFocusRequester)
 
-    // Request focus on first card when content loads
+    // Request focus on back button when content loads (top of screen)
     LaunchedEffect(state.person) {
         if (state.person != null) {
             kotlinx.coroutines.delay(100)
             try {
-                firstCardFocusRequester.requestFocus()
+                backButtonFocusRequester.requestFocus()
             } catch (_: Exception) {
-                try {
-                    backButtonFocusRequester.requestFocus()
-                } catch (_: Exception) {
-                }
             }
         }
     }
@@ -154,64 +160,75 @@ private fun TvActorDetailContent(
 ) {
     val currentPerson = state.person ?: return
     val castCredits = state.sortedCastCredits
+    val scrollState = rememberScrollState()
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 120.dp),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 48.dp,
-            end = 48.dp,
-            top = 24.dp,
-            bottom = 48.dp,
-        ),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(top = 24.dp),
     ) {
-        // Header section (full width)
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            PersonHeader(
-                state = state,
-                person = currentPerson,
-                seerrRepository = seerrRepository,
-                onBack = onBack,
-                backButtonFocusRequester = backButtonFocusRequester,
-            )
-        }
+        // Header section
+        PersonHeader(
+            state = state,
+            person = currentPerson,
+            seerrRepository = seerrRepository,
+            onBack = onBack,
+            backButtonFocusRequester = backButtonFocusRequester,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
 
-        // Appearances title
-        item(span = { GridItemSpan(maxLineSpan) }) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Appearances title - matching Home screen row header style
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(24.dp)
+                    .background(TvColors.BluePrimary, RoundedCornerShape(2.dp)),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "Appearances",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = TvColors.TextPrimary,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
             )
         }
 
-        // Movie/Show grid
-        items(
-            castCredits,
-            key = { "${it.mediaType}_${it.id}_${it.character}" },
-        ) { credit ->
-            val isFirst = castCredits.indexOf(credit) == 0
-            PersonMediaCard(
-                credit = credit,
-                seerrRepository = seerrRepository,
-                onClick = {
-                    val mediaType = credit.mediaType ?: "movie"
-                    onMediaClick(mediaType, credit.id)
-                },
-                modifier = (if (isFirst) {
-                    Modifier.focusRequester(firstCardFocusRequester)
-                } else {
-                    Modifier
-                }).onFocusChanged { focusState ->
-                    if (focusState.isFocused) {
-                        updateExitFocus(firstCardFocusRequester)
-                    }
-                },
-            )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Appearances row
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            itemsIndexed(
+                castCredits,
+                key = { _, credit -> "${credit.mediaType}_${credit.id}_${credit.character}" },
+            ) { index, credit ->
+                PersonMediaCard(
+                    credit = credit,
+                    seerrRepository = seerrRepository,
+                    onClick = {
+                        val mediaType = credit.mediaType ?: "movie"
+                        onMediaClick(mediaType, credit.id)
+                    },
+                    modifier = (if (index == 0) {
+                        Modifier.focusRequester(firstCardFocusRequester)
+                    } else {
+                        Modifier
+                    }).onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            updateExitFocus(firstCardFocusRequester)
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -223,48 +240,49 @@ private fun PersonHeader(
     seerrRepository: SeerrRepository,
     onBack: () -> Unit,
     backButtonFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        // Back button and photo column
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+    Column(modifier = modifier) {
+        // Back button aligned to the left
+        Button(
+            onClick = onBack,
+            modifier = Modifier
+                .height(24.dp)
+                .focusRequester(backButtonFocusRequester),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            scale = ButtonDefaults.scale(focusedScale = 1f),
+            colors = ButtonDefaults.colors(
+                containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
+                contentColor = TvColors.TextPrimary,
+                focusedContainerColor = TvColors.BluePrimary,
+                focusedContentColor = Color.White,
+            ),
         ) {
-            Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .height(24.dp)
-                    .focusRequester(backButtonFocusRequester),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                scale = ButtonDefaults.scale(focusedScale = 1f),
-                colors = ButtonDefaults.colors(
-                    containerColor = TvColors.SurfaceElevated.copy(alpha = 0.8f),
-                    contentColor = TvColors.TextPrimary,
-                    focusedContainerColor = TvColors.BluePrimary,
-                    focusedContentColor = Color.White,
-                ),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Back",
-                    modifier = Modifier.size(14.dp),
-                )
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Back",
+                modifier = Modifier.size(14.dp),
+            )
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // Profile photo
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            // Profile photo - fills the height of the info column
             AsyncImage(
                 model = seerrRepository.getProfileUrl(person.profilePath, "h632"),
                 contentDescription = person.name,
                 modifier = Modifier
-                    .size(150.dp)
-                    .clip(CircleShape),
+                    .width(146.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop,
             )
-        }
 
         // Info column
         Column(
@@ -299,17 +317,12 @@ private fun PersonHeader(
                 )
             }
 
-            // Biography
+            // Biography (auto-scrolls if too long)
             person.biography?.takeIf { it.isNotEmpty() }?.let { bio ->
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = bio,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TvColors.TextSecondary,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                AutoScrollingText(text = bio)
             }
+        }
         }
     }
 }
@@ -321,29 +334,29 @@ private fun PersonMediaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier
-            .width(120.dp)
-            .aspectRatio(2f / 3f),
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = TvColors.Surface,
-            focusedContainerColor = TvColors.FocusedSurface,
-        ),
-        border = ClickableSurfaceDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, TvColors.BluePrimary),
+    Column(modifier = modifier.width(110.dp)) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f),
+            shape = ClickableSurfaceDefaults.shape(
                 shape = MaterialTheme.shapes.medium,
             ),
-        ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
-        ),
-    ) {
-        Box {
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = TvColors.Surface,
+                focusedContainerColor = TvColors.FocusedSurface,
+            ),
+            border = ClickableSurfaceDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(2.dp, TvColors.BluePrimary),
+                    shape = MaterialTheme.shapes.medium,
+                ),
+            ),
+            scale = ClickableSurfaceDefaults.scale(
+                focusedScale = 1.05f,
+            ),
+        ) {
             AsyncImage(
                 model = seerrRepository.getPosterUrl(credit.posterPath),
                 contentDescription = credit.displayTitle,
@@ -352,28 +365,82 @@ private fun PersonMediaCard(
                     .clip(MaterialTheme.shapes.medium),
                 contentScale = ContentScale.Crop,
             )
+        }
 
-            // Character name badge at bottom
-            credit.character?.let { character ->
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(
-                            Color.Black.copy(alpha = 0.7f),
-                            RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                ) {
-                    Text(
-                        text = character,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TvColors.TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+        // Title below poster
+        Text(
+            text = credit.displayTitle,
+            style = MaterialTheme.typography.labelSmall,
+            color = TvColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+
+        // Character name below title
+        credit.character?.let { character ->
+            Text(
+                text = character,
+                style = MaterialTheme.typography.labelSmall,
+                color = TvColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutoScrollingText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxHeight: Int = 130,
+    scrollDuration: Int = 20000,
+) {
+    val scrollState = rememberScrollState()
+    var needsScroll by remember { mutableStateOf(false) }
+    var textHeight by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
+    val maxHeightPx = with(density) { maxHeight.dp.toPx() }
+
+    LaunchedEffect(needsScroll) {
+        if (needsScroll && scrollState.maxValue > 0) {
+            while (true) {
+                kotlinx.coroutines.delay(3000)
+                scrollState.animateScrollTo(
+                    scrollState.maxValue,
+                    animationSpec = tween(durationMillis = scrollDuration, easing = LinearEasing),
+                )
+                kotlinx.coroutines.delay(3000)
+                scrollState.scrollTo(0)
             }
         }
+    }
+
+    val dynamicHeight = with(density) {
+        if (textHeight > 0 && textHeight <= maxHeightPx.toInt()) {
+            textHeight.toDp()
+        } else {
+            maxHeight.dp
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .height(dynamicHeight)
+            .clipToBounds(),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TvColors.TextSecondary,
+            lineHeight = 18.sp,
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .onSizeChanged { size ->
+                    textHeight = size.height
+                    needsScroll = size.height > maxHeightPx
+                },
+        )
     }
 }

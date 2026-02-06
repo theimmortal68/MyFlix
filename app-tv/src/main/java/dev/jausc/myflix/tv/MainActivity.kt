@@ -886,6 +886,7 @@ private fun MyFlixTvApp(
                     mediaType = mediaType,
                     tmdbId = tmdbId,
                     seerrRepository = seerrRepository,
+                    jellyfinServerUrl = jellyfinClient.serverUrl,
                     onMediaClick = { relatedMediaType, relatedTmdbId ->
                         navController.navigate("seerr/$relatedMediaType/$relatedTmdbId")
                     },
