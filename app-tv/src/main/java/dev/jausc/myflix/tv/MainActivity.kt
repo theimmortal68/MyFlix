@@ -592,6 +592,7 @@ private fun MyFlixTvApp(
             }
             NavItem.COLLECTIONS -> { navController.navigate("collections") }
             NavItem.UNIVERSES -> { navController.navigate("universes") }
+            NavItem.DISCOVER_V2 -> { navController.navigate("discover_v2") }
         }
     }
 
