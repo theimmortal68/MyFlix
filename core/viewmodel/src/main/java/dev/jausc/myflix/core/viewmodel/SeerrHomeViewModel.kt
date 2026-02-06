@@ -12,6 +12,8 @@ import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrRowType
 import dev.jausc.myflix.core.seerr.SeerrStudioRow
 import dev.jausc.myflix.core.seerr.filterDiscoverable
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,6 +87,13 @@ class SeerrHomeViewModel(
 
     private val _uiState = MutableStateFlow(SeerrHomeUiState())
     val uiState: StateFlow<SeerrHomeUiState> = _uiState.asStateFlow()
+
+    /** Focused media ratings (RT/IMDb) fetched on demand */
+    private val _focusedRatings = MutableStateFlow<DiscoverFocusedRatings?>(null)
+    val focusedRatings: StateFlow<DiscoverFocusedRatings?> = _focusedRatings.asStateFlow()
+
+    private val ratingsCache = mutableMapOf<String, DiscoverFocusedRatings>()
+    private var ratingsFetchJob: Job? = null
 
     /** Exposed auth state for observing in Composables */
     val isAuthenticated = seerrRepository.isAuthenticated
@@ -278,4 +287,57 @@ class SeerrHomeViewModel(
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
+
+    /**
+     * Fetch RT/IMDb ratings for a focused media item (debounced).
+     * Results are cached to avoid redundant API calls.
+     */
+    @Suppress("MagicNumber")
+    fun fetchRatingsForMedia(tmdbId: Int, isMovie: Boolean) {
+        val cacheKey = "${if (isMovie) "movie" else "tv"}_$tmdbId"
+        ratingsCache[cacheKey]?.let { cached ->
+            _focusedRatings.value = cached
+            return
+        }
+
+        ratingsFetchJob?.cancel()
+        ratingsFetchJob = viewModelScope.launch {
+            delay(300) // Debounce rapid focus changes
+            if (isMovie) {
+                seerrRepository.getMovieRatings(tmdbId)
+                    .onSuccess { response ->
+                        val ratings = DiscoverFocusedRatings(
+                            tmdbId = tmdbId,
+                            rtScore = response.rt?.criticsScore,
+                            rtFresh = response.rt?.isCriticsFresh == true,
+                            imdbScore = response.imdb?.criticsScore,
+                        )
+                        ratingsCache[cacheKey] = ratings
+                        _focusedRatings.value = ratings
+                    }
+            } else {
+                seerrRepository.getTVRatings(tmdbId)
+                    .onSuccess { response ->
+                        val ratings = DiscoverFocusedRatings(
+                            tmdbId = tmdbId,
+                            rtScore = response.criticsScore,
+                            rtFresh = response.isCriticsFresh,
+                            imdbScore = null, // TV endpoint doesn't return IMDb
+                        )
+                        ratingsCache[cacheKey] = ratings
+                        _focusedRatings.value = ratings
+                    }
+            }
+        }
+    }
 }
+
+/**
+ * Ratings data for a focused discover media item.
+ */
+data class DiscoverFocusedRatings(
+    val tmdbId: Int,
+    val rtScore: Int? = null,
+    val rtFresh: Boolean = false,
+    val imdbScore: Double? = null,
+)

@@ -83,7 +83,7 @@ import dev.jausc.myflix.tv.ui.screens.PreferencesScreen
 import dev.jausc.myflix.tv.ui.screens.SearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrActorDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrCollectionDetailScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrDetailScreen
+import dev.jausc.myflix.tv.ui.screens.seerr.SeerrMediaDetailScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByNetworkScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByStudioScreen
@@ -387,7 +387,8 @@ private fun MyFlixTvApp(
     // so we need to use arguments to get actual values
     val currentNavItem = remember(currentRoute, currentBackStackEntry) {
         val isDetailScreen = currentRoute?.startsWith("detail/") == true ||
-            currentRoute?.startsWith("person/") == true
+            currentRoute?.startsWith("person/") == true ||
+            currentRoute?.startsWith("seerr/") == true
 
         if (isDetailScreen) {
             // For detail screens, keep the previous source context
@@ -881,7 +882,7 @@ private fun MyFlixTvApp(
             ) { backStackEntry ->
                 val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
                 val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: return@composable
-                SeerrDetailScreen(
+                SeerrMediaDetailScreen(
                     mediaType = mediaType,
                     tmdbId = tmdbId,
                     seerrRepository = seerrRepository,
@@ -1099,6 +1100,18 @@ private fun MyFlixTvApp(
                     viewModel = seerrHomeViewModel,
                     onMediaClick = { mediaType, tmdbId ->
                         navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onNavigateGenre = { genreMediaType, genreId, genreName ->
+                        val encodedName = NavigationHelper.encodeNavArg(genreName)
+                        navController.navigate("seerr/genre/$genreMediaType/$genreId/$encodedName")
+                    },
+                    onNavigateStudio = { studioId, studioName ->
+                        val encodedName = NavigationHelper.encodeNavArg(studioName)
+                        navController.navigate("seerr/studio/$studioId/$encodedName")
+                    },
+                    onNavigateNetwork = { networkId, networkName ->
+                        val encodedName = NavigationHelper.encodeNavArg(networkName)
+                        navController.navigate("seerr/network/$networkId/$encodedName")
                     },
                 )
             }

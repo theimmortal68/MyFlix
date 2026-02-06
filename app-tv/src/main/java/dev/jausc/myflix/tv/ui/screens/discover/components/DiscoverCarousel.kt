@@ -2,6 +2,7 @@
 
 package dev.jausc.myflix.tv.ui.screens.discover.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,13 +18,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,11 +34,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -44,16 +42,13 @@ import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.tv.ui.components.TvLoadingIndicatorSmall
 import dev.jausc.myflix.tv.ui.screens.discover.MediaCategory
 import dev.jausc.myflix.tv.ui.theme.TvColors
-import kotlinx.coroutines.launch
 
 /**
  * A horizontal carousel row for the Discover screen.
  *
  * Features:
  * - Category title with accent bar
- * - Horizontal scrolling media cards
- * - D-pad navigation with proper edge handling
- * - Auto-scroll to keep selected item centered
+ * - Horizontal scrolling media cards via natural Compose focus navigation
  * - Auto-load more when approaching end of list
  * - Loading placeholder at row end
  *
@@ -68,6 +63,7 @@ import kotlinx.coroutines.launch
  * @param focusRequester Optional focus requester for parent focus management
  * @param accentColor Color for the category title accent bar
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DiscoverCarousel(
     category: MediaCategory,
@@ -82,7 +78,6 @@ fun DiscoverCarousel(
     accentColor: Color = TvColors.BluePrimary,
 ) {
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
     var selectedIndex by remember { mutableIntStateOf(0) }
 
     // Auto-load more when approaching end of list
@@ -92,26 +87,9 @@ fun DiscoverCarousel(
         }
     }
 
-    // Auto-scroll to keep selected item visible (centered when at position 3+)
-    LaunchedEffect(selectedIndex) {
-        if (items.isEmpty()) return@LaunchedEffect
-
-        // Center the selected item when it's at position 3 or beyond
-        val targetIndex = if (selectedIndex >= 3) {
-            (selectedIndex - 2).coerceAtLeast(0)
-        } else {
-            0
-        }
-
-        coroutineScope.launch {
-            listState.animateScrollToItem(targetIndex)
-        }
-    }
-
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .height(210.dp),
+            .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Category title with accent bar
@@ -120,73 +98,59 @@ fun DiscoverCarousel(
             accentColor = accentColor,
         )
 
-        // Media cards row
-        LazyRow(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .onKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-
-                    when (event.key) {
-                        Key.DirectionLeft -> {
-                            if (selectedIndex > 0) {
-                                selectedIndex--
-                                true // Consume event
-                            } else {
-                                false // At first item, don't consume - allow NavRail focus
-                            }
-                        }
-                        Key.DirectionRight -> {
-                            if (selectedIndex < items.size - 1) {
-                                selectedIndex++
-                                true // Consume event
-                            } else if (isLoading) {
-                                // At end but loading more, stay put
-                                true
-                            } else {
-                                false // At last item with no more loading
-                            }
-                        }
-                        else -> false
+        // Media cards row - uses natural Compose focus navigation (no manual key handling)
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides object : BringIntoViewSpec {
+                @ExperimentalFoundationApi
+                override fun calculateScrollDistance(
+                    offset: Float,
+                    size: Float,
+                    containerSize: Float,
+                ): Float {
+                    return when {
+                        offset < 0 -> offset
+                        offset + size > containerSize -> offset + size - containerSize
+                        else -> 0f
                     }
-                },
+                }
+            },
         ) {
-            itemsIndexed(items, key = { _, media -> "${media.mediaType}_${media.id}" }) { index, media ->
-                val itemFocusRequester = remember { FocusRequester() }
-
-                DiscoverMediaCard(
-                    media = media,
-                    onClick = { onItemClick(media) },
-                    modifier = Modifier
-                        .then(
-                            if (index == 0 && focusRequester != null) {
-                                Modifier.focusRequester(focusRequester)
-                            } else {
-                                Modifier.focusRequester(itemFocusRequester)
+            LazyRow(
+                state = listState,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(start = 4.dp, top = 8.dp, bottom = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                itemsIndexed(
+                    items,
+                    key = { _, media -> "${media.mediaType}_${media.id}" },
+                ) { index, media ->
+                    DiscoverMediaCard(
+                        media = media,
+                        onClick = { onItemClick(media) },
+                        modifier = Modifier
+                            .then(
+                                if (index == 0 && focusRequester != null) {
+                                    Modifier.focusRequester(focusRequester)
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .onFocusChanged { focusState ->
+                                if (focusState.isFocused) {
+                                    selectedIndex = index
+                                    onRowFocused?.invoke()
+                                    onItemFocused?.invoke(media)
+                                }
                             },
-                        )
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                selectedIndex = index
-                                onRowFocused?.invoke()
-                                onItemFocused?.invoke(media)
-                            }
-                        },
-                    onFocusChanged = { isFocused ->
-                        if (isFocused) {
-                            selectedIndex = index
-                        }
-                    },
-                )
-            }
+                    )
+                }
 
-            // Loading placeholder at end
-            if (isLoading) {
-                item(key = "loading_${category.name}") {
-                    LoadingPlaceholder()
+                // Loading placeholder at end
+                if (isLoading) {
+                    item(key = "loading_${category.name}") {
+                        LoadingPlaceholder()
+                    }
                 }
             }
         }
@@ -204,7 +168,7 @@ private fun CategoryTitle(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(start = 48.dp),
+        modifier = modifier,
     ) {
         Box(
             modifier = Modifier

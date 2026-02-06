@@ -40,13 +40,14 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrMediaStatus
+import dev.jausc.myflix.tv.ui.theme.TvColors
 
 /**
  * Card dimensions for Discover media cards.
  */
 object DiscoverCardSizes {
-    val CardWidth = 134.dp
-    val CardHeight = 185.dp
+    val CardWidth = 110.dp
+    val CardHeight = 165.dp
     val CornerRadius = 12.dp
 }
 
@@ -110,7 +111,7 @@ fun DiscoverMediaCard(
                 .then(
                     if (isFocused) {
                         Modifier.border(
-                            BorderStroke(2.dp, Color.White),
+                            BorderStroke(2.dp, TvColors.BluePrimary),
                             cardShape,
                         )
                     } else {
