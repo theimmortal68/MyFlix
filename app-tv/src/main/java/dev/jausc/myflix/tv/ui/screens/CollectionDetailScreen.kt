@@ -4,35 +4,37 @@ package dev.jausc.myflix.tv.ui.screens
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,8 +47,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,31 +61,20 @@ import dev.jausc.myflix.tv.ui.components.TvLoadingIndicator
 import dev.jausc.myflix.tv.ui.components.detail.CollectionActionButtons
 import dev.jausc.myflix.tv.ui.components.detail.KenBurnsBackdrop
 import dev.jausc.myflix.tv.ui.components.detail.KenBurnsFadePreset
-import dev.jausc.myflix.tv.ui.components.detail.TvTabRow
-import dev.jausc.myflix.tv.ui.components.detail.TvTabRowFocusConfig
 import dev.jausc.myflix.tv.ui.theme.TvColors
 import dev.jausc.myflix.tv.ui.util.rememberExitFocusRegistry
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 
 /**
- * Tab options for the collection detail screen.
- */
-private enum class CollectionTab {
-    Items,
-    Details,
-    Similar,
-}
-
-/**
- * Collection detail screen with Ken Burns animated backdrop and tab-based content.
- * Matches the design patterns from MovieDetailScreen, UnifiedSeriesScreen, and EpisodesScreen.
+ * Collection detail screen with Ken Burns animated backdrop.
  *
  * Features:
- * - Ken Burns animated backdrop synced with focused item (on Items tab)
- * - Tab-based content: Items, Details, Similar
- * - Master-detail pattern: focused item updates hero content on Items tab
- * - Hybrid display: horizontal row for small collections (≤15), grid for large (>15)
+ * - Ken Burns animated backdrop synced with focused item
+ * - Master-detail pattern: focused item updates hero content
+ * - Collection items displayed in a horizontal row
  */
 @Composable
 fun CollectionDetailScreen(
@@ -95,31 +84,18 @@ fun CollectionDetailScreen(
     onPlayClick: (String, Long?) -> Unit,
     onBack: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
     // State
     var collection by remember { mutableStateOf<JellyfinItem?>(null) }
     var items by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
-    var similarCollections by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
     // Focus management
     val shuffleFocusRequester = remember { FocusRequester() }
+    val itemsRowFocusRequester = remember { FocusRequester() }
     val updateExitFocus = rememberExitFocusRegistry(shuffleFocusRequester)
 
-    // Tab state
-    var selectedTab by rememberSaveable { mutableStateOf(CollectionTab.Items) }
-
-    // Stable focus requesters for each tab
-    val tabFocusRequesters = remember { mutableStateMapOf<CollectionTab, FocusRequester>() }
-    fun getTabFocusRequester(tab: CollectionTab): FocusRequester =
-        tabFocusRequesters.getOrPut(tab) { FocusRequester() }
-
-    // Track which tab should receive focus when navigating up from content
-    var lastFocusedTab by remember { mutableStateOf(CollectionTab.Items) }
-
-    // Track focused item in the grid for Master-Detail view (only used on Items tab)
+    // Track focused item for master-detail view
     var focusedItem by remember { mutableStateOf<JellyfinItem?>(null) }
 
     // Load collection data
@@ -142,15 +118,6 @@ fun CollectionDetailScreen(
                             error = it.message ?: "Failed to load collection items"
                         }
                     }
-
-                // Load similar collections
-                jellyfinClient.getSimilarItems(collectionId, limit = 20)
-                    .onSuccess { result ->
-                        similarCollections = result
-                    }
-                    .onFailure {
-                        // Silently fail - Similar tab will just be empty
-                    }
             }
             .onFailure {
                 error = it.message ?: "Failed to load collection"
@@ -171,31 +138,8 @@ fun CollectionDetailScreen(
         }
     }
 
-    // Filter tabs based on available data
-    val availableTabs = remember(similarCollections) {
-        CollectionTab.entries.filter { tab ->
-            when (tab) {
-                CollectionTab.Items -> true
-                CollectionTab.Details -> true
-                CollectionTab.Similar -> similarCollections.isNotEmpty()
-            }
-        }
-    }
-
-    // Handle tab selection when tab becomes unavailable
-    LaunchedEffect(availableTabs) {
-        if (selectedTab !in availableTabs) {
-            selectedTab = availableTabs.firstOrNull() ?: CollectionTab.Items
-        }
-    }
-
     // Determine which item to display in the hero/backdrop
-    // On Items tab: focused item (master-detail) OR collection
-    // On other tabs: always collection (static)
-    val displayItem = when (selectedTab) {
-        CollectionTab.Items -> focusedItem ?: collection
-        else -> collection
-    }
+    val displayItem = focusedItem ?: collection
 
     // Backdrop URL - use focused item's backdrop on Items tab, collection's on other tabs
     val backdropUrl = remember(displayItem?.id, displayItem?.backdropImageTags) {
@@ -270,7 +214,7 @@ fun CollectionDetailScreen(
             // Hero content (left side) - shows collection or focused item info
             CollectionHeroContent(
                 collection = collectionItem,
-                focusedItem = if (selectedTab == CollectionTab.Items) focusedItem else null,
+                focusedItem = focusedItem,
                 itemCount = items.size,
                 watched = allWatched,
                 favorite = favorite,
@@ -287,24 +231,23 @@ fun CollectionDetailScreen(
                     // TODO: Toggle favorite
                 },
                 shuffleFocusRequester = shuffleFocusRequester,
-                firstTabFocusRequester = getTabFocusRequester(selectedTab),
+                itemsRowFocusRequester = itemsRowFocusRequester,
                 updateExitFocus = updateExitFocus,
                 onButtonFocusChanged = {
                     if (it.isFocused) {
                         focusedItem = null // Revert to collection info when buttons focused
                     }
                 },
-                modifier = Modifier.fillMaxWidth(0.5f),
+                modifier = Modifier.fillMaxWidth(0.5f).weight(0.6f),
             )
 
-            // Spacer pushes tabs to bottom
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Tab section with shaded background
+            // Collection items grid - one row of 7 visible, snaps between rows
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = 10.dp)
+                    .weight(0.4f)
+                    .clipToBounds()
+                    .focusGroup()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -316,68 +259,14 @@ fun CollectionDetailScreen(
                     )
                     .padding(top = 12.dp),
             ) {
-                Column {
-                    // Tab row
-                    TvTabRow(
-                        tabs = availableTabs,
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
-                        tabLabel = { tab ->
-                            when (tab) {
-                                CollectionTab.Items -> "Items"
-                                CollectionTab.Details -> "Details"
-                                CollectionTab.Similar -> "Similar"
-                            }
-                        },
-                        getTabFocusRequester = ::getTabFocusRequester,
-                        onTabFocused = { tab, requester ->
-                            lastFocusedTab = tab
-                            updateExitFocus(requester)
-                        },
-                        focusConfig = TvTabRowFocusConfig(
-                            upFocusRequester = shuffleFocusRequester,
-                        ),
-                    )
-
-                    // Tab content area - 210dp height accommodates larger posters (174dp + title)
-                    val selectedTabRequester = getTabFocusRequester(lastFocusedTab)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(210.dp)
-                            .padding(start = 2.dp)
-                            .focusProperties {
-                                up = selectedTabRequester
-                            },
-                    ) {
-                        when (selectedTab) {
-                            CollectionTab.Items -> {
-                                CollectionItemsTabContent(
-                                    items = items,
-                                    jellyfinClient = jellyfinClient,
-                                    onItemClick = onItemClick,
-                                    onItemFocused = { item -> focusedItem = item },
-                                    tabFocusRequester = selectedTabRequester,
-                                )
-                            }
-                            CollectionTab.Details -> {
-                                CollectionDetailsTabContent(
-                                    collection = collectionItem,
-                                    itemCount = items.size,
-                                    tabFocusRequester = selectedTabRequester,
-                                )
-                            }
-                            CollectionTab.Similar -> {
-                                SimilarCollectionsTabContent(
-                                    collections = similarCollections,
-                                    jellyfinClient = jellyfinClient,
-                                    onCollectionClick = onItemClick,
-                                    tabFocusRequester = selectedTabRequester,
-                                )
-                            }
-                        }
-                    }
-                }
+                CollectionItemsGrid(
+                    items = items,
+                    jellyfinClient = jellyfinClient,
+                    onItemClick = onItemClick,
+                    onItemFocused = { item -> focusedItem = item },
+                    gridFocusRequester = itemsRowFocusRequester,
+                    upFocusRequester = shuffleFocusRequester,
+                )
             }
         }
     }
@@ -398,7 +287,7 @@ private fun CollectionHeroContent(
     onWatchedClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     shuffleFocusRequester: FocusRequester,
-    firstTabFocusRequester: FocusRequester,
+    itemsRowFocusRequester: FocusRequester,
     updateExitFocus: (FocusRequester) -> Unit,
     onButtonFocusChanged: (androidx.compose.ui.focus.FocusState) -> Unit,
     modifier: Modifier = Modifier,
@@ -427,7 +316,7 @@ private fun CollectionHeroContent(
         // Metadata row - different for collection vs focused item
         if (isShowingFocusedItem) {
             // Focused item: Year • Rating • Runtime
-            ItemMetadataRow(item = focusedItem!!)
+            ItemMetadataRow(item = focusedItem)
         } else {
             // Collection: Item count • Genres (if available)
             Text(
@@ -439,13 +328,15 @@ private fun CollectionHeroContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Overview - dynamically sized with auto-scroll for long descriptions
+        // Overview - fills available space, scrolls up if overflowing
         displayItem.overview?.let { overview ->
             AutoScrollingText(
                 text = overview,
-                modifier = Modifier.fillMaxWidth(0.9f),
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .weight(1f),
             )
-        }
+        } ?: Spacer(modifier = Modifier.weight(1f))
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -463,7 +354,7 @@ private fun CollectionHeroContent(
                 }
             },
             shuffleFocusRequester = shuffleFocusRequester,
-            downFocusRequester = firstTabFocusRequester,
+            downFocusRequester = itemsRowFocusRequester,
         )
     }
 }
@@ -512,16 +403,20 @@ private fun ItemMetadataRow(item: JellyfinItem) {
     }
 }
 
+private const val GRID_COLUMNS = 7
+
 /**
- * Items tab content - displays collection items in a horizontal row.
+ * Collection items displayed in a grid, 7 across, one row visible at a time with snap scrolling.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CollectionItemsTabContent(
+private fun CollectionItemsGrid(
     items: List<JellyfinItem>,
     jellyfinClient: JellyfinClient,
     onItemClick: (String) -> Unit,
     onItemFocused: (JellyfinItem) -> Unit,
-    tabFocusRequester: FocusRequester?,
+    gridFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) {
@@ -538,124 +433,78 @@ private fun CollectionItemsTabContent(
         return
     }
 
-    LazyRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp),
-    ) {
-        itemsIndexed(items, key = { _, item -> item.id }) { _, item ->
-            CompactPosterCard(
-                item = item,
-                imageUrl = jellyfinClient.getPrimaryImageUrl(item.id, item.imageTags?.primary),
-                onClick = { onItemClick(item.id) },
-                onFocused = { onItemFocused(item) },
-                tabFocusRequester = tabFocusRequester,
-            )
+    // Chunk items into rows of 7
+    val rows = remember(items) { items.chunked(GRID_COLUMNS) }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    var lastFocusedRow by remember { mutableIntStateOf(-1) }
+
+    // No-op BringIntoViewSpec to disable auto-scroll, we handle it manually
+    val noOpBringIntoViewSpec = remember {
+        object : BringIntoViewSpec {
+            override fun calculateScrollDistance(
+                offset: Float,
+                size: Float,
+                containerSize: Float,
+            ): Float = 0f
         }
     }
-}
 
-/**
- * Details tab content - collection overview and metadata.
- */
-@Composable
-private fun CollectionDetailsTabContent(
-    collection: JellyfinItem,
-    itemCount: Int,
-    tabFocusRequester: FocusRequester?,
-    modifier: Modifier = Modifier,
-) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(48.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp),
-    ) {
-        // Column 1: Overview
-        item("overview") {
-            Column(
-                modifier = Modifier
-                    .width(300.dp)
-                    .focusProperties { if (tabFocusRequester != null) up = tabFocusRequester },
-            ) {
-                DetailLabel("Overview")
-                Text(
-                    text = collection.overview ?: "No description available",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TvColors.TextPrimary,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp,
-                )
-            }
-        }
-
-        // Column 2: Collection info
-        item("info") {
-            Column(
-                modifier = Modifier.width(150.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                DetailItem("Items", "$itemCount")
-                collection.genres?.takeIf { it.isNotEmpty() }?.let { genres ->
-                    DetailItem("Genres", genres.joinToString(", "))
-                }
-                collection.tags?.takeIf { it.isNotEmpty() }?.let { tags ->
-                    DetailItem("Tags", tags.take(5).joinToString(", "))
-                }
-            }
-        }
-    }
-}
-
-/**
- * Similar collections tab content.
- */
-@Composable
-private fun SimilarCollectionsTabContent(
-    collections: List<JellyfinItem>,
-    jellyfinClient: JellyfinClient,
-    onCollectionClick: (String) -> Unit,
-    tabFocusRequester: FocusRequester?,
-    modifier: Modifier = Modifier,
-) {
-    if (collections.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+    CompositionLocalProvider(LocalBringIntoViewSpec provides noOpBringIntoViewSpec) {
+        LazyColumn(
+            state = listState,
+            modifier = modifier
+                .focusRequester(gridFocusRequester)
+                .clipToBounds(),
         ) {
-            Text(
-                text = "No similar collections found",
-                color = TvColors.TextSecondary,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-        return
-    }
-
-    LazyRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp),
-    ) {
-        itemsIndexed(collections, key = { _, item -> item.id }) { _, collection ->
-            CompactPosterCard(
-                item = collection,
-                imageUrl = jellyfinClient.getPrimaryImageUrl(collection.id, collection.imageTags?.primary),
-                onClick = { onCollectionClick(collection.id) },
-                onFocused = { },
-                tabFocusRequester = tabFocusRequester,
-            )
+            itemsIndexed(rows, key = { index, _ -> index }) { rowIndex, row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .onFocusChanged { state ->
+                            if (state.hasFocus && rowIndex != lastFocusedRow) {
+                                lastFocusedRow = rowIndex
+                                val info = listState.layoutInfo.visibleItemsInfo
+                                    .firstOrNull { it.index == rowIndex }
+                                if (info != null && abs(info.offset) <= 2) return@onFocusChanged
+                                coroutineScope.launch {
+                                    listState.scrollToItem(rowIndex, 0)
+                                }
+                            }
+                        }
+                        .focusProperties {
+                            if (rowIndex == 0) up = upFocusRequester
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    row.forEach { item ->
+                        CompactPosterCard(
+                            item = item,
+                            imageUrl = jellyfinClient.getPrimaryImageUrl(
+                                item.id,
+                                item.imageTags?.primary,
+                            ),
+                            onClick = { onItemClick(item.id) },
+                            onFocused = { onItemFocused(item) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    // Fill remaining slots in the last row so cards stay same width
+                    repeat(GRID_COLUMNS - row.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
 
-// Poster dimensions sized for 7-item grid display (2:3 aspect ratio)
-private val POSTER_WIDTH = 116.dp
-private val POSTER_HEIGHT = 174.dp
+private const val POSTER_ASPECT_RATIO = 2f / 3f
 
 /**
  * Compact poster card for collection items.
- * Sized to fit 7 items in grid/row display (116×174dp, 2:3 aspect ratio).
+ * Uses 2:3 aspect ratio, sized by parent weight.
  */
 @Composable
 private fun CompactPosterCard(
@@ -663,15 +512,11 @@ private fun CompactPosterCard(
     imageUrl: String?,
     onClick: () -> Unit,
     onFocused: () -> Unit,
-    tabFocusRequester: FocusRequester?,
+    modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .width(POSTER_WIDTH)
-            .focusProperties { if (tabFocusRequester != null) up = tabFocusRequester },
-    ) {
+    Column(modifier = modifier) {
         // Poster with focus border
         androidx.tv.material3.Surface(
             onClick = onClick,
@@ -688,8 +533,8 @@ private fun CompactPosterCard(
         ) {
             Box(
                 modifier = Modifier
-                    .width(POSTER_WIDTH)
-                    .height(POSTER_HEIGHT)
+                    .fillMaxWidth()
+                    .aspectRatio(POSTER_ASPECT_RATIO)
                     .clip(RoundedCornerShape(6.dp)),
             ) {
                 AsyncImage(
@@ -729,103 +574,36 @@ private fun CompactPosterCard(
 }
 
 /**
- * Detail section label.
- */
-@Composable
-private fun DetailLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = TvColors.TextSecondary,
-        fontSize = 10.sp,
-    )
-    Spacer(modifier = Modifier.height(4.dp))
-}
-
-/**
- * Detail item with label and value.
- */
-@Composable
-private fun DetailItem(label: String, value: String) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = TvColors.TextSecondary,
-            fontSize = 10.sp,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-            color = TvColors.TextPrimary,
-        )
-    }
-}
-
-/**
- * Text that dynamically expands to fit content, with auto-scroll when overflow is detected.
- * Expands up to maxHeight, then scrolls if content is taller.
+ * Text that fills available space and auto-scrolls up once if content overflows.
  */
 @Composable
 private fun AutoScrollingText(
     text: String,
     modifier: Modifier = Modifier,
-    maxHeight: Int = 120,
     scrollDuration: Int = 12000,
 ) {
     val scrollState = rememberScrollState()
-    var needsScroll by remember { mutableStateOf(false) }
-    var textHeight by remember { mutableStateOf(0) }
-    val density = LocalDensity.current
-    val maxHeightPx = with(density) { maxHeight.dp.toPx() }
 
-    // Auto-scroll animation when content overflows
-    LaunchedEffect(needsScroll) {
-        if (needsScroll && scrollState.maxValue > 0) {
-            while (true) {
-                // Pause at top
-                delay(3000)
-                // Scroll to bottom
-                scrollState.animateScrollTo(
-                    scrollState.maxValue,
-                    animationSpec = tween(durationMillis = scrollDuration, easing = LinearEasing),
-                )
-                // Pause at bottom
-                delay(2000)
-                // Scroll back to top
-                scrollState.animateScrollTo(
-                    0,
-                    animationSpec = tween(durationMillis = scrollDuration, easing = LinearEasing),
-                )
-            }
-        }
-    }
-
-    // Dynamic height: wraps content up to maxHeight, then clips and scrolls
-    val dynamicHeight = with(density) {
-        if (textHeight > 0 && textHeight <= maxHeightPx.toInt()) {
-            textHeight.toDp()
-        } else {
-            maxHeight.dp
+    // Scroll to bottom once when content overflows
+    LaunchedEffect(text, scrollState.maxValue) {
+        if (scrollState.maxValue > 0) {
+            delay(3000)
+            scrollState.animateScrollTo(
+                scrollState.maxValue,
+                animationSpec = tween(durationMillis = scrollDuration, easing = LinearEasing),
+            )
         }
     }
 
     Box(
-        modifier = modifier
-            .height(dynamicHeight)
-            .clipToBounds(),
+        modifier = modifier.clipToBounds(),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
             color = TvColors.TextPrimary.copy(alpha = 0.9f),
             lineHeight = 18.sp,
-            modifier = Modifier
-                .verticalScroll(scrollState)
-                .onSizeChanged { size ->
-                    textHeight = size.height
-                    needsScroll = size.height > maxHeightPx
-                },
+            modifier = Modifier.verticalScroll(scrollState),
         )
     }
 }
