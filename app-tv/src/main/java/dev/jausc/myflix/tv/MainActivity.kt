@@ -88,7 +88,6 @@ import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByGenreScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByNetworkScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrDiscoverByStudioScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrRequestsScreen
-import dev.jausc.myflix.tv.ui.screens.SeerrSearchScreen
 import dev.jausc.myflix.tv.ui.screens.SeerrSetupScreen
 import dev.jausc.myflix.tv.ui.screens.TrailerPlayerScreen
 import dev.jausc.myflix.tv.ui.screens.UniverseCollectionsScreen
@@ -711,8 +710,15 @@ private fun MyFlixTvApp(
             composable("search") {
                 SearchScreen(
                     jellyfinClient = jellyfinClient,
+                    seerrRepository = if (isSeerrAuthenticated) seerrRepository else null,
                     onItemClick = { itemId ->
                         navController.navigate("detail/$itemId")
+                    },
+                    onDiscoverClick = { mediaType, tmdbId ->
+                        navController.navigate("seerr/$mediaType/$tmdbId")
+                    },
+                    onPersonClick = { personId ->
+                        navController.navigate("seerr/person/$personId")
                     },
                     onBack = { navController.popBackStack() },
                 )
@@ -884,19 +890,6 @@ private fun MyFlixTvApp(
                     title = title,
                     onBack = { navController.popBackStack() },
                     useMpvPlayer = useMpvPlayer,
-                )
-            }
-
-            composable(NavigationHelper.SEERR_SEARCH_ROUTE) {
-                SeerrSearchScreen(
-                    seerrRepository = seerrRepository,
-                    onMediaClick = { mediaType, tmdbId ->
-                        navController.navigate("seerr/$mediaType/$tmdbId")
-                    },
-                    onPersonClick = { personId ->
-                        navController.navigate("seerr/person/$personId")
-                    },
-                    onBack = { navController.popBackStack() },
                 )
             }
 

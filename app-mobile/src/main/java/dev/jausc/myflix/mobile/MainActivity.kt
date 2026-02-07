@@ -40,6 +40,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.network.websocket.GeneralCommandType
 import dev.jausc.myflix.core.network.websocket.WebSocketEvent
 import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import dev.jausc.myflix.mobile.ui.components.QuickConnectAuthorizationDialog
 import dev.jausc.myflix.mobile.ui.screens.DetailScreen
@@ -194,6 +195,7 @@ fun MyFlixMobileContent(
     val appState = remember { AppState(context, jellyfinClient) }
     val mobilePreferences = remember { MobilePreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
+    val seerrRepository = remember { SeerrRepository(seerrClient) }
 
     // Collect preferences (only ones used outside HomeScreen)
     val useMpvPlayer by mobilePreferences.useMpvPlayer.collectAsState()
@@ -276,7 +278,6 @@ fun MyFlixMobileContent(
                                 .onSuccess { user ->
                                     android.util.Log.d("MyFlixSeerr", "Credentials auth SUCCESS")
                                     isSeerrAuthenticated = true
-                                    user.apiKey?.let { mobilePreferences.setSeerrApiKey(it) }
                                     seerrClient.sessionCookie?.let { mobilePreferences.setSeerrSessionCookie(it) }
                                 }
                                 .onFailure { e ->
@@ -426,7 +427,7 @@ fun MyFlixMobileContent(
             HomeScreen(
                 jellyfinClient = jellyfinClient,
                 preferences = mobilePreferences,
-                seerrClient = if (isSeerrAuthenticated) seerrClient else null,
+                seerrRepository = if (isSeerrAuthenticated) seerrRepository else null,
                 onLibraryClick = { libraryId, libraryName, collectionType ->
                     navController.navigate(
                         NavigationHelper.buildLibraryRoute(libraryId, libraryName, collectionType),
@@ -609,7 +610,7 @@ fun MyFlixMobileContent(
                 )
             } else {
                 val seerrHomeViewModel: SeerrHomeViewModel = viewModel(
-                    factory = SeerrHomeViewModel.Factory(seerrClient),
+                    factory = SeerrHomeViewModel.Factory(seerrRepository),
                 )
                 SeerrHomeScreen(
                     viewModel = seerrHomeViewModel,

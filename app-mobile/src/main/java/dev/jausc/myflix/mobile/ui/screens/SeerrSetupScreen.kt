@@ -126,7 +126,6 @@ fun SeerrSetupScreen(
                                 preferences.setSeerrUrl(url)
                                 preferences.setSeerrAutoDetected(true)
                                 // Save credentials for persistent auth
-                                user.apiKey?.let { preferences.setSeerrApiKey(it) }
                                 seerrClient.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
                                 currentStep = 3
                             }
@@ -181,8 +180,7 @@ fun SeerrSetupScreen(
                 .onSuccess { user ->
                     preferences.setSeerrUrl(serverUrl) // Save URL (may have been set by auto-detection)
                     preferences.setSeerrEnabled(true)
-                    // Save credentials for persistent auth
-                    user.apiKey?.let { preferences.setSeerrApiKey(it) }
+                    // Save session cookie for persistent auth
                     seerrClient.sessionCookie?.let { preferences.setSeerrSessionCookie(it) }
                     currentStep = 3
                 }

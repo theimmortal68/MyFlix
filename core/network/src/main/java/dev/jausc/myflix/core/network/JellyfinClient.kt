@@ -1142,7 +1142,7 @@ class JellyfinClient(
                 parameter("limit", limit)
                 parameter("recursive", true)
                 parameter("includeItemTypes", includeItemTypes)
-                parameter("fields", Fields.CARD)
+                parameter("fields", Fields.CARD + ",ProviderIds")
                 parameter("enableImageTypes", ImageTypes.CARD)
             }.body()
             r.items

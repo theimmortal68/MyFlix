@@ -59,7 +59,7 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.player.PlayQueueManager
 import dev.jausc.myflix.core.player.QueueItem
 import dev.jausc.myflix.core.player.QueueSource
-import dev.jausc.myflix.core.seerr.SeerrClient
+import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrRequest
@@ -95,7 +95,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     jellyfinClient: JellyfinClient,
     preferences: MobilePreferences,
-    seerrClient: SeerrClient? = null,
+    seerrRepository: SeerrRepository? = null,
     onLibraryClick: (libraryId: String, libraryName: String, collectionType: String?) -> Unit,
     onItemClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
@@ -106,7 +106,7 @@ fun HomeScreen(
 ) {
     // ViewModel with manual DI
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrClient, HeroContentBuilder.mobileConfig),
+        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrRepository, HeroContentBuilder.mobileConfig),
     )
 
     // Collect UI state from ViewModel
@@ -430,12 +430,12 @@ fun HomeScreen(
                     }
 
                     // Recent Requests row (from Seerr)
-                    if (showSeerrRecentRequests && state.recentRequests.isNotEmpty() && seerrClient != null) {
+                    if (showSeerrRecentRequests && state.recentRequests.isNotEmpty() && seerrRepository != null) {
                         item(key = "recent_requests") {
                             MobileSeerrRequestRow(
                                 title = "Recent Requests",
                                 requests = state.recentRequests,
-                                seerrClient = seerrClient,
+                                seerrRepository = seerrRepository,
                                 accentColor = androidx.compose.ui.graphics.Color(SeerrColors.GREEN),
                                 onRequestClick = { request ->
                                     request.media?.let { media ->
@@ -483,7 +483,7 @@ fun HomeScreen(
 private fun MobileSeerrRequestRow(
     title: String,
     requests: List<SeerrRequest>,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     accentColor: Color,
     onRequestClick: (SeerrRequest) -> Unit,
     modifier: Modifier = Modifier,
@@ -521,7 +521,7 @@ private fun MobileSeerrRequestRow(
             items(requests, key = { it.id }) { request ->
                 MobileSeerrRequestCard(
                     request = request,
-                    seerrClient = seerrClient,
+                    seerrRepository = seerrRepository,
                     onClick = { onRequestClick(request) },
                 )
             }
@@ -536,7 +536,7 @@ private fun MobileSeerrRequestRow(
 @Composable
 private fun MobileSeerrRequestCard(
     request: SeerrRequest,
-    seerrClient: SeerrClient,
+    seerrRepository: SeerrRepository,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -551,9 +551,9 @@ private fun MobileSeerrRequestCard(
         if (tmdbId != null && mediaType != null) {
             loadFailed = false
             val result = if (mediaType == "tv") {
-                seerrClient.getTVShow(tmdbId)
+                seerrRepository.getTVShow(tmdbId)
             } else {
-                seerrClient.getMovie(tmdbId)
+                seerrRepository.getMovie(tmdbId)
             }
             result
                 .onSuccess { mediaDetails = it }
@@ -561,7 +561,7 @@ private fun MobileSeerrRequestCard(
         }
     }
 
-    val posterUrl = mediaDetails?.posterPath?.let { seerrClient.getPosterUrl(it) }
+    val posterUrl = mediaDetails?.posterPath?.let { seerrRepository.getPosterUrl(it) }
     val statusColor = when (request.status) {
         SeerrRequestStatus.PENDING_APPROVAL -> Color(SeerrColors.YELLOW)
         SeerrRequestStatus.APPROVED -> Color(SeerrColors.GREEN)
