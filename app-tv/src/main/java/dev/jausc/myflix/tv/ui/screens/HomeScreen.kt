@@ -86,6 +86,7 @@ import dev.jausc.myflix.core.seerr.SeerrColors
 import dev.jausc.myflix.core.seerr.SeerrMedia
 import dev.jausc.myflix.core.seerr.SeerrRequest
 import dev.jausc.myflix.core.seerr.SeerrRequestStatus
+import dev.jausc.myflix.core.viewmodel.HomeUiState
 import dev.jausc.myflix.core.viewmodel.HomeViewModel
 import dev.jausc.myflix.tv.TvPreferences
 import dev.jausc.myflix.tv.ui.components.DialogParams
@@ -124,6 +125,7 @@ fun HomeScreen(
     onEpisodeClick: (seriesId: String, seasonNumber: Int, episodeId: String) -> Unit = { _, _, _ -> },
     onSeriesMoreInfoClick: (seriesId: String) -> Unit = { seriesId -> onItemClick(seriesId) },
     leftEdgeFocusRequester: FocusRequester? = null,
+    prefetchedState: HomeUiState? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -136,9 +138,11 @@ fun HomeScreen(
         showExitDialog = true
     }
 
-    // ViewModel with manual DI
+    // ViewModel with manual DI — uses prefetched data from splash if available
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(jellyfinClient, preferences, seerrRepository, HeroContentBuilder.defaultConfig),
+        factory = HomeViewModel.Factory(
+            jellyfinClient, preferences, seerrRepository, HeroContentBuilder.defaultConfig, prefetchedState,
+        ),
     )
 
     // Collect UI state from ViewModel

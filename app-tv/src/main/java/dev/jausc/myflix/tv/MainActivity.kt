@@ -18,8 +18,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -39,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
@@ -56,6 +59,7 @@ import dev.jausc.myflix.core.data.AppState
 import dev.jausc.myflix.core.data.DebugCredentials
 import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.viewmodel.DetailViewModel
+import dev.jausc.myflix.core.viewmodel.HomeDataPrefetcher
 import dev.jausc.myflix.core.viewmodel.SeerrHomeViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.jausc.myflix.core.network.syncplay.SyncPlayManager
@@ -191,6 +195,7 @@ private fun MyFlixTvApp(
     val tvPreferences = remember { TvPreferences.getInstance(context) }
     val seerrClient = remember { SeerrClient() }
     val seerrRepository = remember { SeerrRepository(seerrClient) }
+    val prefetcher = remember { HomeDataPrefetcher(jellyfinClient, tvPreferences) }
 
     // SyncPlay infrastructure
     val syncPlayScope = rememberCoroutineScope()
@@ -211,7 +216,7 @@ private fun MyFlixTvApp(
 
     var isInitialized by remember { mutableStateOf(false) }
     var isLoggedIn by remember { mutableStateOf(false) }
-    var splashFinished by remember { mutableStateOf(false) }
+    var showSplashOverlay by remember { mutableStateOf(true) }
     var isSeerrAuthenticated by remember { mutableStateOf(false) }
     var libraries by remember { mutableStateOf<List<JellyfinItem>>(emptyList()) }
 
@@ -224,8 +229,11 @@ private fun MyFlixTvApp(
     val universesEnabled by tvPreferences.universesEnabled.collectAsState()
     val showDiscoverNav by tvPreferences.showDiscoverNav.collectAsState()
 
+    val appStartTime = remember { android.os.SystemClock.elapsedRealtime() }
     LaunchedEffect(Unit) {
+        Log.d("MyFlix", "T+${android.os.SystemClock.elapsedRealtime() - appStartTime}ms: init start")
         appState.initialize()
+        Log.d("MyFlix", "T+${android.os.SystemClock.elapsedRealtime() - appStartTime}ms: init done")
         isLoggedIn = appState.isLoggedIn
 
         // Auto-login with debug credentials if available and not already logged in
@@ -255,9 +263,22 @@ private fun MyFlixTvApp(
         isInitialized = true
     }
 
+    // Observe libraries from prefetcher (replaces separate getLibraries call)
+    val prefetchedLibraries by prefetcher.libraries.collectAsState()
+    LaunchedEffect(prefetchedLibraries) {
+        if (prefetchedLibraries.isNotEmpty()) {
+            libraries = prefetchedLibraries
+        }
+    }
+
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
-            jellyfinClient.getLibraries().onSuccess { libraries = it }
+            Log.d("MyFlix", "T+${android.os.SystemClock.elapsedRealtime() - appStartTime}ms: prefetch start")
+            // Start prefetch during splash — warms home screen data in parallel
+            launch {
+                prefetcher.prefetch()
+                Log.d("MyFlix", "T+${android.os.SystemClock.elapsedRealtime() - appStartTime}ms: prefetch done, heroReady=${prefetcher.isHeroReady.value}")
+            }
 
             // Crash recovery: Check for orphaned playback sessions
             tvPreferences.getActivePlaybackSession()?.let { session ->
@@ -362,7 +383,7 @@ private fun MyFlixTvApp(
     val currentRoute = currentBackStackEntry?.destination?.route
 
     // Routes that should NOT show NavigationRail
-    val routesWithoutNavRail = setOf("splash", "login", "player", "seerr/trailer")
+    val routesWithoutNavRail = setOf("loading", "login", "player", "seerr/trailer")
 
     // Determine if nav rail should be visible
     val showNavRail = remember(currentRoute) {
@@ -591,13 +612,26 @@ private fun MyFlixTvApp(
         }
     }
 
-    // Navigate when BOTH splash animation completes AND initialization is done
-    LaunchedEffect(splashFinished, isInitialized) {
-        if (splashFinished && isInitialized) {
-            val destination = if (isLoggedIn) "home" else "login"
-            navController.navigate(destination) {
-                popUpTo("splash") { inclusive = true }
+    // Navigate to home/login once initialization is done.
+    // For logged-in users, wait for prefetch so consumeState() has data when HomeScreen mounts.
+    LaunchedEffect(isInitialized) {
+        if (isInitialized) {
+            if (isLoggedIn) {
+                // Wait for prefetch hero data (with safety timeout)
+                kotlinx.coroutines.withTimeoutOrNull(8000L) {
+                    prefetcher.isHeroReady.first { it }
+                }
+                navController.navigate("home") {
+                    popUpTo("loading") { inclusive = true }
+                }
+                // Let home screen render first frame before dismissing splash
+                delay(100)
+            } else {
+                navController.navigate("login") {
+                    popUpTo("loading") { inclusive = true }
+                }
             }
+            showSplashOverlay = false
         }
     }
 
@@ -638,14 +672,12 @@ private fun MyFlixTvApp(
         // Main content - NavHost always rendered
         NavHost(
             navController = navController,
-            startDestination = "splash",
+            startDestination = "loading",
             modifier = navHostModifier,
         ) {
-            composable("splash") {
-                SplashScreen(
-                    onFinished = { splashFinished = true },
-                    config = SplashScreenTvConfig,
-                )
+            // Empty loading destination — splash overlay covers this until init completes
+            composable("loading") {
+                Box(Modifier.fillMaxSize().background(Color.Black))
             }
 
             composable("login") {
@@ -704,6 +736,7 @@ private fun MyFlixTvApp(
                         navController.navigate("episodes/$seriesId?seasonNumber=1")
                     },
                     leftEdgeFocusRequester = sentinelFocusRequester,
+                    prefetchedState = prefetcher.consumeState(),
                 )
             }
 
@@ -1318,6 +1351,21 @@ private fun MyFlixTvApp(
                 // Use screen's registered exit focus target, fall back to default focus traversal
                 exitFocusRequester = exitFocusState.value ?: FocusRequester.Default,
                 modifier = Modifier.zIndex(1f),
+            )
+        }
+
+        // Splash overlay — covers everything (including NavRail) and crossfades out.
+        // Dismiss is controlled by showSplashOverlay from the navigation LaunchedEffect.
+        AnimatedVisibility(
+            visible = showSplashOverlay,
+            exit = fadeOut(animationSpec = tween(durationMillis = 500)),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f),
+        ) {
+            SplashScreen(
+                onFinished = {},
+                config = SplashScreenTvConfig,
             )
         }
         }

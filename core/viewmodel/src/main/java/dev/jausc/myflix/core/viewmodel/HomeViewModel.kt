@@ -10,6 +10,9 @@ import dev.jausc.myflix.core.network.JellyfinClient
 import dev.jausc.myflix.core.seerr.SeerrDiscoverHelper
 import dev.jausc.myflix.core.seerr.SeerrRepository
 import dev.jausc.myflix.core.seerr.SeerrRequest
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +21,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 private const val POLL_INTERVAL_MS = 30_000L
 
@@ -65,6 +67,7 @@ class HomeViewModel(
     private val preferences: AppPreferences,
     private val seerrRepository: SeerrRepository? = null,
     private val heroConfig: HeroContentBuilder.Config = HeroContentBuilder.defaultConfig,
+    prefetchedState: HomeUiState? = null,
 ) : ViewModel() {
 
     /**
@@ -75,13 +78,14 @@ class HomeViewModel(
         private val preferences: AppPreferences,
         private val seerrRepository: SeerrRepository? = null,
         private val heroConfig: HeroContentBuilder.Config = HeroContentBuilder.defaultConfig,
+        private val prefetchedState: HomeUiState? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(jellyfinClient, preferences, seerrRepository, heroConfig) as T
+            HomeViewModel(jellyfinClient, preferences, seerrRepository, heroConfig, prefetchedState) as T
     }
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow(prefetchedState ?: HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     /** Mutex to prevent overlapping loadContent calls during background polling */
@@ -106,12 +110,17 @@ class HomeViewModel(
     }
 
     init {
-        loadContent()
-        startBackgroundPolling()
+        if (prefetchedState?.featuredItems?.isNotEmpty() == true) {
+            // Prefetched data available — skip initial load, just start polling
+            startBackgroundPolling()
+        } else {
+            loadContent()
+            startBackgroundPolling()
+        }
     }
 
     /**
-     * Load all home screen content.
+     * Load all home screen content with parallel API calls.
      */
     fun loadContent(showLoading: Boolean = true) {
         viewModelScope.launch {
@@ -124,95 +133,76 @@ class HomeViewModel(
                     _uiState.update { it.copy(isLoading = true, error = null) }
                 }
 
-                jellyfinClient.clearCache()
+                // Phase 1: All independent calls in parallel
+                coroutineScope {
+                    val librariesDef = async { jellyfinClient.getLibraries() }
+                    val nextUpDef = async { jellyfinClient.getNextUp(limit = 12) }
+                    val continueDef = async { jellyfinClient.getContinueWatching(limit = 12) }
 
-                // Get libraries first
-                jellyfinClient.getLibraries()
-                    .onSuccess { libs ->
+                    val libsResult = librariesDef.await()
+                    val libs = libsResult.getOrNull()
+
+                    if (libs != null) {
                         _uiState.update { it.copy(libraries = libs) }
 
                         val moviesLibraryId = findMoviesLibraryId(libs)
                         val showsLibraryId = findShowsLibraryId(libs)
 
-                        // Load latest movies
-                        if (moviesLibraryId != null) {
-                            jellyfinClient.getLatestMovies(moviesLibraryId, limit = 12)
-                                .onSuccess { items ->
-                                    _uiState.update { it.copy(recentMovies = items) }
-                                }
-                        }
+                        // Phase 2: Library-dependent calls in parallel
+                        val moviesDef = moviesLibraryId?.let { async { jellyfinClient.getLatestMovies(it, limit = 12) } }
+                        val seriesDef = showsLibraryId?.let { async { jellyfinClient.getLatestSeries(it, limit = 12) } }
+                        val episodesDef = showsLibraryId?.let { async { jellyfinClient.getLatestEpisodes(it, limit = 12) } }
 
-                        // Load latest series
-                        if (showsLibraryId != null) {
-                            jellyfinClient.getLatestSeries(showsLibraryId, limit = 12)
-                                .onSuccess { items ->
-                                    _uiState.update { it.copy(recentShows = items) }
-                                }
-                        }
-
-                        // Load latest episodes
-                        if (showsLibraryId != null) {
-                            jellyfinClient.getLatestEpisodes(showsLibraryId, limit = 12)
-                                .onSuccess { items ->
-                                    _uiState.update { it.copy(recentEpisodes = items) }
-                                }
-                        }
-                    }
-                    .onFailure { e ->
+                        moviesDef?.await()?.onSuccess { items -> _uiState.update { s -> s.copy(recentMovies = items) } }
+                        seriesDef?.await()?.onSuccess { items -> _uiState.update { s -> s.copy(recentShows = items) } }
+                        episodesDef?.await()?.onSuccess { items -> _uiState.update { s -> s.copy(recentEpisodes = items) } }
+                    } else {
                         _uiState.update {
-                            it.copy(error = "Failed to load libraries: ${e.message ?: "Unknown error"}")
+                            it.copy(error = "Failed to load libraries: ${libsResult.exceptionOrNull()?.message ?: "Unknown error"}")
                         }
                     }
 
-                // Load Next Up
-                jellyfinClient.getNextUp(limit = 12)
-                    .onSuccess { items ->
-                        _uiState.update { it.copy(nextUp = items) }
-                    }
-
-                // Load Continue Watching
-                jellyfinClient.getContinueWatching(limit = 12)
-                    .onSuccess { items ->
-                        _uiState.update { it.copy(continueWatching = items) }
-                    }
-
-                // Load Season Premieres
-                if (showSeasonPremieres.value) {
-                    jellyfinClient.getUpcomingEpisodes(limit = 12)
-                        .onSuccess { items ->
-                            _uiState.update { it.copy(seasonPremieres = items) }
-                        }
+                    nextUpDef.await().onSuccess { items -> _uiState.update { s -> s.copy(nextUp = items) } }
+                    continueDef.await().onSuccess { items -> _uiState.update { s -> s.copy(continueWatching = items) } }
                 }
 
-                // Load Collections
-                if (showCollections.value) {
-                    jellyfinClient.getCollections(limit = 50)
-                        .onSuccess { items ->
-                            _uiState.update { it.copy(collections = items) }
-                            loadPinnedCollections()
-                        }
-                }
-
-                // Load Suggestions
-                if (showSuggestions.value) {
-                    jellyfinClient.getSuggestions(limit = 12)
-                        .onSuccess { items ->
-                            _uiState.update { it.copy(suggestions = items) }
-                        }
-                }
-
-                // Load Genre Rows
-                if (showGenreRows.value) {
-                    loadGenreRows()
-                }
-
-                // Load Recent Requests from Seerr
-                if (showSeerrRecentRequests.value && seerrRepository != null) {
-                    loadRecentRequests()
-                }
-
-                // Build featured items
+                // Build featured items from phase 1+2 results
                 buildFeaturedItems()
+
+                // Phase 3: Below-fold optional data in parallel
+                coroutineScope {
+                    val jobs = mutableListOf<kotlinx.coroutines.Deferred<*>>()
+
+                    if (showSeasonPremieres.value) {
+                        jobs += async {
+                            jellyfinClient.getUpcomingEpisodes(limit = 12).onSuccess { items ->
+                                _uiState.update { it.copy(seasonPremieres = items) }
+                            }
+                        }
+                    }
+                    if (showCollections.value) {
+                        jobs += async {
+                            jellyfinClient.getCollections(limit = 50).onSuccess { items ->
+                                _uiState.update { it.copy(collections = items) }
+                                loadPinnedCollections()
+                            }
+                        }
+                    }
+                    if (showSuggestions.value) {
+                        jobs += async {
+                            jellyfinClient.getSuggestions(limit = 12).onSuccess { items ->
+                                _uiState.update { it.copy(suggestions = items) }
+                            }
+                        }
+                    }
+                    if (showGenreRows.value) {
+                        jobs += async { loadGenreRows() }
+                    }
+                    if (showSeerrRecentRequests.value && seerrRepository != null) {
+                        jobs += async { loadRecentRequests() }
+                    }
+                    jobs.awaitAll()
+                }
 
                 _uiState.update { it.copy(isLoading = false) }
             } finally {
